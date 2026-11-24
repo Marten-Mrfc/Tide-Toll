@@ -1,0 +1,19 @@
+{
+  "name": "tide-toll-desire-lines",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tide & Toll Prototype 1: a browser toy that tests whether steering worn paths is fun",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node test/run-sim-tests.mjs",
+    "perf": "node build.mjs && node test/perf.mjs",
+    "smoke": "node build.mjs && node test/smoke.mjs",
+    "check": "npm run typecheck && npm run build && npm test"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}
