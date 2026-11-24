@@ -34,10 +34,12 @@ public readonly struct Grid
     /// <summary>
     /// 4-connected line between two cells, appended to <paramref name="cells"/>, so a fence
     /// drawn diagonally has no gap to slip through. Same cells, same order as the toy's line4.
+    /// The line is clipped to the grid: points outside it are skipped rather than added, because
+    /// Idx would wrap them into the neighbouring row (x = -1 is the previous row's last cell).
     /// </summary>
     public void Line4(int x0, int y0, int x1, int y1, List<int> cells)
     {
-        cells.Add(Idx(x0, y0));
+        AddInside(x0, y0, cells);
         int dx = Math.Abs(x1 - x0), dy = -Math.Abs(y1 - y0);
         int sx = x1 > x0 ? 1 : -1, sy = y1 > y0 ? 1 : -1;
         int err = dx + dy, x = x0, y = y0;
@@ -49,13 +51,18 @@ public readonly struct Grid
             {
                 // A diagonal Bresenham step: fill the corner so the line stays 4-connected.
                 x += sx;
-                cells.Add(Idx(x, y));
+                AddInside(x, y, cells);
                 err += dy + dx;
                 y += sy;
             }
             else if (stepX) { err += dy; x += sx; }
             else { err += dx; y += sy; }
-            cells.Add(Idx(x, y));
+            AddInside(x, y, cells);
         }
+    }
+
+    private void AddInside(int x, int y, List<int> cells)
+    {
+        if (Inside(x, y)) cells.Add(Idx(x, y));
     }
 }

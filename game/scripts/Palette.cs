@@ -16,6 +16,8 @@ public static class Palette
     public static readonly Color PackedEarth = Color.FromHtml("#8C6A48");
     public static readonly Color Mud = Color.FromHtml("#5E4A36");
     public static readonly Color River = Color.FromHtml("#5B7F95");
+    public static readonly Color DeepWater = Color.FromHtml("#3F5F75");
+    public static readonly Color Thatch = Color.FromHtml("#C9A55A");
     public static readonly Color Brick = Color.FromHtml("#A4553A");
     public static readonly Color SootBrick = Color.FromHtml("#7A4436");
     public static readonly Color CastIronGreen = Color.FromHtml("#44604F");

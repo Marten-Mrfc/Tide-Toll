@@ -29,7 +29,19 @@ public partial class Hud : CanvasLayer
         AddChild(fpsCard);
     }
 
-    public override void _Process(double delta) => _fps.Text = $"fps {Engine.GetFramesPerSecond():0}";
+    private double _since = 1;
+
+    // Text is rebuilt twice a second, not every frame: string formatting allocates.
+    public override void _Process(double delta)
+    {
+        _since += delta;
+        if (_since < 0.5) return;
+        _since = 0;
+        var sim = (GetParent() as Main)?.Sim;
+        _fps.Text = sim == null
+            ? $"fps {Engine.GetFramesPerSecond():0}"
+            : $"fps {Engine.GetFramesPerSecond():0}  ·  sim {sim.MsPerTick:0.00} ms/tick  ·  {sim.TicksPerSecond:0} ticks/s";
+    }
 
     private static PanelContainer PaperPanel()
     {

@@ -4,9 +4,13 @@ using TideToll.Sim;
 namespace TideToll.Game;
 
 /// <summary>
-/// Builds the open book on the table from generated meshes (no imported art yet).
-/// World units are metres; one map cell is 2 m, so the 128-cell map is 256 m across and
-/// the book is sized around it. North is -Z, east is +X; the spine runs north-south at x = 0.
+/// Builds the open book on the table from generated meshes. World units are metres; one map cell is 2 m, so the
+/// 128-cell map is 256 m across and the book is sized around it. North is -Z, east is +X; the spine runs
+/// north-south at x = 0. Depth so it reads as a book, not two rectangles: each page's top curves down into the
+/// gutter and darkens toward it (baked into the mesh), the page stack shows as stepped edges along the outer
+/// sides, and the pages use the paper shader so the rendered page is exactly the palette's Paper.
+/// The map's north-west corner is "Book/RightPage/MapOrigin"; everything on the map hangs under it.
+/// The left page keeps the chapter heading; "Book/LeftPage/Text" holds placeholder lines for the chapter page.
 /// </summary>
 public static class BookBuilder
 {
@@ -16,8 +20,14 @@ public static class BookBuilder
     public const float PageThickness = 8f;
     public const float CoverLip = 8f;       // cover visible beyond the pages
     public const float Margin = (PageWidth - MapSize) / 2f;
+    public const float GutterCurve = 18f;   // width of the curve into the spine
+    public const float GutterSag = 2.4f;    // how far the page drops at the spine
+    public const int StackSteps = 4;        // page edges visible along the outer sides
+    public static Vector2 CoverSize => new(2 * PageWidth + 2 * CoverLip + 2f, PageDepth + 2 * CoverLip);
 
-    /// <summary>Returns the book root; the map's north-west corner is the node "Book/RightPage/MapOrigin".</summary>
+    private static ShaderMaterial? _paper;
+
+    /// <summary>Returns the book root.</summary>
     public static Node3D Build(Node3D parent, SimParams p)
     {
         var table = new Node3D { Name = "Table" };
@@ -30,40 +40,129 @@ public static class BookBuilder
 
         var book = new Node3D { Name = "Book" };
         parent.AddChild(book);
-        AddBox(book, "Cover", new Vector3(2 * PageWidth + 2 * CoverLip, 4, PageDepth + 2 * CoverLip),
-            new Vector3(0, -PageThickness - 2, 0), Palette.SootBrick);
+        var cover = CoverSize;
+        AddBox(book, "Cover", new Vector3(cover.X, 4, cover.Y), new Vector3(0, -PageThickness - 2, 0), Palette.SootBrick);
 
-        var left = AddPage(book, "LeftPage", -PageWidth / 2f - 1f);
-        var right = AddPage(book, "RightPage", PageWidth / 2f + 1f);
-        AddGutterShadow(book);
+        var left = AddPage(book, "LeftPage", -1);
+        var right = AddPage(book, "RightPage", +1);
         AddRibbon(book);
         FillLeftPage(left);
         FillRightPage(right, p);
         return book;
     }
 
-    private static Node3D AddPage(Node3D book, string name, float centreX)
+    public static ShaderMaterial PaperMaterial()
     {
-        var page = new Node3D { Name = name, Position = new Vector3(centreX, 0, 0) };
+        if (_paper != null) return _paper;
+        _paper = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/paper.gdshader") };
+        _paper.SetShaderParameter("paper_tex", ModelLib.MipTexture("res://assets/textures/paper-page.png"));
+        _paper.SetShaderParameter("paper", Palette.Paper);
+        return _paper;
+    }
+
+    /// <summary>A page: curved top sheet, the stepped stack of page edges under it, all in paper.</summary>
+    private static Node3D AddPage(Node3D book, string name, int side)
+    {
+        var page = new Node3D { Name = name, Position = new Vector3(side * (PageWidth / 2f + 1f), 0, 0) };
         book.AddChild(page);
-        // Top surface at y = 0 so everything drawn on a page sits at y >= 0.
-        AddBox(page, "Paper", new Vector3(PageWidth, PageThickness, PageDepth), new Vector3(0, -PageThickness / 2f, 0), Palette.Paper);
+        page.AddChild(new MeshInstance3D { Name = "Paper", Mesh = PageMesh(side), MaterialOverride = PaperMaterial() });
+        page.AddChild(new MeshInstance3D { Name = "Stack", Mesh = StackMesh(side), MaterialOverride = PaperMaterial() });
         return page;
+    }
+
+    /// <summary>
+    /// The top sheet: flat at y = 0 over the map area, dropping smoothly into the gutter over the last
+    /// GutterCurve metres, with vertex shading that darkens toward the spine (a soft gutter shadow).
+    /// </summary>
+    private static ArrayMesh PageMesh(int side)
+    {
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        const int steps = 24;
+        float hw = PageWidth / 2f, hd = PageDepth / 2f;
+        // x from the spine edge (local -side*hw) outward; the curve lives in the first GutterCurve metres.
+        float[] xs = new float[steps + 2];
+        for (int i = 0; i <= steps; i++) xs[i] = GutterCurve * i / steps;
+        xs[steps + 1] = PageWidth;
+        for (int i = 0; i < xs.Length - 1; i++)
+        {
+            float a = xs[i], b = xs[i + 1];
+            var pa = Point(side, a, hw); var pb = Point(side, b, hw);
+            float sa = Shade(a), sb = Shade(b);
+            var v = new[] { new Vector3(pa.X, pa.Y, -hd), new Vector3(pb.X, pb.Y, -hd), new Vector3(pb.X, pb.Y, hd), new Vector3(pa.X, pa.Y, hd) };
+            float[] sh = { sa, sb, sb, sa };
+            int[] tri = side > 0 ? new[] { 0, 1, 2, 0, 2, 3 } : new[] { 0, 2, 1, 0, 3, 2 };
+            foreach (int k in tri) { st.SetColor(new Color(sh[k], sh[k], sh[k])); st.SetNormal(Vector3.Up); st.AddVertex(v[k]); }
+        }
+        st.GenerateNormals();
+        return st.Commit();
+    }
+
+    // Local position of the sheet at distance d from the spine edge.
+    private static Vector2 Point(int side, float d, float hw)
+    {
+        float t = Mathf.Clamp(d / GutterCurve, 0f, 1f);
+        float y = -GutterSag * (1f - t) * (1f - t);
+        return new Vector2(side * (d - hw), y);
+    }
+
+    private static float Shade(float d)
+    {
+        float t = Mathf.Clamp(d / (GutterCurve * 1.6f), 0f, 1f);
+        return Mathf.Lerp(0.74f, 1f, Mathf.SmoothStep(0f, 1f, t));
+    }
+
+    /// <summary>
+    /// Page edges: slabs under the top sheet, each a little lower and a little wider on the three outer sides,
+    /// alternating paper and a shaded paper, so the stack shows as fine stepped lines (the ink pass draws them).
+    /// </summary>
+    private static ArrayMesh StackMesh(int side)
+    {
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        float hw = PageWidth / 2f, hd = PageDepth / 2f;
+        for (int k = 0; k <= StackSteps; k++)
+        {
+            // The body (k = 0) stays below the sheet's lowest point in the gutter, or it would cover the curve.
+            float grow = k * 0.9f, top = -GutterSag - 0.2f - 0.6f * k, bottom = -PageThickness;
+            float shade = k % 2 == 0 ? 0.97f : 0.86f;
+            // Inner (spine) edge stays put; the outer edge and both ends grow.
+            float inner = side > 0 ? -hw : hw, outer = side * (hw + grow);
+            float x0 = Mathf.Min(inner, outer), x1 = Mathf.Max(inner, outer);
+            Box(st, new Vector3(x0, bottom, -hd - grow), new Vector3(x1, top, hd + grow), shade);
+        }
+        st.GenerateNormals();
+        return st.Commit();
+    }
+
+    private static void Box(SurfaceTool st, Vector3 a, Vector3 b, float shade)
+    {
+        var c = new Color(shade, shade, shade);
+        Vector3[] p =
+        {
+            new(a.X, b.Y, a.Z), new(b.X, b.Y, a.Z), new(b.X, b.Y, b.Z), new(a.X, b.Y, b.Z), // top
+            new(a.X, a.Y, a.Z), new(b.X, a.Y, a.Z), new(b.X, a.Y, b.Z), new(a.X, a.Y, b.Z), // bottom
+        };
+        int[][] faces = { new[] { 0, 1, 2, 3 }, new[] { 3, 2, 6, 7 }, new[] { 1, 0, 4, 5 }, new[] { 0, 3, 7, 4 }, new[] { 2, 1, 5, 6 } };
+        foreach (var f in faces)
+            foreach (int k in new[] { f[0], f[1], f[2], f[0], f[2], f[3] }) { st.SetColor(c); st.AddVertex(p[k]); }
     }
 
     private static void FillLeftPage(Node3D page)
     {
         AddLabel(page, "ChapterTitle", "Chapter I", new Vector3(0, 0.1f, -118), 2600, Palette.Ink);
         AddLabel(page, "ChapterName", "The Hamlet", new Vector3(0, 0.1f, -88), 1700, Palette.Ink);
-        AddBox(page, "Rule", new Vector3(120, 0.2f, 1.2f), new Vector3(0, 0.1f, -66), Palette.Ink);
-        // Printed lines of text, with ragged ends and paragraph breaks.
+        AddFlat(page, "Rule", new Vector3(120, 0.05f, 1.2f), new Vector3(0, 0.03f, -66), Palette.Ink);
+        // Placeholder lines of text (the chapter page is filled by the interface later).
+        var text = new Node3D { Name = "Text" };
+        page.AddChild(text);
         var rng = new Mulberry32(11);
         float z = -48;
         for (int line = 0; line < 20; line++)
         {
             bool paraEnd = line % 6 == 5;
             float len = paraEnd ? 60f + 80f * (float)rng.NextDouble() : 200f + 30f * (float)rng.NextDouble();
-            AddBox(page, $"Text{line}", new Vector3(len, 0.2f, 3.2f), new Vector3(-115 + len / 2f, 0.1f, z), Palette.FadedInk);
+            AddFlat(text, $"Line{line}", new Vector3(len, 0.05f, 3.2f), new Vector3(-108 + len / 2f, 0.03f, z), Palette.FadedInk);
             z += paraEnd ? 14f : 9f;
         }
         AddLabel(page, "Folio", "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk);
@@ -72,30 +171,15 @@ public static class BookBuilder
     private static void FillRightPage(Node3D page, SimParams p)
     {
         float side = p.GridWidth * (float)p.CellMeters;
-        var origin = new Node3D { Name = "MapOrigin", Position = new Vector3(-side / 2f, 0, -side / 2f) };
+        // A hair above the paper so the map plane never fights the page for depth.
+        var origin = new Node3D { Name = "MapOrigin", Position = new Vector3(-side / 2f, 0.02f, -side / 2f) };
         page.AddChild(origin);
-
-        // The playfield: one vertex per cell corner, so the wear shader can work per cell later.
-        var plane = new PlaneMesh
-        {
-            Size = new Vector2(side, side),
-            SubdivideWidth = p.GridWidth - 1,
-            SubdivideDepth = p.GridHeight - 1,
-        };
-        var map = new MeshInstance3D
-        {
-            Name = "Map",
-            Mesh = plane,
-            Position = new Vector3(side / 2f, 0.05f, side / 2f),
-            MaterialOverride = Palette.Matte(Palette.Paper.Lerp(Palette.Meadow, 0.6f)),
-        };
-        origin.AddChild(map);
-
-        // Double ink frame: a heavy inner line and a hairline outside it, as on an engraved plan.
+        // Double ink frame: a heavy inner line and a hairline outside it, as on an engraved plan. Flat and unlit, so
+        // it stays crisp and exactly Ink (thin enough that the depth ink pass adds nothing to it).
         AddFrame(page, "FrameInner", side + 2f, 1.4f);
         AddFrame(page, "FrameOuter", side + 10f, 0.6f);
-        AddCompass(page, new Vector3(side / 2f - 22f, 0.2f, -side / 2f + 22f), 14f);
-        AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 11f), 900, Palette.Ink);
+        AddCompass(page, new Vector3(side / 2f - 8f, 0.04f, -side / 2f - 21f), 9f);
+        AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink);
         AddLabel(page, "Folio", "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk);
     }
 
@@ -103,11 +187,11 @@ public static class BookBuilder
     {
         var f = new Node3D { Name = name };
         page.AddChild(f);
-        float h = size / 2f;
-        AddBox(f, "N", new Vector3(size + w, 0.3f, w), new Vector3(0, 0.15f, -h), Palette.Ink);
-        AddBox(f, "S", new Vector3(size + w, 0.3f, w), new Vector3(0, 0.15f, h), Palette.Ink);
-        AddBox(f, "W", new Vector3(w, 0.3f, size + w), new Vector3(-h, 0.15f, 0), Palette.Ink);
-        AddBox(f, "E", new Vector3(w, 0.3f, size + w), new Vector3(h, 0.15f, 0), Palette.Ink);
+        float h = size / 2f, y = 0.03f, t = 0.04f;
+        AddFlat(f, "N", new Vector3(size + w, t, w), new Vector3(0, y, -h), Palette.Ink);
+        AddFlat(f, "S", new Vector3(size + w, t, w), new Vector3(0, y, h), Palette.Ink);
+        AddFlat(f, "W", new Vector3(w, t, size + w), new Vector3(-h, y, 0), Palette.Ink);
+        AddFlat(f, "E", new Vector3(w, t, size + w), new Vector3(h, y, 0), Palette.Ink);
     }
 
     /// <summary>A four-point star with a north mark; it will turn with the camera yaw later.</summary>
@@ -127,34 +211,15 @@ public static class BookBuilder
         }
         var mat = Palette.Unlit(Colors.White);
         mat.VertexColorUseAsAlbedo = true;
+        mat.VertexColorIsSrgb = true;
         mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
         page.AddChild(new MeshInstance3D { Name = "Compass", Mesh = st.Commit(), Position = at, MaterialOverride = mat });
-        AddLabel(page, "CompassN", "N", at + new Vector3(0, 0, -r - 5f), 700, Palette.Ink);
-    }
-
-    private static void AddGutterShadow(Node3D book)
-    {
-        // A soft dark band down the spine, standing in for the curve of the pages.
-        var st = new SurfaceTool();
-        st.Begin(Mesh.PrimitiveType.Triangles);
-        float w = 20f, h = PageDepth / 2f, y = 0.3f;
-        var dark = new Color(Palette.Ink, 0.35f);
-        var clear = new Color(Palette.Ink, 0f);
-        foreach (float s in new[] { -1f, 1f })
-        {
-            var a = new Vector3(0, y, -h); var b = new Vector3(s * w, y, -h);
-            var c = new Vector3(s * w, y, h); var d = new Vector3(0, y, h);
-            st.SetColor(dark); st.AddVertex(a); st.SetColor(clear); st.AddVertex(b); st.AddVertex(c);
-            st.SetColor(dark); st.AddVertex(a); st.SetColor(clear); st.AddVertex(c); st.SetColor(dark); st.AddVertex(d);
-        }
-        var mat = Palette.Unlit(Colors.White, transparent: true);
-        mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
-        book.AddChild(new MeshInstance3D { Name = "Gutter", Mesh = st.Commit(), MaterialOverride = mat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        AddLabel(page, "CompassN", "N", at + new Vector3(0, 0, -r - 4f), 700, Palette.Ink);
     }
 
     private static void AddRibbon(Node3D book)
     {
-        AddBox(book, "Ribbon", new Vector3(9, 0.4f, 120), new Vector3(0, 0.4f, PageDepth / 2f + 20f), Palette.Brick);
+        AddBox(book, "Ribbon", new Vector3(9, 0.4f, 120), new Vector3(0, -GutterSag + 0.2f, PageDepth / 2f + 20f), Palette.Brick);
     }
 
     private static void AddInkwell(Node3D table, Vector3 at)
@@ -181,6 +246,16 @@ public static class BookBuilder
         var m = new MeshInstance3D { Name = name, Mesh = new BoxMesh { Size = size }, Position = pos, MaterialOverride = Palette.Matte(c) };
         parent.AddChild(m);
         return m;
+    }
+
+    /// <summary>Printed marks on the paper: unlit so they keep their exact colour, casting no shadow.</summary>
+    private static void AddFlat(Node3D parent, string name, Vector3 size, Vector3 pos, Color c)
+    {
+        parent.AddChild(new MeshInstance3D
+        {
+            Name = name, Mesh = new BoxMesh { Size = size }, Position = pos, MaterialOverride = Palette.Unlit(c),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
     }
 
     private static void AddLabel(Node3D parent, string name, string text, Vector3 pos, int fontSize, Color c)

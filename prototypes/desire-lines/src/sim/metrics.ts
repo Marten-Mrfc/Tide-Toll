@@ -121,3 +121,40 @@ export function largestTrail(wear: Float32Array, walkable: Uint8Array, enough: n
   }
   return best;
 }
+
+/**
+ * Median trunk width in cells: for the busiest 10% of trail cells (wear 25 or
+ * more, by footsteps in the window), the run of trail cells straight across
+ * the trail's local direction (the traffic-weighted principal axis of the
+ * trail cells within 3 cells). Report only; the round 3 tuning definition.
+ */
+export function trailWidth(wear: Float32Array, walkable: Uint8Array, steps: Uint32Array): number {
+  const thr = PARAMS.stateThresholds[1];
+  const cells: number[] = [];
+  for (let c = 0; c < NC; c++) if (walkable[c] && wear[c] >= thr) cells.push(c);
+  cells.sort((a, b) => steps[b] - steps[a]);
+  const top = cells.slice(0, Math.ceil(cells.length * PARAMS.trunkTopShare));
+  const widths: number[] = [];
+  const trail = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < N && wear[y * N + x] >= thr;
+  for (const c of top) {
+    const cx = c % N, cy = (c / N) | 0;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (let y = cy - 3; y <= cy + 3; y++)
+      for (let x = cx - 3; x <= cx + 3; x++) {
+        if (!trail(x, y)) continue;
+        const m = steps[y * N + x] + 1;
+        sxx += m * (x - cx) ** 2; syy += m * (y - cy) ** 2; sxy += m * (x - cx) * (y - cy);
+      }
+    const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy); // along the trail
+    const px = -Math.sin(ang), py = Math.cos(ang); // across it
+    let n = 1;
+    for (const s of [1, -1])
+      for (let t = 1; t <= 8; t++) {
+        if (!trail(Math.round(cx + px * s * t), Math.round(cy + py * s * t))) break;
+        n++;
+      }
+    widths.push(n);
+  }
+  widths.sort((a, b) => a - b);
+  return widths.length ? widths[widths.length >> 1] : 0;
+}

@@ -92,8 +92,13 @@ public sealed partial class World
         }
         bool ok = cells.Count > 0;
         if (ok) foreach (int c in cells) if (_bridgeAt[c] >= 0 || m.Ford[c] != 0) { ok = false; break; }
-        // Both ends must land on open ground.
-        if (ok && (IsBlocked(cells[0] - 1) || IsBlocked(cells[^1] + 1))) ok = false;
+        // Both ends must land on open ground. An end beyond the first or last column is off the map:
+        // cells[0] - 1 would otherwise read the previous row (or index -1 on row 0).
+        if (ok)
+        {
+            int west = cells[0], east = cells[^1];
+            if (west % _n == 0 || east % _n == _n - 1 || IsBlocked(west - 1) || IsBlocked(east + 1)) ok = false;
+        }
         if (!ok) cells.Clear();
         return ok;
     }

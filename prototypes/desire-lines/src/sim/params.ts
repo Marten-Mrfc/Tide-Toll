@@ -25,10 +25,10 @@ export const PARAMS = {
   retrySimSec: 5, // a walker with no reachable destination waits this long
 
   // Wear. W in 0..100; gain W += I * (1 - W/100) on entering a cell.
-  // Round 2 tuning (seeds 1 to 20 only): with the flow discount below, modest
-  // wear forms narrow trails that merge into shared trunks.
-  wearPerStep: 2.4, // spec 0.75; research 1.8, raised with the minSurface floor below (tuned on seeds 1 to 20)
-  sideShare: 0.3, // spec 0.15; share of I given to the two side neighbours
+  // Round 3 tuning (seeds 1 to 20, 101 to 120 and 201 to 220): with the flow
+  // discount below, modest wear forms narrow trails that merge into shared trunks.
+  wearPerStep: 2.2, // spec 0.75
+  sideShare: 0.4, // spec 0.15; share of I given to the two side neighbours (wider soft edges, not wider trails)
   // Ground-state thresholds: grass < 10 <= trampled < 25 <= trail < 50 <= track.
   // Hollow way needs W >= 85 held for hollowHoldSimSec.
   stateThresholds: [10, 25, 50, 85] as const,
@@ -50,10 +50,20 @@ export const PARAMS = {
   flowScale: 40,
   flowHalfLife: 20, // sim seconds
   // Floor on the combined multiplier. Without it a busy track costs 0.35 of
-  // grass and walkers keep to detours twice the beeline: a new footbridge got
-  // 15% of crossings (round 1: 76%). The spec caps the trail discount at 0.72;
-  // 0.6 keeps merging and lets bridges and fences steer (57% on seeds 1 to 10).
-  minSurface: 0.6,
+  // grass. Round 3 lowered it from 0.6 to 0.45 for trunk-share headroom; the
+  // frugal walkers below keep new footbridges and fence gaps winning traffic.
+  minSurface: 0.45,
+  // Frugal walkers: a second view of the ground for walkers who weigh distance
+  // more than company. Their cost is 1 + (surface - 1) * frugalDisc (0 ignores
+  // worn ground, 1 is the ordinary walker). A trip is frugal if the walker is
+  // an explorer (a fixed share of walkers, by a hash of the walker id), or if
+  // the ordinary route from where it stands is longer than detourCap times the
+  // straight distance (0 turns the cap off). The cap is what keeps a new
+  // footbridge winning on maps where busy trunks are cheap.
+  explorerShare: 0.1,
+  frugalDisc: 0.3,
+  detourCap: 1.25,
+  bridgeFlow: 1, // 1: a bridge deck is made cheaper by recent traffic like any lane (not by wear); 0: fixed bridgeCost
   // Half-life of wear by band, in sim seconds. Spec: 1, 2, 4 seasons (60/120/240 s).
   halfLifeLow: 60, // W < 25
   halfLifeMid: 120, // 25 <= W < 50
@@ -68,10 +78,15 @@ export const PARAMS = {
   cropPenalty: 0.5, // growing crops add this to a field cell's cost
   lookahead: 20, // cells of field descent a walker looks ahead to aim a straight line
   shortcutSlack: 1.0, // a straight line may cost this much times the field's route
-  fordCostMul: 3.0,
+  fordCostMul: 4.0, // round 3 (was 3); the ford's 0.4 speed alone would suggest about 2.5
   fordSpeedMul: 0.4, // spec: ford walker speed 0.4
   bridgeCost: 0.8,
   bridgeSpeedMul: 1.2,
+  // Steering tools added in round 3 (spec "Tool table" and "Ground states").
+  gravelCost: 0.8, // a gravel cell's surface cost; worn ground and traffic can still make it cheaper
+  gravelSpeedMul: 1.15,
+  gateCost: 1.5, // added to a gate cell's step cost: the spec's 1.5 s delay, one cost unit per grass cell
+  gateSpeedMul: 0.4, // crossing a gate cell takes about 0.5 sim s longer, the same 1.5 cells of walking
   fieldRefreshSimSec: 5, // each cost-to-go field is rebuilt this often
   urgentFieldsPerTick: 1, // after an edit, fields rebuilt per tick until all are fresh (spread, destinations first)
 

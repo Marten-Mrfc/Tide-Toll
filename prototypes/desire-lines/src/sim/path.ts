@@ -74,19 +74,25 @@ export function dijkstra(target: number, cost: Float32Array, out: Float32Array, 
     if (du > out[u]) continue; // stale entry
     if (left > 0 && goals!.includes(u) && --left === 0) return;
     const ux = u % N, uy = (u / N) | 0, cu = cost[u];
+    // Away from the border no neighbour can be off the grid (the common case, without bounds checks).
+    const interior = ux > 0 && uy > 0 && ux < N - 1 && uy < N - 1;
     for (let k = 0; k < 8; k++) {
-      const vx = ux + DX[k], vy = uy + DY[k];
-      if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
-      const v = vy * N + vx;
+      if (!interior) {
+        const vx = ux + DX[k], vy = uy + DY[k];
+        if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
+      }
+      const v = u + OFF[k];
       const cv = cost[v];
       if (cv === Infinity) continue;
-      if (k >= 4 && (cost[uy * N + vx] === Infinity || cost[vy * N + ux] === Infinity)) continue;
-      // Round to float32 so the stale check below compares like with like.
-      const nd = Math.fround(du + DL[k] * 0.5 * (cu + cv));
+      if (k >= 4 && (cost[u + DX[k]] === Infinity || cost[u + DY[k] * N] === Infinity)) continue;
+      // Round to float32 so the stale check above compares like with like.
+      const nd = Math.fround(du + HALF_DL[k] * (cu + cv));
       if (nd < out[v]) { out[v] = nd; heap.push(nd, v); }
     }
   }
 }
+const OFF = DX.map((dx, k) => DY[k] * N + dx);
+const HALF_DL = DL.map(l => l * 0.5);
 
 /** Whether a step from u in direction k is allowed under `cost` (bounds, blocking, corner rule). */
 export function canStep(u: number, k: number, cost: Float32Array): number {
@@ -224,4 +230,24 @@ export function followField(field: Float32Array, cost: Float32Array, start: numb
     u = best;
   }
   return path;
+}
+
+/**
+ * Length in cells of the route a plain field descent takes from `start` to
+ * `door` (steepest descent, no taste or noise), or Infinity if it cannot get
+ * there. Used for the detour cap: a trip whose route is much longer than the
+ * straight line is walked on the frugal fields.
+ */
+export function routeLength(field: Float32Array, cost: Float32Array, start: number, door: number): number {
+  let u = start, len = 0;
+  for (let s = 0; s < 4 * N && u !== door; s++) {
+    let best = -1, bv = field[u], bk = 0;
+    for (let k = 0; k < 8; k++) {
+      const v = canStep(u, k, cost);
+      if (v >= 0 && field[v] < bv) { bv = field[v]; best = v; bk = k; }
+    }
+    if (best < 0) return Infinity;
+    len += DL[bk]; u = best;
+  }
+  return u === door ? len : Infinity;
 }

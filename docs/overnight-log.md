@@ -30,7 +30,8 @@ Stop when all of it is done, after 20 rounds, or when nothing can progress witho
 | Thing | Where |
 | --- | --- |
 | Design doc | https://claude.ai/artifact/Ld2BuxHtt8Ht8LpRbVxeJT (doc id `9ee52479-fb74-49e2-9063-a1585cdc1e40`) |
-| Build Plan tab | body node `aa88b9bc-2a93`, tab file `db2db437-ccbf`; "This week" checklist list `m6ea1wgr0x5.1263` |
+| Build Plan tab | body node `aa88b9bc-2a93`, tab file `db2db437-ccbf`; "This week" checklist list `m6ea1wgr0x5.1263` (item `.1264` is "Build Prototype 1"); the "Overnight build report" section: heading `m6ea1wgr0x5.8044`, status line `.8067`, status table `.9778`, gates table `.8835`, "Needs you" checklist `.9340` |
+| Scheduled check | One pending at a time, about every 45 minutes. Current: `trig_01D8MYP8YEYtziKk7QhuUebt`, fires 23:16 UTC on 24 November. Workflow runs: toy round 3 `wf_01ce3839-5d6`, Godot round `wf_2c94d350-f87` |
 | Other tab body nodes | Overview `654f3c1a-1b75`, Gameplay `7e2d7651-21ec`, UX `ba135eb2-f67b`, Sound `6ddff1a9-fd33`, Art `d64ee9a3-3b89`, Engine `b2ac323d-e193` |
 | Browser toy Artifact | https://claude.ai/artifact/V1ng3taGsSZ9Qm45mm4xjw (published from `prototypes/desire-lines/dist/index.html`) |
 | Asset gallery Artifact | https://claude.ai/artifact/PT1cMEr8k973QosfZxf9r2 (published by the gallery agent from `docs/asset-gallery/index.html` plus the files in `docs/asset-gallery/files.json`; to republish from this session, read the artifact first, then publish with that URL) |
