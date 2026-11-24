@@ -30,7 +30,7 @@ Stop when all of it is done, after 20 rounds, or when nothing can progress witho
 | Thing | Where |
 | --- | --- |
 | Design doc | https://claude.ai/artifact/Ld2BuxHtt8Ht8LpRbVxeJT (doc id `9ee52479-fb74-49e2-9063-a1585cdc1e40`) |
-| Build Plan tab | body node `aa88b9bc-2a93`, tab file `db2db437-ccbf`; "This week" checklist list `m6ea1wgr0x5.1263` (item `.1264` is "Build Prototype 1"); the "Overnight build report" section: heading `m6ea1wgr0x5.8044`, status line `.8067`, status table `.9778`, gates table `.8835`, "Needs you" checklist `.9340` |
+| Build Plan tab | body node `aa88b9bc-2a93`, tab file `db2db437-ccbf`; "This week" checklist list `m6ea1wgr0x5.1263` (item `.1264` is "Build Prototype 1"); the "Overnight build report" section: heading `m6ea1wgr0x5.8044`, status line `.8067`, status table `.9778`, gates table `.10555`, "Needs you" checklist `.9340` |
 | Scheduled check | One pending at a time, about every 45 minutes. Current: `trig_017FGsSEZsXGkFgStBzeJ7ag`, fires 00:02 UTC on 25 November. Workflow runs: toy round 3 `wf_01ce3839-5d6`, Godot round `wf_2c94d350-f87` |
 | Other tab body nodes | Overview `654f3c1a-1b75`, Gameplay `7e2d7651-21ec`, UX `ba135eb2-f67b`, Sound `6ddff1a9-fd33`, Art `d64ee9a3-3b89`, Engine `b2ac323d-e193` |
 | Browser toy Artifact | https://claude.ai/artifact/V1ng3taGsSZ9Qm45mm4xjw (published from `prototypes/desire-lines/dist/index.html`) |
@@ -59,17 +59,16 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 4 | Port | The toy's simulation (as of commit a057b50) ported to C# with the same tests, a comparison against the toy, a headless runner and `AGENTS.md` | Done 21:51 UTC. The C# library gives exactly the toy's results (wear, flow and cost grids, every metric, the flow preview) on all compared seeds. One simulation tick takes about 1 ms at 500 walkers with no memory allocated. 38 fast tests pass; the gate test fails on G3 exactly as the toy does. Review: no blockers. Open: results on Windows may differ in the last decimal because of the maths library; two small edge bugs (a fence line that leaves the map, a bridge at the map edge) |
 | 5 | Toy | Round 3 of the toy: trunk-share headroom with working bridges (gate on fresh seeds 401 to 420), phone-width input fix, gravel and gate tools, polish | Running since 21:05 UTC |
 | 6 | Assets | Fixes from the asset review; gallery rebuilt and republished to the same link | Done 21:36 UTC. 10 of 12 findings fixed, 2 partly (ground tiles still repeat a little; soft ink on trees). Now 99 asset files, 125 ledger rows; `./check` passes. Left for later: stiff willow fronds, a few icons lose detail on ink, tile repetition |
-| 7 | Godot | Phase 2: Prototype 1 on the map page of the book: wear shader, river, buildings, 500 walkers, ink outline, camera, tools, flow preview, interface, sound, headless tests, Windows build | Running since 21:55 UTC (workflow run `wf_2c94d350-f87`) |
+| 7 | Godot | Phase 2: Prototype 1 on the map page of the book: wear shader, river, buildings, 500 walkers, ink outline, camera, tools, flow preview, interface, sound, headless tests, Windows build | Done 23:49 UTC. Review: phase 2's automated checks pass. `./check`, `./check --bench` and `./check --export` pass. The game gives the toy's town and wear exactly (seeds 1, 2, 7, with edits, at 1x and 8x). Picking was right on 205 of 205 clicks. The game's own work per frame at 500 walkers: 0.3 ms at 1x, 1.6 ms at 8x, 10 to 17 bytes allocated. Windows build: 184 MB, every asset in the pack, never started. Open: at 1280 x 720 the last line of the chapter page is clipped and the fps readout is unreadable (major); preview hitches of about 20 ms at 8x; trails read as roads; buildings have no labels at overview zoom; six small bugs from the bug hunt |
 
 ## Next steps
 
 - When toy round 3 finishes: review it, republish the toy, commit, push, update `ROUNDS.md`.
 - Toy round 4: sound in code (Web Audio, off until the Sound button), rain and mud, house growth, and whatever the round 3 review lists.
 - Toy round 5: final polish in both themes and at phone width, and a last full check. Then tick "Build Prototype 1" in the Build Plan.
-- When the Godot round (7) finishes: read the review, look at the screenshots, update the phase 2 gate, commit, push. If the review lists blockers, run a fix round.
-- After toy rounds 3 and 4: a sync round that ports the toy's newer features (gravel, gate, rain, house growth, any model retune) to the C# library and the Godot game, regenerates the comparison data, and closes the port review's open points (own maths functions so Windows gives the same results, read-only views, a tighter speed budget, a comparison that covers edits).
-- Phase 3 (the river prototype) only if phase 2's automated checks pass.
-- Then the morning report, in the chat and in the Build Plan tab.
+- Round 8 (game and simulation): fix the round 7 review items and polish the look, then start phase 3, the river prototype (Gameplay tab, "Prototype test plan", step 2): boats on a schedule, ferry, low footbridge, drawbridge with manual raise and a keeper, trade income, patience and reputation. Phase 2's automated checks passed, so the brief allows it.
+- After toy rounds 3 and 4: a sync round that ports the toy's newer features (gravel, gate, rain, house growth, the model retune) to the C# library and the Godot game, regenerates the comparison data, and closes the port review's open points (own maths functions so Windows gives the same results, read-only views, a tighter speed budget, a comparison that covers edits).
+- Have the morning report ready in the chat and in the Build Plan tab by about 06:00 UTC, even if rounds are still running; update it if later rounds land.
 
 ## Toolchain facts (from the setup round)
 
@@ -87,7 +86,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | G2: testers move a trail within three attempts, flow preview on | Waiting for playtest. Stand-in after toy round 2: automated reroute test passes; the preview's ghost routes match where trails form (90 of 90 points) |
 | G3: trunk share stays between 30% and 70% in 20 seeds | Fail after toy round 2: 19 of 20 held-out seeds pass; seed 115 dips to 28.6% on 3 days. 40 of 40 other unseen seeds pass. Toy round 3 retunes for headroom |
 | G4: 200 agents at 60 fps in a desktop browser | Pass (headless Chromium, capped at 60 Hz) |
-| Phase 2: Prototype 1 in Godot at 60 fps with 500 walkers | In progress. The simulation part is done: about 1 ms per tick at 500 walkers. The scene is being built in round 7. A real 60 fps reading needs the owner's PC |
+| Phase 2: Prototype 1 in Godot at 60 fps with 500 walkers | Waiting for the owner's PC. Automated stand-in passes (round 7): the game's own work per frame at 500 walkers is 0.3 ms at 1x and 1.6 ms at 8x, with walkers in one batch and nothing created per frame. Drawing speed cannot be measured here (no graphics card) |
 
 ## Decisions made for you
 
@@ -105,6 +104,10 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 10 | The C# library keeps the toy's random-number generator and decimal costs for now | It lets tests prove the C# code gives exactly the toy's results; the Engine tab's PCG32 generator and whole-number costs can come with the full port |
 | 11 | Asset formats: `.glb` models, WAV at 48 kHz for single sounds, Ogg for loops and music, lowercase-hyphen names | The design doc leaves these open; the choices are written down in `docs/asset-pipeline.md` |
 | 12 | Assets live in `assets/` and are copied into `game/assets/` by a script | Godot only loads files inside the game folder, and the Build Plan puts assets at the top level |
+| 13 | The game's chapter page and bookmark tabs are drawn as flat interface panels laid exactly over the book, not as textures on the 3D page | Text stays sharp at every zoom. The trade-off: when the camera later tilts, these panels will need to move onto the page |
+| 14 | In the game, W is the wear overlay and the arrow keys pan; W A S D do not pan | The toy already uses W for the wear overlay and E for erase; the UX tab's W A S D pan conflicts with both. Easy to change when key remapping is built |
+| 15 | Sound is on by default in the Godot game, and off until the Sound button is pressed in the browser toy | The brief asks for off-by-default only for the toy; a desktop game normally starts with sound |
+| 16 | The river prototype (phase 3) started tonight | The brief allows it once phase 2's automated checks pass, and they did. The 60 fps reading on a real graphics card is still open |
 
 ## Needs you
 
