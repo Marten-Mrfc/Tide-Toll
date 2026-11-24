@@ -52,15 +52,18 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 | # | Track | Goal | Result |
 | --- | --- | --- | --- |
-| 1 | Toy | Round 2 of the toy: natural trails with an honest trunk-share gate, flow preview, visual and bug fixes | Running since 19:00 UTC |
+| 1 | Toy | Round 2 of the toy: natural trails with an honest trunk-share gate, flow preview, visual and bug fixes | Done 20:54 UTC and republished. Flow preview works and is honest; trails merge and are about 3 cells wide. G3 fails on 1 of 20 held-out seeds (seed 115, 28.6%). Touch input breaks at 400 px because the map jumps when the readout appears |
 | 2 | Setup | Phase 0: toolchain, repository skeleton, asset pipeline guide | Done 20:00 UTC. `./check` passes all 7 steps from a clean copy in 31 s; 31 simulation tests pass; the Windows export builds (not run on Windows). Review: no blockers |
 | 3 | Assets | The Hamlet asset set: shared generator tooling, models, textures, icons, font, sound effects, theme draft, gallery page | Running since 20:05 UTC |
+| 4 | Port | The toy's simulation (as of commit a057b50) ported to C# with the same tests, a comparison against the toy, a headless runner and `AGENTS.md` | Running since 20:54 UTC |
+| 5 | Toy | Round 3 of the toy: trunk-share headroom with working bridges (gate on fresh seeds 401 to 420), phone-width input fix, gravel and gate tools, polish | Running since 21:05 UTC |
 
 ## Next steps
 
-- When toy round 2 finishes: review it, read the changes, republish the toy, commit, push, update `ROUNDS.md`.
-- Toy round 3: sound in code (Web Audio, off until the Sound button), gravel and gate tools, and whatever the round 2 review lists.
-- Toy round 4: rain and mud, house growth, final polish in both themes and at phone width.
+- When toy round 3 finishes: review it, republish the toy, commit, push, update `ROUNDS.md`.
+- Toy round 4: sound in code (Web Audio, off until the Sound button), rain and mud, house growth, and whatever the round 3 review lists.
+- Toy round 5: final polish in both themes and at phone width, and a last full check.
+- After toy rounds 3 and 4: a sync round that ports the toy's newer features (gravel, gate, rain, house growth, any model retune) to the C# library.
 - When the asset round finishes: review it, look at the contact sheets, publish the asset gallery Artifact from `docs/asset-gallery/` (page plus the files listed in `files.json`), commit, push.
 - When toy round 2 has finished: start the C# port of the simulation (world, wear, walkers, metrics, tools, flow preview) with the same gate tests as the toy. Carry over the setup review's open points: put the golden-value generator in the repository, add an `AGENTS.md`, register the Godot NuGet source from `check.sh`, add a Release benchmark behind `./check --bench`.
 - Then the Godot scene on the book's map page: wear shader, walkers, tools, UI and sound, using the Hamlet assets. Give the book depth (page edges, a slight curve at the gutter).
@@ -77,9 +80,9 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 | Gate | Status |
 | --- | --- |
-| G1: 7 of 10 testers find watching trails form satisfying | Waiting for playtest. Stand-in after round 1: first trail in 9 to 24 s (limit 45 s) |
-| G2: testers move a trail within three attempts, flow preview on | Waiting for playtest. Stand-in after round 1: automated reroute test passes; flow preview in progress |
-| G3: trunk share stays between 30% and 70% in 20 seeds | Not passed yet. Round 1 passed only on the seeds it was tuned on |
+| G1: 7 of 10 testers find watching trails form satisfying | Waiting for playtest. Stand-in after toy round 2: first trail in 8 to 12 s (limit 45 s); trails are soft, about 3 cells wide and merge into a trunk |
+| G2: testers move a trail within three attempts, flow preview on | Waiting for playtest. Stand-in after toy round 2: automated reroute test passes; the preview's ghost routes match where trails form (90 of 90 points) |
+| G3: trunk share stays between 30% and 70% in 20 seeds | Fail after toy round 2: 19 of 20 held-out seeds pass; seed 115 dips to 28.6% on 3 days. 40 of 40 other unseen seeds pass. Toy round 3 retunes for headroom |
 | G4: 200 agents at 60 fps in a desktop browser | Pass (headless Chromium, capped at 60 Hz) |
 | Phase 2: Prototype 1 in Godot at 60 fps with 500 walkers | Not started |
 

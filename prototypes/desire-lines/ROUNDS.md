@@ -52,7 +52,7 @@ The lead's log of each build round: what was built, what the review found, and w
 
 Also in round 2: four small bugs from the bug hunt, layout polish, and a time budget for simulation work per frame.
 
-**Not planned for this toy** (listed in the design doc's step 1 build, but not in the definition of finished): gravel and gate tools, rain and mud, placeable buildings, house growth, and plan-at-departure routing.
+**Added to the plan later that evening** (the overnight brief asks for the rest of the design doc's step 1 build list): gravel and gate tools, rain and mud, house growth, and sound made in code.
 
 ## Round 2 (2026-11-24)
 
