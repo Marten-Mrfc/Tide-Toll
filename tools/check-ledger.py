@@ -2,8 +2,10 @@
 """Ledger check (rules in docs/asset-pipeline.md): every shipped file under assets/ needs a row in assets/LEDGER.csv with an
 allowed licence. Fails on a missing row, an empty licence, or a non-commercial / banned licence.
 
-A file row's `item` is its path from the repository root (assets/models/cottage.glb).
-Rows for tools and packages (kind npm-dev-dependency, nuget, tool, ...) are allowed too.
+A file row's `item` is its path from the repository root (assets/models/cottage.glb), and that file must exist.
+Rows for tools and packages (kind npm-dev-dependency, nuget, tool) name a package instead and are not looked up
+on disk. Any other kind is an error. A self-made row's source must name its generator under assets/src/, and
+every generator it names must be an existing, non-empty file.
 Exempt: assets/LEDGER.csv itself, generator sources under assets/src/, saved licence texts
 under assets/licences/, and README.md files.
 
@@ -22,6 +24,9 @@ LEDGER = ASSETS / "LEDGER.csv"
 HEADER = ["item", "kind", "source", "licence", "url", "used_in", "date_checked", "verified"]
 # Anything non-commercial, no-derivatives, or of unknown origin is out (Art tab, licence rules).
 BANNED = re.compile(r"\bNC\b|non-?commercial|\bND\b|no-?deriv|sampling\+|remarc|unknown|unclear|personal use|editorial", re.I)
+# Kinds whose `item` is a file under assets/ (it must exist), and kinds for software (item is a package name).
+FILE_KINDS = {"model", "texture", "icon", "font", "sound", "music", "ambience"}
+PACKAGE_KINDS = {"npm-dev-dependency", "npm-dependency", "nuget", "tool"}
 ALLOWED = re.compile(r"^(CC0(-1\.0)?|CC-BY-(3\.0|4\.0)|public domain|MIT|Apache-2\.0|BSD-[23]-Clause|OFL-1\.1|Zlib|self-made|Sonniss GDC)$", re.I)
 
 
@@ -72,8 +77,23 @@ def main() -> int:
             if not scripts:
                 errors.append(f"{n} ({row['item']}): self-made but source names no generator under assets/src/")
             for sp in scripts:
-                if not (ROOT / sp.rstrip(".")).exists():
+                gp = ROOT / sp.rstrip(".")
+                if not gp.exists():
                     errors.append(f"{n} ({row['item']}): generator {sp} does not exist")
+                elif not gp.is_file():
+                    errors.append(f"{n} ({row['item']}): generator {sp} is not a file")
+                elif gp.stat().st_size == 0 or not gp.read_bytes().strip():
+                    errors.append(f"{n} ({row['item']}): generator {sp} is empty")
+        kind = row["kind"].strip()
+        item = row["item"].strip()
+        if kind in FILE_KINDS:
+            if not item.startswith("assets/"):
+                errors.append(f"{n} ({item}): kind {kind} needs the file's path from the repository root (assets/...)")
+            elif not (ROOT / item).is_file():
+                errors.append(f"{n} ({item}): file does not exist")
+        elif kind not in PACKAGE_KINDS:
+            errors.append(f"{n} ({item}): unknown kind '{kind}' (files: {', '.join(sorted(FILE_KINDS))}; "
+                          f"software: {', '.join(sorted(PACKAGE_KINDS))})")
         prev = items.get(row["item"].strip())
         # A fragment row may restate a LEDGER.csv row (it replaces it on merge); other repeats are errors.
         if prev is not None and prev.startswith("line ") == n.startswith("line "):

@@ -53,3 +53,33 @@ The lead's log of each build round: what was built, what the review found, and w
 Also in round 2: four small bugs from the bug hunt, layout polish, and a time budget for simulation work per frame.
 
 **Not planned for this toy** (listed in the design doc's step 1 build, but not in the definition of finished): gravel and gate tools, rain and mud, placeable buildings, house growth, and plan-at-departure routing.
+
+## Round 2 (2026-11-24)
+
+**Built:** a new trail model (worn ground only gets cheap where several households share it, and busy lanes attract walkers, so house paths merge into a trunk), the flow preview with ghost routes and a readout, soft-edged trail drawing, cottages with roofs, clearer fences and a wider footbridge, the four bug fixes, a time budget for simulation work, and a gate test that runs on seeds the model was not tuned on.
+
+**Review result:**
+
+| Id | Status | Evidence |
+| --- | --- | --- |
+| F1 | Pass | 103 KB page, page contract checks pass |
+| F2 | Pass | Cottages read as houses; labels keep clear of buildings |
+| F3 | Pass | Reroute and bridge tests pass; a new bridge took 58 of 94 crossings in 30 s |
+| F4 | Pass | Ground states are distinct in the light theme; track and hollow way are too alike in the dark theme |
+| F5 | Pass | Trails fade after a fence or bridge is removed |
+| F6 | Pass | 49 newly worn cells formed within 20 s, all within 3 cells of the previewed route |
+| F7 | Partial | Works with a mouse. At 400 px a touch press was cancelled because the map jumped 20 px when the readout appeared |
+| F8 | Pass | All controls and shortcuts work |
+| F9 | Pass | Heat map with legend in both themes |
+| F10 | Pass | 60 fps at 500 walkers at 1x and 8x |
+| G1 | Needs people | Stand-in: first trail in 8 to 12 s (limit 45 s); trunk about 3 cells wide at the median, soft edges, paths merge |
+| G2 | Needs people | Stand-in: reroute test passes; the preview is honest (90 of 90 predicted points had new trail within 3 cells) |
+| G3 | Fail | Held-out seeds 101 to 120: 19 of 20 stay in band every day; seed 115 dips to 28.6% on 3 days. Unseen seeds 201 to 220 and 301 to 320 pass 40 of 40 |
+| G4 | Pass | 60 fps at 200 walkers |
+
+**Lead's decision: another round.**
+
+1. G3 needs real headroom, not a different seed set. Round 3 retunes on every set looked at so far (1 to 20, 101 to 120, 201 to 220) with the footbridge test as a second goal, then judges the gate on fresh seeds 401 to 420. The older sets must also stay in band.
+2. The map must not move when the status text changes, and touch must work at phone width.
+3. Gravel and gate tools join the kit. Sound, rain and mud, and house growth follow in round 4.
+4. Polish from the review: fences drawn as rails, ghost routes that show only what changes, a clearer dark palette, a less road-like track colour.
