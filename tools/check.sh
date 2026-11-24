@@ -97,8 +97,14 @@ fi
 if have_godot; then
   step godot-nuget godot_nuget
   # A fresh clone has no .godot/ cache; import once so scenes and scripts resolve.
-  [ -d game/.godot ] || step godot-import "$GODOT" --headless --path game --import
   step sync-assets tools/sync-assets.sh
+  # Import when the cache is missing or an asset has no import sidecar yet (new assets, or changed import settings).
+  needs_import() {
+    [ -d game/.godot ] || return 0
+    find game/assets -type f \( -name '*.glb' -o -name '*.png' -o -name '*.svg' -o -name '*.ttf' -o -name '*.wav' -o -name '*.ogg' \) \
+      ! -name '*_palette.png' | while read -r f; do [ -f "$f.import" ] || { echo "$f"; break; }; done | grep -q .
+  }
+  if needs_import; then step godot-import "$GODOT" --headless --path game --import; fi
   step game-build dotnet build game/TideToll.csproj -c Debug
   # --quit-after is only a safety cap; the test scenes quit themselves with 0 or 1. tools/godot-test.sh also fails
   # a run that printed any error line, since Godot only logs unhandled C# exceptions.

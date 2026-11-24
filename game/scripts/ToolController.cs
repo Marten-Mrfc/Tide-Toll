@@ -417,6 +417,8 @@ public partial class ToolController : Node
         double budget = Sim.SimMsThisFrame > Sim.TickBudgetMs * 0.8 ? FlowPreviewer.BusyBudgetMs : FlowPreviewer.BudgetMs;
         Previewer.Update(Clock.Elapsed.TotalMilliseconds, budget);
         var vp = GetViewport().GetVisibleRect().Size;
-        Routes.Show(Previewer.Enabled ? Previewer.Current : null, _main.Rig.Camera.Size / Math.Max(1f, vp.Y), Clock.Elapsed.TotalSeconds, delta);
+        // Route widths are in pixels at 800 px of window height and grow with taller windows (as the interface does).
+        float px = Math.Max(1f, vp.Y / 800f);
+        Routes.Show(Previewer.Enabled ? Previewer.Current : null, _main.Rig.Camera.Size / Math.Max(1f, vp.Y) * px, Clock.Elapsed.TotalSeconds, delta);
     }
 }
