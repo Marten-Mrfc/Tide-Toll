@@ -77,16 +77,21 @@ const BASE_MAX_AGE = 1; // sim seconds before the base fields are rebuilt
 const SAME_COST = 0.002; // a route whose cost changes less than this is unchanged
 const AFFECTED_COST = 0.03; // ... and is affected if it changes more than this
 const AFFECTED_CELLS = 3; // ... or moves more than this many cells anywhere
-const PAIRS_PER_STEP = 4; // traced pairs between two yields
+const GROUPS_PER_STEP = 8; // route groups classified between two yields
 
 /** One set of fields (ordinary and frugal) over one pair of costs. */
 interface FieldSet { cost: Float32Array; costX: Float32Array; f: Float32Array[]; fX: Float32Array[]; }
+
+/** A changed route before it is traced for display. */
+interface Candidate { change: RouteChange; x0: boolean; f0: Float32Array; c0: Float32Array; f1: Float32Array; c1: Float32Array; newPts: Float32Array | null; }
 
 export class FlowPredictor {
   private base: FieldSet;
   private hyp: FieldSet;
   private flags = new Uint8Array(NC);
   private heap = new Heap(NC);
+  /** Typical routes on the base fields, by destination, house and kind; valid while the base is. */
+  private baseRoutes = new Map<number, Float32Array>();
   private baseTime = -1e9;
   private baseVersion = -1;
   private dests: number[];
@@ -117,13 +122,13 @@ export class FlowPredictor {
     if (w.version !== this.baseVersion || w.time - this.baseTime > BASE_MAX_AGE) {
       this.baseVersion = -1; // marks the base incomplete until the loop below ends
       const time = w.time;
-      w.buildCost(base.cost);
-      w.buildCost(base.costX, true);
+      w.buildCosts(base.cost, base.costX);
       for (const d of this.dests) {
         yield; dijkstra(B[d].door, base.cost, base.f[d], this.heap, this.doors);
         yield; dijkstra(B[d].door, base.costX, base.fX[d], this.heap, this.doors);
       }
       this.baseVersion = version; this.baseTime = time;
+      this.baseRoutes.clear();
       yield;
     }
     // The hypothetical costs: the base with the changed cells re-costed under their overrides.
@@ -137,10 +142,12 @@ export class FlowPredictor {
       hyp.costX[c] = w.cellCost(c, flags[c], true);
       flags[c] = 0;
     }
-    for (const d of this.dests) {
-      dijkstra(B[d].door, hyp.cost, hyp.f[d], this.heap, this.doors); yield;
-      dijkstra(B[d].door, hyp.costX, hyp.fX[d], this.heap, this.doors); yield;
-    }
+    for (const d of this.dests)
+      for (const x of [false, true]) {
+        const bf = x ? base.fX[d] : base.f[d], hf = x ? hyp.fX[d] : hyp.f[d];
+        if (this.outOfReach(bf, x ? base.costX : base.cost, x ? hyp.costX : hyp.cost, touched)) hf.set(bf);
+        else { dijkstra(B[d].door, x ? hyp.costX : hyp.cost, hf, this.heap, this.doors); yield; }
+      }
 
     // Explorers per house (walkers are assigned to houses in turn).
     const walkersOf = new Map<number, number>(), explorersOf = new Map<number, number>();
@@ -149,9 +156,13 @@ export class FlowPredictor {
       if (k.explorer) explorersOf.set(k.home, (explorersOf.get(k.home) ?? 0) + 1);
     }
 
-    const all: RouteChange[] = [];
+    // Classify every (house, destination, group). Routes are traced with the
+    // walkers' own aim rule, but only where it decides anything: a cost change
+    // over AFFECTED_COST is a reroute whatever the route, so those are traced
+    // only if they are shown.
+    const all: Candidate[] = [];
     const blocked = new Map<number, number>();
-    let traced = 0;
+    let groupsDone = 0;
     for (const h of w.houses) {
       const door = B[h].door;
       const ex = (explorersOf.get(h) ?? 0) / Math.max(1, walkersOf.get(h) ?? 0);
@@ -165,45 +176,86 @@ export class FlowPredictor {
         const groups: [number, boolean, boolean, boolean][] = [[1 - ex, capped(base), capped(hyp), false], [ex, true, true, true]];
         for (const [share, x0, x1, explorers] of groups) {
           if (rate * share < MIN_GROUP_RATE) continue;
+          if (++groupsDone % GROUPS_PER_STEP === 0) yield;
           const f0 = x0 ? base.fX[d] : base.f[d], c0 = x0 ? base.costX : base.cost;
           const f1 = x1 ? hyp.fX[d] : hyp.f[d], c1 = x1 ? hyp.costX : hyp.cost;
           const reachable = f1[door] < Infinity;
           // The cost change as the walker after the change judges it.
           const costRatio = reachable ? f1[door] / (x1 ? base.fX[d] : base.f[d])[door] : Infinity;
           if (reachable && x0 === x1 && Math.abs(costRatio - 1) < SAME_COST) continue;
-          const oldPts = traceRoute(f0, c0, door, to);
-          const newPts = reachable ? traceRoute(f1, c1, door, to) : cutAtBlock(oldPts, c1);
-          if (++traced % PAIRS_PER_STEP === 0) yield;
-          if (reachable && Math.abs(costRatio - 1) <= AFFECTED_COST && maxDeviation(newPts, oldPts) <= AFFECTED_CELLS) continue;
+          let newPts: Float32Array | null = null;
+          if (reachable && Math.abs(costRatio - 1) <= AFFECTED_COST) {
+            newPts = traceRoute(f1, c1, door, to);
+            const moved = maxDeviation(newPts, this.baseRoute(d, h, x0, f0, c0));
+            yield; // up to two traces: a slice's worth
+            if (moved <= AFFECTED_CELLS) continue;
+          }
+          const change: RouteChange = { home: h, dest: d, rate: rate * share, explorers, frugal: x1, oldPts: EMPTY, newPts: EMPTY, reachable, costRatio };
+          all.push({ change, x0, f0, c0, f1, c1, newPts });
           if (!reachable) {
             // Blocking cuts off every walker of the pair alike: one entry for all of its trips.
+            change.rate = rate;
             blocked.set(d, (blocked.get(d) ?? 0) + 1);
-            all.push({ home: h, dest: d, rate, explorers, frugal: x1, oldPts, newPts, reachable, costRatio });
             break;
           }
-          all.push({ home: h, dest: d, rate: rate * share, explorers, frugal: x1, oldPts, newPts, reachable, costRatio });
         }
       }
     }
-    all.sort((a, b) => b.rate - a.rate);
+    all.sort((a, b) => b.change.rate - a.change.rate);
+    const shown = all.slice(0, maxPairs);
+    for (const { change: c, x0, f0, c0, f1, c1, newPts } of shown) {
+      c.oldPts = this.baseRoute(c.dest, c.home, x0, f0, c0);
+      c.newPts = !c.reachable ? cutAtBlock(c.oldPts, c1) : newPts ?? traceRoute(f1, c1, B[c.home].door, B[c.dest].door);
+      yield;
+    }
     let rr = 0, rs = 0;
-    for (const c of all) if (c.reachable) { rr += c.rate; rs += c.rate * c.costRatio; }
+    for (const { change: c } of all) if (c.reachable) { rr += c.rate; rs += c.rate * c.costRatio; }
     return {
-      changes: all.slice(0, maxPairs),
+      changes: shown.map(x => x.change),
       more: Math.max(0, all.length - maxPairs),
-      reroutedPerDay: all.reduce((s, c) => s + c.rate, 0),
+      reroutedPerDay: all.reduce((s, x) => s + x.change.rate, 0),
       meanCostRatio: rr > 0 ? rs / rr : 1,
       blocked: [...blocked].map(([dest, houses]) => ({ dest, houses })),
       version,
     };
   }
 
+  /**
+   * Whether a change leaves a field as it is wherever routes from the houses
+   * run: it only makes cells dearer, and every changed cell and its neighbours
+   * are at least as far as the farthest house door (so no route to a door, and
+   * no diagonal step past a corner, touches them). Then the base field serves.
+   */
+  private outOfReach(field: Float32Array, baseCost: Float32Array, cost: Float32Array, touched: number[]): boolean {
+    let T = 0;
+    for (const g of this.doors) T = Math.max(T, field[g]);
+    for (const c of touched) {
+      if (cost[c] < baseCost[c]) return false;
+      const x = c % N, y = (c / N) | 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          if (x + dx < 0 || y + dy < 0 || x + dx >= N || y + dy >= N) continue;
+          if (field[(y + dy) * N + x + dx] < T) return false;
+        }
+    }
+    return true;
+  }
+
+  /** The typical route from house h to destination d on the base fields (traced once per base). */
+  private baseRoute(d: number, h: number, frugal: boolean, f: Float32Array, c: Float32Array): Float32Array {
+    const key = (d * this.world.buildings.length + h) * 2 + (frugal ? 1 : 0);
+    let r = this.baseRoutes.get(key);
+    if (!r) { r = traceRoute(f, c, this.world.buildings[h].door, this.world.buildings[d].door); this.baseRoutes.set(key, r); }
+    return r;
+  }
   /** Runs a preview to completion (tests and the debug API). */
   compute(change: WhatIf, maxPairs = 5): FlowPreview {
     const it = this.run(change, maxPairs);
     for (;;) { const r = it.next(); if (r.done) return r.value; }
   }
 }
+
+const EMPTY = new Float32Array(0);
 
 /** The largest distance from any point of `a` to the nearest point of `b`, in cells. */
 export function maxDeviation(a: Float32Array, b: Float32Array): number {

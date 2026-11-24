@@ -25,6 +25,8 @@ public partial class Smoke : Node
     {
         try
         {
+            // Headless windows are 64 x 64; picking and framing are checked at the game's real window shape.
+            GetWindow().Size = new Vector2I(1280, 720);
             _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
             AddChild(_main);
         }
@@ -50,10 +52,10 @@ public partial class Smoke : Node
     {
         string[] paths =
         {
-            "Book/LeftPage/Paper", "Book/LeftPage/ChapterTitle", "Book/RightPage/Paper", "Book/RightPage/Stack",
+            "Book/LeftPage/Paper", "Book/LeftPage/Folio", "Hud/Root/Chapter", "Hud/Root/Tabs", "Tools", "Audio", "Book/RightPage/Paper", "Book/RightPage/Stack",
             "Book/RightPage/MapOrigin/Ground", "Book/RightPage/MapOrigin/Town", "Book/RightPage/MapOrigin/Scenery",
             "Book/RightPage/MapOrigin/Edits/Fences/Wattle", "Book/RightPage/MapOrigin/Edits/Bridges",
-            "Book/RightPage/MapOrigin/Walkers", "Table/Top", "CameraRig/Yaw/Pitch/Camera", "CameraRig/Yaw/Pitch/Camera/Ink/InkHard",
+            "Book/RightPage/MapOrigin/Walkers", "Book/RightPage/MapOrigin/Ghost", "Book/RightPage/MapOrigin/Routes", "Table/Top", "CameraRig/Yaw/Pitch/Camera", "CameraRig/Yaw/Pitch/Camera/Ink/InkHard",
             "CameraRig/Yaw/Pitch/Camera/Ink/InkSoft", "Hud", "Sun", "Sim",
         };
         foreach (var p in paths) Check(_main.GetNodeOrNull(p) != null, "missing node " + p);
@@ -157,8 +159,21 @@ public partial class Smoke : Node
         rig.LookAt(new Vector3(0, 0, 128), 268.8f);
         var outside = rig.LocalToScreen(new Vector3(-10, 0, 128));
         Check(!rig.PickCell(outside, out _, out _), "a point off the map picked a cell");
+        // Zoom at the cursor keeps the map point under it; pans and zooms stop at their limits.
+        rig.LookAt(new Vector3(128, 0, 128), 200f);
+        var vp = GetViewport().GetVisibleRect().Size;
+        var cursor = vp * new Vector2(0.33f, 0.42f);
+        rig.PickLocal(cursor, out var before);
+        rig.ZoomAt(cursor, 0.5f);
+        for (int i = 0; i < 120; i++) rig._Process(1 / 60.0);
+        rig.PickLocal(cursor, out var after);
+        Check(Mathf.IsEqualApprox(rig.Camera.Size, 100f, 0.01f), $"zoom ended at {rig.Camera.Size}, not 100");
+        Check(before.DistanceTo(after) < 0.05f, $"zoom at cursor drifted {before.DistanceTo(after):F3} m");
+        rig.LookAt(new Vector3(-5000, 0, 9000), 1f);
+        var p = rig.PivotLocal;
+        Check(rig.Camera.Size >= rig.MinSize && p.X >= -rig.PanMargin && p.Z <= rig.MapSize + rig.PanMargin, $"pan or zoom passed its limit: {p}, size {rig.Camera.Size}");
         rig.FramePlay(instant: true);
-        _notes.Add($"picks={checkedPoints}");
+        _notes.Add($"viewport={vp.X}x{vp.Y} picks={checkedPoints} zoomdrift={before.DistanceTo(after):F4}m");
     }
 
     private void CheckScenery(World w)

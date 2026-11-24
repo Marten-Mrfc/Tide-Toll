@@ -70,11 +70,11 @@ public partial class Scenery : Node3D
             int x = 1 + (int)(rng.NextDouble() * (n - 2)), y = 1 + (int)(rng.NextDouble() * (n - 2));
             int edge = Math.Min(Math.Min(x, y), Math.Min(n - 1 - x, n - 1 - y));
             // Dense along the edge of the plan, sparse inside: the map reads as a clearing with a wooded border.
-            double keep = edge < 6 ? 0.85 : edge < 14 ? 0.35 : 0.05;
+            double keep = edge < 6 ? 0.85 : edge < 14 ? 0.3 : 0.025;
             if (rng.NextDouble() > keep) continue;
             TryTree(w, x, y, clear, lists, ref rng);
             // Sometimes a copse: two or three more close by.
-            if (edge >= 6 && rng.NextDouble() < 0.6)
+            if (edge >= 6 && rng.NextDouble() < 0.45)
                 for (int k = 0; k < 3; k++)
                     TryTree(w, x + (int)(rng.NextDouble() * 7) - 3, y + (int)(rng.NextDouble() * 7) - 3, clear, lists, ref rng);
         }
@@ -91,7 +91,7 @@ public partial class Scenery : Node3D
             if (dx * dx + dy * dy < 7) return; // canopies may touch but not stack
         }
         float riverDist = MathF.Abs(x + 0.5f - w.RiverX[y]) - (float)w.Map.RiverHalfW;
-        int kind = riverDist < 9 ? 2 : rng.NextDouble() < 0.68 ? 0 : 1;
+        int kind = riverDist < 7 ? 2 : rng.NextDouble() < 0.68 ? 0 : 1;
         float cell = (float)w.Params.CellMeters;
         float jx = (float)rng.NextDouble() - 0.5f, jz = (float)rng.NextDouble() - 0.5f;
         float s = 0.85f + 0.3f * (float)rng.NextDouble();
@@ -183,7 +183,7 @@ public partial class Scenery : Node3D
             if (Math.Abs(y - w.Map.FordY) <= 4) continue; // the ford's approaches stay open
             for (int side = -1; side <= 1; side += 2)
             {
-                if (rng.NextDouble() > 0.22) continue;
+                if (rng.NextDouble() > 0.13) continue;
                 float x = w.RiverX[y] + side * (half + 0.35f);
                 int cx = (int)MathF.Floor(x);
                 if (cx < 0 || cx >= n || IsDoor(w, y * n + cx)) continue;

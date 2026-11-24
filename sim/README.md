@@ -48,10 +48,10 @@ SimStats Stats()       // DetourRatio, TrailCoverage, TrunkShare, TrunkShareD, T
 // Commands (each edit bumps Version, rebuilds costs at once and refreshes fields over the next ticks)
 int     PlaceFence(ReadOnlySpan<int> cells)             // returns cells newly fenced
 Bridge? PlaceBridge(double x, double y)                 // null if no bridge fits at that river row
-bool    BridgeCellsAt(double x, double y, List<int> cells)   // the cells a bridge would cover (for a ghost)
+bool    BridgeCellsAt(double x, double y, List<int> cells)   // the cells a bridge would cover (for a ghost); false if an end is off the map
 int     Erase(ReadOnlySpan<int> cells)                  // fences and whole bridges touching the cells
 void    SetWalkerCount(int n)                           // clamped to 0..MaxWalkers; never allocates
-Grid.Line4(x0, y0, x1, y1, List<int> cells)             // a 4-connected fence line
+Grid.Line4(x0, y0, x1, y1, List<int> cells)             // a 4-connected fence line, clipped to the grid
 
 // Flow preview: never touches the world's state or random stream
 var p = new FlowPredictor(world);

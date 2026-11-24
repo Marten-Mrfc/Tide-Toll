@@ -9,7 +9,7 @@ namespace TideToll.Game;
 /// Fences and footbridges drawn from the simulation's state, rebuilt only when the edit version changes
 /// (SimDriver.Edited) or the world is replaced, never per frame.
 /// - "Fences": fence cells become straightened runs (FenceLines, as the toy draws them), covered with woven
-///   wattle pieces stretched to fit each run, and posts at every run's ends and corners. Two MultiMeshes
+///   wattle pieces stretched to fit each run (and thickened to read from above), and posts at ends and corners. Two MultiMeshes
 ///   ("Fences/Wattle" and "Fences/Posts"), so a long fence costs two draw calls.
 /// - "Bridges": one node per footbridge ("Bridge0", ...) with a landing on each bank cell and a 2 m span on
 ///   every water cell it covers, as the footbridge models are built to be used.
@@ -20,6 +20,10 @@ public partial class EditLayer : Node3D
     private Node3D _fences = null!, _bridges = null!;
     private MultiMeshInstance3D _wattle = null!, _posts = null!;
     private readonly List<Transform3D> _w = new(), _p = new();
+    // From straight above a 0.22 m wattle is a hairline. Fences are drawn thicker than life, as people are drawn
+    // 1.5x, so a fence reads as a firm line at play zoom; posts likewise.
+    private const float Thick = 2.4f, Height = 1.2f;
+    private static readonly Vector3 PostScale = new(2.0f, 1.3f, 2.0f);
 
     /// <summary>Rebuilds so far (tests: an edit must rebuild once).</summary>
     public int Rebuilds { get; private set; }
@@ -71,8 +75,8 @@ public partial class EditLayer : Node3D
             {
                 // A lone fenced cell: a post with a short hurdle across it.
                 var c = new Vector3(line[0] * cell, 0, line[1] * cell);
-                _p.Add(new Transform3D(Basis.Identity.Scaled(new Vector3(1.2f, 1.1f, 1.2f)), c));
-                _w.Add(new Transform3D(Basis.Identity.Scaled(new Vector3(0.75f, 1f, 1f)), c));
+                _p.Add(new Transform3D(Basis.FromScale(PostScale), c));
+                _w.Add(new Transform3D(Basis.FromScale(new Vector3(0.75f, Height, Thick)), c));
                 continue;
             }
             for (int i = 0; i + 3 < line.Count; i += 2)
@@ -84,12 +88,12 @@ public partial class EditLayer : Node3D
                 if (len < 1e-3f) continue;
                 int k = Math.Max(1, (int)MathF.Round(len / 2f));
                 float piece = len / k;
-                // Local X runs along the fence: yaw turns X toward d (X -> (cos t, 0, -sin t)).
-                var basis = new Basis(Vector3.Up, MathF.Atan2(-d.Z, d.X)).Scaled(new Vector3(piece / 2f, 1f, 1f));
+                // Local X runs along the fence: stretch X to the piece length, thicken it, then yaw X toward d.
+                var basis = new Basis(Vector3.Up, MathF.Atan2(-d.Z, d.X)) * Basis.FromScale(new Vector3(piece / 2f, Height, Thick));
                 for (int j = 0; j < k; j++) _w.Add(new Transform3D(basis, a + d * ((j + 0.5f) / k)));
             }
             for (int i = 0; i < line.Count; i += 2)
-                _p.Add(new Transform3D(Basis.Identity.Scaled(new Vector3(1.15f, 1.1f, 1.15f)), new Vector3(line[i] * cell, 0, line[i + 1] * cell)));
+                _p.Add(new Transform3D(Basis.FromScale(PostScale), new Vector3(line[i] * cell, 0, line[i + 1] * cell)));
         }
         Fill(_wattle, _w);
         Fill(_posts, _p);

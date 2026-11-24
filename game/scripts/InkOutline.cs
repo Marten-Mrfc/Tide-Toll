@@ -21,7 +21,8 @@ public partial class InkOutline : Node3D
     public void Attach(Camera3D cam)
     {
         Name = "Ink";
-        string code = FileAccess.GetFileAsString("res://shaders/outline_screen.gdshader");
+        // Loaded as a resource (not read as a file), so it also works from an exported .pck.
+        string code = GD.Load<Shader>("res://shaders/outline_screen.gdshader").Code;
         string[] cmp = { "compare_not_equal", "compare_equal" };
         float[] crease = { 0.45f, 1.5f };
         for (int i = 0; i < 2; i++)

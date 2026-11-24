@@ -8,7 +8,8 @@ namespace TideToll.Game;
 /// Everything is built in code so the scene file stays tiny and diffable. This node wires the pieces:
 /// the simulation driver, the map layers under MapOrigin (ground, town, scenery, fences and bridges, walkers),
 /// the camera rig with the ink pass, and the HUD. Tools and interface code reach everything through the
-/// properties here (see game/README.md, "Hooks").
+/// properties here (see game/README.md, "Hooks"); the play layer is Tools (tools, ghosts, flow preview), Audio and
+/// Ui (the interface in the book).
 /// </summary>
 public partial class Main : Node3D
 {
@@ -22,6 +23,13 @@ public partial class Main : Node3D
     public EditLayer Edits { get; private set; } = null!;
     public WalkerLayer Walkers { get; private set; } = null!;
     public InkOutline Ink { get; private set; } = null!;
+    public ToolController Tools { get; private set; } = null!;
+    public AudioDirector Audio { get; private set; } = null!;
+    public GameUi Ui { get; private set; } = null!;
+
+    /// <summary>The two pages in world space (x, z rectangles on y = 0), for laying the interface over them.</summary>
+    public Rect2 LeftPageRect => new(-(BookBuilder.PageWidth + 1f), -BookBuilder.PageDepth / 2f, BookBuilder.PageWidth, BookBuilder.PageDepth);
+    public Rect2 RightPageRect => new(1f, -BookBuilder.PageDepth / 2f, BookBuilder.PageWidth + BookBuilder.StackSteps * 1.3f, BookBuilder.PageDepth);
 
     /// <summary>Seed and walker count to start with (tests set these before adding the scene to the tree).</summary>
     public int StartSeed = 1;
@@ -56,9 +64,16 @@ public partial class Main : Node3D
         AddChild(Rig);
         Ink = new InkOutline();
         Ink.Attach(Rig.Camera);
-        Rig.FramePlay(instant: true);
 
-        AddChild(new Hud { Name = "Hud" });
+        Tools = new ToolController();
+        AddChild(Tools);
+        Tools.Init(this);
+        Audio = new AudioDirector();
+        AddChild(Audio);
+        Audio.Init(this);
+        Ui = new GameUi();
+        AddChild(Ui);              // sets Rig.PlayRoomPx for the tabs, so frame afterwards
+        Rig.FramePlay(instant: true);
     }
 
     public override void _Process(double delta)

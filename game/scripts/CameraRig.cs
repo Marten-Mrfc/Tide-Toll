@@ -8,7 +8,7 @@ namespace TideToll.Game;
 /// The prototype keeps it north-up and straight down, but nothing here assumes that: panning, limits, zoom to
 /// the cursor and picking all work in the map's own space through general ray-plane maths (rendering proof 6),
 /// so switching on yaw or tilt later needs no change. Motion is smoothed toward targets.
-/// Input (unhandled, so UI controls get it first): middle or right drag pans, W A S D and the arrows pan,
+/// Input (unhandled, so UI controls get it first): middle or right drag pans, the arrow keys pan,
 /// the wheel zooms at the cursor, + and - (and Page Up / Page Down) zoom at the centre, Home switches between
 /// the whole book and the map page.
 /// </summary>
@@ -35,8 +35,18 @@ public partial class CameraRig : Node3D
     public Vector2 BookSize = new(618f, 346f);
     public Vector3 BookCentre = Vector3.Zero;
 
+    /// <summary>
+    /// Screen pixels kept free to the right of the page edge in the map and book views, for the interface's bookmark
+    /// tabs (GameUi sets it); the views shift the book left to make the room, showing more of the chapter page.
+    /// </summary>
+    public float PlayRoomPx = 0f;
+    /// <summary>View height of the play view: the map page with its title and a little paper round it.</summary>
+    public float PlaySize => MapSize * 1.13f;
+
     public bool InPlayView { get; private set; }
     public float MapSize => MapCells * CellMetres;
+    /// <summary>Paper between the map's edge and the page's outer edge, metres (BookBuilder.Margin).</summary>
+    public float BookBuilderPageMargin = 22f;
 
     private float _targetSize;
     private Vector3 _target;            // pivot target, map-local metres (y = 0)
@@ -44,6 +54,8 @@ public partial class CameraRig : Node3D
     private Vector2 _anchorScreen;
     private Vector3 _anchorLocal;
     private bool _dragging;
+    /// <summary>A middle or right drag is panning the view.</summary>
+    public bool Dragging => _dragging;
     private Vector2 _dragLast;
 
     public override void _Ready()
@@ -110,18 +122,28 @@ public partial class CameraRig : Node3D
     {
         var vp = ViewportSize;
         float aspect = vp.X / Math.Max(1f, vp.Y);
-        _targetSize = Math.Min(MaxSize, Math.Max(BookSize.Y * 1.10f, BookSize.X * 1.04f / aspect));
-        _target = MapXf.AffineInverse() * BookCentre;
+        // Wide enough for the book plus the tabs' room on its right: size * aspect = book + room * size / height.
+        float room = PlayRoomPx / Math.Max(1f, vp.Y);
+        _targetSize = Math.Min(MaxSize, Math.Max(BookSize.Y * 1.10f, BookSize.X * 1.03f / Math.Max(0.3f, aspect - room)));
+        _target = MapXf.AffineInverse() * (BookCentre + new Vector3(room * _targetSize / 2f, 0, 0));
         _target.Y = 0;
         InPlayView = false;
         Finish(instant);
     }
 
-    /// <summary>The map page fills the screen height with a small margin (the play view).</summary>
+    /// <summary>
+    /// The play view: the map page fills the screen height with its title in view; the book sits as far right as the
+    /// tabs' room allows (<see cref="PlayRoomPx"/>), so the chapter page shows on the left. Centred on narrow screens.
+    /// </summary>
     public void FramePlay(bool instant = false)
     {
-        _targetSize = MapSize * 1.05f;
-        _target = new Vector3(MapSize / 2f, 0, MapSize / 2f);
+        var vp = ViewportSize;
+        _targetSize = PlaySize;
+        float hw = _targetSize / 2f * vp.X / Math.Max(1f, vp.Y);
+        float pageEdge = MapSize + (BookBuilderPageMargin + 6f);
+        float cx = pageEdge + PlayRoomPx * _targetSize / Math.Max(1f, vp.Y) - hw;
+        cx = Mathf.Clamp(cx, MapSize / 2f - Math.Max(0f, hw - MapSize / 2f - 6f), MapSize / 2f);
+        _target = new Vector3(cx, 0, MapSize / 2f - 14f);
         InPlayView = true;
         Finish(instant);
     }
@@ -180,8 +202,10 @@ public partial class CameraRig : Node3D
         float t = Mathf.Clamp((size - play) / (book - play), 0f, 1f);
         float lx = Mathf.Lerp(-PanMargin, Math.Min(b0.X, b1.X), t), hx = Mathf.Lerp(MapSize + PanMargin, Math.Max(b0.X, b1.X), t);
         float lz = Mathf.Lerp(-PanMargin, Math.Min(b0.Z, b1.Z), t), hz = Mathf.Lerp(MapSize + PanMargin, Math.Max(b0.Z, b1.Z), t);
-        p.X = ex * 2 >= hx - lx ? (lx + hx) / 2 : Mathf.Clamp(p.X, lx + ex, hx - ex);
-        p.Z = ey * 2 >= hz - lz ? (lz + hz) / 2 : Mathf.Clamp(p.Z, lz + ey, hz - ey);
+        // A view wider than the area keeps the whole area in view (rather than centring), so the views can shift
+        // the book aside for the interface.
+        p.X = ex * 2 >= hx - lx ? Mathf.Clamp(p.X, hx - ex, lx + ex) : Mathf.Clamp(p.X, lx + ex, hx - ex);
+        p.Z = ey * 2 >= hz - lz ? Mathf.Clamp(p.Z, hz - ey, lz + ey) : Mathf.Clamp(p.Z, lz + ey, hz - ey);
         p.Y = 0;
         return p;
     }
@@ -216,11 +240,14 @@ public partial class CameraRig : Node3D
 
     private void KeyboardPan(float dt)
     {
+        // Arrow keys only: W is the wear overlay and E the eraser (Prototype 1 bindings), and while an interface
+        // control has keyboard focus the arrows belong to it (moving focus, nudging a slider).
+        if (GetViewport().GuiGetFocusOwner() != null) return;
         float x = 0, y = 0;
-        if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) x -= 1;
-        if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) x += 1;
-        if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) y -= 1;
-        if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) y += 1;
+        if (Input.IsKeyPressed(Key.Left)) x -= 1;
+        if (Input.IsKeyPressed(Key.Right)) x += 1;
+        if (Input.IsKeyPressed(Key.Up)) y -= 1;
+        if (Input.IsKeyPressed(Key.Down)) y += 1;
         if (x == 0 && y == 0) return;
         // Screen-relative: right is the yaw's +X, screen-up is the yaw's -Z, measured in map space.
         var inv = MapXf.AffineInverse().Basis;

@@ -10,7 +10,7 @@ namespace TideToll.Game;
 /// gutter and darkens toward it (baked into the mesh), the page stack shows as stepped edges along the outer
 /// sides, and the pages use the paper shader so the rendered page is exactly the palette's Paper.
 /// The map's north-west corner is "Book/RightPage/MapOrigin"; everything on the map hangs under it.
-/// The left page keeps the chapter heading; "Book/LeftPage/Text" holds placeholder lines for the chapter page.
+/// The left page is the chapter page; its words are drawn by the interface (ChapterPage) over the paper.
 /// </summary>
 public static class BookBuilder
 {
@@ -65,8 +65,11 @@ public static class BookBuilder
     {
         var page = new Node3D { Name = name, Position = new Vector3(side * (PageWidth / 2f + 1f), 0, 0) };
         book.AddChild(page);
-        page.AddChild(new MeshInstance3D { Name = "Paper", Mesh = PageMesh(side), MaterialOverride = PaperMaterial() });
-        page.AddChild(new MeshInstance3D { Name = "Stack", Mesh = StackMesh(side), MaterialOverride = PaperMaterial() });
+        // The pages cast no shadow: a sheet shadowing itself through the shadow map's bias greys the paper, and
+        // the cover under them already shadows the table.
+        var off = GeometryInstance3D.ShadowCastingSetting.Off;
+        page.AddChild(new MeshInstance3D { Name = "Paper", Mesh = PageMesh(side), MaterialOverride = PaperMaterial(), CastShadow = off });
+        page.AddChild(new MeshInstance3D { Name = "Stack", Mesh = StackMesh(side), MaterialOverride = PaperMaterial(), CastShadow = off });
         return page;
     }
 
@@ -124,8 +127,8 @@ public static class BookBuilder
         for (int k = 0; k <= StackSteps; k++)
         {
             // The body (k = 0) stays below the sheet's lowest point in the gutter, or it would cover the curve.
-            float grow = k * 0.9f, top = -GutterSag - 0.2f - 0.6f * k, bottom = -PageThickness;
-            float shade = k % 2 == 0 ? 0.97f : 0.86f;
+            float grow = k * 1.3f, top = -GutterSag - 0.2f - 0.6f * k, bottom = -PageThickness;
+            float shade = k % 2 == 0 ? 0.95f : 0.80f;
             // Inner (spine) edge stays put; the outer edge and both ends grow.
             float inner = side > 0 ? -hw : hw, outer = side * (hw + grow);
             float x0 = Mathf.Min(inner, outer), x1 = Mathf.Max(inner, outer);
@@ -150,21 +153,9 @@ public static class BookBuilder
 
     private static void FillLeftPage(Node3D page)
     {
-        AddLabel(page, "ChapterTitle", "Chapter I", new Vector3(0, 0.1f, -118), 2600, Palette.Ink);
-        AddLabel(page, "ChapterName", "The Hamlet", new Vector3(0, 0.1f, -88), 1700, Palette.Ink);
-        AddFlat(page, "Rule", new Vector3(120, 0.05f, 1.2f), new Vector3(0, 0.03f, -66), Palette.Ink);
-        // Placeholder lines of text (the chapter page is filled by the interface later).
-        var text = new Node3D { Name = "Text" };
-        page.AddChild(text);
-        var rng = new Mulberry32(11);
-        float z = -48;
-        for (int line = 0; line < 20; line++)
-        {
-            bool paraEnd = line % 6 == 5;
-            float len = paraEnd ? 60f + 80f * (float)rng.NextDouble() : 200f + 30f * (float)rng.NextDouble();
-            AddFlat(text, $"Line{line}", new Vector3(len, 0.05f, 3.2f), new Vector3(-108 + len / 2f, 0.03f, z), Palette.FadedInk);
-            z += paraEnd ? 14f : 9f;
-        }
+        // The chapter page's words (title, how to play, the village and path-health entries, the legend) are written
+        // by the interface over this page (GameUi / ChapterPage), so they stay sharp at every zoom; only the folio
+        // is printed on the paper.
         AddLabel(page, "Folio", "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk);
     }
 
@@ -178,7 +169,7 @@ public static class BookBuilder
         // it stays crisp and exactly Ink (thin enough that the depth ink pass adds nothing to it).
         AddFrame(page, "FrameInner", side + 2f, 1.4f);
         AddFrame(page, "FrameOuter", side + 10f, 0.6f);
-        AddCompass(page, new Vector3(side / 2f - 8f, 0.04f, -side / 2f - 21f), 9f);
+        AddCompass(page, new Vector3(side / 2f - 10f, 0.04f, -side / 2f - 14f), 7f);
         AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink);
         AddLabel(page, "Folio", "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk);
     }

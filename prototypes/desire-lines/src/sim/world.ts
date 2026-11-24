@@ -137,16 +137,21 @@ export class World {
    * frugalDisc of the wear and traffic discount, but all of the gravel.
    */
   groundCost(c: number, gravel: boolean, frugal: boolean): number {
+    this.grounds(c, gravel);
+    return this.gc[frugal ? 1 : 0];
+  }
+
+  /** Both walkers' ground multipliers for cell c, into gc[0] (ordinary) and gc[1] (frugal). */
+  private grounds(c: number, gravel: boolean): void {
     const P = PARAMS;
     const f = this.flowLut[Math.min(this.flowLut.length - 1, (this.flow[c] * FLOW_LUT_STEPS) | 0)];
     const g = P.trailDiscount > 0 ? this.wearLut[Math.min(this.wearLut.length - 1, (this.wear[c] * WEAR_LUT_STEPS) | 0)]
       : P.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)];
-    if (frugal) {
-      const k = 1 + (Math.max(P.minSurface, f * g) - 1) * P.frugalDisc;
-      return gravel ? Math.min(k, P.gravelCost) : k;
-    }
-    return Math.max(P.minSurface, f * (gravel ? Math.min(g, P.gravelCost) : g));
+    const fr = 1 + (Math.max(P.minSurface, f * g) - 1) * P.frugalDisc;
+    this.gc[0] = Math.max(P.minSurface, f * (gravel ? Math.min(g, P.gravelCost) : g));
+    this.gc[1] = gravel ? Math.min(fr, P.gravelCost) : fr;
   }
+  private gc = new Float64Array(2);
 
   /** The ordinary walkers' ground multiplier for cell c (also their taste discount). */
   surf = (c: number): number => this.groundCost(c, this.gravel[c] === 1, false);
@@ -157,44 +162,60 @@ export class World {
    * walkers' cost.
    */
   cellCost(c: number, ov = 0, frugal = false): number {
-    const P = PARAMS, m = this.map;
-    if (m.footprint[c]) return Infinity;
+    this.cellCosts(c, ov);
+    return this.cc[frugal ? 1 : 0];
+  }
+
+  /** Step costs of cell c for both kinds of walker, into cc[0] (ordinary) and cc[1] (frugal). */
+  private cellCosts(c: number, ov: number): void {
+    const P = PARAMS, m = this.map, cc = this.cc;
+    cc[0] = cc[1] = Infinity;
+    if (m.footprint[c]) return;
     const fenced = (ov & Ov.Block) !== 0 || (this.fence[c] === 1 && (ov & Ov.Open) === 0);
     const gated = fenced && ((ov & Ov.Gate) !== 0 || (this.gate[c] === 1 && (ov & (Ov.Ungate | Ov.Block)) === 0));
-    if (fenced && !gated) return Infinity;
+    if (fenced && !gated) return;
     const bridge = (ov & Ov.Bridge) !== 0 || (this.bridgeAt[c] >= 0 && (ov & Ov.CloseBridge) === 0);
-    if (m.water[c] && !m.ford[c] && !bridge) return Infinity;
-    let k: number;
+    if (m.water[c] && !m.ford[c] && !bridge) return;
+    let k: number, kx: number;
     if (bridge) {
       // A footbridge's deck gets the same traffic discount as land (floored at
       // minSurface) but none from wear: a new bridge starts at full cost.
       const flow = this.flowLut[Math.min(this.flowLut.length - 1, (this.flow[c] * FLOW_LUT_STEPS) | 0)];
-      k = P.bridgeCost * (P.bridgeFlow > 0 ? Math.max(P.minSurface, flow) : 1);
+      k = kx = P.bridgeCost * (P.bridgeFlow > 0 ? Math.max(P.minSurface, flow) : 1);
     } else {
       const gravel = (ov & Ov.Gravel) !== 0 || (this.gravel[c] === 1 && (ov & Ov.Ungravel) === 0);
+      const noise = 1 + P.staticNoise * m.noise[c];
       // The ford never wears and is not made easier by traffic: only land is discounted.
-      k = (m.water[c] ? 1 : this.groundCost(c, gravel, frugal)) * (1 + P.staticNoise * m.noise[c]);
-      if (m.crop[c]) k += P.cropPenalty;
-      if (m.ford[c]) k *= P.fordCostMul;
-      if (gated) k += P.gateCost;
+      if (m.water[c]) k = kx = noise;
+      else { this.grounds(c, gravel); k = this.gc[0] * noise; kx = this.gc[1] * noise; }
+      if (m.crop[c]) { k += P.cropPenalty; kx += P.cropPenalty; }
+      if (m.ford[c]) { k *= P.fordCostMul; kx *= P.fordCostMul; }
     }
     const rho = this.occ[c] / P.cellAreaM2;
     if (rho > 0.05) {
       const v = Math.max(1 / P.crowdMaxCostMul, 1 - Math.exp(-P.weidmannGamma * (1 / rho - 1 / P.weidmannRhoMax)));
-      k *= 1 + P.crowdStrength * (1 / Math.min(1, v) - 1);
+      const crowd = 1 + P.crowdStrength * (1 / Math.min(1, v) - 1);
+      k *= crowd; kx *= crowd;
     }
-    return k;
+    // A gate is a fixed delay: it does not grow with crowding.
+    if (gated) { k += P.gateCost; kx += P.gateCost; }
+    cc[0] = k; cc[1] = kx;
   }
+  private cc = new Float64Array(2);
 
-  /** Per-cell step cost for routing, for ordinary or frugal walkers. Writes only `out`. */
-  buildCost(out: Float32Array, frugal = false): void {
-    for (let c = 0; c < NC; c++) out[c] = this.cellCost(c, 0, frugal);
+  /** Per-cell step costs for routing: ordinary walkers into `out`, frugal ones into `outX` if given. */
+  buildCosts(out: Float32Array, outX?: Float32Array): void {
+    const cc = this.cc;
+    for (let c = 0; c < NC; c++) {
+      this.cellCosts(c, 0);
+      out[c] = cc[0];
+      if (outX) outX[c] = cc[1];
+    }
   }
 
   /** Rebuilds the world's own cost arrays (both views). */
   private rebuildCosts(): void {
-    this.buildCost(this.cost);
-    if (useFrugal()) this.buildCost(this.costX, true);
+    this.buildCosts(this.cost, useFrugal() ? this.costX : undefined);
   }
 
   private refreshField(t: number) {

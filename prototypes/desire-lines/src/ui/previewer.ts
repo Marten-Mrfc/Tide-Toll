@@ -58,7 +58,8 @@ export class FlowPreviewer {
       const r = this.job.next();
       if (r.done) {
         this.job = null;
-        if (this.jobKey === this.want.key) {
+        // A result computed across an edit describes a map that is gone: drop it (a new run starts).
+        if (this.jobKey === this.want.key && r.value.version === this.world.version) {
           this.current = r.value;
           this.shownKey = this.jobKey;
           this.shownAt = now;

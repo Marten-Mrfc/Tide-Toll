@@ -1,6 +1,8 @@
 // npm run smoke: the built page loads with no console errors, the map is not
-// blank, every control works, the page contract holds, and the layout fits at
-// 400 px wide in both themes. Screenshots go to test-results/.
+// blank, every control works, the page contract holds, the layout fits at
+// 400 px wide in both themes, and the tools work by touch at 400 x 800 (the map
+// never moves, and a tap lands on the cell under the finger). Screenshots go
+// to test-results/.
 import { createRequire } from "node:module";
 import { readFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -16,6 +18,8 @@ mkdirSync(shots, { recursive: true });
 
 const failures = [];
 const check = (ok, what) => { console.log(`  ${ok ? "PASS" : "FAIL"}  ${what}`); if (!ok) failures.push(what); };
+/** Resolves after the page has drawn two more frames (so state set by an event has been rendered). */
+const frames = page => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
 // ---------------------------------------------------------------- page contract (static)
 console.log("PAGE CONTRACT");
@@ -115,12 +119,47 @@ console.log("\nCONTROLS (1280x860, light)");
   await page.screenshot({ path: join(shots, "preview-fence-drag.png") });
   await page.keyboard.press("Escape");
   await page.mouse.up();
+  await frames(page);
   check((await stats()).fences === f0.fences && !(await page.evaluate(() => __tt.previewState().tipVisible)), "Escape cancels the drag and hides the preview");
   await page.keyboard.press("p");
   check((await pressed("btn-preview")) === "false", "key P turns the flow preview off");
   await page.click("#btn-preview");
   check((await pressed("btn-preview")) === "true", "the Flow preview button turns it back on");
   await page.keyboard.press("f");
+
+  // Gravel: press G and brush a strip (it snaps to a trail within a cell, so this is on open grass); placed on release.
+  await page.keyboard.press("g");
+  check((await pressed("tool-gravel")) === "true" && (await pressed("tool-fence")) === "false", "key G selects Gravel");
+  const gspot = await page.evaluate(([x, y]) => {
+    const w = __tt.world, N = 128;
+    for (let yy = y + 4; yy < 118; yy++) for (let xx = 10; xx < 100; xx++) {
+      let ok = true;
+      // Open grass with no trail within a cell, where the brush does not snap.
+      for (let k = 0; k < 8 && ok; k++) for (let d = -1; d <= 1 && ok; d++) ok = w.canGravel((yy + d) * N + xx + k) && w.wear[(yy + d) * N + xx + k] < 25 && w.wear[(yy + d) * N + xx + k - 1] < 25 && w.wear[(yy + d) * N + xx + k + 1] < 25;
+      if (ok) return { x: xx, y: yy };
+    }
+    return null;
+  }, [spot.x, spot.y]);
+  const g0 = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [gspot.x, gspot.y]), g1 = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [gspot.x + 7, gspot.y]);
+  await page.mouse.move(g0.x, g0.y); await page.mouse.down(); await page.mouse.move(g1.x, g1.y, { steps: 8 });
+  check((await stats()).gravel === 0, "nothing is laid while brushing gravel");
+  await page.mouse.up();
+  check((await stats()).gravel === 8 && await page.evaluate(([x, y]) => __tt.world.gravel[y * 128 + x] === 1 && __tt.world.gravel[y * 128 + x + 7] === 1, [gspot.x, gspot.y]), `brushing lays gravel under the pointer (${(await stats()).gravel} cells)`);
+
+  // Gate: press T and click on the fence drawn earlier.
+  await page.keyboard.press("t");
+  check((await pressed("tool-gate")) === "true", "key T selects Gate");
+  const gate = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [spot.x + 4, spot.y]);
+  await page.mouse.move(gate.x, gate.y);
+  await page.waitForFunction(() => __tt.previewState().settled, null, { timeout: 3000 }).catch(() => {});
+  await page.mouse.click(gate.x, gate.y);
+  check((await stats()).gates === 1 && await page.evaluate(([x, y]) => __tt.world.gate[y * 128 + x] === 1, [spot.x + 4, spot.y]), "clicking a fence puts a gate in it");
+  await page.mouse.click(gate.x, gate.y);
+  check((await stats()).gates === 0 && (await stats()).fences === 10, "clicking the gate again takes it out and leaves the fence");
+  await page.mouse.click(gate.x, gate.y);
+  const offFence = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [gspot.x + 3, gspot.y + 6]);
+  await page.mouse.click(offFence.x, offFence.y);
+  check((await stats()).gates === 1 && (await page.textContent("#status")).includes("Gates go on fences"), "a gate off a fence is refused with a message");
 
   // Footbridge: press B and click on the river away from the ford.
   await page.keyboard.press("b");
@@ -133,13 +172,14 @@ console.log("\nCONTROLS (1280x860, light)");
   await page.mouse.click(river.x, river.y);
   check((await stats()).bridges === 1, "clicking the river builds a footbridge");
 
-  // Erase both.
+  // Erase all of it.
   await page.click("#tool-erase");
   check((await pressed("tool-erase")) === "true", "Erase tool toggles on");
   await page.mouse.move(from.x, from.y); await page.mouse.down(); await page.mouse.move(to.x, to.y, { steps: 12 }); await page.mouse.up();
   await page.mouse.click(river.x, river.y);
+  await page.mouse.move(g0.x, g0.y); await page.mouse.down(); await page.mouse.move(g1.x, g1.y, { steps: 8 }); await page.mouse.up();
   const se = await stats();
-  check(se.fences === 0 && se.bridges === 0, `erasing removes the fence and the bridge (${se.fences} fence cells, ${se.bridges} bridges left)`);
+  check(se.fences === 0 && se.gates === 0 && se.bridges === 0 && se.gravel === 0, `erasing removes the fence, its gate, the gravel and the bridge (${se.fences} fence cells, ${se.gates} gates, ${se.gravel} gravel, ${se.bridges} bridges left)`);
   await page.keyboard.press("Escape");
   check((await pressed("tool-erase")) === "false", "Escape clears the tool");
 
@@ -196,6 +236,113 @@ for (const [width, scheme] of [[400, "light"], [400, "dark"], [1280, "dark"]]) {
   await page.screenshot({ path: join(shots, `page-${width}-${scheme}.png`) });
   await page.close();
 }
+// ---------------------------------------------------------------- phone, touch
+console.log("\nPHONE (400x800, touch)");
+{
+  const ctx = await browser.newContext({ viewport: { width: 400, height: 800 }, deviceScaleFactor: 1, colorScheme: "light", hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  // A bare file has no viewport meta; the artifact host adds one.
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => { const m = document.createElement("meta"); m.name = "viewport"; m.content = "width=device-width, initial-scale=1"; document.head.appendChild(m); }));
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  await page.evaluate(() => __tt.setSpeed(8));
+  await page.waitForTimeout(3000);
+  await page.evaluate(() => __tt.setSpeed(1));
+  const cdp = await ctx.newCDPSession(page);
+  const touch = (type, p) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+  const hold = async (p, ms = 250) => { await touch("touchStart", p); await page.waitForTimeout(ms); await touch("touchEnd"); await frames(page); };
+  const drag = async (a, b, steps = 10, ms = 40) => {
+    await touch("touchStart", a);
+    for (let i = 1; i <= steps; i++) { await touch("touchMove", { x: a.x + ((b.x - a.x) * i) / steps, y: a.y + ((b.y - a.y) * i) / steps }); await page.waitForTimeout(ms); }
+  };
+  const rect = () => page.evaluate(() => { const r = document.getElementById("map").getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(v => Math.round(v * 10) / 10).join(","); });
+  const at = (x, y) => page.evaluate(([x, y]) => __tt.cellToClient(x, y), [x, y]);
+  const stats = () => page.evaluate(() => __tt.stats());
+  const box0 = await rect();
+  const first = await page.evaluate(() => {
+    const r = document.getElementById("map").getBoundingClientRect(), small = [];
+    for (const el of document.querySelectorAll("header button, header input")) { const b = el.getBoundingClientRect(); if (b.height < 40) small.push(`${el.id} ${Math.round(b.height)}px`); }
+    return { bottom: r.bottom, h: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, small };
+  });
+  check(first.small.length === 0, `buttons and the slider are at least 40 px high${first.small.length ? ": " + first.small.join(", ") : ""}`);
+  check(first.bottom <= first.h && first.sw <= first.iw, `the tools and the whole map are on the first screen, no sideways scroll (map bottom ${Math.round(first.bottom)} of ${first.h})`);
+
+  // A row of 21 open cells for the fence, away from the river.
+  const row = await page.evaluate(() => {
+    const w = __tt.world, N = 128;
+    for (let y = 70; y < 120; y++) for (let x = 8; x < 100; x++) {
+      let ok = true;
+      for (let k = 0; k <= 20 && ok; k++) ok = w.canFence(y * N + x + k) && Math.abs(x + k - w.map.riverX[y]) > 6;
+      if (ok) return { x, y };
+    }
+    return null;
+  });
+  await page.click("#tool-fence");
+  const boxTool = await rect();
+  // A held drag along the row: the readout appears in the status bar, and the map does not move.
+  await drag(await at(row.x, row.y), await at(row.x + 20, row.y));
+  await page.waitForFunction(() => __tt.previewState().settled && __tt.previewState().line.length > 0, null, { timeout: 4000 }).catch(() => {});
+  const ps = await page.evaluate(() => __tt.previewState());
+  const boxPreview = await rect();
+  await page.screenshot({ path: join(shots, "phone-fence-drag.png") });
+  await touch("touchEnd"); await frames(page);
+  check(ps.line.length > 0 && !ps.tipVisible, `the readout shows in the status bar and not under the finger ("${ps.line}")`);
+  check(box0 === boxTool && boxTool === boxPreview, `the map does not move or resize when a tool or the readout appears (${box0} / ${boxTool} / ${boxPreview})`);
+  const fenced = await page.evaluate(([x, y]) => { const w = __tt.world, out = []; for (let c = 0; c < 128 * 128; c++) if (w.fence[c]) out.push([c % 128, (c / 128) | 0]); return out; }, [row.x, row.y]);
+  check(fenced.length === 21 && fenced.every(([x, y]) => y === row.y && x >= row.x && x <= row.x + 20), `a touch drag fences exactly the cells under the finger (${fenced.length} cells, rows ${[...new Set(fenced.map(c => c[1]))].join(" ")})`);
+
+  // A quick tap fences the tapped cell.
+  const tapCell = { x: row.x + 10, y: row.y - 6 };
+  await page.evaluate(() => __tt.setTool("fence"));
+  const okTap = await page.evaluate(([x, y]) => __tt.world.canFence(y * 128 + x), [tapCell.x, tapCell.y]);
+  await page.touchscreen.tap((await at(tapCell.x, tapCell.y)).x, (await at(tapCell.x, tapCell.y)).y); await frames(page);
+  check(okTap && await page.evaluate(([x, y]) => __tt.world.fence[y * 128 + x] === 1, [tapCell.x, tapCell.y]) && (await stats()).fences === 22, "a tapped cell is the fenced cell");
+
+  // Gate: a held press on the fence, released in place.
+  await page.click("#tool-gate");
+  await hold(await at(row.x + 5, row.y));
+  check((await stats()).gates === 1 && await page.evaluate(([x, y]) => __tt.world.gate[y * 128 + x] === 1, [row.x + 5, row.y]), "a gate can be put in the fence by touch");
+
+  // Footbridge: a held press on the river (the readout appears meanwhile), released in place.
+  const river = await page.evaluate(() => {
+    const m = __tt.world.map;
+    for (let y = 10; y < 118; y++) if (Math.abs(y - m.fordY) > 10 && __tt.world.bridgeCellsAt(m.riverX[y], y)) return { x: Math.floor(m.riverX[y]), y };
+    return null;
+  });
+  await page.click("#tool-bridge");
+  const rp = await at(river.x, river.y);
+  await touch("touchStart", rp);
+  await page.waitForFunction(() => __tt.previewState().settled, null, { timeout: 3000 }).catch(() => {});
+  const boxBridge = await rect();
+  await touch("touchEnd"); await frames(page);
+  check((await stats()).bridges === 1 && boxBridge === box0, `a footbridge can be built by touch (${(await stats()).bridges} built; status "${await page.textContent("#status")}")`);
+
+  // Gravel: a touch drag brushes a strip.
+  await page.click("#tool-gravel");
+  const gy = row.y + 4;
+  await drag(await at(row.x, gy), await at(row.x + 8, gy), 8);
+  await touch("touchEnd"); await frames(page);
+  const gravel = (await stats()).gravel;
+  check(gravel >= 7, `a touch drag brushes gravel (${gravel} cells)`);
+
+  // Erase by touch removes what was tapped, and nothing far from it.
+  await page.click("#tool-erase");
+  const e1 = await at(row.x + 15, row.y);
+  await page.touchscreen.tap(e1.x, e1.y); await frames(page);
+  const after = await page.evaluate(([x, y]) => ({ tapped: __tt.world.fence[y * 128 + x + 15], far: __tt.world.fence[y * 128 + x], gate: __tt.world.gate[y * 128 + x + 5] }), [row.x, row.y]);
+  check(after.tapped === 0 && after.far === 1 && after.gate === 1, "erase by touch removes the tapped fence and leaves the rest");
+  await page.touchscreen.tap(rp.x, rp.y); await frames(page);
+  const e2 = await at(row.x + 4, gy);
+  await page.touchscreen.tap(e2.x, e2.y); await frames(page);
+  const st = await stats();
+  check(st.bridges === 0 && st.gravel === gravel - 3 && await rect() === box0, `erase by touch removes the tapped bridge and the tapped gravel (${st.bridges} bridges, ${gravel - st.gravel} gravel cells removed)`);
+  await page.screenshot({ path: join(shots, "phone-400-touch.png") });
+  check(errors.length === 0, `phone: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await ctx.close();
+}
+
 // The data-theme override must also switch the palette.
 {
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: "light" });

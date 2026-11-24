@@ -11,8 +11,8 @@ varying vec2 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz; }
 void fragment() {
 	float g = texture(paper_tex, wp / 3.1).r * 0.6 + texture(paper_tex, wp / 23.0).r * 0.4;
-	vec3 c = paper.rgb * (1.0 + (g - 0.9) * grain * 8.0);
-	ALBEDO = vec3(COLOR.r, COLOR.g, 0.0);
+	vec3 c = paper.rgb * (1.0 + (g - 0.876) * grain * 8.0);   // 0.876: the texture's mean red in linear light, so the page averages exactly Paper
+	ALBEDO = c * COLOR.r;
 }
 void light() {
 	DIFFUSE_LIGHT += mix(shadow_tint, vec3(1.0), ATTENUATION);

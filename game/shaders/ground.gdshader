@@ -60,9 +60,9 @@ void vertex() { lp = VERTEX.xz + vec2(map_size * 0.5); }
 
 void fragment() {
 	vec2 uv = lp / map_size;
-	float n = texture(paper_tex, lp / 17.0).r;                    // paper_tex red is about 0.9 +- 0.05
+	float n = texture(paper_tex, lp / 17.0).r;                    // paper_tex red: 0.876 +- 0.027 in linear light
 	vec2 wh = texture(wear_tex, uv).rg;
-	float w = clamp(wh.r + (n - 0.9) * noise_amp * 4.0, 0.0, 1.0);
+	float w = clamp(wh.r + (n - 0.876) * noise_amp * 4.0, 0.0, 1.0);
 	float s = 0.035;
 	float w1 = smoothstep(0.10 - s, 0.10 + s, w);   // trampled
 	float w2 = smoothstep(0.25 - s, 0.25 + s, w);   // trail
@@ -85,14 +85,14 @@ void fragment() {
 		crop *= 0.94 + 0.12 * texture(g1, lp / 9.0).g;
 		float keep = 1.0 - smoothstep(0.08, 0.35, w);
 		c = mix(c, crop, mask.g * keep);
-		// edge of the crop area: compare with the mask half a cell away in four directions
+		// edge of the crop area: compare with the mask a few decimetres away in four directions (a thin edge line)
 		float e = 0.0;
-		vec2 o = vec2(0.45 * cell_m / map_size, 0.0);
+		vec2 o = vec2(0.14 * cell_m / map_size, 0.0);
 		e += abs(texture(mask_tex, uv + o.xy).g - mask.g);
 		e += abs(texture(mask_tex, uv - o.xy).g - mask.g);
 		e += abs(texture(mask_tex, uv + o.yx).g - mask.g);
 		e += abs(texture(mask_tex, uv - o.yx).g - mask.g);
-		c = mix(c, mix(c, ink.rgb, 0.55), clamp(e, 0.0, 1.0) * mask.g);
+		c = mix(c, mix(c, ink.rgb, 0.6), clamp(e, 0.0, 1.0) * mask.g);
 	}
 
 	// river: signed distance to the bank from the per-row centre line
@@ -120,7 +120,7 @@ void fragment() {
 
 	// paper grain: fine and coarse mottling, multiplied, so it reads as gouache on paper
 	float g = texture(paper_tex, lp / 3.1).r * 0.6 + texture(paper_tex, rot(lp, 1.3) / 1.3).r * 0.4;
-	c *= 1.0 + (g - 0.9) * grain * 8.0;
+	c *= 1.0 + (g - 0.876) * grain * 8.0;   // 0.876: paper_tex mean red in linear light, so grain keeps the mean colour
 
 	// wear overlay: a tracing-paper sheet (the page tinted pale) with the heat map of wear on land
 	if (overlay > 0.0) {

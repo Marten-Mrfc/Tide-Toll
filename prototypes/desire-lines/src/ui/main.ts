@@ -32,7 +32,7 @@ let speed = 1;
 const canvas = $<HTMLCanvasElement>("map");
 const renderer = new Renderer(canvas, world, readPalette());
 const status = $("status");
-const say = (msg: string) => { status.textContent = msg; };
+const say = (msg: string) => { status.textContent = msg; status.title = msg; };
 const previewer = new FlowPreviewer(world);
 const input = new Input(canvas, () => world, renderer, previewer, say);
 const tip = $("preview-tip");
@@ -77,12 +77,17 @@ function setWalkers(n: number) {
 }
 walkersInput.addEventListener("input", () => setWalkers(Number(walkersInput.value)));
 
-const TOOLS: [Tool, string][] = [["fence", "tool-fence"], ["bridge", "tool-bridge"], ["erase", "tool-erase"]];
+const TOOLS: [Tool, string, string][] = [
+  ["fence", "tool-fence", "f"], ["gravel", "tool-gravel", "g"], ["gate", "tool-gate", "t"], ["bridge", "tool-bridge", "b"], ["erase", "tool-erase", "e"],
+];
+// Short enough for one line at phone width.
 const TOOL_HINTS: Record<Tool, string> = {
   none: "",
-  fence: "Fence: drag across the map to draw a fence line.",
-  bridge: "Footbridge: click on the river to lay a bridge across it.",
-  erase: "Erase: click or drag over fences and bridges to remove them.",
+  fence: "Fence: drag to draw a fence line.",
+  gravel: "Gravel: brush a strip along a trail.",
+  gate: "Gate: tap a fence to put a gate in it.",
+  bridge: "Footbridge: tap the river to lay one.",
+  erase: "Erase: tap or drag over what to remove.",
 };
 function setTool(t: Tool) {
   input.setTool(t);
@@ -90,6 +95,7 @@ function setTool(t: Tool) {
   say(TOOL_HINTS[t]);
 }
 for (const [name, id] of TOOLS) $(id).addEventListener("click", () => setTool(input.tool === name ? "none" : name));
+const toolKeys = new Map(TOOLS.map(([name, , key]) => [key, name]));
 
 const overlayBtn = $("btn-overlay");
 function setOverlay(on: boolean) {
@@ -132,9 +138,7 @@ window.addEventListener("keydown", e => {
   // Space always pauses, as in most games; buttons still respond to Enter.
   if (k === " ") { setPaused(!paused); e.preventDefault(); }
   else if (k >= "1" && k <= "4") setSpeed(SPEEDS[Number(k) - 1]);
-  else if (k === "f") setTool(input.tool === "fence" ? "none" : "fence");
-  else if (k === "b") setTool(input.tool === "bridge" ? "none" : "bridge");
-  else if (k === "e") setTool(input.tool === "erase" ? "none" : "erase");
+  else if (toolKeys.has(k)) { const t = toolKeys.get(k)!; setTool(input.tool === t ? "none" : t); }
   else if (k === "escape") setTool("none");
   else if (k === "w") setOverlay(!renderer.overlay);
   else if (k === "p") setPreview(!previewer.enabled);
@@ -145,16 +149,22 @@ window.addEventListener("keydown", e => {
 // ------------------------------------------------------------------ loop
 let acc = 0, last = performance.now(), fps = 60, tickMs = 0, hudAt = 0, simMs = 0;
 let tipText = "";
-/** The preview readout, pinned near the pointer and repeated in the status bar. */
+/**
+ * The preview readout: always on the status bar's second line, and with a
+ * mouse also next to the pointer, on the side away from the ghost routes'
+ * likely direction (above the pointer in the lower half of the map). On touch
+ * there is no floating readout: a finger would cover it.
+ */
 function showTip() {
   const p = renderer.flow;
   const text = p ? describePreview(p, kindName) : "";
   const at = input.pointer;
-  if (text !== tipText) { tipText = text; tip.textContent = text; setPreviewLine(text ? `Typical routes: ${text}.` : ""); }
-  tip.hidden = !text || !at;
-  if (text && at) {
+  if (text !== tipText) { tipText = text; tip.textContent = text; setPreviewLine(text ? `${text}.` : ""); }
+  tip.hidden = !text || !at || input.touch;
+  if (!tip.hidden && at) {
     const x = Math.min(at[0] + 16, canvas.clientWidth - tip.offsetWidth - 4);
-    const y = at[1] + 18 + tip.offsetHeight > canvas.clientHeight ? at[1] - tip.offsetHeight - 12 : at[1] + 18;
+    const above = at[1] > canvas.clientHeight / 2;
+    const y = above ? at[1] - tip.offsetHeight - 14 : at[1] + 18;
     tip.style.transform = `translate(${Math.max(4, x) + canvas.offsetLeft}px, ${Math.max(4, y) + canvas.offsetTop}px)`;
   }
 }
@@ -225,6 +235,7 @@ const api = {
       walkers: s.walkers, walkersOut: world.walkersOut(), simTime: s.simTime, seed, speed, paused,
       detourRatio: s.detourRatio, trailCoverage: s.trailCoverage, trunkShare: s.trunkShare, trunkShareD: s.trunkShareD,
       firstTrailTime: s.firstTrailTime, fences: world.fence.reduce((a, b) => a + b, 0), bridges: world.bridges.length,
+      gates: world.gate.reduce((a, b) => a + b, 0), gravel: world.gravel.reduce((a, b) => a + b, 0), tool: input.tool,
     };
   },
   perfStart() { rec = { intervals: [], works: [], sim0: world.time, t0: performance.now(), worstTick: 0, budgetHits: 0 }; },
@@ -243,6 +254,10 @@ const api = {
   },
   placeFence: (cells: CellList) => world.placeFence(toCells(cells)),
   placeBridge: (x: number, y: number) => world.placeBridge(x + 0.5, y + 0.5) !== null,
+  placeGravel: (cells: CellList) => world.placeGravel(toCells(cells)),
+  /** A gate on the fence at or next to cell (x, y); false if there is no fence with a way through. */
+  placeGate: (x: number, y: number) => world.placeGate(world.gateCellAt(x + 0.5, y + 0.5)),
+  removeGate: (x: number, y: number) => world.removeGate(idx(x, y)),
   erase: (cells: CellList) => world.erase(toCells(cells)),
   /** Client coordinates of a cell centre, for tests that drive the pointer. */
   cellToClient(x: number, y: number) {
@@ -253,13 +268,13 @@ const api = {
   /** The flow preview on screen now (null if none) and its readout. */
   previewState() {
     const p = renderer.flow;
-    return { enabled: previewer.enabled, settled: previewer.settled, text: tipText, tipVisible: !tip.hidden,
+    return { enabled: previewer.enabled, settled: previewer.settled, text: tipText, tipVisible: !tip.hidden, line: $("preview-line").textContent ?? "",
       changes: p ? p.changes.length : 0, reroutedPerDay: p ? p.reroutedPerDay : 0, blocked: p ? p.blocked.length : 0 };
   },
   /** Computes a preview directly (no throttle) for a hypothetical edit, as cell lists. */
-  previewFlows(change: { block?: CellList; open?: CellList; bridge?: CellList; closeBridge?: CellList }) {
+  previewFlows(change: { [K in keyof WhatIf]?: CellList }) {
     const c: WhatIf = {};
-    for (const k of ["block", "open", "bridge", "closeBridge"] as const) if (change[k]) c[k] = toCells(change[k]!);
+    for (const k of ["block", "open", "bridge", "closeBridge", "gravel", "ungravel", "gate", "ungate"] as const) if (change[k]) c[k] = toCells(change[k]!);
     const p = world.previewFlows(c);
     return { changes: p.changes.map(x => ({ home: x.home, dest: x.dest, rate: x.rate, reachable: x.reachable, costRatio: x.costRatio, points: x.newPts.length / 2 })),
       reroutedPerDay: p.reroutedPerDay, text: describePreview(p, kindName) };

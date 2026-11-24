@@ -36,4 +36,7 @@ for d in models textures icons fonts audio; do
     rm -rf "$DST/$d"
   fi
 done
+# Icons are imported at 4x (game/project.godot, importer_defaults); drop sidecars from before that setting so
+# Godot imports them again with it.
+grep -l '^svg/scale=1.0' "$DST"/icons/*.svg.import 2>/dev/null | xargs -r rm -f
 echo "synced assets/ -> game/assets/ ($(find "$DST" -type f ! -name '*.import' | wc -l) files)"

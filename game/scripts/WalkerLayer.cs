@@ -16,6 +16,8 @@ namespace TideToll.Game;
 public partial class WalkerLayer : MultiMeshInstance3D
 {
     private const int Stride = 16;
+    /// <summary>Deck height of the footbridge models above the water (assets/src/models/footbridge.py).</summary>
+    private const float BridgeDeck = 0.6f;
     public int Capacity { get; private set; }
     /// <summary>Instance scale (the mesh is already drawn 1.5x life size). The camera sets it from the zoom.</summary>
     public float WalkerScale = 1f;
@@ -71,6 +73,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
     {
         var world = _sim.World;
         var ws = world.Walkers;
+        var bridgeAt = world.BridgeAt;
         float cell = (float)world.Params.CellMeters;
         float alpha = _sim.Alpha;
         float s = WalkerScale;
@@ -84,9 +87,11 @@ public partial class WalkerLayer : MultiMeshInstance3D
             bool moving = dx * dx + dz * dz > 1e-8f;
             if (moving) _yaw[i] = MathF.Atan2(dx, dz); // the model faces +Z at yaw 0
             float c = MathF.Cos(_yaw[i]) * s, sn = MathF.Sin(_yaw[i]) * s;
+            // On a footbridge the walker stands on the deck, not in the water under it.
+            float y = bridgeAt[k.Cell] >= 0 ? BridgeDeck : 0f;
             int o = n * Stride;
             _buf[o + 0] = c;   _buf[o + 1] = 0; _buf[o + 2] = sn;  _buf[o + 3] = x;
-            _buf[o + 4] = 0;   _buf[o + 5] = s; _buf[o + 6] = 0;   _buf[o + 7] = 0;
+            _buf[o + 4] = 0;   _buf[o + 5] = s; _buf[o + 6] = 0;   _buf[o + 7] = y;
             _buf[o + 8] = -sn; _buf[o + 9] = 0; _buf[o + 10] = c;  _buf[o + 11] = z;
             _buf[o + 12] = (k.Id * 0.6180339f) % 1f;  // stride phase, golden-ratio spread so neighbours differ
             _buf[o + 13] = 1.6f + (k.Id % 5) * 0.08f; // strides per second
@@ -104,5 +109,5 @@ public partial class WalkerLayer : MultiMeshInstance3D
     }
 
     /// <summary>World-independent position of drawn instance i (map-local metres), for tests.</summary>
-    public Vector3 InstancePosition(int i) => new(_buf[i * Stride + 3], 0, _buf[i * Stride + 11]);
+    public Vector3 InstancePosition(int i) => new(_buf[i * Stride + 3], _buf[i * Stride + 7], _buf[i * Stride + 11]);
 }

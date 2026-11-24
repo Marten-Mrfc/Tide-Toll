@@ -58,15 +58,74 @@ export class Heap {
  * the target gives cost-to-go. Diagonals may not cut a blocked corner, so
  * walkers never slip between two diagonal fence posts or round a water corner.
  * Pure: pass scratch arrays to compute a what-if field without touching live state.
+ *
+ * It is Dijkstra's algorithm with a bucket queue (Dial's): buckets are a little
+ * narrower than the cheapest step, so no cell can improve another in its own
+ * bucket, and settling bucket by bucket gives exactly the values a binary heap
+ * would (each cell's value is the least float32 sum over its neighbours). The
+ * `heap` argument is only used if the costs have no positive minimum.
  */
 export function dijkstra(target: number, cost: Float32Array, out: Float32Array, heap: Heap, goals?: number[]): void {
   out.fill(Infinity);
-  heap.n = 0;
   if (!(cost[target] < Infinity)) return;
+  let lo = Infinity, hi = 0;
+  for (let i = 0; i < NC; i++) { const c = cost[i]; if (c < lo) lo = c; if (c > hi && c < Infinity) hi = c; }
+  if (!(lo > 0)) { dijkstraHeap(target, cost, out, heap, goals); return; }
+  const width = lo * 0.99;
+  // A step reaches at most this many buckets ahead, so a ring of buckets suffices.
+  const ring = Math.ceil((hi * Math.SQRT2) / width) + 2;
+  const q = queue(ring), head = q.head, next = q.next, node = q.node, stamp = q.stamp;
+  const run = ++q.run;
+  head.fill(-1, 0, ring);
+  out[target] = 0;
+  node[0] = target; next[0] = -1; head[0] = 0;
+  let free = 1, pending = 1;
+  let left = goals ? goals.length : -1;
+  for (let b = 0; pending > 0; b++) {
+    const slot = b % ring;
+    let e = head[slot];
+    head[slot] = -1; // relaxations from this bucket land in later ones
+    while (e >= 0) {
+      const u = node[e];
+      e = next[e];
+      pending--;
+      if (stamp[u] === run) continue; // already settled from an earlier entry
+      stamp[u] = run;
+      if (left > 0 && goals!.includes(u) && --left === 0) return;
+      const du = out[u], ux = u % N, uy = (u / N) | 0, cu = cost[u];
+      for (let k = 0; k < 8; k++) {
+        const vx = ux + DX[k], vy = uy + DY[k];
+        if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
+        const v = vy * N + vx;
+        const cv = cost[v];
+        if (cv === Infinity) continue;
+        if (k >= 4 && (cost[uy * N + vx] === Infinity || cost[vy * N + ux] === Infinity)) continue;
+        const nd = Math.fround(du + DL[k] * 0.5 * (cu + cv));
+        if (nd < out[v]) {
+          out[v] = nd;
+          const to = Math.floor(nd / width) % ring;
+          node[free] = v; next[free] = head[to]; head[to] = free; free++; pending++;
+        }
+      }
+    }
+  }
+}
+
+/** Scratch for the bucket queue, shared by every call (the simulation is single-threaded). */
+interface BucketQueue { head: Int32Array; next: Int32Array; node: Int32Array; stamp: Int32Array; run: number; }
+let bq: BucketQueue | null = null;
+function queue(ring: number): BucketQueue {
+  // Every push follows an improvement along one of a settled cell's 8 edges.
+  bq ??= { head: new Int32Array(256), next: new Int32Array(8 * NC + 1), node: new Int32Array(8 * NC + 1), stamp: new Int32Array(NC), run: 0 };
+  if (bq.head.length < ring) bq.head = new Int32Array(ring * 2);
+  return bq;
+}
+
+/** The same search with a binary heap (used when some cell costs nothing). */
+function dijkstraHeap(target: number, cost: Float32Array, out: Float32Array, heap: Heap, goals?: number[]): void {
+  heap.n = 0;
   out[target] = 0;
   heap.push(0, target);
-  // With `goals`, stop once all of them are settled: every cell on a descent
-  // from a goal is cheaper than it, so it is settled too.
   let left = goals ? goals.length : -1;
   while (heap.n > 0) {
     const u = heap.pop();
@@ -74,25 +133,19 @@ export function dijkstra(target: number, cost: Float32Array, out: Float32Array, 
     if (du > out[u]) continue; // stale entry
     if (left > 0 && goals!.includes(u) && --left === 0) return;
     const ux = u % N, uy = (u / N) | 0, cu = cost[u];
-    // Away from the border no neighbour can be off the grid (the common case, without bounds checks).
-    const interior = ux > 0 && uy > 0 && ux < N - 1 && uy < N - 1;
     for (let k = 0; k < 8; k++) {
-      if (!interior) {
-        const vx = ux + DX[k], vy = uy + DY[k];
-        if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
-      }
-      const v = u + OFF[k];
+      const vx = ux + DX[k], vy = uy + DY[k];
+      if (vx < 0 || vy < 0 || vx >= N || vy >= N) continue;
+      const v = vy * N + vx;
       const cv = cost[v];
       if (cv === Infinity) continue;
-      if (k >= 4 && (cost[u + DX[k]] === Infinity || cost[u + DY[k] * N] === Infinity)) continue;
+      if (k >= 4 && (cost[uy * N + vx] === Infinity || cost[vy * N + ux] === Infinity)) continue;
       // Round to float32 so the stale check above compares like with like.
-      const nd = Math.fround(du + HALF_DL[k] * (cu + cv));
+      const nd = Math.fround(du + DL[k] * 0.5 * (cu + cv));
       if (nd < out[v]) { out[v] = nd; heap.push(nd, v); }
     }
   }
 }
-const OFF = DX.map((dx, k) => DY[k] * N + dx);
-const HALF_DL = DL.map(l => l * 0.5);
 
 /** Whether a step from u in direction k is allowed under `cost` (bounds, blocking, corner rule). */
 export function canStep(u: number, k: number, cost: Float32Array): number {
@@ -133,9 +186,10 @@ export function descendStep(field: Float32Array, cost: Float32Array, u: number,
 
 /**
  * Cost of walking straight from (x0,y0) to (x1,y1), or Infinity if the line
- * crosses a blocked cell or cuts a blocked corner.
+ * crosses a blocked cell or cuts a blocked corner. With `limit`, it may stop
+ * early and return any value above `limit` once the cost is sure to exceed it.
  */
-export function lineCost(cost: Float32Array, x0: number, y0: number, x1: number, y1: number): number {
+export function lineCost(cost: Float32Array, x0: number, y0: number, x1: number, y1: number, limit = Infinity): number {
   const len = Math.hypot(x1 - x0, y1 - y0);
   const steps = Math.max(1, Math.ceil(len / 0.2)), ds = len / steps;
   let pcx = Math.floor(x0), pcy = Math.floor(y0), sum = 0;
@@ -149,6 +203,7 @@ export function lineCost(cost: Float32Array, x0: number, y0: number, x1: number,
       pcx = cx; pcy = cy;
     }
     sum += cost[c] * ds;
+    if (sum > limit) return sum;
   }
   return sum;
 }
@@ -158,13 +213,17 @@ export function lineCost(cost: Float32Array, x0: number, y0: number, x1: number,
  * the field and aims at the farthest one whose straight line is open and no
  * dearer than the field's route there, so walkers cut across uniform grass but
  * keep to a trail that bends. Writes the aim to out[0..1]; false if no step.
+ * `memo` caches the modal descent (taste 0, no noise) while field and cost stay the same.
  */
 export function chooseAim(field: Float32Array, cost: Float32Array, x: number, y: number, cell: number, door: number,
-  taste: number, disc: ((c: number) => number) | null, noiseId: number, path: number[], out: Float64Array): boolean {
+  taste: number, disc: ((c: number) => number) | null, noiseId: number, path: number[], out: Float64Array, memo?: StepMemo): boolean {
   path.length = 0;
   let u = cell;
   for (let s = 0; s < PARAMS.lookahead && u !== door; s++) {
-    u = descendStep(field, cost, u, taste, disc, noiseId);
+    if (memo) {
+      if (memo.stamp[u] !== memo.run) { memo.stamp[u] = memo.run; memo.next[u] = descendStep(field, cost, u, 0, null, -1); }
+      u = memo.next[u];
+    } else u = descendStep(field, cost, u, taste, disc, noiseId);
     if (u < 0) break;
     path.push(u);
   }
@@ -172,8 +231,9 @@ export function chooseAim(field: Float32Array, cost: Float32Array, x: number, y:
   const fHere = field[cell];
   for (let j = path.length - 1; j >= 0; j--) {
     const ax = (path[j] % N) + 0.5, ay = ((path[j] / N) | 0) + 0.5;
-    const lc = lineCost(cost, x, y, ax, ay);
-    if (j === 0 || lc <= (fHere - field[path[j]]) * PARAMS.shortcutSlack) {
+    const bound = (fHere - field[path[j]]) * PARAMS.shortcutSlack;
+    const lc = lineCost(cost, x, y, ax, ay, j === 0 ? Infinity : bound);
+    if (j === 0 || lc <= bound) {
       if (lc === Infinity) {
         // Off-centre next to a corner: step back to the cell centre first.
         out[0] = (cell % N) + 0.5; out[1] = ((cell / N) | 0) + 0.5;
@@ -184,8 +244,11 @@ export function chooseAim(field: Float32Array, cost: Float32Array, x: number, y:
   return false;
 }
 
+/** Each cell's modal descent step, valid for one run (one field and cost). */
+export interface StepMemo { next: Int32Array; stamp: Int32Array; run: number; }
 const tracePath: number[] = [];
 const traceAim = new Float64Array(2);
+const traceMemo: StepMemo = { next: new Int32Array(NC), stamp: new Int32Array(NC), run: 0 };
 
 /**
  * The typical route from `start` to `door` (no taste, no step noise), as x,y
@@ -194,8 +257,9 @@ const traceAim = new Float64Array(2);
 export function traceRoute(field: Float32Array, cost: Float32Array, start: number, door: number): Float32Array {
   let x = (start % N) + 0.5, y = ((start / N) | 0) + 0.5, cell = start;
   const pts: number[] = [x, y];
+  traceMemo.run++;
   for (let it = 0; it < 4 * N && cell !== door; it++) {
-    if (!chooseAim(field, cost, x, y, cell, door, 0, null, -1, tracePath, traceAim)) break;
+    if (!chooseAim(field, cost, x, y, cell, door, 0, null, -1, tracePath, traceAim, traceMemo)) break;
     const ax = traceAim[0], ay = traceAim[1], d = Math.hypot(ax - x, ay - y);
     if (d < 1e-6) break;
     // Walk towards the aim until entering a new cell (where a walker re-aims) or arriving.

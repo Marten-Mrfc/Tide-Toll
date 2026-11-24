@@ -19,6 +19,14 @@ window/size/viewport_height=720
 
 project/assembly_name="TideToll"
 
+[importer_defaults]
+
+; SVG icons are rasterised at 4x (96 px for the 24 px designs); the interface adds mipmaps and draws them at
+; 24 to 32 px, so they stay crisp at any interface scale. Only affects SVG files.
+texture={
+"svg/scale": 4.0
+}
+
 [rendering]
 
 renderer/rendering_method="mobile"

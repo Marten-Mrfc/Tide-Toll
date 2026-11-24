@@ -22,4 +22,8 @@ fail() { echo "EXPORT FAIL: $1"; exit 1; }
 [ -f "$DATA/TideToll.dll" ] || fail "no TideToll.dll in $DATA (C# publish failed)"
 [ -f "$DATA/TideToll.Sim.dll" ] || fail "no TideToll.Sim.dll in $DATA"
 file "$OUT/TideToll.exe" | grep -q "PE32+ executable" || fail "TideToll.exe is not a PE32+ executable"
-echo "EXPORT OK build/windows: $(du -sh "$OUT" | cut -f1), $(find "$OUT" -type f | wc -l) files (not run: no Windows here)"
+# The pack must hold every model, texture, icon, font and sound (and the shaders); lists what it holds by kind.
+python3 "$ROOT/tools/pck-check.py" "$OUT/TideToll.pck" "$ROOT/game" || fail "assets missing from TideToll.pck"
+size() { du -sh "$1" | cut -f1; }
+echo "EXPORT sizes: TideToll.exe $(size "$OUT/TideToll.exe"), TideToll.pck $(size "$OUT/TideToll.pck"), .NET data folder $(size "$DATA") ($(find "$DATA" -type f | wc -l) files)"
+echo "EXPORT OK build/windows: $(size "$OUT"), $(find "$OUT" -type f | wc -l) files, not zipped (not run: no Windows here)"

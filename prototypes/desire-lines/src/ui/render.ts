@@ -1,43 +1,35 @@
 // Canvas 2D renderer.
 // - Ground: a 128 x 128 base image (grass tint, crops) scaled up with
-//   smoothing, plus a 512 x 512 wear layer: wear values bilinearly upsampled
-//   and coloured through a lookup table with alpha, so trails have soft edges
-//   (render-technique research, method b). Rebuilt a few times a second.
-// - Static layer: river, buildings, labels, fences and bridges as vector ink,
-//   redrawn only when the map, size or theme changes.
+//   smoothing, plus the worn-ground layer (ground.ts), rebuilt a few times a second.
+// - Static layer: river, buildings, labels, gravel, fences, gates and bridges
+//   as vector ink (ink.ts), redrawn only when the map, size or theme changes.
 // - Every frame: walkers (interpolated between ticks), the tool ghost and the
 //   flow preview.
 import { World } from "../sim/world";
-import { PARAMS } from "../sim/params";
 import { N, NC } from "../sim/grid";
 import { hash2 } from "../sim/rng";
 import { followField } from "../sim/path";
-import { FlowPreview } from "../sim/preview";
-import { Palette, RGB } from "./palette";
+import { FlowPreview, RouteChange } from "../sim/preview";
+import { Palette } from "./palette";
+import { WearLayer, mix } from "./ground";
+import { Pen, drawFence, drawGate, drawGravel, drawBridge } from "./ink";
 
 export type ToolGhost =
   | { kind: "fence"; cells: number[]; ok: boolean[] }
+  | { kind: "gravel"; cells: number[]; ok: boolean }
   | { kind: "bridge"; cells: number[] | null; x: number; y: number }
-  | { kind: "erase"; x: number; y: number; cells: number[] }
+  | { kind: "gate"; cell: number; remove: boolean; x: number; y: number }
+  | { kind: "erase"; x: number; y: number; fence: number[]; bridge: number[]; gravel: number[] }
   | null;
 
 const GROUND_MS = 250; // wear layer refresh interval (real time)
-const M = 512; // wear layer resolution
+const SHARED = 1.5; // cells: where the routes before and after a change run this close, they are drawn faint
 const LABELS: Record<string, string> = { well: "Well", field: "Field", market: "Market" };
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private base = document.createElement("canvas");
-  private wearCv = document.createElement("canvas");
-  private wctx: CanvasRenderingContext2D;
-  private wimg: ImageData;
-  private wu32: Uint32Array;
-  private lut = new Uint32Array(256);
-  private tmp = new Float32Array(N * M);
-  private i0 = new Int32Array(M);
-  private fr = new Float32Array(M);
-  private heat = document.createElement("canvas");
-  private himg: ImageData;
+  private ground = new WearLayer();
   private layer = document.createElement("canvas");
   // Ground, wear, overlay and static layer composited once per ground refresh,
   // so a frame draws one full-size image plus walkers.
@@ -53,26 +45,18 @@ export class Renderer {
   flow: FlowPreview | null = null;
   private offX = new Float32Array(1024);
   private offY = new Float32Array(1024);
+  /** Which points of each shown route are shared with the other route (computed once per preview). */
+  private shared = new WeakMap<RouteChange, { old: Uint8Array; now: Uint8Array }>();
 
   constructor(public canvas: HTMLCanvasElement, public world: World, public pal: Palette) {
     this.ctx = canvas.getContext("2d")!;
     this.base.width = this.base.height = N;
-    this.heat.width = this.heat.height = N;
-    this.wearCv.width = this.wearCv.height = M;
-    this.wctx = this.wearCv.getContext("2d")!;
-    this.wimg = this.wctx.createImageData(M, M);
-    this.wu32 = new Uint32Array(this.wimg.data.buffer);
-    this.himg = this.heat.getContext("2d")!.createImageData(N, N);
-    for (let j = 0; j < M; j++) {
-      const s = Math.max(0, ((j + 0.5) * N) / M - 0.5), k = Math.min(N - 2, Math.floor(s));
-      this.i0[j] = k; this.fr[j] = Math.min(1, s - k);
-    }
     for (let i = 0; i < 1024; i++) { this.offX[i] = (hash2(i, 11) - 0.5) * 0.5; this.offY[i] = (hash2(i, 23) - 0.5) * 0.5; }
-    this.buildLut();
+    this.setPalette(pal);
   }
 
   setWorld(w: World) { this.world = w; this.flow = null; this.ghost = null; this.invalidate(); }
-  setPalette(p: Palette) { this.pal = p; this.buildLut(); this.invalidate(); }
+  setPalette(p: Palette) { this.pal = p; this.ground.setPalette(p); this.ground.setHeat(p.heat); this.invalidate(); }
   invalidate() { this.layerKey = ""; this.baseKey = ""; this.groundAt = -1e9; }
 
   resize(cssSize: number) {
@@ -88,24 +72,9 @@ export class Renderer {
   /** Device pixels per cell. */
   get scale() { return this.canvas.width / N; }
 
-  // ------------------------------------------------------------ ground
+  private get pen(): Pen { return { s: this.scale, dpr: this.dpr, halo: this.pal.css["label-halo"], ink: this.pal.css.ink }; }
 
-  /** Wear (0..100, in 256 steps) to packed RGBA: trampled, trail, track, fading in from transparent. */
-  private buildLut() {
-    const p = this.pal.rgb;
-    const stops: [number, RGB][] = [[0, p.trampled], [10, p.trampled], [25, p.trail], [50, p.track], [92, mix(p.track, p.hollow, 0.5)]];
-    for (let i = 0; i < 256; i++) {
-      const v = i / 2.55;
-      let k = 0;
-      while (k < stops.length - 2 && v > stops[k + 1][0]) k++;
-      const [a, ca] = stops[k], [b, cb] = stops[k + 1];
-      const c = mix(ca, cb, smooth((v - a) / (b - a)));
-      // Fade in from wear 4 to 26: trampled grass is a faint haze, and a trail's
-      // soft edge is where its side wear falls off, so trails read narrow.
-      const al = 0.95 * smooth((v - 4) / 22) + 0.05 * smooth((v - 26) / 30);
-      this.lut[i] = ((Math.round(al * 255) << 24) | (Math.round(c[2]) << 16) | (Math.round(c[1]) << 8) | Math.round(c[0])) >>> 0;
-    }
-  }
+  // ------------------------------------------------------------ ground
 
   private buildBase() {
     const m = this.world.map, p = this.pal.rgb;
@@ -116,41 +85,6 @@ export class Renderer {
       d[c * 4] = col[0]; d[c * 4 + 1] = col[1]; d[c * 4 + 2] = col[2]; d[c * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-  }
-
-  private buildWear() {
-    const wear = this.world.wear, tmp = this.tmp, i0 = this.i0, fr = this.fr, u32 = this.wu32, lut = this.lut;
-    for (let y = 0; y < N; y++) {
-      const row = y * N, o = y * M;
-      for (let x = 0; x < M; x++) {
-        const a = row + i0[x];
-        tmp[o + x] = wear[a] + (wear[a + 1] - wear[a]) * fr[x];
-      }
-    }
-    for (let y = 0; y < M; y++) {
-      const ra = i0[y] * M, rb = ra + M, f = fr[y], o = y * M;
-      for (let x = 0; x < M; x++) {
-        const v = tmp[ra + x] + (tmp[rb + x] - tmp[ra + x]) * f;
-        u32[o + x] = lut[v >= 100 ? 255 : (v * 2.55 + 0.5) | 0];
-      }
-    }
-    this.wctx.putImageData(this.wimg, 0, 0);
-    if (this.overlay) this.buildHeat();
-  }
-
-  private buildHeat() {
-    const w = this.world, h = this.pal.heat, d = this.himg.data;
-    const stops = [0, ...PARAMS.stateThresholds];
-    for (let c = 0; c < NC; c++) {
-      const W = w.wear[c], o = c * 4;
-      if (W < 0.5 || !w.land[c]) { d[o + 3] = 0; continue; }
-      let i = 0;
-      while (i < 3 && W >= stops[i + 1]) i++;
-      const col = mix(h[i], h[i + 1], (W - stops[i]) / (stops[i + 1] - stops[i]));
-      d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2];
-      d[o + 3] = Math.min(255, 120 + W * 4);
-    }
-    this.heat.getContext("2d")!.putImageData(this.himg, 0, 0);
   }
 
   // ------------------------------------------------------------ static layer
@@ -206,10 +140,19 @@ export class Renderer {
     g.lineWidth = Math.max(1.2, s * 0.22);
     g.stroke(river);
 
-    for (const b of w.bridges) this.drawBridge(g, b.cells, null);
+    const pen = this.pen;
+    drawGravel(g, pen, cellsOf(w.gravel), p.gravel, 0.35);
+    for (const b of w.bridges) drawBridge(g, pen, b.cells, p.bridge, false);
     for (const b of m.buildings) this.drawBuilding(g, b);
-    this.drawFence(g, cellsOf(w.fence), p.fence, true);
+    drawFence(g, pen, cellsOf(w.fence), p.fence, w.gate);
+    for (const c of cellsOf(w.gate)) drawGate(g, pen, c, this.passesNorthSouth(c), p.gate);
     this.drawLabels(g);
+  }
+
+  /** Whether a gate (or would-be gate) at cell c lets walkers through north-south, so the fence runs east-west. */
+  private passesNorthSouth(c: number): boolean {
+    const w = this.world, open = (v: number) => v >= 0 && v < NC && !w.map.footprint[v] && !(w.fence[v] && !w.gate[v]) && !(w.map.water[v] && !w.map.ford[v] && w.bridgeAt[v] < 0);
+    return open(c - N) && open(c + N);
   }
 
   private drawBuilding(g: CanvasRenderingContext2D, b: World["buildings"][number]) {
@@ -306,74 +249,6 @@ export class Renderer {
     g.fillText(text, x, y);
   }
 
-  /** A footbridge: a deck two cells wide with planks and rails (the sim's bridge is one row). */
-  private drawBridge(g: CanvasRenderingContext2D, cells: number[], ghost: string | null) {
-    const s = this.scale, p = this.pal.css;
-    const x0 = (cells[0] % N) - 0.6, x1 = (cells[cells.length - 1] % N) + 1.6, y = (cells[0] / N) | 0;
-    const top = (y - 0.45) * s, h = 1.9 * s;
-    g.save();
-    if (ghost) g.globalAlpha = 0.8;
-    g.fillStyle = ghost ?? p.bridge;
-    g.fillRect(x0 * s, top, (x1 - x0) * s, h);
-    g.strokeStyle = ghost ?? p.ink;
-    g.globalAlpha *= 0.6;
-    g.lineWidth = Math.max(1, s * 0.1);
-    g.beginPath();
-    for (let x = x0 + 0.5; x < x1 - 0.2; x += 0.5) { g.moveTo(x * s, top); g.lineTo(x * s, top + h); }
-    g.stroke();
-    g.globalAlpha = ghost ? 0.9 : 1;
-    g.strokeStyle = p.ink;
-    g.lineWidth = Math.max(1.5 * this.dpr, s * 0.28);
-    g.beginPath();
-    g.moveTo(x0 * s, top); g.lineTo(x1 * s, top);
-    g.moveTo(x0 * s, top + h); g.lineTo(x1 * s, top + h);
-    g.stroke();
-    g.fillStyle = p.ink;
-    const post = Math.max(3 * this.dpr, s * 0.5);
-    for (const px of [x0, x1]) for (const py of [top, top + h]) g.fillRect(px * s - post / 2, py - post / 2, post, post);
-    g.restore();
-  }
-
-  /** Fences as straightened rails with posts, over a halo so they read on any ground. */
-  private drawFence(g: CanvasRenderingContext2D, cells: number[], colour: string, halo: boolean) {
-    if (!cells.length) return;
-    const s = this.scale, d = this.dpr;
-    const lines = fenceLines(cells);
-    const rail = Math.max(2.5 * d, s * 0.38), post = Math.max(3.5 * d, s * 0.6);
-    const path = new Path2D(), posts: [number, number][] = [];
-    for (const ln of lines) {
-      for (let i = 0; i < ln.length; i += 2) {
-        if (i === 0) path.moveTo(ln[0] * s, ln[1] * s); else path.lineTo(ln[i] * s, ln[i + 1] * s);
-      }
-      // Posts every ~1.5 cells along the line, and at both ends.
-      for (let i = 0; i + 2 < ln.length || i === 0; i += 2) {
-        const ax = ln[i], ay = ln[i + 1], bx = ln[i + 2] ?? ax, by = ln[i + 3] ?? ay, len = Math.hypot(bx - ax, by - ay);
-        const n = Math.max(1, Math.round(len / 1.5));
-        for (let k = 0; k < n; k++) posts.push([ax + ((bx - ax) * k) / n, ay + ((by - ay) * k) / n]);
-        if (i + 2 >= ln.length) break;
-      }
-      posts.push([ln[ln.length - 2], ln[ln.length - 1]]);
-    }
-    g.save();
-    g.lineJoin = "round"; g.lineCap = "round";
-    if (halo) {
-      g.strokeStyle = this.pal.css["label-halo"];
-      g.globalAlpha = 0.75;
-      g.lineWidth = rail + 3 * d;
-      g.stroke(path);
-      g.globalAlpha = 1;
-    }
-    g.strokeStyle = colour;
-    g.lineWidth = rail;
-    g.stroke(path);
-    g.fillStyle = colour;
-    for (const [x, y] of posts) {
-      if (halo) { g.strokeStyle = this.pal.css["label-halo"]; g.lineWidth = 1.5 * d; g.strokeRect(x * s - post / 2, y * s - post / 2, post, post); }
-      g.fillRect(x * s - post / 2, y * s - post / 2, post, post);
-    }
-    g.restore();
-  }
-
   // ------------------------------------------------------------ frame
 
   draw(alpha: number, now: number) {
@@ -383,7 +258,7 @@ export class Renderer {
     const bkey = `${w.seed}`;
     if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; dirty = true; }
     if (now - this.groundAt >= GROUND_MS || this.groundVersion !== w.version) {
-      this.buildWear();
+      this.ground.build(w, this.overlay);
       this.groundAt = now;
       this.groundVersion = w.version;
       dirty = true;
@@ -397,13 +272,13 @@ export class Renderer {
       g.imageSmoothingEnabled = true;
       g.imageSmoothingQuality = "low"; // the wear layer is already interpolated; "high" costs ~8 ms a refresh
       g.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
-      g.drawImage(this.wearCv, 0, 0, M, M, 0, 0, W, W);
+      g.drawImage(this.ground.canvas, 0, 0, this.ground.canvas.width, this.ground.canvas.height, 0, 0, W, W);
       if (this.overlay) {
         g.globalAlpha = 0.6;
         g.fillStyle = p.paper;
         g.fillRect(0, 0, W, W);
         g.globalAlpha = 1;
-        g.drawImage(this.heat, 0, 0, N, N, 0, 0, W, W);
+        g.drawImage(this.ground.heat, 0, 0, N, N, 0, 0, W, W);
       }
       g.drawImage(this.layer, 0, 0);
     }
@@ -432,17 +307,27 @@ export class Renderer {
   }
 
   private drawGhost() {
-    const gh = this.ghost, ctx = this.ctx, s = this.scale, p = this.pal.css;
+    const gh = this.ghost, ctx = this.ctx, s = this.scale, p = this.pal.css, pen = this.pen;
     if (!gh) return;
     if (gh.kind === "fence") {
-      const ok = gh.cells.filter((_, i) => gh.ok[i]), bad = gh.cells.filter((_, i) => !gh.ok[i]);
-      this.drawFence(ctx, ok, p.ghost, true);
-      this.drawFence(ctx, bad, p.invalid, true);
+      drawFence(ctx, pen, gh.cells.filter((_, i) => gh.ok[i]), p.ghost);
+      drawFence(ctx, pen, gh.cells.filter((_, i) => !gh.ok[i]), p.invalid);
+    } else if (gh.kind === "gravel") {
+      drawGravel(ctx, pen, gh.cells, gh.ok ? p.ghost : p.invalid, 0.3);
     } else if (gh.kind === "bridge") {
-      if (gh.cells) this.drawBridge(ctx, gh.cells, p.ghost);
+      if (gh.cells) drawBridge(ctx, pen, gh.cells, p.ghost, true);
       else this.cross(gh.x, gh.y, 0.9);
+    } else if (gh.kind === "gate") {
+      if (gh.cell < 0) this.cross(gh.x, gh.y, 0.9);
+      else {
+        drawGate(ctx, pen, gh.cell, this.passesNorthSouth(gh.cell), gh.remove ? p.invalid : p.ghost);
+        if (gh.remove) this.cross((gh.cell % N) + 0.5, ((gh.cell / N) | 0) + 0.5, 0.6);
+      }
     } else {
-      if (gh.cells.length) this.drawFence(ctx, gh.cells, p.invalid, true);
+      // Erase: everything that would go, in the warning colour, and the reach of the eraser.
+      drawGravel(ctx, pen, gh.gravel, p.invalid, 0.3);
+      if (gh.bridge.length) drawBridge(ctx, pen, gh.bridge, p.invalid, true);
+      drawFence(ctx, pen, gh.fence, p.invalid);
       ctx.strokeStyle = p.invalid;
       ctx.lineWidth = Math.max(1.5, s * 0.15);
       ctx.beginPath();
@@ -463,23 +348,30 @@ export class Renderer {
   }
 
   /**
-   * Flow preview: current routes of the affected flows as thin dashed ink,
-   * predicted routes as solid accent lines over a halo, with chevrons for
-   * direction (colour is never the only cue). A blocked destination gets a
-   * ring and a cross, and its route stops where it is cut.
+   * Flow preview: for each changed flow, the route now (thin dashed ink) and
+   * the route after (solid accent over a halo, with chevrons for direction, so
+   * colour is never the only cue). Where the two run together they are drawn
+   * faint, so the eye goes to the part that changes. A blocked destination gets
+   * a ring and a cross, and its route stops where it is cut.
    */
   drawFlowPreview(ctx: CanvasRenderingContext2D, fp: FlowPreview) {
     const s = this.scale, d = this.dpr, p = this.pal.css, B = this.world.buildings;
     ctx.save();
     ctx.lineJoin = "round"; ctx.lineCap = "round";
+    const masks = fp.changes.map(c => this.sharedMask(c));
+    // Shared stretches first, faint, then what changes on top.
+    ctx.strokeStyle = p.route;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 2 * d;
+    fp.changes.forEach((c, i) => { if (c.reachable) ctx.stroke(runsPath(c.newPts, masks[i].now, 1, s)); });
     ctx.strokeStyle = p.ink;
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.55;
     ctx.lineWidth = 1.5 * d;
     ctx.setLineDash([5 * d, 4 * d]);
-    for (const c of fp.changes) ctx.stroke(polyPath(c.oldPts, s));
+    fp.changes.forEach((c, i) => ctx.stroke(runsPath(c.oldPts, masks[i].old, 0, s)));
     ctx.setLineDash([]);
-    for (const c of fp.changes) {
-      const path = polyPath(c.newPts, s);
+    fp.changes.forEach((c, i) => {
+      const path = c.reachable ? runsPath(c.newPts, masks[i].now, 0, s) : polyPath(c.newPts, s);
       ctx.globalAlpha = 0.7;
       ctx.strokeStyle = p.halo;
       ctx.lineWidth = 6 * d;
@@ -490,8 +382,8 @@ export class Renderer {
       if (!c.reachable) ctx.setLineDash([2 * d, 5 * d]);
       ctx.stroke(path);
       ctx.setLineDash([]);
-      if (c.reachable) this.chevrons(ctx, c.newPts, p.route);
-    }
+      if (c.reachable) this.chevrons(ctx, c.newPts, masks[i].now, p.route);
+    });
     for (const b of fp.blocked) {
       const door = B[b.dest].door, x = (door % N) + 0.5, y = ((door / N) | 0) + 0.5;
       ctx.strokeStyle = p.invalid;
@@ -502,13 +394,25 @@ export class Renderer {
     ctx.restore();
   }
 
-  private chevrons(ctx: CanvasRenderingContext2D, pts: Float32Array, colour: string) {
+  /** For each point of the old and new routes: 1 where the other route passes within SHARED cells. */
+  private sharedMask(c: RouteChange): { old: Uint8Array; now: Uint8Array } {
+    let m = this.shared.get(c);
+    if (!m) {
+      m = { old: nearMask(c.oldPts, c.newPts), now: c.reachable ? nearMask(c.newPts, c.oldPts) : new Uint8Array(c.newPts.length / 2) };
+      this.shared.set(c, m);
+    }
+    return m;
+  }
+
+  /** Direction chevrons along the changed (unshared) stretches of a route. */
+  private chevrons(ctx: CanvasRenderingContext2D, pts: Float32Array, shared: Uint8Array, colour: string) {
     const s = this.scale, d = this.dpr, size = Math.max(4 * d, s * 0.9);
     let run = 4; // first chevron 4 cells in, then every 8
     ctx.strokeStyle = colour;
     ctx.lineWidth = 2 * d;
     for (let i = 2; i < pts.length; i += 2) {
       const ax = pts[i - 2], ay = pts[i - 1], bx = pts[i], by = pts[i + 1], len = Math.hypot(bx - ax, by - ay);
+      if (shared[i / 2]) { run = Math.min(run, 2); continue; }
       run -= len;
       if (run > 0 || len < 1e-6) continue;
       run += 8;
@@ -532,82 +436,35 @@ function polyPath(pts: Float32Array, s: number): Path2D {
   return path;
 }
 
+/**
+ * The stretches of a route whose mask equals `want`, as one path; each
+ * stretch reaches one point into its neighbours so the pieces join up.
+ */
+function runsPath(pts: Float32Array, mask: Uint8Array, want: number, s: number): Path2D {
+  const path = new Path2D(), n = pts.length / 2;
+  let i = 0;
+  while (i < n) {
+    if (mask[i] !== want) { i++; continue; }
+    let j = i;
+    while (j + 1 < n && mask[j + 1] === want) j++;
+    const a = Math.max(0, i - 1), b = Math.min(n - 1, j + 1);
+    if (b > a) path.addPath(polyPath(pts.subarray(2 * a, 2 * b + 2), s));
+    i = j + 1;
+  }
+  return path;
+}
+
+/** 1 for each point of `a` within SHARED cells of some point of `b`. */
+function nearMask(a: Float32Array, b: Float32Array): Uint8Array {
+  const out = new Uint8Array(a.length / 2), r2 = SHARED * SHARED;
+  for (let i = 0; i < a.length; i += 2)
+    for (let j = 0; j < b.length; j += 2)
+      if ((a[i] - b[j]) ** 2 + (a[i + 1] - b[j + 1]) ** 2 <= r2) { out[i / 2] = 1; break; }
+  return out;
+}
+
 function cellsOf(mask: Uint8Array): number[] {
   const out: number[] = [];
   for (let c = 0; c < NC; c++) if (mask[c]) out.push(c);
   return out;
-}
-
-/**
- * Turns fence cells (4-connected staircases) into straight polylines through
- * the cell centres: chains are walked between ends and junctions, then
- * simplified, so a diagonal fence draws as one straight rail.
- */
-export function fenceLines(cells: number[]): number[][] {
-  const set = new Set(cells), seen = new Set<number>(), lines: number[][] = [];
-  const nb = (c: number) => {
-    const x = c % N, out: number[] = [];
-    if (x + 1 < N && set.has(c + 1)) out.push(c + 1);
-    if (x > 0 && set.has(c - 1)) out.push(c - 1);
-    if (set.has(c + N)) out.push(c + N);
-    if (set.has(c - N)) out.push(c - N);
-    return out;
-  };
-  const edge = (a: number, b: number) => Math.min(a, b) * NC + Math.max(a, b);
-  const walk = (start: number, next: number) => {
-    const chain = [start];
-    let prev = start, cur = next;
-    seen.add(edge(prev, cur));
-    for (;;) {
-      chain.push(cur);
-      const ns = nb(cur);
-      if (ns.length !== 2) break;
-      const nx = ns[0] === prev ? ns[1] : ns[0];
-      if (seen.has(edge(cur, nx))) break;
-      seen.add(edge(cur, nx));
-      prev = cur; cur = nx;
-    }
-    lines.push(simplify(chain.flatMap(c => [(c % N) + 0.5, ((c / N) | 0) + 0.5]), 0.75));
-  };
-  for (const pass of [0, 1])
-    for (const c of cells) {
-      const ns = nb(c);
-      if (ns.length === 0 && pass === 0) { lines.push([(c % N) + 0.5, ((c / N) | 0) + 0.5]); continue; }
-      if (pass === 0 && ns.length === 2) continue; // chain interiors are reached from their ends
-      for (const n of ns) if (!seen.has(edge(c, n))) walk(c, n);
-    }
-  return lines;
-}
-
-/** Douglas-Peucker on a flat x,y list. */
-function simplify(pts: number[], tol: number): number[] {
-  const n = pts.length / 2;
-  if (n <= 2) return pts;
-  const keep = new Uint8Array(n);
-  keep[0] = keep[n - 1] = 1;
-  const stack: [number, number][] = [[0, n - 1]];
-  while (stack.length) {
-    const [a, b] = stack.pop()!;
-    const ax = pts[2 * a], ay = pts[2 * a + 1], bx = pts[2 * b], by = pts[2 * b + 1];
-    const len = Math.hypot(bx - ax, by - ay) || 1;
-    let worst = -1, wd = tol;
-    for (let i = a + 1; i < b; i++) {
-      const dd = Math.abs((bx - ax) * (ay - pts[2 * i + 1]) - (ax - pts[2 * i]) * (by - ay)) / len;
-      if (dd > wd) { wd = dd; worst = i; }
-    }
-    if (worst >= 0) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
-  }
-  const out: number[] = [];
-  for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[2 * i], pts[2 * i + 1]);
-  return out;
-}
-
-function smooth(t: number): number {
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  return t * t * (3 - 2 * t);
-}
-
-function mix(a: RGB, b: RGB, t: number): RGB {
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
