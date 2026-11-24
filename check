@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Runs every automatic check. See tools/check.sh for options.
+exec "$(dirname "$0")/tools/check.sh" "$@"

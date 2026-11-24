@@ -46,14 +46,8 @@ export interface Stats extends HealthStats {
 export const SEASONS = ["Spring", "Summer", "Autumn", "Winter"];
 
 
-// Cost multipliers from wear and from recent traffic, as lookup tables.
+// Cost multipliers from wear and from recent traffic are lookup tables.
 const WEAR_LUT_STEPS = 10, FLOW_LUT_STEPS = 4;
-const wearLut = new Float32Array(100 * WEAR_LUT_STEPS + 1);
-const flowLut = new Float32Array(256 * FLOW_LUT_STEPS + 1);
-for (let i = 0; i < wearLut.length; i++)
-  wearLut[i] = 1 - PARAMS.trailDiscount * Math.pow(Math.min(1, i / WEAR_LUT_STEPS / PARAMS.discScale), PARAMS.discPow);
-for (let i = 0; i < flowLut.length; i++)
-  flowLut[i] = 1 - PARAMS.flowDiscount * (1 - Math.exp(-(i / FLOW_LUT_STEPS) / PARAMS.flowScale));
 
 export class World {
   readonly map: MapData;
@@ -87,6 +81,8 @@ export class World {
    */
   tripRate: Float32Array;
   private rng: Rng;
+  private wearLut = new Float32Array(100 * WEAR_LUT_STEPS + 1);
+  private flowLut = new Float32Array(256 * FLOW_LUT_STEPS + 1);
   private heap = new Heap(NC * 4);
   private nextId = 0;
   private nextDecay = PARAMS.decayStepSimSec;
@@ -98,6 +94,11 @@ export class World {
     this.rng = mulberry32(seed * 31 + 5);
     for (const b of this.map.buildings) this.byKind[b.kind].push(b.id);
     this.tripRate = new Float32Array(this.map.buildings.length ** 2);
+    const P = PARAMS;
+    for (let i = 0; i < this.wearLut.length; i++)
+      this.wearLut[i] = 1 - P.trailDiscount * Math.pow(Math.min(1, i / WEAR_LUT_STEPS / P.discScale), P.discPow);
+    for (let i = 0; i < this.flowLut.length; i++)
+      this.flowLut[i] = 1 - P.flowDiscount * (1 - Math.exp(-(i / FLOW_LUT_STEPS) / P.flowScale));
     for (let i = 0; i < NC; i++) this.land[i] = !this.map.water[i] && !this.map.footprint[i] ? 1 : 0;
     for (const _ of this.map.buildings) { this.fields.push(new Float32Array(NC)); this.fieldTime.push(-1e9); this.urgent.push(true); }
     this.buildCost(this.cost);
@@ -119,9 +120,10 @@ export class World {
 
   /** Routing cost multiplier of a cell's ground: worn and busy ground is cheaper. */
   surf = (c: number): number => {
-    const f = flowLut[Math.min(flowLut.length - 1, (this.flow[c] * FLOW_LUT_STEPS) | 0)];
-    if (PARAMS.trailDiscount > 0) return f * wearLut[Math.min(wearLut.length - 1, (this.wear[c] * WEAR_LUT_STEPS) | 0)];
-    return f * PARAMS.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)];
+    const f = this.flowLut[Math.min(this.flowLut.length - 1, (this.flow[c] * FLOW_LUT_STEPS) | 0)];
+    const g = PARAMS.trailDiscount > 0 ? this.wearLut[Math.min(this.wearLut.length - 1, (this.wear[c] * WEAR_LUT_STEPS) | 0)]
+      : PARAMS.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)];
+    return Math.max(PARAMS.minSurface, f * g);
   };
 
   /** Step cost of cell c (Infinity where blocked); `ov` overrides its state for a what-if. */
@@ -133,7 +135,8 @@ export class World {
     let k: number;
     if (bridge) k = P.bridgeCost;
     else {
-      k = this.surf(c) * (1 + P.staticNoise * m.noise[c]);
+      // The ford never wears and is not made easier by traffic: only land is discounted.
+      k = (m.water[c] ? 1 : this.surf(c)) * (1 + P.staticNoise * m.noise[c]);
       if (m.crop[c]) k += P.cropPenalty;
       if (m.ford[c]) k *= P.fordCostMul;
     }

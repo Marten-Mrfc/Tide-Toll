@@ -24,3 +24,10 @@ export function updateHud(s: Stats, fps: number, tickMs: number, seed: number, w
   band(c, settled ? s.trailCoverage : NaN, 0.03, 0.08);
   band(t, settled ? s.trunkShare : NaN, 0.3, 0.7);
 }
+
+/** The flow preview readout in the status bar ("" hides it). */
+export function setPreviewLine(text: string) {
+  const el = $("preview-line");
+  el.textContent = text;
+  el.hidden = !text;
+}

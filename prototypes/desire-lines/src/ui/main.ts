@@ -5,10 +5,14 @@ import { N, idx } from "../sim/grid";
 import { Renderer } from "./render";
 import { readPalette, onThemeChange } from "./palette";
 import { Input, Tool } from "./input";
-import { updateHud } from "./hud";
+import { updateHud, setPreviewLine } from "./hud";
+import { FlowPreviewer } from "./previewer";
+import { describePreview, WhatIf } from "../sim/preview";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const MAX_TICKS_PER_FRAME = 8; // beyond this a slow frame drops sim time instead of stalling
+const TICK_BUDGET_MS = 10; // and no more sim work than this per frame, so a slow machine slows the sim instead of stalling
+const PREVIEW_BUDGET_MS = 6; // flow preview work per frame (3 ms when the sim was busy)
 const SPEEDS = [1, 2, 4, 8];
 
 function initialSeed(): number {
@@ -29,26 +33,31 @@ const canvas = $<HTMLCanvasElement>("map");
 const renderer = new Renderer(canvas, world, readPalette());
 const status = $("status");
 const say = (msg: string) => { status.textContent = msg; };
-const input = new Input(canvas, () => world, renderer, say);
+const previewer = new FlowPreviewer(world);
+const input = new Input(canvas, () => world, renderer, previewer, say);
+const tip = $("preview-tip");
+const kindName = (b: number) => ({ well: "Well", field: "Field", market: "Market", house: "house" })[world.buildings[b].kind];
 
 // ------------------------------------------------------------------ layout
-const wrap = $("map-wrap");
+const mainEl = $("main");
 const narrow = window.matchMedia("(max-width: 760px)");
+const SIDE_MIN = 236; // side panel minimum width plus the gap
 function fit() {
-  const w = wrap.clientWidth, h = wrap.clientHeight;
-  const size = Math.floor((narrow.matches ? w : Math.min(w, h)) - 2);
+  // The map is the largest square that fits beside the side panel (or above it when narrow).
+  const w = mainEl.clientWidth, h = mainEl.clientHeight;
+  const size = Math.floor((narrow.matches ? w : Math.min(w - SIDE_MIN, h)) - 2);
   renderer.resize(Math.max(160, size));
 }
-new ResizeObserver(fit).observe(wrap);
+new ResizeObserver(fit).observe(mainEl);
 window.addEventListener("resize", fit);
 fit();
 onThemeChange(() => renderer.setPalette(readPalette()));
 
 // ------------------------------------------------------------------ controls
 const pauseBtn = $<HTMLButtonElement>("btn-pause");
+// A fixed label with aria-pressed: pressed means paused.
 function setPaused(p: boolean) {
   paused = p;
-  pauseBtn.textContent = p ? "Play" : "Pause";
   pauseBtn.setAttribute("aria-pressed", String(p));
 }
 pauseBtn.addEventListener("click", () => setPaused(!paused));
@@ -92,16 +101,29 @@ function setOverlay(on: boolean) {
 }
 overlayBtn.addEventListener("click", () => setOverlay(!renderer.overlay));
 
+const previewBtn = $("btn-preview");
+function setPreview(on: boolean) {
+  previewer.enabled = on;
+  if (!on) previewer.clear();
+  previewBtn.setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("tt-preview", on ? "1" : "0"); } catch { /* storage blocked: keep it for this visit */ }
+}
+previewBtn.addEventListener("click", () => setPreview(!previewer.enabled));
+let previewSaved: string | null = null;
+try { previewSaved = localStorage.getItem("tt-preview"); } catch { /* no storage */ }
+setPreview(previewSaved !== "0");
+
 function reset(newSeed = seed) {
   seed = newSeed >>> 0 || 1;
   world = new World(seed, walkerCount);
   renderer.setWorld(world);
-  renderer.preview = null;
+  previewer.setWorld(world);
+  input.setTool(input.tool);
   acc = 0;
   updateHud(world.stats(), fps, tickMs, seed, 0);
 }
 $("btn-reset").addEventListener("click", () => { reset(); say("Map reset."); });
-$("btn-newmap").addEventListener("click", () => { reset((Math.imul(seed, 48271) + 12345) % 99991 + 1); say(`New map, seed ${seed}.`); });
+$("btn-newmap").addEventListener("click", () => { reset((((Math.imul(seed, 48271) + 12345) % 99991) + 99991) % 99991 + 1); say(`New map, seed ${seed}.`); });
 
 window.addEventListener("keydown", e => {
   const t = e.target as HTMLElement;
@@ -115,14 +137,29 @@ window.addEventListener("keydown", e => {
   else if (k === "e") setTool(input.tool === "erase" ? "none" : "erase");
   else if (k === "escape") setTool("none");
   else if (k === "w") setOverlay(!renderer.overlay);
+  else if (k === "p") setPreview(!previewer.enabled);
   else if (k === "r") reset();
   else if (k === "n") $("btn-newmap").click();
 });
 
 // ------------------------------------------------------------------ loop
-let acc = 0, last = performance.now(), fps = 60, tickMs = 0, hudAt = 0;
+let acc = 0, last = performance.now(), fps = 60, tickMs = 0, hudAt = 0, simMs = 0;
+let tipText = "";
+/** The preview readout, pinned near the pointer and repeated in the status bar. */
+function showTip() {
+  const p = renderer.flow;
+  const text = p ? describePreview(p, kindName) : "";
+  const at = input.pointer;
+  if (text !== tipText) { tipText = text; tip.textContent = text; setPreviewLine(text ? `Typical routes: ${text}.` : ""); }
+  tip.hidden = !text || !at;
+  if (text && at) {
+    const x = Math.min(at[0] + 16, canvas.clientWidth - tip.offsetWidth - 4);
+    const y = at[1] + 18 + tip.offsetHeight > canvas.clientHeight ? at[1] - tip.offsetHeight - 12 : at[1] + 18;
+    tip.style.transform = `translate(${Math.max(4, x) + canvas.offsetLeft}px, ${Math.max(4, y) + canvas.offsetTop}px)`;
+  }
+}
 // Frame recorder for the perf test: every frame's interval and in-page work time.
-let rec: { intervals: number[]; works: number[]; sim0: number; t0: number; worstTick: number } | null = null;
+let rec: { intervals: number[]; works: number[]; sim0: number; t0: number; worstTick: number; budgetHits: number } | null = null;
 const intervals: number[] = [], works: number[] = [];
 function frame(now: number) {
   const t0 = performance.now();
@@ -135,13 +172,23 @@ function frame(now: number) {
     if (n > MAX_TICKS_PER_FRAME) { n = MAX_TICKS_PER_FRAME; acc = n; }
     if (n > 0) {
       const ts = performance.now();
-      for (let i = 0; i < n; i++) world.tick();
+      let done = 0;
+      while (done < n) {
+        world.tick();
+        done++;
+        if (performance.now() - ts > TICK_BUDGET_MS) break;
+      }
       const spent = performance.now() - ts;
-      tickMs = tickMs * 0.9 + (spent / n) * 0.1;
-      if (rec) rec.worstTick = Math.max(rec.worstTick, spent);
-      acc -= n;
-    }
-  }
+      simMs = spent;
+      tickMs = tickMs * 0.9 + (spent / done) * 0.1;
+      if (rec) { rec.worstTick = Math.max(rec.worstTick, spent); if (done < n) rec.budgetHits++; }
+      // Ticks the budget cut are dropped (at most one is carried over), so the sim slows instead of falling behind.
+      acc = Math.min(1, acc - done);
+    } else simMs = 0;
+  } else simMs = 0;
+  previewer.update(now, simMs > TICK_BUDGET_MS * 0.8 ? PREVIEW_BUDGET_MS / 2 : PREVIEW_BUDGET_MS);
+  renderer.flow = previewer.enabled ? previewer.current : null;
+  showTip();
   renderer.draw(paused ? 1 : Math.min(1, acc), now);
   if (now - hudAt > 500) {
     hudAt = now;
@@ -180,7 +227,7 @@ const api = {
       firstTrailTime: s.firstTrailTime, fences: world.fence.reduce((a, b) => a + b, 0), bridges: world.bridges.length,
     };
   },
-  perfStart() { rec = { intervals: [], works: [], sim0: world.time, t0: performance.now(), worstTick: 0 }; },
+  perfStart() { rec = { intervals: [], works: [], sim0: world.time, t0: performance.now(), worstTick: 0, budgetHits: 0 }; },
   perfStop() {
     const r = rec!;
     rec = null;
@@ -191,7 +238,7 @@ const api = {
     return {
       frames: iv.length, seconds: secs, fps: 1000 / avg(iv), avgIntervalMs: avg(iv), worstIntervalMs: Math.max(...iv),
       longFrames: iv.filter(v => v > 50).length, avgWorkMs: avg(wk), p95WorkMs: sorted[Math.floor(sorted.length * 0.95)] ?? 0,
-      worstWorkMs: sorted[sorted.length - 1] ?? 0, simSecondsPerSecond: (world.time - r.sim0) / secs, tickMs, worstTickFrameMs: r.worstTick,
+      worstWorkMs: sorted[sorted.length - 1] ?? 0, simSecondsPerSecond: (world.time - r.sim0) / secs, tickMs, worstTickFrameMs: r.worstTick, budgetHits: r.budgetHits,
     };
   },
   placeFence: (cells: CellList) => world.placeFence(toCells(cells)),
@@ -200,7 +247,22 @@ const api = {
   /** Client coordinates of a cell centre, for tests that drive the pointer. */
   cellToClient(x: number, y: number) {
     const r = canvas.getBoundingClientRect();
-    return { x: r.left + ((x + 0.5) / N) * r.width, y: r.top + ((y + 0.5) / N) * r.height };
+    return { x: r.left + canvas.clientLeft + ((x + 0.5) / N) * canvas.clientWidth, y: r.top + canvas.clientTop + ((y + 0.5) / N) * canvas.clientHeight };
+  },
+  setPreview,
+  /** The flow preview on screen now (null if none) and its readout. */
+  previewState() {
+    const p = renderer.flow;
+    return { enabled: previewer.enabled, settled: previewer.settled, text: tipText, tipVisible: !tip.hidden,
+      changes: p ? p.changes.length : 0, reroutedPerDay: p ? p.reroutedPerDay : 0, blocked: p ? p.blocked.length : 0 };
+  },
+  /** Computes a preview directly (no throttle) for a hypothetical edit, as cell lists. */
+  previewFlows(change: { block?: CellList; open?: CellList; bridge?: CellList; closeBridge?: CellList }) {
+    const c: WhatIf = {};
+    for (const k of ["block", "open", "bridge", "closeBridge"] as const) if (change[k]) c[k] = toCells(change[k]!);
+    const p = world.previewFlows(c);
+    return { changes: p.changes.map(x => ({ home: x.home, dest: x.dest, rate: x.rate, reachable: x.reachable, costRatio: x.costRatio, points: x.newPts.length / 2 })),
+      reroutedPerDay: p.reroutedPerDay, text: describePreview(p, kindName) };
   },
 };
 (window as unknown as { __tt: typeof api }).__tt = api;

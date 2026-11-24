@@ -27,7 +27,7 @@ export const PARAMS = {
   // Wear. W in 0..100; gain W += I * (1 - W/100) on entering a cell.
   // Round 2 tuning (seeds 1 to 20 only): with the flow discount below, modest
   // wear forms narrow trails that merge into shared trunks.
-  wearPerStep: 1.8, // spec 0.75
+  wearPerStep: 2.0, // spec 0.75; research 1.8, raised with the minSurface floor below
   sideShare: 0.3, // spec 0.15; share of I given to the two side neighbours
   // Ground-state thresholds: grass < 10 <= trampled < 25 <= trail < 50 <= track.
   // Hollow way needs W >= 85 held for hollowHoldSimSec.
@@ -49,6 +49,11 @@ export const PARAMS = {
   flowDiscount: 0.5,
   flowScale: 40,
   flowHalfLife: 20, // sim seconds
+  // Floor on the combined multiplier. Without it a busy track costs 0.35 of
+  // grass and walkers keep to detours twice the beeline: a new footbridge got
+  // 15% of crossings (round 1: 76%). The spec caps the trail discount at 0.72;
+  // 0.6 keeps merging and lets bridges and fences steer (58% on seeds 1 to 10).
+  minSurface: 0.6,
   // Half-life of wear by band, in sim seconds. Spec: 1, 2, 4 seasons (60/120/240 s).
   halfLifeLow: 60, // W < 25
   halfLifeMid: 120, // 25 <= W < 50
@@ -68,7 +73,7 @@ export const PARAMS = {
   bridgeCost: 0.8,
   bridgeSpeedMul: 1.2,
   fieldRefreshSimSec: 5, // each cost-to-go field is rebuilt this often
-  urgentFieldsPerTick: 3, // after an edit, fields rebuilt per tick until all are fresh
+  urgentFieldsPerTick: 1, // after an edit, fields rebuilt per tick until all are fresh (spread, destinations first)
 
   // Crowding (Weidmann): v = v0 (1 - exp(-g (1/rho - 1/rhoMax))), rho in people per m^2.
   crowdStrength: 1.0,

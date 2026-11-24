@@ -1,0 +1,15 @@
+<Project Sdk="Godot.NET.Sdk/4.7.0">
+  <!-- Godot.NET.Sdk 4.7.0 ships only inside the Godot download (GodotSharp/Tools/nupkgs).
+       The Godot editor registers that folder with NuGet when it opens; tools/setup-linux.sh
+       does the same for headless machines. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TideToll.Game</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The same simulation library the tests run. -->
+    <ProjectReference Include="..\sim\TideToll.Sim.csproj" />
+  </ItemGroup>
+</Project>

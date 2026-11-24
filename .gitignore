@@ -1,5 +1,17 @@
+# Node (browser toy)
 node_modules/
 dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# Godot and .NET
+.godot/
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Build output: exports, screenshots, check logs
+build/

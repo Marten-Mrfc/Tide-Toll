@@ -6,7 +6,7 @@ export type RGB = [number, number, number];
 const KEYS = [
   "paper", "grass", "grass-dark", "trampled", "trail", "track", "hollow", "crop",
   "water", "water-edge", "ford", "ink", "building", "label", "label-halo",
-  "walker", "walker-halo", "fence", "bridge", "ghost", "invalid",
+  "walker", "walker-halo", "fence", "bridge", "ghost", "invalid", "roof", "route", "halo", "outline",
 ] as const;
 export type MapColour = (typeof KEYS)[number];
 

@@ -13,6 +13,9 @@ export const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y <
 
 /** 4-connected line between two cells, so a fence drawn diagonally has no gaps to slip through. */
 export function line4(x0: number, y0: number, x1: number, y1: number): number[] {
+  // Non-finite input (a pointer over a zero-size canvas) would never terminate.
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return [];
+  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
   const out: number[] = [idx(x0, y0)];
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
   const sx = x1 > x0 ? 1 : -1, sy = y1 > y0 ? 1 : -1;

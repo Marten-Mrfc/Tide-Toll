@@ -13,6 +13,7 @@
     --ok: #2f6b3a;
     --warn: #9a5a12;
     /* Map palette: a surveyor's field map in ink and gouache. */
+    --shadow: rgba(30, 35, 30, 0.18);
     --map-paper: #dfe3d3;
     --map-grass: #8ea36b;
     --map-grass-dark: #7a9460;
@@ -30,10 +31,14 @@
     --map-label-halo: #eef0e4;
     --map-walker: #1c1a17;
     --map-walker-halo: #f3f0e4;
-    --map-fence: #3d2a17;
+    --map-fence: #4a280b;
     --map-bridge: #b48d5b;
     --map-ghost: #1f63b0;
     --map-invalid: #b42318;
+    --map-roof: #a9482f;
+    --map-route: #0b7f78;
+    --map-halo: #eef0e4;
+    --map-outline: #23211d;
     --heat-0: #f2eccb;
     --heat-1: #f0c35a;
     --heat-2: #e0742c;
@@ -43,25 +48,25 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
-      --accent: #8db4dc; --accent-fg: #10161c; --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-      --map-paper: #20261f; --map-grass: #3b4f30; --map-grass-dark: #33462a; --map-trampled: #6c6a44;
-      --map-trail: #9c7a3c; --map-track: #c49a5c; --map-hollow: #e2c58e; --map-crop: #6f6a34;
+      --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
+      --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5f6040;
+      --map-trail: #a7813f; --map-track: #e3c890; --map-hollow: #f7ecd2; --map-crop: #5f5b2c;
       --map-water: #1d3a57; --map-water-edge: #0d1d2e; --map-ford: #3f6488; --map-ink: #e6e1d2;
-      --map-building: #2b2f29; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
-      --map-walker-halo: #11140f; --map-fence: #e0c79e; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
-      --map-invalid: #ff7a6b; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
+      --map-building: #d9d2bd; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
+      --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
+      --map-invalid: #ff7a6b; --map-roof: #c8664a; --map-route: #f2b33d; --map-halo: #151916; --map-outline: #0e110d; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
-    --accent: #8db4dc; --accent-fg: #10161c; --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-    --map-paper: #20261f; --map-grass: #3b4f30; --map-grass-dark: #33462a; --map-trampled: #6c6a44;
-    --map-trail: #9c7a3c; --map-track: #c49a5c; --map-hollow: #e2c58e; --map-crop: #6f6a34;
+    --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
+    --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5f6040;
+    --map-trail: #a7813f; --map-track: #e3c890; --map-hollow: #f7ecd2; --map-crop: #5f5b2c;
     --map-water: #1d3a57; --map-water-edge: #0d1d2e; --map-ford: #3f6488; --map-ink: #e6e1d2;
-    --map-building: #2b2f29; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
-    --map-walker-halo: #11140f; --map-fence: #e0c79e; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
-    --map-invalid: #ff7a6b; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
+    --map-building: #d9d2bd; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
+    --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
+    --map-invalid: #ff7a6b; --map-roof: #c8664a; --map-route: #f2b33d; --map-halo: #151916; --map-outline: #0e110d; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
     color-scheme: dark;
   }
 
@@ -76,8 +81,8 @@
     box-sizing: border-box;
     height: 100%;
     display: grid;
-    grid-template-rows: auto 1fr;
-    gap: 10px;
+    grid-template-rows: auto auto 1fr;
+    gap: 8px;
     padding-block: 12px;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -98,14 +103,25 @@
   input[type="range"] { width: 120px; accent-color: var(--accent); }
   output { min-width: 3ch; display: inline-block; font-size: 13px; }
 
-  main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 14px; }
-  .map-wrap { min-height: 0; min-width: 0; display: flex; align-items: flex-start; justify-content: center; }
+  /* The map keeps its square size; the side panel takes the rest of the width, so there is no gutter beside the map. */
+  main { min-height: 0; min-width: 0; display: flex; gap: 16px; align-items: flex-start; }
+  .map-wrap { position: relative; flex: none; }
+  .statusbar { display: flex; flex-wrap: wrap; gap: 2px 16px; min-height: 1.4em; font-size: 13px; color: var(--muted); }
+  .statusbar #preview-line { color: var(--fg); }
+  .tip {
+    position: absolute; left: 0; top: 0; pointer-events: none; max-width: 260px; z-index: 2;
+    background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 3px;
+    padding: 3px 7px; font-size: 12px; line-height: 1.35; box-shadow: 0 1px 4px var(--shadow);
+  }
   canvas#map {
     display: block; touch-action: none; background: var(--map-paper);
     border: 1px solid var(--line); max-width: 100%;
   }
   canvas#map[data-tool="fence"], canvas#map[data-tool="bridge"], canvas#map[data-tool="erase"] { cursor: crosshair; }
-  aside { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
+  aside {
+    flex: 1 1 240px; min-width: 220px; max-height: 100%; overflow: auto; font-size: 13px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 22px; align-content: start;
+  }
   aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; }
   dt { color: var(--muted); }
@@ -124,12 +140,11 @@
   .heat-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
   .hint { color: var(--muted); margin: 0; }
   kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--line); border-radius: 2px; padding: 0 3px; }
-  .status { min-height: 1.4em; color: var(--muted); }
 
   @media (max-width: 760px) {
     .app { height: auto; min-height: 100%; }
-    main { grid-template-columns: minmax(0, 1fr); }
-    aside { overflow: visible; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+    main { flex-direction: column; align-items: stretch; }
+    aside { overflow: visible; max-height: none; flex: none; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
     input[type="range"] { width: 100px; }
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -141,7 +156,7 @@
     <h1>Tide &amp; Toll <span>Prototype 1: desire lines</span></h1>
     <div class="controls" role="toolbar" aria-label="Simulation controls">
       <div class="group">
-        <button id="btn-pause" type="button" aria-pressed="false" title="Pause (Space)">Pause</button>
+        <button id="btn-pause" type="button" aria-pressed="false" title="Pause (Space); pressed while paused">Pause</button>
       </div>
       <div class="group" role="group" aria-label="Speed">
         <span class="group-label">Speed</span>
@@ -162,15 +177,21 @@
         <button id="tool-erase" type="button" aria-pressed="false" title="Erase fences and bridges (E)">Erase</button>
       </div>
       <div class="group">
+        <button id="btn-preview" type="button" aria-pressed="true" title="Flow preview: show where walkers will go before you place or remove anything (P)">Flow preview</button>
         <button id="btn-overlay" type="button" aria-pressed="false" title="Wear overlay (W)">Wear overlay</button>
         <button id="btn-reset" type="button" title="Restart this map (R)">Reset</button>
         <button id="btn-newmap" type="button" title="Generate a new map (N)">New map</button>
       </div>
     </div>
   </header>
-  <main>
+  <div class="statusbar">
+    <span id="status" role="status" aria-live="polite"></span>
+    <span id="preview-line" hidden></span>
+  </div>
+  <main id="main">
     <div class="map-wrap" id="map-wrap">
       <canvas id="map" aria-label="Meadow map: villagers wear paths between houses, the well, the field and the market" role="img"></canvas>
+      <div class="tip" id="preview-tip" hidden></div>
     </div>
     <aside>
       <section>
@@ -209,8 +230,8 @@
       <section>
         <h2>How to play</h2>
         <p class="hint">Villagers walk from their houses to the well, the field and the market, and wear the grass into trails. Draw <b>fences</b> to push the trails aside, or lay a <b>footbridge</b> across the river. Unused paths grow back.</p>
-        <p class="hint status" id="status" role="status" aria-live="polite"></p>
-        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> <kbd>E</kbd> tools, <kbd>Esc</kbd> no tool, <kbd>W</kbd> overlay</p>
+        <p class="hint">With <b>Flow preview</b> on, a tool shows the typical routes that would change: dashed is now, solid is after.</p>
+        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> <kbd>E</kbd> tools, <kbd>Esc</kbd> no tool, <kbd>P</kbd> preview, <kbd>W</kbd> overlay, <kbd>R</kbd> reset, <kbd>N</kbd> new map</p>
       </section>
     </aside>
   </main>

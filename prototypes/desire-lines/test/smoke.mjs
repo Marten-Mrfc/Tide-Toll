@@ -55,7 +55,7 @@ console.log("\nCONTROLS (1280x860, light)");
 
   await page.click("#btn-pause");
   const p1 = await stats(); await page.waitForTimeout(600); const p2 = await stats();
-  check(p2.paused && p1.simTime === p2.simTime && (await pressed("btn-pause")) === "true" && (await page.textContent("#btn-pause")) === "Play", "Pause stops the clock and shows Play");
+  check(p2.paused && p1.simTime === p2.simTime && (await pressed("btn-pause")) === "true" && (await page.textContent("#btn-pause")) === "Pause", "Pause stops the clock; the button keeps its label and is pressed");
   await page.click("#btn-pause");
   await page.waitForTimeout(400);
   check(!(await stats()).paused && (await stats()).simTime > p2.simTime, "Play resumes");
@@ -92,6 +92,35 @@ console.log("\nCONTROLS (1280x860, light)");
   await page.mouse.move((from.x + to.x) / 2, from.y, { steps: 4 }); await page.mouse.move(to.x, to.y, { steps: 4 });
   await page.mouse.up();
   check((await stats()).fences === 10, `dragging draws a 10-cell fence (${(await stats()).fences})`);
+  // Pointer mapping honours the canvas border: the fence starts in the cell under the pointer.
+  check(await page.evaluate(([x, y]) => __tt.world.fence[y * 128 + x] === 1 && __tt.world.fence[y * 128 + x + 9] === 1, [spot.x, spot.y]), "the fence lands on the cells under the pointer");
+
+  // Flow preview: dragging a fence across the busiest trail shows changed routes and a readout before release.
+  check((await pressed("btn-preview")) === "true", "Flow preview is on by default");
+  await page.evaluate(() => { __tt.setSpeed(8); });
+  await page.waitForTimeout(4000);
+  await page.evaluate(() => { __tt.setSpeed(1); });
+  const busy = await page.evaluate(() => {
+    const w = __tt.world, fw = w.metrics.window(); let b = -1;
+    for (let c = 0; c < 128 * 128; c++) { const x = c % 128, y = (c / 128) | 0; if (!w.land[c] || w.fence[c] || Math.abs(x - w.map.riverX[y]) < 10 || x < 12 || x > 115 || y < 12 || y > 115) continue; if (b < 0 || fw[c] > fw[b]) b = c; }
+    return [b % 128, (b / 128) | 0];
+  });
+  const f0 = await stats();
+  const pa = await page.evaluate(([x, y]) => __tt.cellToClient(x - 6, y + 6), busy), pb = await page.evaluate(([x, y]) => __tt.cellToClient(x + 6, y - 6), busy);
+  await page.mouse.move(pa.x, pa.y); await page.mouse.down(); await page.mouse.move(pb.x, pb.y, { steps: 10 });
+  await page.waitForFunction(() => __tt.previewState().settled, null, { timeout: 3000 }).catch(() => {});
+  const ps = await page.evaluate(() => __tt.previewState());
+  check((await stats()).fences === f0.fences, "nothing is placed while dragging");
+  check(ps.text.length > 0 && ps.tipVisible && (await page.textContent("#preview-line")).includes(ps.text), `the preview shows a readout near the pointer and in the status bar ("${ps.text}", ${ps.changes} routes)`);
+  await page.screenshot({ path: join(shots, "preview-fence-drag.png") });
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  check((await stats()).fences === f0.fences && !(await page.evaluate(() => __tt.previewState().tipVisible)), "Escape cancels the drag and hides the preview");
+  await page.keyboard.press("p");
+  check((await pressed("btn-preview")) === "false", "key P turns the flow preview off");
+  await page.click("#btn-preview");
+  check((await pressed("btn-preview")) === "true", "the Flow preview button turns it back on");
+  await page.keyboard.press("f");
 
   // Footbridge: press B and click on the river away from the ford.
   await page.keyboard.press("b");

@@ -1,5 +1,7 @@
 // npm run perf: loads dist/index.html in headless Chromium and measures frame
-// times for 10 s at 1x and 8x, with 500 and then 200 walkers.
+// times for 10 s at 1x and 8x, with 500 and then 200 walkers (pass criteria),
+// then the same 500-walker runs under 4x CPU throttling (report only), and the
+// cost of a flow preview while a fence is dragged.
 // Note: headless rAF is capped at 60 Hz, so the frame interval cannot show
 // headroom above 60 fps; the in-page work time per frame shows the headroom.
 import { createRequire } from "node:module";
@@ -37,6 +39,34 @@ for (const walkers of [500, 200]) {
     rows.push({ walkers, speed, ...r, pass });
   }
 }
+// 4x CPU throttling (report only): the frame budget should keep frames short.
+const cdp = await page.context().newCDPSession(page);
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+const throttled = [];
+await page.evaluate(() => { __tt.reset(1); __tt.setWalkers(500); __tt.setSpeed(8); __tt.play(); });
+await page.waitForTimeout(5000);
+for (const speed of [1, 8]) {
+  await page.evaluate(s => __tt.setSpeed(s), speed);
+  await page.waitForTimeout(500);
+  await page.evaluate(() => __tt.perfStart());
+  await page.waitForTimeout(SECONDS * 1000);
+  throttled.push({ walkers: 500, speed, ...(await page.evaluate(() => __tt.perfStop())) });
+}
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+
+// Flow preview while dragging a fence (200 walkers, 1x): frame times with the preview computing.
+await page.evaluate(() => { __tt.reset(1); __tt.setWalkers(200); __tt.setSpeed(8); });
+await page.waitForTimeout(4000);
+await page.evaluate(() => __tt.setSpeed(1));
+await page.keyboard.press("f");
+const a = await page.evaluate(() => __tt.cellToClient(30, 40)), b = await page.evaluate(() => __tt.cellToClient(45, 60));
+await page.mouse.move(a.x, a.y); await page.mouse.down();
+await page.evaluate(() => __tt.perfStart());
+for (let i = 0; i <= 40; i++) { await page.mouse.move(a.x + ((b.x - a.x) * i) / 40, a.y + ((b.y - a.y) * i) / 40); await page.waitForTimeout(50); }
+await page.waitForTimeout(500);
+const drag = await page.evaluate(() => __tt.perfStop());
+const pstate = await page.evaluate(() => __tt.previewState());
+await page.mouse.up();
 await browser.close();
 
 console.log(`PERF (headless Chromium, 1280x860, ${SECONDS} s per run; rAF capped at 60 Hz)`);
@@ -45,5 +75,10 @@ for (const r of rows) {
   console.log(`${String(r.walkers).padStart(7)} ${String(r.speed + "x").padStart(5)} | ${r.fps.toFixed(1).padStart(5)} ${r.avgIntervalMs.toFixed(2).padStart(7)} ms ${r.worstIntervalMs.toFixed(1).padStart(8)} ms  ${String(r.longFrames).padStart(5)} | ` +
     `${r.avgWorkMs.toFixed(2).padStart(6)} ${r.p95WorkMs.toFixed(2).padStart(6)} ${r.worstWorkMs.toFixed(1).padStart(6)} | ${r.tickMs.toFixed(2).padStart(7)} (worst frame of ticks ${r.worstTickFrameMs.toFixed(1)}) | ${r.simSecondsPerSecond.toFixed(2).padStart(11)} | ${r.pass ? "PASS" : "FAIL"}`);
 }
+console.log("\n4x CPU throttling (report only; frame budget: at most 10 ms of sim work per frame, dropped sim time shows as sim s per s below the speed)");
+for (const r of throttled)
+  console.log(`${String(r.walkers).padStart(7)} ${String(r.speed + "x").padStart(5)} | ${r.fps.toFixed(1).padStart(5)} ${r.avgIntervalMs.toFixed(2).padStart(7)} ms ${r.worstIntervalMs.toFixed(1).padStart(8)} ms  ${String(r.longFrames).padStart(5)} | ` +
+    `${r.avgWorkMs.toFixed(2).padStart(6)} ${r.p95WorkMs.toFixed(2).padStart(6)} ${r.worstWorkMs.toFixed(1).padStart(6)} | ${r.tickMs.toFixed(2).padStart(7)} (worst frame of ticks ${r.worstTickFrameMs.toFixed(1)}, budget hit ${r.budgetHits}x) | ${r.simSecondsPerSecond.toFixed(2).padStart(11)}`);
+console.log(`\nFLOW PREVIEW while dragging a fence (200 walkers, 1x, 2 s): ${drag.fps.toFixed(1)} fps, work avg ${drag.avgWorkMs.toFixed(2)} ms, p95 ${drag.p95WorkMs.toFixed(2)} ms, worst ${drag.worstWorkMs.toFixed(1)} ms, worst frame gap ${drag.worstIntervalMs.toFixed(1)} ms; readout "${pstate.text}"`);
 console.log(`criteria: average >= 55 fps and no frame gap of 100 ms or more. Page errors: ${errors.length ? errors.join("; ") : "none"}`);
 if (!ok || errors.length) process.exitCode = 1;
