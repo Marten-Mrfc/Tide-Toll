@@ -311,17 +311,20 @@ export class World {
     return s;
   }
 
-  private footstep(c: number, dx: number, dy: number, d: number) {
+  /** Wear for entering cell c at point (x, y) while heading (dx, dy) / d. */
+  private footstep(c: number, x: number, y: number, dx: number, dy: number, d: number) {
     const P = PARAMS;
     if (this.land[c] && this.bridgeAt[c] < 0) {
       const I = P.wearPerStep;
       this.wear[c] += I * (1 - this.wear[c] / 100);
       // Side neighbours, perpendicular to the heading, widen the trail.
       if (d > 1e-9) {
-        const cx = (c % N) + 0.5, cy = ((c / N) | 0) + 0.5;
-        const px = -dy / d, py = dx / d;
+        // Measured from the walker's actual point, not the cell centre, so a
+        // diagonal walk wears the cells either side of the corner it crosses
+        // instead of leaving a checkerboard.
+        const px = (-dy / d) * 0.8, py = (dx / d) * 0.8;
         for (const s of [1, -1]) {
-          const sx = Math.floor(cx + px * s), sy = Math.floor(cy + py * s);
+          const sx = Math.floor(x + px * s), sy = Math.floor(y + py * s);
           if (!inside(sx, sy)) continue;
           const si = idx(sx, sy);
           if (si === c || !this.land[si] || this.fence[si]) continue;
@@ -372,7 +375,7 @@ export class World {
       if (c !== w.cell) {
         this.here[w.cell]--; this.here[c]++;
         w.cell = c;
-        this.footstep(c, dx, dy, d);
+        this.footstep(c, w.x, w.y, dx, dy, d);
         w.hasAim = false;
       }
       if (move >= d) w.hasAim = false;

@@ -25,7 +25,7 @@ export const PARAMS = {
   retrySimSec: 5, // a walker with no reachable destination waits this long
 
   // Wear. W in 0..100; gain W += I * (1 - W/100) on entering a cell.
-  wearPerStep: 1.2, // spec 0.75; research raised it to 1.0, the trunk-share sweep to 1.2
+  wearPerStep: 1.4, // spec 0.75; research raised it to 1.0, the 20-seed trunk-share sweep to 1.4
   sideShare: 0.35, // spec 0.15, research 0.25; share of I given to the two side neighbours
   // Ground-state thresholds: grass < 10 <= trampled < 25 <= trail < 50 <= track.
   // Hollow way needs W >= 85 held for hollowHoldSimSec.

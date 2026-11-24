@@ -1,0 +1,5 @@
+item,kind,source,licence,url,used_in,date_checked,verified
+esbuild,npm-dev-dependency,npm package esbuild 0.28.2 (devDependency),MIT,https://github.com/evanw/esbuild,"build.mjs bundles src/ui/main.ts into dist/index.html; test/smoke.mjs",2026-11-24,yes
+typescript,npm-dev-dependency,npm package typescript 7.0.2 (devDependency),Apache-2.0,https://github.com/microsoft/TypeScript,"typecheck script (tsc --noEmit); tsconfig.json",2026-11-24,yes
+@esbuild/linux-x64,npm-dev-dependency,npm package @esbuild/linux-x64 0.28.2 (transitive optional dependency of esbuild; platform binary),MIT,https://github.com/evanw/esbuild,esbuild native binary used by build step on linux-x64,2026-11-24,yes
+@typescript/typescript-linux-x64,npm-dev-dependency,npm package @typescript/typescript-linux-x64 7.0.2 (transitive optional dependency of typescript; platform binary),Apache-2.0,https://github.com/microsoft/TypeScript,tsc native binary used by typecheck on linux-x64,2026-11-24,yes

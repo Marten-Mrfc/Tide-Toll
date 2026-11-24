@@ -23,7 +23,7 @@ const template = readFileSync(join(here, "src/page.html"), "utf8");
 const marker = "/*BUNDLE*/";
 if (!template.includes(marker)) throw new Error("page.html has no bundle marker");
 const html = template.replace(marker, () => js);
-if (/<!doctype|<html|<head|<body/i.test(html)) throw new Error("page must not hold doctype/html/head/body tags");
+if (/<!doctype|<(html|head|body)[\s>]/i.test(html)) throw new Error("page must not hold doctype/html/head/body tags");
 mkdirSync(join(here, "dist"), { recursive: true });
 writeFileSync(join(here, "dist/index.html"), html);
 console.log(`wrote dist/index.html (${(html.length / 1024).toFixed(1)} KB)`);
