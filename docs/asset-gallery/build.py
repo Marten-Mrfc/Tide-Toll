@@ -165,7 +165,9 @@ for name, label in ICONS:
     cells = "".join(f'<span class="ico s{s}" style="--src:url(\'{src}\')"></span>' for s in (20, 32, 48))
     icon_rows.append(f"""<li><div class="pair"><div class="on-paper">{cells}</div><div class="on-ink">{cells}</div></div>
 <p><b>{E(label)}</b> <code>{name}.svg</code> <span class="muted">{E(LEDGER[f"assets/icons/{name}.svg"]["licence"])}, icons.py</span></p></li>""")
-icon_facts = ledger_facts("assets/icons/tool-fence.svg")
+_ir = LEDGER["assets/icons/tool-fence.svg"]
+icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_ir["source"])}</dd><dt>Licence</dt><dd>{E(_ir["licence"])}</dd>'
+              f'<dt>Verified</dt><dd>{E(_ir["verified"])}, {E(_ir["date_checked"])}</dd></dl>')
 
 # ---------------------------------------------------------------- fonts
 FONTS = [
@@ -291,7 +293,9 @@ counts = {}
 for r in LEDGER.values():
     counts[r["kind"]] = counts.get(r["kind"], 0) + 1
 asset_kinds = ["model", "texture", "icon", "font", "sound", "music", "ambience"]
-count_line = ", ".join(f"{counts.get(k, 0)} {k if counts.get(k, 0) == 1 else k + 's'}" for k in asset_kinds)
+LABEL = {"model": "models", "texture": "textures", "icon": "icons", "font": "fonts", "sound": "sound effects",
+         "music": "music files", "ambience": "ambience loop"}
+count_line = ", ".join(f"{counts.get(k, 0)} {LABEL[k]}" for k in asset_kinds)
 n_files = sum(counts.get(k, 0) for k in asset_kinds)
 
 PAL = [("Paper", "#F2EAD8"), ("Ink", "#2B2620"), ("Meadow", "#7FA35B"), ("Bent grass", "#A9B86E"),
@@ -428,7 +432,7 @@ PAGE = f"""<title>Tide &amp; Toll Asset Gallery</title>
   <header><h2>Icons</h2>
   <p>{len(ICONS)} SVGs on a 24-unit grid, one colour (Ink) with 2-unit round strokes. Shown at 20, 32 and 48 px on Paper and on Ink. Placement tools are named <code>tool-*</code>, the rest <code>ui-*</code>.</p></header>
   <ul class="icons">{"".join(icon_rows)}</ul>
-  <article class="card"><div class="body"><h3>Ledger, all icons</h3>{icon_facts}</div></article>
+  <article class="card"><div class="body"><h3>Ledger, the same for all 14 icons</h3>{icon_facts}</div></article>
 </section>
 
 <section id="fonts">
