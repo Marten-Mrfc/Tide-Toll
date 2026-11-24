@@ -39,6 +39,8 @@ public sealed partial class World
     /// <summary>Trips out per (house, destination) pair, decaying; index home * Buildings.Length + dest.</summary>
     public ReadOnlySpan<float> TripRate => _tripRate;
 
+    /// <summary>Walkers walking on each cell right now (Out or Back).</summary>
+    public ReadOnlySpan<ushort> WalkersOnCell => _here;
     public ReadOnlySpan<Walker> Walkers => new(_walkers, 0, _walkerCount);
     public int WalkerCount => _walkerCount;
     public ReadOnlySpan<Building> Buildings => _map.Buildings;
@@ -80,6 +82,19 @@ public sealed partial class World
             Year = (int)Math.Floor(_time / (_p.SeasonSimSec * 4)) + 1,
             FirstTrailTime = _metrics.FirstTrailTime,
         };
+    }
+
+    private FlowPredictor? _predictor;
+
+    /// <summary>
+    /// Flow preview for a hypothetical edit, computed in one go with a predictor this world keeps (the toy's
+    /// previewFlows). Read-only: it never changes the run. The game can instead own a <see cref="FlowPredictor"/>
+    /// and spread the work over frames with Begin and Step.
+    /// </summary>
+    public FlowPreview PreviewFlows(in WhatIf change, int maxPairs = 5)
+    {
+        _predictor ??= new FlowPredictor(this);
+        return _predictor.Compute(change, maxPairs);
     }
 
     // Internal access for the flow preview (same assembly), which must never write to these.

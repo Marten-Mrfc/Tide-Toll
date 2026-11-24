@@ -11,7 +11,10 @@
 # *.py files directly in it (not in sub-folders, and not names starting with "_"), run in name order from the
 # repository root with PYTHONPATH=assets/src, so `from common import ...` works. Executable *.sh files there
 # run too. A group with no generators yet is skipped. Not groups: common, ledger-rows, contact-sheets.
-# The ledger check counts the not-yet-merged fragment rows in assets/src/ledger-rows/ (check-ledger.py --fragments).
+# Generators write their ledger rows to build/ledger-rows/<group>.csv (scratch; cleared here before the group
+# runs), never to tracked files, unless ASSET_LEDGER_FRAGMENTS=1 is set (then assets/src/ledger-rows/).
+# The ledger check counts those rows and any fragment rows (check-ledger.py --fragments --build) and lists the
+# ones LEDGER.csv lacks; merge them with: python3 tools/merge-ledger-rows.py --build --prune
 # Exits non-zero if a generator or the ledger check fails (every generator still runs).
 set -uo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,7 +26,7 @@ for a in "$@"; do
   case "$a" in
     --no-check) CHECK=0 ;;
     --sheets) SHEETS=1 ;;
-    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     --*) echo "unknown option $a"; exit 2 ;;
     *) GRPS+=("${a%/}") ;;
   esac
@@ -60,6 +63,7 @@ for g in ${GRPS[@]+"${GRPS[@]}"}; do
   done
   shopt -u nullglob
   if [ ${#gens[@]} -eq 0 ]; then echo "-- group $g: no generators yet (skipped)"; continue; fi
+  rm -f "build/ledger-rows/$g.csv"
   IFS=$'\n' gens=($(printf '%s\n' "${gens[@]}" | sort)); unset IFS
   for f in "${gens[@]}"; do run "$f"; done
 done
@@ -74,7 +78,7 @@ fi
 
 if [ "$CHECK" = 1 ]; then
   echo "-- ledger (with fragments)"
-  python3 tools/check-ledger.py --fragments || FAILED=1
+  python3 tools/check-ledger.py --fragments --build || FAILED=1
 fi
 echo
 if [ "$FAILED" = 0 ]; then echo "BUILD ASSETS PASSED ($RAN generators)"; else echo "BUILD ASSETS FAILED"; fi

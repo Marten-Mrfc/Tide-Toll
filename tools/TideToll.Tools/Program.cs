@@ -1,0 +1,138 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using TideToll.Sim;
+using TideToll.Sim.Testing;
+
+namespace TideToll.Tools;
+
+/// <summary>
+/// Headless runner for TideToll.Sim. Commands:
+///   run   [--seed 1] [--walkers 200] [--days 30] [--every 5]   run a town and print its metrics
+///   bench [--seed 1] [--budget-ms 5] [--p99-budget-ms 25]      ms per tick at 200 and 500 walkers (build in Release)
+///   gate  [--quick] [--threads 3] [--golden path]              the toy's gate tables, gate checks and the comparison with the toy
+///   checks                                                      the toy's reroute, bridge, robustness, determinism and preview checks
+/// Exit code 1 when a check fails or a budget is exceeded.
+/// </summary>
+public static class Program
+{
+    public static int Main(string[] args)
+    {
+        string cmd = args.Length > 0 ? args[0] : "help";
+        var opt = ParseOptions(args.Skip(1).ToArray());
+        switch (cmd)
+        {
+            case "run": return RunTown(opt);
+            case "bench": return Bench(opt);
+            case "gate": return Gate(opt);
+            case "checks": return Checks();
+            default:
+                Console.WriteLine("usage: TideToll.Tools run|bench|gate|checks [options]  (see Program.cs)");
+                return cmd is "help" or "-h" or "--help" ? 0 : 2;
+        }
+    }
+
+    private static Dictionary<string, string> ParseOptions(string[] a)
+    {
+        var d = new Dictionary<string, string>();
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!a[i].StartsWith("--")) throw new ArgumentException($"unexpected argument {a[i]}");
+            string key = a[i][2..];
+            d[key] = i + 1 < a.Length && !a[i + 1].StartsWith("--") ? a[++i] : "true";
+        }
+        return d;
+    }
+
+    private static int Int(Dictionary<string, string> o, string k, int def) => o.TryGetValue(k, out var v) ? int.Parse(v) : def;
+    private static double Dbl(Dictionary<string, string> o, string k, double def) => o.TryGetValue(k, out var v) ? double.Parse(v, System.Globalization.CultureInfo.InvariantCulture) : def;
+
+    private static int RunTown(Dictionary<string, string> o)
+    {
+        int seed = Int(o, "seed", 1), walkers = Int(o, "walkers", 200), days = Int(o, "days", 30), every = Int(o, "every", 5);
+        var w = new World(seed, walkers);
+        Console.WriteLine($"seed {seed}, {w.WalkerCount} walkers, {w.Buildings.Length} buildings ({w.Houses.Length} houses), {days} in-game days");
+        Console.WriteLine(" day | trunk share | trunk D | detour | coverage | trips in window | walkers out | first trail");
+        var sw = Stopwatch.StartNew();
+        for (int d = 1; d <= days; d++)
+        {
+            ToyHarness.Run(w, 1);
+            if (d % every == 0 || d == days)
+            {
+                var s = w.Stats();
+                Console.WriteLine($"{d,4} | {ToyHarness.Pct(s.TrunkShare),11} | {ToyHarness.Pct(s.TrunkShareD),7} | {ToyHarness.F(s.DetourRatio, 3),6} | {ToyHarness.Pct(s.TrailCoverage),8} | {s.TripsInWindow,15} | {w.WalkersOut(),11} | {(s.FirstTrailTime < 0 ? "none" : ToyHarness.F(s.FirstTrailTime, 1) + " s")}");
+            }
+        }
+        Console.WriteLine($"{w.Ticks} ticks in {sw.Elapsed.TotalSeconds:F1} s wall time ({sw.Elapsed.TotalMilliseconds / w.Ticks:F3} ms per tick); wear grid FNV {ToyHarness.Fnv(w.Wear):x8}");
+        return 0;
+    }
+
+    private static int Bench(Dictionary<string, string> o)
+    {
+        int seed = Int(o, "seed", 1);
+        double budget = Dbl(o, "budget-ms", 5), p99Budget = Dbl(o, "p99-budget-ms", 25);
+        Console.WriteLine($"tick benchmark, seed {seed}, 600 warm-up ticks then 600 timed ({(TickBench.IsRelease ? "Release" : "Debug: numbers are not representative")}, {Environment.ProcessorCount} cores, shared machine)");
+        bool ok = true;
+        foreach (int walkers in new[] { 200, 500 })
+        {
+            var r = TickBench.Measure(seed, walkers);
+            Console.WriteLine(TickBench.Line(r));
+            if (r.MeanMs > budget || r.P99Ms > p99Budget || r.AllocatedBytes != 0) ok = false;
+        }
+        Console.WriteLine(ok ? $"BENCH PASS (budget: mean under {budget} ms, p99 under {p99Budget} ms, 0 bytes allocated)" : $"BENCH FAIL (budget: mean under {budget} ms, p99 under {p99Budget} ms, 0 bytes allocated)");
+        return ok ? 0 : 1;
+    }
+
+    private static int Gate(Dictionary<string, string> o)
+    {
+        bool quick = o.ContainsKey("quick");
+        int threads = Int(o, "threads", Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1)));
+        int n = quick ? 4 : 20;
+        var sw = Stopwatch.StartNew();
+        var jobs = GateTables.Range(101, n).ToList();
+        if (!quick) jobs.AddRange(GateTables.Range(1, 20).Concat(GateTables.Range(201, 20)).Concat(GateTables.Range(1, 5, 500)));
+        var rows = GateTables.RunSeeds(jobs, threads);
+        List<SeedRow> Pick(int a, int b, int walkers = 200) => rows.Where(r => r.Seed >= a && r.Seed <= b && r.Walkers == walkers).ToList();
+        var gate = Pick(101, 120);
+        GateTables.PrintTable(Console.Out, $"GATE G3 (held-out seeds 101 to {100 + n}): every daily sample must lie within 30% to 70%", gate);
+        if (!quick)
+        {
+            GateTables.PrintTable(Console.Out, "TUNING SET (seeds 1 to 20, report only)", Pick(1, 20));
+            GateTables.PrintTable(Console.Out, "FINAL EXAM (seeds 201 to 220, report only, never tuned on)", Pick(201, 220));
+            GateTables.PrintTable(Console.Out, "500 WALKERS (seeds 1 to 5, report only)", Pick(1, 5, 500));
+        }
+        var log = new CheckLog();
+        string goldenPath = o.TryGetValue("golden", out var g) ? g : ToyGolden.DefaultPath();
+        var golden = ToyGolden.Load(goldenPath);
+        if (!quick) ToyComparison.Compare(golden.Table(), gate, log);
+        Console.WriteLine(log);
+        Console.WriteLine("\nGATE CHECKS");
+        var gl = new CheckLog();
+        GateTables.GateChecks(gate, gl);
+        Console.WriteLine(gl);
+        int failed = log.Checks.Count(c => !c.Ok) + gl.Checks.Count(c => !c.Ok);
+        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads){(quick ? " [quick mode: 4 gate seeds, no report tables]" : "")}; toy golden from commit {golden.ToyCommit}");
+        return failed > 0 ? 1 : 0;
+    }
+
+    private static int Checks()
+    {
+        var sw = Stopwatch.StartNew();
+        var log = new CheckLog();
+        log.Log("\nCHECKS");
+        ToyChecks.Reroute(1, log);
+        ToyChecks.Reroute(2, log);
+        ToyChecks.BridgeCheck(1, log);
+        ToyChecks.BridgeCheck(2, log);
+        ToyChecks.Robustness(log);
+        ToyChecks.Determinism(log);
+        ToyPreviewChecks.Isolation(log);
+        ToyPreviewChecks.Basics(log);
+        ToyPreviewChecks.Agreement(new[] { 1, 2, 3, 4, 5, 6 }, log);
+        Console.WriteLine(log);
+        int failed = log.Checks.Count(c => !c.Ok);
+        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} ({log.Checks.Count} checks) in {sw.Elapsed.TotalSeconds:F0} s");
+        return failed > 0 ? 1 : 0;
+    }
+}

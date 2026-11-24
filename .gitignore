@@ -15,3 +15,7 @@ TestResults/
 
 # Build output: exports, screenshots, check logs
 build/
+
+# Python
+__pycache__/
+*.pyc

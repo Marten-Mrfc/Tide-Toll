@@ -228,13 +228,21 @@ def _pad4(b, pad=b"\0"):
     return b + pad * (-len(b) % 4)
 
 
-def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common/glb.py"):
-    """Write a .glb. parts = a Mesh, or a list of (node_name, Mesh) for separate nodes (all at the origin,
-    transforms applied). Returns {'tris', 'min', 'max', 'size', 'colours'}. Raises if max_tris is exceeded.
-    Output bytes depend only on the input, so generators are reproducible."""
+INK_SOFT = 1.5     # crease threshold for ink="soft" models (the default pass uses 0.45; see outline_screen.gdshader)
+
+
+def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common/glb.py", ink=None):
+    """Write a .glb. parts = a Mesh, or a list of (node_name, Mesh) or (node_name, Mesh, ink) for separate nodes
+    (all at the origin, transforms applied). Returns {'tris', 'min', 'max', 'size', 'colours'}. Raises if max_tris
+    is exceeded. Output bytes depend only on the input, so generators are reproducible.
+    ink="soft" marks the nodes (glTF node extras {"ink": "soft"}, which Godot imports as node metadata "extras")
+    for the soft-crease ink pass: many-faceted organic shapes (tree crowns, crop rows) whose facet creases would
+    otherwise carry more ink than the houses. The renderer draws them into stencil 1 and inks creases there only
+    above INK_SOFT; silhouettes are inked as usual."""
     if isinstance(parts, Mesh):
         parts = [(Path(path).stem, parts)]
-    total = sum(m.tri_count() for _, m in parts)
+    parts = [(p[0], p[1], p[2] if len(p) > 2 else ink) for p in parts]
+    total = sum(m.tri_count() for _, m, _ in parts)
     if max_tris is not None and total > max_tris:
         raise ValueError(f"{path}: {total} triangles, budget {max_tris}")
     bin_chunks, views, accessors, meshes, nodes = [], [], [], [], []
@@ -262,7 +270,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         return len(accessors) - 1
 
     lo, hi = np.full(3, np.inf), np.full(3, -np.inf)
-    for name, m in parts:
+    for name, m, node_ink in parts:
         if not m.tris:
             raise ValueError(f"part {name!r} is empty")
         pos = np.array([p for t in m.tris for p in t[:3]], np.float32)
@@ -279,7 +287,10 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
                                "TEXCOORD_0": add_acc(uv, "VEC2", 34962)},
                 "indices": add_acc(idx, "SCALAR", 34963), "material": 0, "mode": 4}
         meshes.append({"name": name, "primitives": [prim]})
-        nodes.append({"name": name, "mesh": len(meshes) - 1})
+        node = {"name": name, "mesh": len(meshes) - 1}
+        if node_ink:
+            node["extras"] = {"ink": node_ink}
+        nodes.append(node)
     img_view = add_view(P.atlas_png_bytes())
     gltf = {"asset": {"version": "2.0", "generator": generator}, "scene": 0,
             "scenes": [{"nodes": list(range(len(nodes)))}], "nodes": nodes, "meshes": meshes,
@@ -298,7 +309,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         f.write(struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
         f.write(struct.pack("<II", len(js), 0x4E4F534A) + js)
         f.write(struct.pack("<II", len(binb), 0x004E4942) + binb)
-    used = sorted({t[3] for _, m in parts for t in m.tris})
+    used = sorted({t[3] for _, m, _ in parts for t in m.tris})
     return {"tris": total, "min": [round(float(x), 3) for x in lo], "max": [round(float(x), 3) for x in hi],
             "size": [round(float(x), 3) for x in hi - lo], "colours": used}
 

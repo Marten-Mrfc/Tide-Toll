@@ -5,9 +5,9 @@
  "mode": "Dorian (D E F G A B C)",
  "metre": "3/4",
  "bpm": 64,
- "bars": 8,
- "loop_samples_48k": 1080000,
- "loop_seconds": 22.5,
+ "bars": 16,
+ "loop_samples_48k": 2160000,
+ "loop_seconds": 45.0,
  "feel": "free and breathing: onsets humanised by +-12 ms, notes held 93% of their length",
  "bell_motif": [
   "D5",
@@ -16,6 +16,7 @@
   "A5"
  ],
  "range": "D5-B5 (a major sixth)",
+ "form": "8 bars, then the same 8 bars again with a small variation in bars 11, 14 and 15 (45 s loop)",
  "rules": [
   "mostly stepwise",
   "spans a sixth",
@@ -37,6 +38,14 @@
   "G5:1 A5:1 G5:1",
   "E5:2 F5:1",
   "E5:1 D5:1 E5:1",
+  "D5:3",
+  "D5:1 E5:1 G5:1",
+  "A5:3",
+  "B5:2 A5:1",
+  "A5:2 E5:1",
+  "G5:1 A5:1 G5:1",
+  "E5:1 G5:1 F5:1",
+  "E5:2 D5:1",
   "D5:3"
  ],
  "pipe": [
@@ -165,6 +174,125 @@
    "note": "D5",
    "beats": 3,
    "midi": 74
+  },
+  {
+   "bar": 9,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 1,
+   "midi": 74
+  },
+  {
+   "bar": 9,
+   "beat": 2.0,
+   "note": "E5",
+   "beats": 1,
+   "midi": 76
+  },
+  {
+   "bar": 9,
+   "beat": 3.0,
+   "note": "G5",
+   "beats": 1,
+   "midi": 79
+  },
+  {
+   "bar": 10,
+   "beat": 1.0,
+   "note": "A5",
+   "beats": 3,
+   "midi": 81
+  },
+  {
+   "bar": 11,
+   "beat": 1.0,
+   "note": "B5",
+   "beats": 2,
+   "midi": 83
+  },
+  {
+   "bar": 11,
+   "beat": 3.0,
+   "note": "A5",
+   "beats": 1,
+   "midi": 81
+  },
+  {
+   "bar": 12,
+   "beat": 1.0,
+   "note": "A5",
+   "beats": 2,
+   "midi": 81
+  },
+  {
+   "bar": 12,
+   "beat": 3.0,
+   "note": "E5",
+   "beats": 1,
+   "midi": 76
+  },
+  {
+   "bar": 13,
+   "beat": 1.0,
+   "note": "G5",
+   "beats": 1,
+   "midi": 79
+  },
+  {
+   "bar": 13,
+   "beat": 2.0,
+   "note": "A5",
+   "beats": 1,
+   "midi": 81
+  },
+  {
+   "bar": 13,
+   "beat": 3.0,
+   "note": "G5",
+   "beats": 1,
+   "midi": 79
+  },
+  {
+   "bar": 14,
+   "beat": 1.0,
+   "note": "E5",
+   "beats": 1,
+   "midi": 76
+  },
+  {
+   "bar": 14,
+   "beat": 2.0,
+   "note": "G5",
+   "beats": 1,
+   "midi": 79
+  },
+  {
+   "bar": 14,
+   "beat": 3.0,
+   "note": "F5",
+   "beats": 1,
+   "midi": 77
+  },
+  {
+   "bar": 15,
+   "beat": 1.0,
+   "note": "E5",
+   "beats": 2,
+   "midi": 76
+  },
+  {
+   "bar": 15,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1,
+   "midi": 74
+  },
+  {
+   "bar": 16,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 3,
+   "midi": 74
   }
  ],
  "frame_drum": [
@@ -207,6 +335,81 @@
    "bar": 8,
    "beat": 2.5,
    "stroke": "tek"
+  },
+  {
+   "bar": 9,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 9,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 10,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 10,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 11,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 11,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 12,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 12,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 13,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 13,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 14,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 14,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 15,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 15,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 16,
+   "beat": 1,
+   "stroke": "dum"
   }
  ],
  "lyre": [
@@ -235,6 +438,36 @@
   },
   {
    "bar": 7,
+   "beat": 1,
+   "notes": [
+    "A3"
+   ]
+  },
+  {
+   "bar": 9,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 11,
+   "beat": 1,
+   "notes": [
+    "A3"
+   ]
+  },
+  {
+   "bar": 13,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 15,
    "beat": 1,
    "notes": [
     "A3"

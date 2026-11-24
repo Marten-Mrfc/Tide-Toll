@@ -4,16 +4,20 @@
 # one by 180 degrees) and repeat footbridge-span every 2 m between them.
 #   footbridge-span  2 m (along Z) x 2 m (X) module: four deck planks with gaps, two stringers, a pair of piles in
 #                    the middle going down into the water, rail posts at both module ends (coincident with the next
-#                    module's, identical, so nothing flickers) and a hand rail at 1.2 m plus a knee rail.
+#                    module's, identical, so nothing flickers) and a hand rail whose top is 1.2 m above the deck,
+#                    flush with the post tops, plus a knee rail at 0.6 m.
 #   footbridge-end   2 x 2 m bank landing: a plank ramp rising from the ground at +Z (the bank side, the front) to
 #                    the deck height at -Z where the first span starts, on an earth wedge, with sloping rails.
 # y = 0 is the bank / water surface; the deck top is at 0.6 m, the piles reach 0.8 m below the water surface.
+# Heights match the pipeline table ("1.2 rails"), which measures rails from the deck: rails and posts end 1.2 m
+# above the deck, so 1.8 m above the water overall (the table's note says so since 2026-11-24).
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import glb, ledger, asset_path
 from _kit import beam
 
 DECK, PLANK_T, RAIL_X = 0.6, 0.14, 0.92
+RAIL_H = 1.2          # top of hand rail and posts above the deck (pipeline table)
 WOOD, PLANK, RAIL = "Mud", "Trail earth", "Packed earth"
 
 
@@ -21,8 +25,8 @@ def rails(m, z0, z1, y0, y1):
     """Rail posts at z0 and z1 on both sides, hand rail and knee rail between (y0/y1 = deck height at z0/z1)."""
     for x in (-RAIL_X, RAIL_X):
         for z, y in ((z0, y0), (z1, y1)):
-            m.add_box((x, y - 0.05, z), (0.16, 1.2 - 0.0 + 0.05, 0.16), WOOD, bottom=False)
-        beam(m, (x, y0 + 1.1, z0), (x, y1 + 1.1, z1), 0.13, 0.13, RAIL)
+            m.add_box((x, y - 0.05, z), (0.16, RAIL_H + 0.05, 0.16), WOOD, bottom=False)
+        beam(m, (x, y0 + RAIL_H - 0.065, z0), (x, y1 + RAIL_H - 0.065, z1), 0.13, 0.13, RAIL)
         beam(m, (x, y0 + 0.6, z0), (x, y1 + 0.6, z1), 0.1, 0.1, RAIL)
 
 

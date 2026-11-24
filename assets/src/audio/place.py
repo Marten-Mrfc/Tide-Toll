@@ -2,12 +2,15 @@
 # Placing a fence or footbridge segment (Hamlet: woven wattle on stakes): one soft, pitched wooden knock as a stake
 # is tapped home, with a little rustle of the woven withies settling. The knock is a struck wooden stake (modal
 # synthesis: a few inharmonic partials that die within a tenth of a second), excited by a felt-soft mallet.
+# Second round (2026-11-24): the guide's UI lane is 2 to 4 kHz, so each knock also has the bright crack of the
+# mallet on the stake's dry end grain: three short partials at about 2.3, 2.9 and 3.5 kHz (fixed, whatever the
+# pitch) that die within 30 ms, so a place reads as a crisp UI tick on top of the soft pitched knock.
 # Pitched into the Hamlet's D Dorian over the D drone; the game can pick the pitch per segment:
 #   01 D4, 02 E4, 03 G4, 04 A4, 05 B4, 06 D5.
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 import numpy as np
 from common import audio as A, ledger, asset_path
-from _synth import modal, burst, crackles, place_at, level, report
+from _synth import modal, burst, crackles, place_at, level, report, band_energy
 
 TARGET = -22.0
 PITCHES = ["D4", "E4", "G4", "A4", "B4", "D5"]
@@ -26,6 +29,10 @@ def knock(rng, f0):
     rustle = crackles(rng, dur, int(rng.integers(5, 9)), start=0.015, spread=0.16, lo=1800, hi=4200,
                       length=0.004, gain=(0.05, 0.14))
     x += rustle
+    crack = modal(np.array([2300.0, 2900.0, 3500.0]) * rng.uniform(0.97, 1.03, 3), [0.55, 0.45, 0.3],
+                  [0.03, 0.022, 0.015], dur, rng.uniform(0, 2 * np.pi, 3))
+    crack *= np.minimum(np.arange(len(crack)) / (0.0008 * A.SR), 1)
+    x += crack
     return A.fade(A.lowpass(x, 4000, 4), 0.0005, 0.12)
 
 
@@ -36,6 +43,7 @@ for i, name in enumerate(PITCHES, start=1):
     x = level(knock(rng, f0), TARGET - 1.5 * (f0 > 400))                 # higher knocks sound louder: trim them
     out = A.write_wav(asset_path(f"audio/sfx/place-{i:02d}.wav"), x)
     f = A.estimate_f0(x, f0 * 0.9, f0 * 1.1)
-    report(out, f"{name}: measured {f:.1f} Hz ({1200 * np.log2(f / f0):+.0f} c)", fmax=6000)
+    report(out, f"{name}: measured {f:.1f} Hz ({1200 * np.log2(f / f0):+.0f} c), 2-4 kHz {band_energy(x, 2000, 4000):.0%}",
+           fmax=6000)
     ledger.add("audio", out, kind="sound", generator=__file__, verified=True, seed=seed,
                used_in=f"Tools: place fence or footbridge segment, soft wattle-stake knock pitched {name}")

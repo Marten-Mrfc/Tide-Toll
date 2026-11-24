@@ -2,7 +2,10 @@
 # Villager (Art tab: "head dot and teardrop body with an ink outline"; no faces, no rig; shader bobbing; outfits are
 # palette swaps on one body mesh). Drawn 1.5x life size: 1.0 x 1.0 m footprint, 2.6 m to the top of the head.
 # villager.glb has two nodes so a shader can bob and sway them: "body" (teardrop tunic with a shoulder cape and a hood point
-# down the back, feet, a belt and a satchel on the front +Z, so the walking direction reads) and "head" (the head dot).
+# down the back, feet, a belt and a satchel on the front +Z) and "head" (the head dot).
+# Facing cue from above (second round, 2026-11-24): a pale pack on the back (-Z) that sticks out past the hem and the
+# cape, so the top view is a round tunic with a light bump behind it, plus the head dot set a little forward (+Z):
+# the villager faces away from the pack. From the side the pack is a box on the back.
 # Cargo (Art tab: round sack = grain, square bale = wool, long bar = timber, folded square = cloth) is carried above
 # the head; each cargo file is one node with its origin at its bottom centre: attach it at (0, 2.6, 0) (top of the head).
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
@@ -12,6 +15,7 @@ from _kit import loft, ngon, beam
 
 SEG = 7
 TUNIC, CAPE, SKIN, BELT = "Brick", "Soot brick", "Limewash", "Packed earth"
+PACK = "Reed and thatch"
 CARRY_Y = 2.6
 
 
@@ -39,13 +43,16 @@ def body():
     # hood point hanging down the back (-Z): shows which way the villager faces
     beam(m, (0, 1.6, -0.22), (0, 1.1, -0.43), 0.2, 0.14, CAPE)
     # satchel on the front (+Z), proud of the tunic
-    m.add_box((0.12, 0.6, 0.42), (0.3, 0.28, 0.14), BELT, bottom=BELT)
+    m.add_box((0.12, 0.6, 0.4), (0.3, 0.28, 0.1), BELT, bottom=BELT)
+    # back pack (-Z): the facing cue from above, a pale bundle with a dark strap, out past the hem (r 0.48)
+    m.add_box((0, 0.85, -0.43), (0.56, 0.75, 0.22), PACK, bottom=PACK)
+    m.add_box((0, 1.6, -0.36), (0.6, 0.14, 0.1), BELT, bottom=False)                # strap over the shoulders
     return m
 
 
 def head():
     m = glb.Mesh()
-    m.add_sphere((0, 2.24, 0), 0.36, SKIN, rings=3, segments=7)
+    m.add_sphere((0, 2.24, 0.06), 0.36, SKIN, rings=3, segments=7)
     return m
 
 

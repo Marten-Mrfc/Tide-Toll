@@ -1,70 +1,90 @@
-# python3 assets/src/2d/icons.py  ->  assets/icons/tool-*.svg and ui-*.svg (24 x 24 viewBox, one colour: Ink),
-#   preview: assets/src/2d/previews/icons-preview.png (also build/2d/): every icon at 20, 40 and 80 px,
-#   on Paper (as shipped) and on Ink (recoloured to Paper, to show that the single colour tints cleanly).
+# python3 assets/src/2d/icons.py  ->  assets/icons/tool-*.svg and ui-*.svg (24 x 24 viewBox),
+#   preview: assets/src/2d/previews/icons-preview.png (also build/2d/): every icon at 20, 40 and 80 px, rendered
+#   from the real files (no recolouring, no masks) on Paper (top block) and on Ink (bottom block).
 # Free sources: Kenney's CC0 icon sets are blocked from the build container; the permissive npm sets
 # (@phosphor-icons/core MIT, lucide-static ISC) are generic UI glyphs, not the physical-object tool style the
 # Art tab asks for, so the icons are drawn here as code. Nothing is copied from those sets.
 #
-# Style: hand-drawn ink. Every straight edge is drawn as a slightly bowed quadratic curve (fixed seed per
-# icon), 2-unit Ink strokes with round caps and joins (docs/asset-pipeline.md), solid shapes filled with the
-# same Ink, so each file holds exactly one colour (#2B2620) on a transparent ground. To tint in the UI, either
-# swap that one hex at load time or draw the icon through a mask (alpha) shader.
+# Drawing language (one for all 14, second round, 2026-11-24): crisp geometry, like a stamped map symbol.
+#   * Every element is a CLOSED shape: Paper fill (#F2EAD8) inside a 2-unit Ink outline (#2B2620) with round
+#     joins and caps (docs/asset-pipeline.md). Lines that would be open strokes (rails, sound waves, arrows) are
+#     drawn as closed bands at least 3.4 units wide, so there is Paper inside them too.
+#   * The only other fill is Ink, for small accents that sit INSIDE a Paper shape (the plus on the new-map page).
+#   * One stroke weight: 2 units in the 24-unit viewBox (2 px at the native 24 px), on every element.
+# So an icon reads on light grounds by its ink outline and on dark grounds by its paper body, with no recolouring;
+# the narrowest paper part is about 1.4 units, which still shows at 20 px. svg.lint (with icon_style=True)
+# enforces the stroke weight, the closed paper shapes and the colours.
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
-import zlib
+import math
 import numpy as np
 from common import svg, png, ledger, palette as P, asset_path, ROOT
 
 INK = "#" + P.hex_of("Ink")
+PAPER = "#" + P.hex_of("Paper")
+W = 2      # the one stroke weight
+
+
+def f(v):
+    s = f"{v:.2f}".rstrip("0").rstrip(".")
+    return "0" if s in ("-0", "") else s
 
 
 class Icon:
     def __init__(self, name):
         self.name = name
-        self.rng = np.random.default_rng(zlib.crc32(name.encode()))     # stable per-icon seed
         self.els = []
 
-    # -- hand-drawn edge: quadratic with its control point pushed a little off the chord
-    def _seg(self, p, q, bow=None):
-        p, q = np.array(p, float), np.array(q, float)
-        d = q - p
-        L = float(np.hypot(*d))
-        if L < 1e-6:
-            return f"L{q[0]:.2f} {q[1]:.2f}"
-        n = np.array([-d[1], d[0]]) / L
-        b = self.rng.uniform(-1, 1) * min(0.45, 0.05 * L) if bow is None else bow
-        c = (p + q) / 2 + n * b
-        return f"Q{c[0]:.2f} {c[1]:.2f} {q[0]:.2f} {q[1]:.2f}"
-
-    def _d(self, pts, closed):
-        d = f"M{pts[0][0]:.2f} {pts[0][1]:.2f}"
-        seq = list(pts) + ([pts[0]] if closed else [])
-        for p, q in zip(seq[:-1], seq[1:]):
-            d += self._seg(p, q)
-        return d + ("Z" if closed else "")
-
-    def _path(self, d, fill=False, w=2.0):
-        f = INK if fill else "none"
-        self.els.append(f'<path d="{d}" fill="{f}" stroke="{INK}" stroke-width="{w:g}" '
+    def _path(self, d, fill=PAPER, evenodd=False):
+        rule = ' fill-rule="evenodd"' if evenodd else ""
+        self.els.append(f'<path d="{d}" fill="{fill}"{rule} stroke="{INK}" stroke-width="{W}" '
                         f'stroke-linecap="round" stroke-linejoin="round"/>')
 
-    def line(self, pts, w=2.0):
-        self._path(self._d(pts, False), False, w)
+    @staticmethod
+    def _poly_d(pts):
+        return "M" + " L".join(f"{f(x)} {f(y)}" for x, y in pts) + "Z"
 
-    def shape(self, pts, fill=True, w=2.0):
-        self._path(self._d(pts, True), fill, w)
+    def shape(self, pts, fill=PAPER):
+        """Closed polygon, Paper (or Ink accent) inside a 2-unit Ink outline."""
+        self._path(self._poly_d(pts), fill)
 
-    def raw(self, d, fill=False, w=2.0):
-        self._path(d, fill, w)
+    def ring(self, outer, inner):
+        """Closed shape with a hole (evenodd): a frame."""
+        self._path(self._poly_d(outer) + self._poly_d(inner), PAPER, evenodd=True)
 
-    def dot(self, x, y, r):
-        self.els.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" fill="{INK}"/>')
+    def rect(self, x0, y0, x1, y1, r=0.0, fill=PAPER):
+        if r <= 0:
+            self.shape([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], fill)
+            return
+        d = (f"M{f(x0 + r)} {f(y0)} H{f(x1 - r)} A{f(r)} {f(r)} 0 0 1 {f(x1)} {f(y0 + r)} V{f(y1 - r)} "
+             f"A{f(r)} {f(r)} 0 0 1 {f(x1 - r)} {f(y1)} H{f(x0 + r)} A{f(r)} {f(r)} 0 0 1 {f(x0)} {f(y1 - r)} "
+             f"V{f(y0 + r)} A{f(r)} {f(r)} 0 0 1 {f(x0 + r)} {f(y0)}Z")
+        self._path(d, fill)
 
-    def blob(self, cx, cy, rx, ry, n=7, jitter=0.18, rot=0.0, fill=True, w=1.6):
-        """Irregular stone / sole: n-gon with jittered radii, then bowed edges."""
-        a = np.linspace(0, 2 * np.pi, n, endpoint=False) + rot + self.rng.uniform(0, 0.5)
-        k = 1 + self.rng.uniform(-jitter, jitter, n)
-        pts = [(cx + rx * k[i] * np.cos(a[i]), cy + ry * k[i] * np.sin(a[i])) for i in range(n)]
-        self.shape(pts, fill, w)
+    def circle(self, cx, cy, r, fill=PAPER):
+        self.els.append(f'<circle cx="{f(cx)}" cy="{f(cy)}" r="{f(r)}" fill="{fill}" stroke="{INK}" '
+                        f'stroke-width="{W}" stroke-linecap="round" stroke-linejoin="round"/>')
+
+    def band(self, pts, width, head=None):
+        """A polyline drawn as a closed band `width` wide (flat ends; round joins soften them). With head=(len,
+        half_width) the band ends in a triangular arrowhead, as one closed outline."""
+        pts = [np.array(p, float) for p in pts]
+        n = len(pts)
+        tang = []
+        for i in range(n):
+            a, b = pts[max(i - 1, 0)], pts[min(i + 1, n - 1)]
+            t = b - a
+            tang.append(t / np.hypot(*t))
+        nor = [np.array([-t[1], t[0]]) for t in tang]
+        h = width / 2
+        left = [p + q * h for p, q in zip(pts, nor)]
+        right = [p - q * h for p, q in zip(pts, nor)]
+        tip = []
+        if head:
+            L, hw = head
+            e, t, q = pts[-1], tang[-1], nor[-1]
+            tip = [e + q * hw, e + t * L, e - q * hw]
+        outline = left + tip + right[::-1]
+        self.shape([tuple(p) for p in outline])
 
     def svg(self):
         body = "\n  ".join(self.els)
@@ -73,180 +93,184 @@ class Icon:
                 f'  {body}\n</svg>\n')
 
 
-def quad_y(p0, c, p2, x):
-    """y on a quadratic Bezier at abscissa x (x monotone)."""
-    lo, hi = 0.0, 1.0
-    for _ in range(40):
-        t = (lo + hi) / 2
-        xt = (1 - t) ** 2 * p0[0] + 2 * t * (1 - t) * c[0] + t * t * p2[0]
-        lo, hi = (t, hi) if xt < x else (lo, t)
-    return (1 - t) ** 2 * p0[1] + 2 * t * (1 - t) * c[1] + t * t * p2[1]
+def rot(pts, ang, c):
+    ca, sa = math.cos(ang), math.sin(ang)
+    return [(c[0] + (x - c[0]) * ca - (y - c[1]) * sa, c[1] + (x - c[0]) * sa + (y - c[1]) * ca) for x, y in pts]
 
 
-def post(ic, x0, x1, top, bottom=21.0):
-    """A sharpened fence post, filled."""
-    ic.shape([(x0, bottom), (x0, top + 2.2), ((x0 + x1) / 2, top), (x1, top + 2.2), (x1, bottom)])
+def cross(cx, cy, arm, h, ang=0.0):
+    """A plus (or, rotated 45 degrees, an X) as ONE closed outline, so the two bars share an outline."""
+    p = [(h, arm), (h, h), (arm, h), (arm, -h), (h, -h), (h, -arm), (-h, -arm), (-h, -h), (-arm, -h), (-arm, h),
+         (-h, h), (-h, arm)]
+    return rot([(cx + x, cy + y) for x, y in p], ang, (cx, cy))
+
+
+def arc_pts(c, r, a0, a1, n=24):
+    return [(c[0] + r * math.cos(a), c[1] + r * math.sin(a)) for a in np.linspace(a0, a1, n)]
+
+
+def blob(cx, cy, rx, ry, n=9, rotn=0.0, k=None):
+    """A rounded stone outline (fixed irregularity per call via k, so it is deterministic)."""
+    k = k or [1.0] * n
+    return [(cx + rx * k[i] * math.cos(rotn + 2 * math.pi * i / n), cy + ry * k[i] * math.sin(rotn + 2 * math.pi * i / n))
+            for i in range(n)]
+
+
+def post(ic, x0, x1, top, bottom):
+    """A sharpened fence post."""
+    ic.shape([(x0, bottom), (x0, top + 2.0), ((x0 + x1) / 2, top), (x1, top + 2.0), (x1, bottom)])
 
 
 # ------------------------------------------------------------------ the icons
 def tool_fence():
     ic = Icon("tool-fence")
-    post(ic, 3.2, 6.2, 3.0)
-    post(ic, 17.8, 20.8, 3.0)
-    for y, ph in ((8.2, 1), (12.6, -1), (17.0, 1)):                      # woven wattle rods
-        ic.raw(f"M4.5 {y:.1f} Q8.2 {y - 1.3 * ph:.1f} 12 {y:.1f} T19.5 {y:.1f}", w=2.0)
-    return ic
-
-
-def tool_footbridge():
-    ic = Icon("tool-footbridge")
-    deck = ((2.0, 15.0), (12.0, 8.6), (22.0, 15.0))
-    rail = ((4.0, 10.8), (12.0, 4.6), (20.0, 10.8))
-    ic.raw("M2 15 Q12 8.6 22 15", w=2.6)
-    ic.raw("M4 10.8 Q12 4.6 20 10.8", w=1.8)
-    for x in (4.0, 12.0, 20.0):
-        ic.line([(x, quad_y(*rail, x)), (x, quad_y(*deck, x))], w=1.8)
-    ic.raw("M5 20 Q7.5 18.8 10 20 T15 20 T19 20", w=1.8)           # river under the span
-    return ic
-
-
-def tool_erase():
-    ic = Icon("tool-erase")
-    c, ang, L, H = np.array([12.5, 10.5]), np.radians(-40), 16.0, 7.6     # a rubber eraser, tilted
-    u, v = np.array([np.cos(ang), np.sin(ang)]), np.array([-np.sin(ang), np.cos(ang)])
-    P0 = lambda s, t: tuple(c + u * s * L / 2 + v * t * H / 2)
-    ic.shape([P0(-1, -1), P0(1, -1), P0(1, 1), P0(-1, 1)], fill=False)
-    ic.shape([P0(-1, -1), P0(-0.1, -1), P0(-0.1, 1), P0(-1, 1)], fill=True)  # paper sleeve, solid
-    ic.line([(3.5, 21.2), (20.5, 21.2)], w=1.6)                            # the line being rubbed out
-    for x, y, r in ((15.5, 18.4, 0.9), (18.6, 18.9, 0.75), (13.0, 18.9, 0.7)):
-        ic.dot(x, y, r)                                                     # crumbs
-    return ic
-
-
-def tool_gravel():
-    ic = Icon("tool-gravel")                                                # stepping stones and grit
-    ic.blob(6.2, 17.6, 3.4, 2.7, rot=0.2)
-    ic.blob(12.6, 11.8, 3.3, 2.6, rot=0.9)
-    ic.blob(18.0, 5.6, 3.0, 2.4, rot=0.4)
-    for x, y, r in ((12.6, 19.6, 0.9), (16.4, 16.2, 0.85), (19.6, 12.0, 0.8), (4.6, 10.4, 0.8),
-                    (8.2, 5.8, 0.85), (20.4, 19.8, 0.9)):
-        ic.dot(x, y, r)
+    ic.rect(5.0, 6.4, 19.0, 10.8)            # two rails, behind the posts
+    ic.rect(5.0, 13.6, 19.0, 18.0)
+    post(ic, 2.0, 7.4, 2.4, 21.6)
+    post(ic, 16.6, 22.0, 2.4, 21.6)
     return ic
 
 
 def tool_gate():
-    ic = Icon("tool-gate")                                                  # hurdle gate hung on a post
-    post(ic, 2.4, 5.4, 3.0)
-    ic.shape([(7.6, 7.0), (21.0, 7.0), (21.0, 18.2), (7.6, 18.2)], fill=False)
-    ic.line([(14.3, 7.0), (14.3, 18.2)], w=1.8)
-    ic.line([(7.6, 18.2), (14.3, 7.0)], w=1.8)
-    ic.line([(14.3, 18.2), (21.0, 7.0)], w=1.8)
-    ic.line([(5.4, 9.0), (7.6, 9.0)], w=1.8)                                # hinge straps
-    ic.line([(5.4, 16.2), (7.6, 16.2)], w=1.8)
+    ic = Icon("tool-gate")                   # a framed, braced field gate hung on a post
+    post(ic, 1.8, 6.6, 2.4, 21.6)
+    ic.rect(6.0, 7.6, 8.8, 10.6)             # hinge straps
+    ic.rect(6.0, 14.6, 8.8, 17.6)
+    outer = [(8.4, 5.0), (22.0, 5.0), (22.0, 20.0), (8.4, 20.0)]
+    inner = [(12.6, 9.2), (17.8, 9.2), (17.8, 15.8), (12.6, 15.8)]
+    ic.ring(outer, inner)
+    ic.band([(10.6, 17.8), (19.8, 7.2)], 4.2)   # diagonal brace
+    return ic
+
+
+def tool_footbridge():
+    ic = Icon("tool-footbridge")             # side view: a bold plank deck with a hand rail, over water
+    xs = np.linspace(2.4, 21.6, 25)
+    ic.band([(x, 20.4 + 0.9 * math.sin((x - 2.4) / 19.2 * 3 * 2 * math.pi)) for x in xs], 3.4)   # water
+    for x in (2.6, 10.2, 17.8):
+        ic.rect(x, 6.0, x + 3.6, 13.0)       # rail posts
+    ic.rect(1.4, 2.8, 22.6, 7.2, r=1.2)      # hand rail
+    ic.rect(1.0, 11.4, 23.0, 16.8, r=1.2)    # deck
+    return ic
+
+
+def tool_gravel():
+    ic = Icon("tool-gravel")                 # stepping stones and grit
+    ic.shape(blob(6.6, 16.6, 4.4, 3.4, n=9, rotn=0.3, k=[1, 1.05, .95, 1.04, .97, 1.02, .94, 1.06, 1]))
+    ic.shape(blob(15.6, 9.2, 4.6, 3.6, n=9, rotn=0.9, k=[1.03, .96, 1.05, .97, 1, 1.04, .95, 1, 1.02]))
+    for cx, cy, r in ((16.6, 18.4, 2.2), (5.6, 7.0, 1.9), (20.6, 14.4, 1.6)):
+        ic.circle(cx, cy, r)
+    return ic
+
+
+def tool_erase():
+    ic = Icon("tool-erase")                  # a rubber eraser, tilted, over the end of a line it has rubbed out
+    ic.rect(1.4, 18.2, 11.0, 22.4, r=1.2)
+    c, ang = (13.4, 10.6), math.radians(-40)
+    body = rot([(5.0, 7.0), (21.8, 7.0), (21.8, 14.2), (5.0, 14.2)], ang, c)
+    sleeve = rot([(5.0, 7.0), (12.6, 7.0), (12.6, 14.2), (5.0, 14.2)], ang, c)
+    ic.shape(body)
+    ic.shape(sleeve)                         # the paper sleeve over the rubber
     return ic
 
 
 def ui_pause():
     ic = Icon("ui-pause")
-    ic.shape([(6.0, 5.0), (9.6, 5.0), (9.6, 19.0), (6.0, 19.0)])
-    ic.shape([(14.4, 5.0), (18.0, 5.0), (18.0, 19.0), (14.4, 19.0)])
+    ic.rect(4.8, 3.4, 10.2, 20.6, r=1.2)
+    ic.rect(13.8, 3.4, 19.2, 20.6, r=1.2)
     return ic
 
 
 def ui_play():
     ic = Icon("ui-play")
-    ic.shape([(7.0, 4.6), (19.4, 12.0), (7.0, 19.4)])
+    ic.shape([(6.4, 3.4), (20.2, 12.0), (6.4, 20.6)])
     return ic
 
 
 def ui_speed():
     ic = Icon("ui-speed")
-    ic.shape([(3.2, 6.0), (11.4, 12.0), (3.2, 18.0)])
-    ic.shape([(12.2, 6.0), (20.6, 12.0), (12.2, 18.0)])
+    ic.shape([(2.2, 5.0), (11.4, 12.0), (2.2, 19.0)])
+    ic.shape([(12.0, 5.0), (21.6, 12.0), (12.0, 19.0)])
     return ic
 
 
-def footprint(ic, cx, cy, rot):
-    """A soft-leather shoe print: sole and heel, rotated by rot (radians) about (cx, cy)."""
-    R = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
-    s = R @ np.array([0.0, -2.3]) + (cx, cy)
-    h = R @ np.array([0.0, 3.7]) + (cx, cy)
-    ic.blob(s[0], s[1], 2.7, 3.5, n=8, jitter=0.06, rot=rot, w=1.4)
-    ic.blob(h[0], h[1], 2.0, 1.85, n=7, jitter=0.06, rot=rot, w=1.4)
+def footprint(ic, cx, cy, ang):
+    """A shoe print: sole and heel, turned by ang (radians) about (cx, cy)."""
+    sole = blob(cx, cy - 2.6, 3.0, 3.9, n=14)
+    heel = blob(cx, cy + 4.0, 2.3, 2.2, n=12)
+    ic.shape(rot(sole, ang, (cx, cy)))
+    ic.shape(rot(heel, ang, (cx, cy)))
 
 
 def ui_wear_overlay():
-    ic = Icon("ui-wear-overlay")                                            # footprints: where feet wear the ground
-    footprint(ic, 7.4, 14.6, -0.18)
-    footprint(ic, 16.6, 8.6, 0.12)
+    ic = Icon("ui-wear-overlay")             # footprints: where feet wear the ground
+    footprint(ic, 6.8, 13.6, -0.18)
+    footprint(ic, 17.2, 9.4, 0.14)
     return ic
 
 
+def _quad(p0, c, p2, t):
+    t = np.asarray(t)[:, None]
+    return (1 - t) ** 2 * np.array(p0) + 2 * t * (1 - t) * np.array(c) + t * t * np.array(p2)
+
+
 def ui_flow_preview():
-    ic = Icon("ui-flow-preview")                                            # dotted ink flow lines with arrowheads
-    for (p0, c, p2) in (((3.0, 19.5), (9.5, 6.0), (19.0, 8.0)), ((6.5, 22.0), (13.5, 13.5), (21.0, 15.5))):
-        t = np.linspace(0, 1, 200)
-        pts = np.outer((1 - t) ** 2, p0) + np.outer(2 * t * (1 - t), c) + np.outer(t * t, p2)
-        seg = np.r_[0, np.cumsum(np.hypot(*np.diff(pts, axis=0).T))]
-        for s in np.arange(0.9, seg[-1] - 3.8, 3.3):
-            x, y = pts[np.searchsorted(seg, s)]
-            ic.dot(x, y, 1.3)
-        tang = pts[-1] - pts[-12]
-        tang /= np.hypot(*tang)
-        nrm = np.array([-tang[1], tang[0]])
-        tip = pts[-1]
-        ic.line([tuple(tip - tang * 3.2 + nrm * 2.6), tuple(tip), tuple(tip - tang * 3.2 - nrm * 2.6)], w=1.8)
+    ic = Icon("ui-flow-preview")             # the flow preview: dashed flow lines ending in arrowheads
+    for p0, c, p2 in (((2.6, 12.0), (7.6, 3.4), (16.4, 4.6)), ((4.6, 21.4), (11.0, 11.8), (18.0, 14.2))):
+        ts = np.linspace(0, 1, 60)
+        pts = _quad(p0, c, p2, ts)
+        s = np.r_[0, np.cumsum(np.hypot(*np.diff(pts, axis=0).T))]
+        L = s[-1]
+        dash, gap = 5.6, 2.2
+        a = 0.0
+        while a + dash < L - 4.0:
+            seg = pts[(s >= a) & (s <= a + dash)]
+            ic.band([tuple(p) for p in seg], 4.0)
+            a += dash + gap
+        seg = pts[s >= a]
+        ic.band([tuple(p) for p in seg], 4.0, head=(3.6, 4.0))
     return ic
 
 
 def speaker(ic):
-    ic.shape([(2.8, 9.2), (6.6, 9.2), (11.4, 4.8), (11.4, 19.2), (6.6, 14.8), (2.8, 14.8)])
+    ic.shape([(2.0, 8.8), (6.2, 8.8), (11.4, 3.8), (11.4, 20.2), (6.2, 15.2), (2.0, 15.2)])
 
 
 def ui_sound_on():
     ic = Icon("ui-sound-on")
     speaker(ic)
-    ic.raw("M15 8.6 A4.6 4.6 0 0 1 15 15.4", w=2.0)
-    ic.raw("M17.8 5.4 A8.6 8.6 0 0 1 17.8 18.6", w=2.0)
+    ic.band(arc_pts((11.0, 12.0), 5.0, -0.9, 0.9, 16), 3.8)
+    ic.band(arc_pts((11.0, 12.0), 9.6, -0.88, 0.88, 24), 3.8)
     return ic
 
 
 def ui_sound_off():
     ic = Icon("ui-sound-off")
     speaker(ic)
-    ic.line([(15.2, 9.0), (21.0, 15.0)], w=2.3)
-    ic.line([(21.0, 9.0), (15.2, 15.0)], w=2.3)
+    ic.shape(cross(17.4, 12.0, 5.0, 2.0, math.pi / 4))
     return ic
 
 
 def ui_reset():
-    ic = Icon("ui-reset")                                                    # anticlockwise arrow round a circle
-    c, r = np.array([12.0, 12.6]), 7.6
-    a0, a1 = np.radians(-50), np.radians(-50 - 290)                        # start upper right, run anticlockwise
-    p0 = c + r * np.array([np.cos(a0), np.sin(a0)])
-    p1 = c + r * np.array([np.cos(a1), np.sin(a1)])
-    # SVG y points down: decreasing angle runs anticlockwise on screen -> sweep-flag 0, large arc
-    ic.raw(f"M{p0[0]:.2f} {p0[1]:.2f} A{r} {r} 0 1 0 {p1[0]:.2f} {p1[1]:.2f}", w=2.0)
-    tang = np.array([np.sin(a1), -np.cos(a1)])                              # direction of travel at the end
-    nrm = np.array([-tang[1], tang[0]])
-    tip = p1 + tang * 2.4
-    ic.shape([tuple(tip), tuple(p1 - tang * 1.2 + nrm * 2.8), tuple(p1 - tang * 1.2 - nrm * 2.8)], w=1.4)
+    ic = Icon("ui-reset")                    # anticlockwise arrow round a circle
+    c, r = (12.0, 12.4), 7.2
+    a0, a1 = math.radians(-50), math.radians(-50 - 275)   # start upper right, run anticlockwise on screen
+    ic.band(arc_pts(c, r, a0, a1, 40), 4.2, head=(3.4, 4.4))
     return ic
 
 
 def ui_new_map():
-    ic = Icon("ui-new-map")                                                  # a fresh page with a folded corner
-    ic.shape([(4.6, 2.8), (14.0, 2.8), (19.4, 8.2), (19.4, 21.2), (4.6, 21.2)], fill=False)
-    ic.line([(14.0, 3.0), (14.0, 8.2), (19.2, 8.2)], w=1.8)
-    ic.line([(12.0, 11.0), (12.0, 18.0)], w=2.2)
-    ic.line([(8.5, 14.5), (15.5, 14.5)], w=2.2)
+    ic = Icon("ui-new-map")                  # a fresh page with a folded corner and a plus
+    ic.shape([(4.0, 2.2), (14.2, 2.2), (20.0, 8.0), (20.0, 21.8), (4.0, 21.8)])
+    ic.shape([(14.2, 2.2), (14.2, 8.0), (20.0, 8.0)])
+    ic.shape(cross(11.4, 14.6, 4.2, 1.2), fill=INK)
     return ic
 
 
 ICONS = [
-    (tool_fence, "Tool bar: fence (wattle fence between two posts)"),
-    (tool_gate, "Tool bar: gate (hurdle gate on a post)"),
-    (tool_footbridge, "Tool bar: footbridge"),
+    (tool_fence, "Tool bar: fence (two posts and rails)"),
+    (tool_gate, "Tool bar: gate (braced field gate on a post)"),
+    (tool_footbridge, "Tool bar: footbridge (plank deck with a hand rail)"),
     (tool_gravel, "Tool bar: gravel / stepping stones"),
     (tool_erase, "Tool bar: erase"),
     (ui_pause, "Time controls: pause"),
@@ -262,22 +286,17 @@ ICONS = [
 
 
 def preview(paths, out_paths, sizes=(20, 40, 80), gap=14):
-    """Columns = icons; top block on Paper (as shipped), bottom block on Ink with the icon recoloured to Paper."""
+    """Columns = icons; top block on Paper, bottom block on Ink. The SAME files in both (no recolouring)."""
     tmp = ROOT / "build" / "2d" / "icons-tmp"
     tmp.mkdir(parents=True, exist_ok=True)
-    light = []
-    for p in paths:
-        q = tmp / f"paper-{p.name}"
-        q.write_text(p.read_text().replace(INK, "#" + P.hex_of("Paper")))
-        light.append(q)
     jobs_a = [(p, tmp / f"a-{p.stem}-{n}.png", n) for p in paths for n in sizes]
-    jobs_b = [(q, tmp / f"b-{q.stem}-{n}.png", n) for q in light for n in sizes]
+    jobs_b = [(p, tmp / f"b-{p.stem}-{n}.png", n) for p in paths for n in sizes]
     svg._godot_raster(jobs_a, "Paper")
     svg._godot_raster(jobs_b, "Ink")
     cell = max(sizes) + gap
     blockh = gap + sum(n + gap for n in sizes)
-    W, H = gap + len(paths) * cell, 2 * blockh
-    img = np.empty((H, W, 3), np.uint8)
+    Wd, H = gap + len(paths) * cell, 2 * blockh
+    img = np.empty((H, Wd, 3), np.uint8)
     img[:blockh] = P.rgb("Paper")
     img[blockh:] = P.rgb("Ink")
     for b, jobs in ((0, jobs_a), (1, jobs_b)):
@@ -288,8 +307,8 @@ def preview(paths, out_paths, sizes=(20, 40, 80), gap=14):
                 x = gap + i * cell + (max(sizes) - n) // 2
                 img[y:y + n, x:x + n] = a
                 y += n + gap
-    for f in tmp.iterdir():
-        f.unlink()
+    for fl in tmp.iterdir():
+        fl.unlink()
     tmp.rmdir()
     for o in out_paths:
         print(png.write_png(img, o))
@@ -301,13 +320,13 @@ def main():
         ic = fn()
         out = asset_path(f"icons/{ic.name}.svg")
         out.write_text(ic.svg(), encoding="utf-8")
-        probs = svg.lint(out)
+        probs = svg.lint(out, icon_style=True)
         print(out.name, "OK" if not probs else probs)
         if probs:
             raise SystemExit(f"{out}: {probs}")
         paths.append(out)
         ledger.add("2d", out, kind="icon", generator=__file__, used_in=used,
-                   note="hand-drawn-style SVG written as code, one colour (Ink)", verified=True)
+                   note="SVG written as code: closed Paper shapes in a 2-unit Ink outline", verified=True)
     preview(paths, [ROOT / "build" / "2d" / "icons-preview.png",
                     pathlib.Path(__file__).resolve().parent / "previews" / "icons-preview.png"])
 

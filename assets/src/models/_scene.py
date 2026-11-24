@@ -36,10 +36,12 @@ def load(name):
 
 
 S = glb.Mesh()
+SOFT = glb.Mesh()     # trees, fields, reeds: written as a separate node with ink="soft", as their own files are
+SOFT_NAMES = ("tree-", "field-", "reeds")
 
 
 def put(name, x, z, yaw=0.0, y=0.0):
-    S.append(load(name), (x, y, z), yaw)
+    (SOFT if name.startswith(SOFT_NAMES) else S).append(load(name), (x, y, z), yaw)
 
 
 def quad(x0, z0, x1, z1, y, col):
@@ -98,4 +100,4 @@ for x, z, yaw, y, carry in ((-2.5, 1.5, 0.6, 0.0, True), (-8, -9, 0.0, 0.6, Fals
         S.append(grain, (x, y + 2.6, z), yaw)
 
 out = ROOT / "build" / "previews" / "hamlet-scene.glb"
-print(glb.report(out, glb.write_glb(out, S)))
+print(glb.report(out, glb.write_glb(out, [("hamlet", S), ("hamlet-soft-ink", SOFT, "soft")])))

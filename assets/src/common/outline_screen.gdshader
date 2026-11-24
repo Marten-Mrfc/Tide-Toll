@@ -5,12 +5,13 @@
 // wall/ground). Shadows, lighting and palette colours do not produce lines. Colour edges are optional (use_colour).
 shader_type spatial;
 render_mode unshaded, depth_test_disabled, cull_disabled, blend_mix, skip_vertex_transform;
+// STENCIL_MODE
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest, repeat_disable;
 uniform vec4 ink : source_color = vec4(0.1683, 0.1441, 0.1236, 1.0); // palette Ink #2B2620
 uniform float width_px = 1.0;      // sample step in screen pixels; line is about 2x this wide. Scale with height/1080.
 uniform float metres_per_px = 0.05; // world metres per screen pixel at the model (ortho: camera.size / viewport height)
-uniform float crease = 0.45;       // slope change (about tan of the angle) that counts as a crease
+uniform float crease = 0.45;       // slope change (about tan of the angle) that counts as a crease (1.5 on soft-ink pixels)
 uniform float use_colour = 0.0;    // 1 = also ink where the rendered colour jumps (picks up shadow edges too)
 uniform float colour_edge = 0.12;
 void vertex() { POSITION = vec4(VERTEX.xy, 1.0, 1.0); }
@@ -43,6 +44,11 @@ void fragment() {
 	ALBEDO = ink.rgb;
 	ALPHA = e;
 }
+// Soft ink (trees, crop rows, reeds: many small facets that would carry more ink than the houses): those models'
+// glTF nodes carry extras {"ink": "soft"} (Godot: node metadata "extras"); give their materials stencil_mode CUSTOM,
+// stencil_flags WRITE, compare ALWAYS, reference 1, and draw this pass twice: replace the "// STENCIL_MODE" line
+// with "stencil_mode read, compare_not_equal, 1;" (crease = 0.45) in one copy and "stencil_mode read, compare_equal,
+// 1;" (crease = 1.5) in the other. Silhouettes are depth jumps and are inked in both. tools/contact-sheet does this.
 // Use (GDScript): quad = MeshInstance3D with a 2x2 QuadMesh, extra_cull_margin = 16384, child of the camera at z = -1,
 // material_override = ShaderMaterial with this shader. Set metres_per_px = camera.size / viewport height (ortho),
 // width_px about 1.5 * height / 1080 * (zoom factor), and keep camera near/far tight (the sheet uses 30..90).

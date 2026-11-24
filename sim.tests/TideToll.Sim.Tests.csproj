@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Toy golden data (written by golden/export.mjs) and its generator. -->
+    <None Include="golden\toy-golden.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\sim\TideToll.Sim.csproj" />
   </ItemGroup>
 

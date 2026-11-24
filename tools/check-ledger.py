@@ -12,6 +12,9 @@ under assets/licences/, and README.md files.
   python3 tools/check-ledger.py               checks assets/LEDGER.csv (what ./check runs)
   python3 tools/check-ledger.py --fragments   also counts the not-yet-merged rows in assets/src/ledger-rows/*.csv
                                               (same columns, no header), as tools/build-assets.sh does
+  python3 tools/check-ledger.py --build       also counts the rows the generators wrote on their last run into
+                                              build/ledger-rows/*.csv (scratch) and lists the ones that LEDGER.csv
+                                              does not have yet or has differently (merge: merge-ledger-rows.py --build)
 """
 import csv
 import re
@@ -47,13 +50,21 @@ def main() -> int:
             errors.append(f"header is {header}, expected {HEADER}")
         rows = [r for r in reader if any(c.strip() for c in r)]
     where = [f"line {n}" for n in range(2, len(rows) + 2)]
+    ledger_rows = {r[0]: r for r in rows if r}
+    frag_dirs = []
     if "--fragments" in sys.argv[1:]:
-        for frag in sorted((ASSETS / "src" / "ledger-rows").glob("*.csv")):
+        frag_dirs.append(ASSETS / "src" / "ledger-rows")
+    if "--build" in sys.argv[1:]:
+        frag_dirs.append(ROOT / "build" / "ledger-rows")
+    pending = []
+    for fdir in frag_dirs:
+        for frag in sorted(fdir.glob("*.csv")):
             with frag.open(newline="", encoding="utf-8") as f:
                 frows = [r for r in csv.reader(f) if any(c.strip() for c in r)]
             if frows and frows[0] == HEADER:
                 errors.append(f"{frag.relative_to(ROOT)}: fragments have no header row")
                 frows = frows[1:]
+            pending += [r[0] for r in frows if r and ledger_rows.get(r[0]) != r]
             rows += frows
             where += [f"{frag.relative_to(ROOT).as_posix()}:{n}" for n in range(1, len(frows) + 1)]
     items = {}
@@ -109,6 +120,11 @@ def main() -> int:
             errors.append(f"{rel}: no ledger row")
     for e in errors:
         print("LEDGER FAIL:", e)
+    if pending:
+        print(f"ledger: {len(pending)} generated rows not yet in LEDGER.csv (or changed); "
+              f"merge with: python3 tools/merge-ledger-rows.py --build")
+        for it in pending[:20]:
+            print("  pending:", it)
     print(f"ledger: {len(rows)} rows, {checked} asset files checked, {len(errors)} problems")
     return 1 if errors else 0
 

@@ -2,7 +2,9 @@
 # Hamlet (c. 1100) houses: timber longhouses, wattle and daub, hipped thatch (Art tab). Front door faces +Z.
 #   cottage-01  8 x 6 m (4 x 3 cells), daub walls in a dark timber frame, hipped thatch, ridge 5.95 m
 #   cottage-02  8 x 6 m, plank walls, owl gables at the ridge ends, a byre door on the east end, hay rick at the back
-#   cottage-03  6 x 4 m (3 x 2 cells) small hut, daub walls, steep hip, ridge 4.9 m
+#   cottage-03  6 x 4 m (3 x 2 cells) small hut, daub walls, steep GABLED thatch with limewashed gable ends and
+#               crossed gable horns at both ridge ends, ridge 4.9 m: from above a plain split rectangle with a
+#               full-length ridge and an X at each end, unlike the hipped longhouses (trapezoids and hip triangles)
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))                          # _kit
 from common import glb, ledger, asset_path
@@ -14,19 +16,34 @@ SHUT = "Mud"          # shutters
 
 
 def house(L, W, wall_h, roof_h, overhang=0.3, wall="Limewash", frame=True, mids=(), door_x=0.0, back_door_x=None,
-          side_windows=True, byre=False, woodpile=True, hayrick=False, owl_gables=False):
+          side_windows=True, byre=False, woodpile=True, hayrick=False, owl_gables=False, roof="hip"):
     """Wall box L x W (x, z), hipped thatch whose eaves reach L + 0.6 + 2*overhang... sized so the roof footprint is
     (L + 0.4 + 2*overhang) x (W + 0.4 + 2*overhang)."""
     m = glb.Mesh()
     hx, hz = L / 2, W / 2
     # walls (daub or planks)
     m.add_box((0, 0, 0), (L, wall_h, W), wall)
-    # hipped thatch: roof base 0.2 outside the walls, plus overhang
-    m.add_hip((0, wall_h, 0), L + 0.4, W + 0.4, roof_h, "Reed and thatch", ridge_frac=0.42, overhang=overhang)
-    # ridge cap (darker thatch binding) - a line along the ridge from above
-    r = (L + 0.4) * 0.42 / 2
     top = wall_h + roof_h
-    beam(m, (-r - 0.25, top - 0.02, 0), (r + 0.25, top - 0.02, 0), 0.45, 0.22, "Packed earth")
+    if roof == "gable":
+        # gabled thatch: slopes run past the walls by 0.3 at each end; limewashed gable triangles at the ends
+        RL = L + 0.6
+        m.add_gable((0, wall_h, 0), RL, W + 0.4, roof_h, "Reed and thatch", gable="Limewash", overhang=overhang)
+        r = RL / 2 - 0.05
+        beam(m, (-r, top - 0.02, 0), (r, top - 0.02, 0), 0.45, 0.22, "Packed earth")        # full-length ridge
+        half = (W + 0.4) / 2
+        for sx in (-1, 1):                                    # barge boards along the gable edges
+            for sz in (-1, 1):
+                beam(m, (sx * (RL / 2 + 0.05), wall_h - 0.05, sz * (half + 0.05)), (sx * (RL / 2 + 0.05), top + 0.05, 0),
+                     0.2, 0.2, WOOD)
+            for sz in (-1, 1):                                # crossed gable horns above the ridge ends
+                beam(m, (sx * (RL / 2 + 0.05), top - 0.25, -sz * 0.35), (sx * (RL / 2 + 0.05), top + 0.7, sz * 0.75),
+                     0.2, 0.2, WOOD)
+    else:
+        # hipped thatch: roof base 0.2 outside the walls, plus overhang
+        m.add_hip((0, wall_h, 0), L + 0.4, W + 0.4, roof_h, "Reed and thatch", ridge_frac=0.42, overhang=overhang)
+        # ridge cap (darker thatch binding) - a line along the ridge from above
+        r = (L + 0.4) * 0.42 / 2
+        beam(m, (-r - 0.25, top - 0.02, 0), (r + 0.25, top - 0.02, 0), 0.45, 0.22, "Packed earth")
     # owl gables (half-hips with a small dark gable at each ridge end, the smoke outlet of a Low Countries hall house)
     if owl_gables:
         for sx in (-1, 1):
@@ -85,8 +102,8 @@ VARIANTS = {
                                  owl_gables=True),
                    "Hamlet: houses (longhouse with byre, plank walls)"),
     "cottage-03": (lambda: house(5.0, 3.0, 2.1, 2.75, overhang=0.3, mids=(), door_x=0.6, side_windows=True,
-                                 woodpile=True),
-                   "Hamlet: houses (small hut)"),
+                                 woodpile=True, roof="gable"),
+                   "Hamlet: houses (small hut, gabled roof)"),
 }
 
 for name, (make, used) in VARIANTS.items():

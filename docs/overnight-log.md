@@ -57,7 +57,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 3 | Assets | The Hamlet asset set: shared generator tooling, models, textures, icons, font, sound effects, theme draft, gallery page | Done 21:08 UTC. 95 asset files, all with ledger rows; everything except the fonts rebuilds identically from its generator; gallery published. Review: no blockers; willow tree and footbridge icon rated "redo"; icons vanish on dark grounds |
 | 4 | Port | The toy's simulation (as of commit a057b50) ported to C# with the same tests, a comparison against the toy, a headless runner and `AGENTS.md` | Running since 20:54 UTC |
 | 5 | Toy | Round 3 of the toy: trunk-share headroom with working bridges (gate on fresh seeds 401 to 420), phone-width input fix, gravel and gate tools, polish | Running since 21:05 UTC |
-| 6 | Assets | Fixes from the asset review: icons with paper fills and one stroke weight, a real willow, hollow-way and trampled textures, bell variety, theme seam, rsync and other housekeeping; gallery rebuilt and republished to the same link | Running since 21:15 UTC |
+| 6 | Assets | Fixes from the asset review; gallery rebuilt and republished to the same link | Done 21:36 UTC. 10 of 12 findings fixed, 2 partly (ground tiles still repeat a little; soft ink on trees). Now 99 asset files, 125 ledger rows; `./check` passes. Left for later: stiff willow fronds, a few icons lose detail on ink, tile repetition |
 
 ## Next steps
 
@@ -117,7 +117,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 ## Assets
 
-The Hamlet set, 95 files. Every row is in `assets/LEDGER.csv`; the gallery shows each one with its source and licence.
+The Hamlet set, 99 files after the fix round (four long bell variants were added). Every row is in `assets/LEDGER.csv`; the gallery shows each one with its source and licence.
 
 | Kind | Count | What | Source |
 | --- | --- | --- | --- |

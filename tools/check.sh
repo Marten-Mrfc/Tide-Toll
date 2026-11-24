@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # One command for everything that can be verified automatically. Exits non-zero if any step fails.
-#   ./check                 sim build + tests, Godot C# build, headless smoke, screenshot, ledger
+#   ./check                 sim build + fast tests (Release), Godot C# build, headless smoke, screenshot, ledger
 #   ./check --no-screenshot skip the rendered screenshot (no xvfb, or in a hurry)
+#   ./check --gate          also run the long statistical runs: gate tables, toy comparison, Category=Gate tests (~6 min)
+#   ./check --bench         also run the tick benchmark in Release (fails only above a generous budget)
 #   ./check --with-toy      also run the browser toy's own checks (npm run check)
 #   ./check --export        also build the Windows export (slow; needs export templates)
-# Set GODOT=/path/to/godot to use a Godot binary that is not on PATH.
+# Set GODOT=/path/to/godot to use a Godot binary that is not on PATH, GODOT_NUPKGS=/path to Godot's NuGet folder.
 set -uo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -14,13 +16,15 @@ SHOTS="$ROOT/build/screenshots"
 mkdir -p "$LOGS" "$SHOTS"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
-WITH_TOY=0; EXPORT=0; SHOT=1
+WITH_TOY=0; EXPORT=0; SHOT=1; GATE=0; BENCH=0
 for a in "$@"; do
   case "$a" in
     --with-toy) WITH_TOY=1 ;;
+    --gate) GATE=1 ;;
+    --bench) BENCH=1 ;;
     --export) EXPORT=1 ;;
     --no-screenshot) SHOT=0 ;;
-    -h|--help) sed -n '2,7p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
     *) echo "unknown option $a"; exit 2 ;;
   esac
 done
@@ -49,15 +53,48 @@ skip() { echo "-- $1 skipped: $2"; record "$1" SKIP 0 "$2"; }
 
 have_godot() { command -v "$GODOT" >/dev/null 2>&1; }
 
-step sim-build dotnet build TideToll.sln -c Debug
+# Godot.NET.Sdk ships only inside the Godot download. Register its folder with NuGet when it is missing,
+# so the game builds for any user (tools/setup-linux.sh does the same once, as root).
+GODOT_SRC=godot-4.7-local
+godot_nuget() {
+  dotnet nuget list source 2>/dev/null | grep -q "$GODOT_SRC" && return 0
+  local d bin
+  bin=$(command -v "$GODOT" 2>/dev/null || true)
+  for d in "${GODOT_NUPKGS:-}" "${bin:+$(dirname "$(readlink -f "$bin")")/GodotSharp/Tools/nupkgs}" /opt/godot/4.7/GodotSharp/Tools/nupkgs; do
+    if [ -n "$d" ] && [ -f "$d/Godot.NET.Sdk.4.7.0.nupkg" ]; then
+      dotnet nuget add source "$d" -n "$GODOT_SRC" && return 0
+    fi
+  done
+  echo "Godot.NET.Sdk 4.7.0 not found: set GODOT_NUPKGS to Godot's GodotSharp/Tools/nupkgs folder"; return 1
+}
+
+# The simulation is built and tested in Release: the toy's checks time optimised code, and Release keeps
+# the fast tier under a minute. The game build below compiles the library again in Debug.
+step sim-build dotnet build TideToll.sln -c Release
 if [ "${RESULTS[-1]}" = PASS ]; then
-  step sim-test dotnet test TideToll.sln --no-build -c Debug --logger "console;verbosity=normal"
+  step sim-test dotnet test TideToll.sln --no-build -c Release --filter "Category!=Gate&Category!=Perf" --logger "console;verbosity=normal"
   note "$(grep -o 'Passed: *[0-9]*' "$LOGS/sim-test.log" | head -1 | tr -s ' ') $(grep -o 'BENCH.*ms per pass' "$LOGS/sim-test.log" | head -1 | sed 's/BENCH //')"
+  TOOLS="dotnet tools/TideToll.Tools/bin/Release/net8.0/TideToll.Tools.dll"
+  if [ "$BENCH" = 1 ]; then
+    step bench $TOOLS bench --budget-ms 5 --p99-budget-ms 25
+    note "$(grep -o 'BENCH 500 walkers: [0-9.]* ms' "$LOGS/bench.log" | sed 's/BENCH //')"
+    grep '^BENCH' "$LOGS/bench.log" | sed 's/^/   /'
+    step bench-test dotnet test sim.tests --no-build -c Release --filter "Category=Perf" --logger "console;verbosity=normal"
+  fi
+  if [ "$GATE" = 1 ]; then
+    # The toy's tables and gate checks, then the C# port against the toy's golden table.
+    step gate-tables $TOOLS gate
+    note "$(grep -E '^(ALL CHECKS PASSED|FAILED)' "$LOGS/gate-tables.log" | head -1)"
+    sed -n '/^GATE G3/,$p' "$LOGS/gate-tables.log"
+    step gate-tests dotnet test sim.tests --no-build -c Release --filter "Category=Gate" --logger "console;verbosity=normal"
+    note "$(grep -o 'Failed: *[0-9]*, Passed: *[0-9]*' "$LOGS/gate-tests.log" | head -1 | tr -s ' ')"
+  fi
 else
   skip sim-test "sim did not build"
 fi
 
 if have_godot; then
+  step godot-nuget godot_nuget
   # A fresh clone has no .godot/ cache; import once so scenes and scripts resolve.
   [ -d game/.godot ] || step godot-import "$GODOT" --headless --path game --import
   step sync-assets tools/sync-assets.sh

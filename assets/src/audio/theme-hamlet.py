@@ -3,8 +3,11 @@
 #                                               assets/audio/music/theme-hamlet-draft-score.json (the notes below)
 # First draft of the Tide & Toll theme, Hamlet arrangement (Sound & Music tab): a wooden pipe alone over the river
 # drone, in a slow 3 with a free, breathing feel; a frame drum answers bars 5-8; a small lyre marks the two phrase
-# starts with the open fifth D-A. D Dorian, no chord changes, 1-2 voices. 8 bars at 64 BPM in 3/4 = 22.5 s, which is
-# exactly 1,080,000 samples, so the loop point is sample-exact.
+# starts with the open fifth D-A. D Dorian, no chord changes, 1-2 voices. 8 bars at 64 BPM in 3/4 = 22.5 s, played
+# twice (second round, 2026-11-24): the second pass (bars 9-16) varies the tune a little (bars 11, 14 and 15) and the
+# drum answers through the whole pass, so the loop is 16 bars = 45 s = exactly 2,160,000 samples (sample-exact).
+# Seam level (second round): the last note (bar 16, D5) is held into the downbeat and the opening lyre roll waits
+# 120 ms (the first pipe note 80 ms), so the level 50 ms either side of the join matches within 3 dB (measured and asserted below).
 #
 # Seamless by construction (no cross-fade): drone partials have whole numbers of cycles in the loop, every note is
 # added with its tail wrapped round to the start (the last bar's ring-out sounds under bar 1), and the reverb is a
@@ -25,8 +28,8 @@ BPM = 64
 BEATS_PER_BAR = 3
 BEAT = 60 / BPM                                    # 0.9375 s
 BAR = BEATS_PER_BAR * BEAT                         # 2.8125 s
-BARS = 8
-N = int(round(BARS * BAR * A.SR))                  # 1,080,000 samples
+BARS = 16
+N = int(round(BARS * BAR * A.SR))                  # 2,160,000 samples
 assert abs(N - BARS * BAR * A.SR) < 1e-6
 TARGET_I = -20.0                                   # LUFS integrated (gameplay mix target in the guide)
 HUMANISE = 0.012                                   # +-12 ms onset offsets: a free, unmetronomic feel
@@ -41,12 +44,26 @@ MELODY = [
     [("G5", 1), ("A5", 1), ("G5", 1)],             # bar 5  answer (frame drum enters)
     [("E5", 2), ("F5", 1)],                        # bar 6  F only on the weak third beat
     [("E5", 1), ("D5", 1), ("E5", 1)],             # bar 7
-    [("D5", 3)],                                   # bar 8  home on D, rings into bar 1
+    [("D5", 3)],                                   # bar 8  home on D, rings into bar 9
 ]
+# Second pass: the same tune with a small variation (bars 11, 14, 15), ending home on D held into bar 1.
+MELODY = MELODY + [
+    MELODY[0], MELODY[1],
+    [("B5", 2), ("A5", 1)],                        # bar 11 the top note held longer
+    MELODY[3], MELODY[4],
+    [("E5", 1), ("G5", 1), ("F5", 1)],             # bar 14 a turn up before the weak-beat F
+    [("E5", 2), ("D5", 1)],                        # bar 15 settles a beat early
+    [("D5", 3)],                                   # bar 16 home on D, held into the downbeat of bar 1
+]
+HOLD_LAST = 1.04                                   # the last note's length as a fraction of its beats (ties over)
 # Frame drum, bars 5-8 only: (bar, beat, stroke). "dum" = open low stroke, "tek" = soft rim stroke.
 DRUM = [(b, 1, "dum") for b in (5, 6, 7, 8)] + [(b, 3, "tek") for b in (5, 6, 7)] + [(8, 2.5, "tek")]
+DRUM += [(b, 1, "dum") for b in range(9, 17)] + [(b, 3, "tek") for b in range(9, 16)]          # second pass
 # Lyre: the open fifth D3-A3 rolled at each phrase start, plus a soft single A3 in the middle of each phrase.
-LYRE = [(1, 1, ["D3", "A3"]), (3, 1, ["A3"]), (5, 1, ["D3", "A3"]), (7, 1, ["A3"])]
+LYRE = [(1, 1, ["D3", "A3"]), (3, 1, ["A3"]), (5, 1, ["D3", "A3"]), (7, 1, ["A3"]),
+        (9, 1, ["D3", "A3"]), (11, 1, ["A3"]), (13, 1, ["D3", "A3"]), (15, 1, ["A3"])]
+FIRST_DELAY = 0.08                                 # the loop's first pipe note enters 80 ms late, under the tie
+LYRE_DELAY = 0.12                                  # the rolls start 120 ms after the beat (shapes the loop start)
 # Drone: (note, relative level). The river's D with its fifth, harmonics up to about 800 Hz.
 DRONE = [("D2", 0.45), ("D3", 1.0), ("A3", 0.6)]
 
@@ -116,7 +133,10 @@ for b, bar in enumerate(MELODY, 1):
     for note, beats in bar:
         if note != "-":
             t0 = onset(b, beat) + rng.uniform(-HUMANISE, HUMANISE)
-            dur = beats * BEAT * 0.93                                   # breathe between notes
+            if b == 1 and beat == 1:
+                t0 += FIRST_DELAY                                       # let the held last note ring into bar 1
+            last = b == len(MELODY) and beat + beats > BEATS_PER_BAR
+            dur = beats * BEAT * (HOLD_LAST if last else 0.93)          # breathe between notes; tie the last over
             vel = 10 ** ((-1.5 if beat != 1 else 0.0) / 20) * rng.uniform(0.94, 1.0)  # lighter off the downbeat
             add_wrapped(mix["pipe"], A.pan(pipe(A.NOTE[note], dur, rng) * vel, -0.12), t0)
             events.append({"bar": b, "beat": beat, "note": note, "beats": beats, "midi": int(round(69 + 12 * np.log2(A.NOTE[note] / 440)))})
@@ -128,7 +148,7 @@ for b, beat, stroke in DRUM:
 
 for b, beat, notes in LYRE:
     for k, note in enumerate(notes):                                    # roll the fifth upwards, 45 ms apart
-        t0 = onset(b, beat) + 0.045 * k + rng.uniform(0, HUMANISE)
+        t0 = onset(b, beat) + LYRE_DELAY + 0.045 * k + rng.uniform(0, HUMANISE)
         add_wrapped(mix["lyre"], A.pan(lyre(A.NOTE[note], rng) * (0.8 if len(notes) == 1 else 1.0), 0.35), t0)
 
 # drone: hurdy-gurdy-like stack on each drone note; every partial an exact loop harmonic; slow breathing per partial
@@ -169,6 +189,15 @@ assert len(dec) == N, f"Ogg decodes to {len(dec)} samples, want {N}"
 print(f"  loop {N} samples = {N / A.SR:.4f} s; drone D3 at {A.estimate_f0(mix['drone'], 140, 155):.2f} Hz "
       f"(D3 = {A.NOTE['D3']:.2f}); pipe B5 top {A.NOTE['B5']:.1f} Hz")
 seam_report(x, "theme-hamlet-draft-wav", check=True)
+
+
+def rms_db(seg):
+    return 10 * np.log10(np.mean(np.asarray(seg, float) ** 2) + 1e-20)
+w = int(0.05 * A.SR)
+seam_db = (rms_db(x[-w:]), rms_db(x[:w]))
+print(f"  seam level: last 50 ms {seam_db[0]:.1f} dB, first 50 ms {seam_db[1]:.1f} dB, "
+      f"difference {seam_db[1] - seam_db[0]:+.1f} dB (want within 3 dB)")
+assert abs(seam_db[1] - seam_db[0]) <= 3.0, "level step at the loop seam"
 seam_report(dec, "theme-hamlet-draft", check=True)
 for p in (wav, ogg):
     report(p, f"70-300 Hz {band_energy(x, 70, 300):.0%}", fmax=6000, loop=True)
@@ -182,6 +211,7 @@ score = {
     "feel": f"free and breathing: onsets humanised by +-{int(HUMANISE * 1000)} ms, notes held 93% of their length",
     "bell_motif": [e["note"] for e in events[:4]],
     "range": "D5-B5 (a major sixth)",
+    "form": "8 bars, then the same 8 bars again with a small variation in bars 11, 14 and 15 (45 s loop)",
     "rules": ["mostly stepwise", "spans a sixth", "no third degree (F) on a strong beat",
               "works in Dorian, Mixolydian and major (only F/F# changes)", "first four notes are the bell motif"],
     "instruments": {"pipe": "lead, wooden pipe / recorder, bars 1-8",
@@ -198,7 +228,7 @@ js = asset_path("audio/music/theme-hamlet-draft-score.json")
 js.write_text(json.dumps(score, indent=1) + "\n", encoding="utf-8")
 print("  score:", " | ".join(score["melody_by_bar"]))
 
-used = "Music: Tide & Toll theme, Hamlet arrangement, first draft (8 bars, D Dorian, 3/4 at 64 BPM, 22.5 s seamless loop)"
+used = "Music: Tide & Toll theme, Hamlet arrangement, draft (8 bars played twice with a variation, D Dorian, 3/4 at 64 BPM, 45 s seamless loop)"
 ledger.add("audio", ogg, kind="music", generator=__file__, verified=True, seed=SEED, used_in=used)
 ledger.add("audio", wav, kind="music", generator=__file__, verified=True, seed=SEED, used_in=used + "; 16-bit WAV master of the same loop")
 ledger.add("audio", js, kind="music", generator=__file__, verified=True, seed=SEED,

@@ -14,7 +14,23 @@ for d in models textures icons fonts audio; do
       # extracts from each .glb (<model>_palette.png; asset names never contain "_"), so models are not re-imported.
       rsync -a --delete --exclude '*.import' --exclude '*_palette.png' "$ROOT/assets/$d/" "$DST/$d/"
     else
-      rm -rf "$DST/$d"; mkdir -p "$DST/$d"; cp -r "$ROOT/assets/$d/." "$DST/$d/"
+      # No rsync (tools/setup-linux.sh installs it): same result by hand. Copy new or changed files, then delete
+      # files that are gone from assets/, but never Godot's .import sidecars or extracted *_palette.png atlases
+      # (a sidecar whose asset is gone is removed, as Godot would orphan it).
+      (cd "$ROOT/assets/$d" && find . -type f -print0) | while IFS= read -r -d '' f; do
+        if [ ! -f "$DST/$d/$f" ] || ! cmp -s "$ROOT/assets/$d/$f" "$DST/$d/$f"; then
+          mkdir -p "$(dirname "$DST/$d/$f")"; cp -p "$ROOT/assets/$d/$f" "$DST/$d/$f"
+        fi
+      done
+      (cd "$DST/$d" && find . -type f -print0) | while IFS= read -r -d '' f; do
+        case "$f" in
+          *_palette.png.import) ;;
+          *.import) [ -f "$ROOT/assets/$d/${f%.import}" ] || rm -f "$DST/$d/$f" ;;
+          *_palette.png) ;;
+          *) [ -f "$ROOT/assets/$d/$f" ] || rm -f "$DST/$d/$f" ;;
+        esac
+      done
+      find "$DST/$d" -mindepth 1 -type d -empty -delete
     fi
   else
     rm -rf "$DST/$d"

@@ -26,9 +26,12 @@ GODOT = os.environ.get("GODOT", "godot")
 SHEET_PROJ = ROOT / "tools" / "contact-sheet"
 
 
-def lint(path):
+def lint(path, icon_style=False):
     """Icon rules from docs/asset-pipeline.md: viewBox 0 0 24 24, plain SVG (no image/text/script/foreignObject/
-    style links), colours from the palette or the state colours (plus none/currentColor), Ink strokes round."""
+    style links), colours from the palette or the state colours (plus none/currentColor), Ink strokes round.
+    icon_style=True also checks the house drawing language (assets/src/2d/icons.py): every drawn element has a
+    2-unit Ink stroke and a Paper or Ink fill (closed shapes, so the icon reads on dark grounds too), and at least
+    one element is filled with Paper."""
     path = Path(path)
     probs = []
     try:
@@ -57,6 +60,20 @@ def lint(path):
         if el.get("stroke") and el.get("stroke") != "none":
             if el.get("stroke-linecap", "round") != "round" or el.get("stroke-linejoin", "round") != "round":
                 probs.append(f"<{tag}> stroke should have round caps and joins")
+    if icon_style:
+        ink, paper = "#" + P.hex_of("Ink"), "#" + P.hex_of("Paper")
+        drawn = [el for el in root.iter() if el.tag.split("}")[-1] in ("path", "circle", "rect", "ellipse",
+                                                                         "polygon", "polyline", "line")]
+        for el in drawn:
+            tag = el.tag.split("}")[-1]
+            if (el.get("stroke") or "").upper() != ink.upper():
+                probs.append(f"<{tag}> needs an Ink stroke ({ink})")
+            if el.get("stroke-width") not in ("2", "2.0"):
+                probs.append(f"<{tag}> stroke-width {el.get('stroke-width')!r}: the icon weight is 2")
+            if (el.get("fill") or "").upper() not in (ink.upper(), paper.upper()):
+                probs.append(f"<{tag}> fill {el.get('fill')!r}: closed shapes are filled Paper (or Ink accents)")
+        if not any((el.get("fill") or "").upper() == paper.upper() for el in drawn):
+            probs.append("no Paper-filled shape: the icon would vanish on a dark ground")
     return sorted(set(probs))
 
 

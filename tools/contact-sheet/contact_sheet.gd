@@ -10,7 +10,10 @@ extends Node
 # from the north (-Z). --sides adds row 2: low side views (12 deg) at yaw 0, 90, 180, 270 (south, east, north, west).
 # Options: --view=14 (metres across a panel, ortho, same scale everywhere), --panel=480 (px), --focus_y=1.5,
 # --unlit (flat colour, for palette checks), --outline=screen|none, --line=1.5 (px), --crease=0.45,
-# --noshadow, --tile (also save each panel as OUT-<panel>.png), --sun=0.9, --amb=0.45.
+# --noshadow, --tile (also save each panel as OUT-<panel>.png), --sun=0.9, --amb=0.45,
+# --crease_soft=1.5 (crease threshold on nodes whose glTF extras say {"ink": "soft"}: trees, fields, reeds).
+# Soft-ink nodes write 1 into the stencil buffer; the outline is drawn as two full-screen quads, one testing
+# stencil != 1 with --crease and one testing stencil == 1 with --crease_soft (see outline_screen.gdshader).
 const PAPER := Color("#F2EAD8")
 var a := {}
 
@@ -35,10 +38,19 @@ func _load_model(path: String) -> Node3D:
 	return doc.generate_scene(st)
 
 # Lambert, no specular: with ortho cameras on Mobile the default specular swings wildly between views.
+func _ink_soft(n: Node) -> bool:
+	var e = n.get_meta("extras", null)
+	if e is Dictionary and String((e as Dictionary).get("ink", "")) == "soft":
+		return true
+	return n.get_parent() != null and n.get_parent() is Node3D and _ink_soft(n.get_parent())
+
 func _flatten(n: Node, unlit_all: bool, stats: Dictionary) -> void:
 	for c in n.get_children():
 		_flatten(c, unlit_all, stats)
 	if n is MeshInstance3D:
+		var soft := _ink_soft(n)
+		if soft:
+			stats["soft"].append(String(n.name))
 		var mi := n as MeshInstance3D
 		stats["tris"] += mi.mesh.get_faces().size() / 3
 		var box: AABB = mi.global_transform * mi.mesh.get_aabb()
@@ -55,6 +67,11 @@ func _flatten(n: Node, unlit_all: bool, stats: Dictionary) -> void:
 					sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 				if sm.albedo_texture:
 					sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				if soft:   # mark soft-ink pixels in the stencil buffer
+					sm.stencil_mode = BaseMaterial3D.STENCIL_MODE_CUSTOM
+					sm.stencil_flags = BaseMaterial3D.STENCIL_FLAG_WRITE
+					sm.stencil_compare = BaseMaterial3D.STENCIL_COMPARE_ALWAYS
+					sm.stencil_reference = 1
 				mi.set_surface_override_material(i, sm)
 
 func _run() -> void:
@@ -105,42 +122,45 @@ func _run() -> void:
 		_fail("cannot load " + String(a["model"]))
 		return
 	vp.add_child(model)
-	var stats := {"tris": 0, "aabb": null, "nodes": []}
+	var stats := {"tris": 0, "aabb": null, "nodes": [], "soft": []}
 	_flatten(model, unlit, stats)
 	var bb: AABB = stats["aabb"] if stats["aabb"] != null else AABB()
-	print("MODEL tris=%d nodes=%s size=%.2fx%.2fx%.2f min=(%.2f,%.2f,%.2f) max=(%.2f,%.2f,%.2f)" % [
-		stats["tris"], ",".join(stats["nodes"]), bb.size.x, bb.size.y, bb.size.z,
+	print("MODEL tris=%d nodes=%s soft_ink=%s size=%.2fx%.2fx%.2f min=(%.2f,%.2f,%.2f) max=(%.2f,%.2f,%.2f)" % [
+		stats["tris"], ",".join(stats["nodes"]), ",".join(stats["soft"]), bb.size.x, bb.size.y, bb.size.z,
 		bb.position.x, bb.position.y, bb.position.z, bb.end.x, bb.end.y, bb.end.z])
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = view
-	cam.near = float(a.get("near", "30"))
+	cam.near = float(a.get("near", "8"))   # low side views of wide models (fields, --view=22) reach the ground nearer than 30 m
 	cam.far = float(a.get("far", "300"))
 	vp.add_child(cam)
 	if outline == "screen":
-		var sh: Shader
+		var code := ""
 		if a.has("shader"):
-			sh = Shader.new()
-			sh.code = FileAccess.get_file_as_string(a["shader"])
-			if sh.code == "":
+			code = FileAccess.get_file_as_string(a["shader"])
+			if code == "":
 				_fail("cannot read shader " + String(a["shader"]))
 				return
 		else:
 			_fail("--outline=screen needs --shader=/abs/path/outline_screen.gdshader")
 			return
-		var q := MeshInstance3D.new()
-		var qm := QuadMesh.new()
-		qm.size = Vector2(2, 2)
-		q.mesh = qm
-		var smat := ShaderMaterial.new()
-		smat.shader = sh
-		smat.set_shader_parameter("width_px", float(a.get("line", "1.5")))
-		smat.set_shader_parameter("metres_per_px", view / panel)
-		smat.set_shader_parameter("crease", float(a.get("crease", "0.45")))
-		q.material_override = smat
-		q.extra_cull_margin = 16384.0
-		cam.add_child(q)
-		q.position = Vector3(0, 0, -1)
+		# Two passes of the same shader: ordinary pixels (stencil != 1) with --crease, soft-ink pixels with --crease_soft.
+		for ps in [["compare_not_equal", float(a.get("crease", "0.45"))], ["compare_equal", float(a.get("crease_soft", "1.5"))]]:
+			var sh := Shader.new()
+			sh.code = code.replace("// STENCIL_MODE", "stencil_mode read, %s, 1;" % ps[0])
+			var q := MeshInstance3D.new()
+			var qm := QuadMesh.new()
+			qm.size = Vector2(2, 2)
+			q.mesh = qm
+			var smat := ShaderMaterial.new()
+			smat.shader = sh
+			smat.set_shader_parameter("width_px", float(a.get("line", "1.5")))
+			smat.set_shader_parameter("metres_per_px", view / panel)
+			smat.set_shader_parameter("crease", ps[1])
+			q.material_override = smat
+			q.extra_cull_margin = 16384.0
+			cam.add_child(q)
+			q.position = Vector3(0, 0, -1)
 	var fy := float(a.get("focus_y", "1.5"))
 	var dist := float(a.get("dist", "60"))
 	var views := [["top", 90.0, 0.0], ["tilt45-south", 45.0, 0.0], ["tilt45-east", 45.0, 90.0], ["tilt45-north", 45.0, 180.0]]

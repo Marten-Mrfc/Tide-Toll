@@ -15,7 +15,9 @@ WRITER_NOTE = "procedural gouache texture, palette colours only"
 def grass(seed):
     rng = np.random.default_rng(seed)
     img = T.base(S, "Meadow")
-    T.blotch(img, "Bent grass", rng, 4, 0.64, rag=0.16)                       # sunlit patches
+    # sunlit patches: second round uses 8 lattice cells (not 4) and a higher threshold, so the patches are smaller
+    # and more numerous and no single big blob marks the tile repeat
+    T.blotch(img, "Bent grass", rng, 8, 0.66, rag=0.16)
     T.blotch(img, "Cast-iron green", rng, 16, 0.80, rag=0.10, octaves=2)     # small shade under tufts
     T.grain(img, "Bent grass", rng, 0.035)                                    # paper tooth
     clump = T.noise(S, 8, 8, rng, 2)
@@ -29,10 +31,11 @@ def grass(seed):
 def trampled(seed):
     rng = np.random.default_rng(seed)
     img = T.base(S, "Bent grass")
-    T.blotch(img, "Meadow", rng, 4, 0.66, rag=0.18)                           # surviving green
+    T.blotch(img, "Meadow", rng, 8, 0.70, rag=0.18)                           # surviving green, small patches
     T.grain(img, "Reed and thatch", rng, 0.03)
-    T.strokes(img, "Meadow", rng, 520, length=(10, 22), width=(1.4, 2.2), angle=(0, 0.18))   # grass laid flat
-    T.strokes(img, "Reed and thatch", rng, 260, length=(8, 16), width=(1.2, 1.8), angle=(0, 0.18))
+    # grass laid flat in every direction (isotropic: the camera rotates, so no east-west streaks); shorter marks
+    T.strokes(img, "Meadow", rng, 700, length=(7, 14), width=(1.4, 2.2), angle=None)
+    T.strokes(img, "Reed and thatch", rng, 340, length=(6, 11), width=(1.2, 1.8), angle=None)
     T.dots(img, "Trail earth", rng, 40, radius=(0.9, 1.6))                    # first bare specks
     return img
 
@@ -62,12 +65,17 @@ def track(seed):
 
 def hollow_way(seed):
     rng = np.random.default_rng(seed)
+    """Second round: a dark, wet, sunken lane. Mud everywhere, small standing puddles in Deep water with a River
+    glint on some, a few drier Packed earth crumbs; no ink marks and no pale blotches (the lane is the darkest
+    ground state, its brightest pixels are the rare glints)."""
     img = T.base(S, "Mud")
-    T.blotch(img, "Wet mudflat", rng, 4, 0.68, rag=0.16)                      # wet sheen
-    T.blotch(img, "Packed earth", rng, 8, 0.76, rag=0.12)                     # drier humps
-    T.grain(img, "Wet mudflat", rng, 0.03)
-    T.strokes(img, "Ink", rng, 70, length=(14, 30), width=(0.9, 1.3), angle=(0, 0.06))   # pencil hatching: sunken ruts
-    T.strokes(img, "Packed earth", rng, 90, length=(6, 12), width=(1.2, 1.8), angle=(0, 0.2))
+    T.grain(img, "Packed earth", rng, 0.012, cells=256)                       # sparse drier crumbs
+    puddle = T.noise(S, 16, 16, rng, 2) + (T.noise(S, 64, 64, rng, 1) - 0.5) * 0.12
+    wet = puddle > 0.74
+    img[wet] = P.rgb("Deep water")                                            # small puddles
+    glint = wet & (T.noise(S, 64, 64, rng, 1) > 0.72) & (puddle > 0.79)
+    img[glint] = P.rgb("River")                                               # sky caught in a few of them
+    T.strokes(img, "Deep water", rng, 60, length=(5, 10), width=(1.2, 1.8), angle=None)   # wet hoof and foot prints
     return img
 
 
@@ -99,6 +107,11 @@ def paper(seed):
     return img
 
 
+# wear-ramp.png is DELIBERATELY not snapped to the palette (decided 2026-11-24, recorded in docs/asset-pipeline.md
+# "Textures"): it is a lookup gradient for the wear shader, not a picture. Its plateaus are exact palette colours;
+# only the +-0.035 transition zones between stages are interpolated (in linear light), so wear changes smoothly
+# instead of popping a whole stage when one footstep crosses a threshold. The shader never shows a ramp pixel as a
+# surface colour by itself: it uses the ramp to pick and mix the five ground textures, which are fully on palette.
 # Wear stages from the Art tab: meadow 0-0.10, bent grass 0.10-0.30, trail 0.30-0.55, track 0.55-0.80,
 # worn way 0.80-1.00. The ramp holds each stage colour and blends over +-0.035 around each boundary.
 STAGES = [("Meadow", 0.00), ("Bent grass", 0.10), ("Trail earth", 0.30), ("Packed earth", 0.55), ("Mud", 0.80)]
@@ -196,6 +209,21 @@ def main():
     sheet[y:y + cw, rx:rx + rw] = big
     for d in (ROOT / "build" / "2d", pathlib.Path(__file__).resolve().parent / "previews"):
         print(png.write_png(sheet, d / "ground-preview.png"))
+    # ---- repeat check: every ground tile laid 4 x 4 at quarter size (the review looked for repeats at 4 x 4)
+    names = ["grass", "trampled", "trail", "track", "hollow-way"]
+    q = 4
+    rows = [png.tile(tiles[n], q)[::q, ::q] for n in names]                  # 512 px each
+    rep4 = np.empty((S, len(names) * S + (len(names) - 1) * gap, 3), np.uint8)
+    rep4[:] = P.rgb("Paper")
+    for i, r in enumerate(rows):
+        rep4[:, i * (S + gap):i * (S + gap) + S] = r
+    for d in (ROOT / "build" / "2d", pathlib.Path(__file__).resolve().parent / "previews"):
+        print(png.write_png(rep4, d / "ground-tiled-4x4.png"))
+    off = {n: round(1 - png.palette_fraction(tiles[n]), 4) for n in names}
+    ramp_cols = {tuple(c) for c in ramp[0]}
+    on = sum(1 for c in ramp_cols if any(tuple(P.rgb(nm)) == c for nm, _ in STAGES))
+    print("off-palette fraction per tile:", off, f"| wear-ramp: {len(ramp_cols)} colours, {on} exact stage colours, "
+          f"{len(ramp_cols) - on} interpolated (intentional)")
 
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ Models do not carry their own textures. They use one shared 256 x 256 palette at
 | Field | 16 x 16 (8 x 8 cells), crops under 0.6 high | 0.6 | 500 |
 | Fence segment | 2 long (one cell edge), posts at both ends | 1.0 | 100 |
 | Gate | 2 long | 1.2 | 150 |
-| Footbridge | 2 wide, spans in 2 m modules | 1.2 rails | 300 per module |
+| Footbridge | 2 wide, spans in 2 m modules | rails 1.2 above the deck (deck 0.6 above the water, so 1.8 overall) | 300 per module |
 | Ford stones | 2 x 2 (one cell) | 0.3 | 150 |
 | Rowboat (1.5x) | 6.8 x 2.4 | 1.2 | 300 |
 | Tree | canopy 4 to 7 across | 5 to 9 | 300 |
@@ -70,7 +70,11 @@ Models do not carry their own textures. They use one shared 256 x 256 palette at
 
 Landmarks may go to about 1,500 triangles. Everything else stays under 500.
 
+The footbridge row measures its rails from the deck people walk on (corrected 2026-11-24, when the review read "1.2" as the overall height): villagers are drawn 1.5 times life size, so a 1.2 m rail is about waist height on them, and the deck stays 0.6 m above the water so masted boats cannot pass (Art tab).
+
 ## Model rules
+
+- **Ink weight:** the outline pass inks creases above a threshold (0.45). Many-faceted organic models (tree crowns, crop rows, reeds) would carry far more ink than the houses at that setting, so they are written with `glb.write_glb(..., ink="soft")`: their glTF nodes carry extras `{"ink": "soft"}`, the renderer marks them in the stencil buffer and inks their creases only above 1.5 (`common.glb.INK_SOFT`). Silhouettes are inked as usual. See `assets/src/common/outline_screen.gdshader`.
 
 - Low-poly, flat-shaded, chunky. No detail smaller than about 0.3 m: it will not survive the top view.
 - **Origin** at the centre of the footprint, on the ground (y = 0). Snap footprints to whole cells.
@@ -83,12 +87,16 @@ Landmarks may go to about 1,500 triangles. Everything else stays under 500.
 ## Textures
 
 - Ground and wear textures are drawn by shader code first (world-space, so nothing swims when the camera turns). When a bitmap is needed: PNG, sRGB, power-of-two size (512 x 512 for ground tiles, 256 x 256 for the palette atlas), seamlessly tiling, colours snapped to the palette.
-- Keep the generator (shader, Python, Material Maker graph) under `assets/src/textures/`.
+- Keep the generator (shader, Python, Material Maker graph) under `assets/src/` (the ground tiles are in `assets/src/2d/ground.py`).
+- **One exception to snapping: `assets/textures/wear-ramp.png`.** It is a lookup gradient for the wear shader, not a picture: wear (0 to 1) in, ground state out. Its five plateaus are exact palette colours (Meadow, Bent grass, Trail earth, Packed earth, Mud); only the narrow transitions between them (plus or minus 0.035 around each threshold, 63 colours in all) are interpolated in linear light, on purpose, so the ground changes smoothly instead of popping a whole stage when one footstep crosses a threshold. Nothing shows a ramp pixel as a surface colour: the shader uses it to choose and mix the ground textures, which are fully on the palette. Decided 2026-11-24 after the art review; the generator says the same.
+- Before calling a ground texture done, lay it 4 x 4 and look for a repeating blob or a stripe that points one way (`assets/src/2d/previews/ground-tiled-4x4.png`). Brush marks go in every direction: the camera rotates, so a mark laid east-west shows as streaks.
 
 ## Icons
 
 - SVG, `viewBox="0 0 24 24"`, drawn on a 24 px grid and readable at 24 px (problem icons 28 to 32 px).
 - 2 px Ink (`#2B2620`) strokes with round caps and joins; fills from the palette, usually Paper.
+- House drawing language (all 14 icons since 2026-11-24): crisp geometry, every element a **closed shape with a Paper fill inside a 2-unit Ink outline**, one stroke weight everywhere. Things that would be open lines (rails, sound waves, arrows) are closed bands at least about 3 units wide. Ink fill only for small accents inside a Paper shape. So the same file reads on paper (by its outline) and on ink or any dark ground (by its paper body) with no recolouring and no mask. `svg.lint(path, icon_style=True)` checks it.
+- Look at every icon at 20, 40 and 80 px on Paper and on Ink, rendered from the real files (`assets/src/2d/previews/icons-preview.png`).
 - Plain SVG only: no embedded bitmaps, no fonts (convert text to paths), no scripts.
 
 ## Fonts
@@ -153,6 +161,8 @@ Quote a field that contains a comma. One row per file: eight footstep variations
 For a `self-made` row, `source` must name the generator under `assets/src/` and that file must exist, or `./check` fails. For downloads, save the licence page into `assets/licences/` on the day.
 
 **AI disclosure:** a file whose content came out of a generative AI model (image, 3D, audio or music generators) needs the tool, model version, prompt, seed and terms date in `source`, and is disclosed on Steam as pre-generated AI content. Code written by an AI coding agent that then builds an asset by rules (a mesh script, a synthesiser) is recorded as `script written by <agent and model>` so the disclosure report can decide; do not hide it.
+
+Generators do not touch tracked ledger files on a normal rebuild: `ledger.add(...)` writes to `build/ledger-rows/<group>.csv` (scratch), `tools/build-assets.sh` lists the rows that `LEDGER.csv` lacks or has differently, and `python3 tools/merge-ledger-rows.py --build --prune` merges them and drops rows for files that no longer exist. Builders working in parallel set `ASSET_LEDGER_FRAGMENTS=1` to write the tracked fragments in `assets/src/ledger-rows/` instead.
 
 Example rows:
 

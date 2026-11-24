@@ -83,7 +83,7 @@ public class CostFieldTests
     }
 
     // Golden field from the toy's dijkstra (path.ts) on its 128 x 128 grid: costs 1 + 3 * mulberry32(7),
-    // a wall on column 64 for rows 0..99, target (10,10). Values printed by the same golden.ts script.
+    // a wall on column 64 for rows 0..99, target (10,10). Exported to golden/toy-golden.json.
     [Fact]
     public void Dijkstra128MatchesTypeScript()
     {
@@ -91,19 +91,20 @@ public class CostFieldTests
         var field = new float[g.Count];
         CostField.Dijkstra(g, g.Idx(10, 10), cost, field, new BinaryHeap(1024));
 
+        var gold = Golden.Root.GetProperty("dijkstra");
         double sum = 0;
         int inf = 0;
         foreach (float f in field) { if (float.IsPositiveInfinity(f)) inf++; else sum += f; }
-        Assert.Equal(100, inf);
-        Assert.Equal(3573179.6519253254, sum);
-        Assert.Equal(0f, field[g.Idx(10, 10)]);
-        Assert.Equal(2.794908046722412f, field[g.Idx(11, 10)]);
-        Assert.Equal(125.65255737304688f, field[g.Idx(63, 50)]);
-        Assert.Equal(309.34429931640625f, field[g.Idx(65, 50)]);
-        Assert.Equal(205.12088012695312f, field[g.Idx(64, 100)]);
-        Assert.Equal(432.6565246582031f, field[g.Idx(127, 0)]);
-        Assert.Equal(332.4920349121094f, field[g.Idx(127, 127)]);
-        Assert.Equal(228.00746154785156f, field[g.Idx(0, 127)]);
+        Assert.Equal(gold.GetProperty("infCount").GetInt32(), inf);
+        Assert.Equal(gold.GetProperty("sum").GetDouble(), sum);
+        Assert.Equal(gold.GetProperty("fieldFnv").GetUInt32(), TideToll.Sim.Testing.ToyHarness.Fnv<float>(field));
+        int probes = 0;
+        foreach (var p in gold.GetProperty("probes").EnumerateArray())
+        {
+            Assert.Equal((float)p.GetProperty("value").GetDouble(), field[g.Idx(p.GetProperty("x").GetInt32(), p.GetProperty("y").GetInt32())]);
+            probes++;
+        }
+        Assert.Equal(8, probes);
     }
 
     // Deterministic workload (fixed seed, fixed pass count). The time is printed, never asserted,

@@ -11,14 +11,20 @@ public class GridTests
         return cells.Select(c => (G.X(c), G.Y(c))).ToArray();
     }
 
-    // Expected cells were printed by the toy's line4 (grid.ts), same script as the RNG goldens.
+    // Expected cells come from the toy's line4 (grid.ts), exported to golden/toy-golden.json.
     [Fact]
     public void Line4MatchesTypeScript()
     {
-        Assert.Equal(new[] { (0, 0), (1, 0), (2, 0), (2, 1), (3, 1), (4, 1), (4, 2), (5, 2) }, Line(0, 0, 5, 2));
-        Assert.Equal(new[] { (3, 3), (2, 3), (2, 2), (1, 2), (1, 1), (0, 1), (0, 0) }, Line(3, 3, 0, 0));
-        Assert.Equal(new[] { (2, 7), (2, 6), (2, 5), (2, 4), (2, 3), (2, 2), (2, 1) }, Line(2, 7, 2, 1));
-        Assert.Equal(new[] { (0, 0), (1, 0), (1, 1), (2, 1), (2, 2), (3, 2), (3, 3), (4, 3), (4, 4) }, Line(0, 0, 4, 4));
+        int n = 0;
+        foreach (var c in Golden.Root.GetProperty("line4").EnumerateArray())
+        {
+            var f = c.GetProperty("from"); var t = c.GetProperty("to");
+            var cells = new List<int>();
+            G.Line4(f[0].GetInt32(), f[1].GetInt32(), t[0].GetInt32(), t[1].GetInt32(), cells);
+            Assert.Equal(c.GetProperty("cells").EnumerateArray().Select(e => e.GetInt32()).ToArray(), cells.ToArray());
+            n++;
+        }
+        Assert.Equal(7, n);
     }
 
     [Theory]

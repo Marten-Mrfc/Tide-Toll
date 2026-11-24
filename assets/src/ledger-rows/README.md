@@ -1,5 +1,7 @@
 # Ledger fragments
 
+Generators write here only when asked (`ASSET_LEDGER_FRAGMENTS=1`, or `--ledger-fragments` on a generator's command line); otherwise their rows go to the scratch folder `build/ledger-rows/` and are merged with `python3 tools/merge-ledger-rows.py --build --prune`, so a normal rebuild changes no tracked file.
+
 While builders work in parallel, nobody edits `assets/LEDGER.csv`. Each group writes its rows to its own fragment here, `assets/src/ledger-rows/<group>.csv` (`models.csv`, `textures.csv`, `icons.csv`, `fonts.csv`, `audio.csv`): the same eight columns as the ledger (`item,kind,source,licence,url,used_in,date_checked,verified`), **no header**, one row per file. A later step merges them into `assets/LEDGER.csv` with `python3 tools/merge-ledger-rows.py` and empties the fragments.
 
 - Generators write their rows with `common.ledger.add(...)` (see `assets/src/README.md`); hand-made or downloaded files (fonts, licence-checked downloads) get a hand-written row in the same fragment.

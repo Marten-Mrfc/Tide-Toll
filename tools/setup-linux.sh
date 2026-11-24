@@ -71,5 +71,6 @@ fi
 
 echo "== versions"
 ffmpeg -version | head -n 1
+rsync --version | head -n 1   # tools/sync-assets.sh keeps Godot's .import sidecars only with rsync (or its slower fallback)
 dotnet --version
 godot --version

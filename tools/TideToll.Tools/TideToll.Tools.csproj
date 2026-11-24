@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Headless runner: run a town, benchmark the tick, print the gate tables and the toy's checks.
+       The check and table code lives in sim.tests/Harness and is compiled into both projects. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>TideToll.Tools</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\sim\TideToll.Sim.csproj" />
+    <Compile Include="..\..\sim.tests\Harness\*.cs" Link="Harness\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

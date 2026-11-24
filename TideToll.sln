@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TideToll.Sim", "sim\TideTol
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TideToll.Sim.Tests", "sim.tests\TideToll.Sim.Tests.csproj", "{89511423-8A41-46B2-A083-6066D227671D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B769D0A6-032A-4989-ACC6-CEA781E60042}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TideToll.Tools", "tools\TideToll.Tools\TideToll.Tools.csproj", "{1059D1C0-CD0C-45BC-B168-D15806313E70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,12 @@ Global
 		{89511423-8A41-46B2-A083-6066D227671D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89511423-8A41-46B2-A083-6066D227671D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89511423-8A41-46B2-A083-6066D227671D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1059D1C0-CD0C-45BC-B168-D15806313E70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1059D1C0-CD0C-45BC-B168-D15806313E70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1059D1C0-CD0C-45BC-B168-D15806313E70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1059D1C0-CD0C-45BC-B168-D15806313E70}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1059D1C0-CD0C-45BC-B168-D15806313E70} = {B769D0A6-032A-4989-ACC6-CEA781E60042}
 	EndGlobalSection
 EndGlobal
