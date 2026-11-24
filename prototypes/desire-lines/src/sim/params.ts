@@ -25,8 +25,10 @@ export const PARAMS = {
   retrySimSec: 5, // a walker with no reachable destination waits this long
 
   // Wear. W in 0..100; gain W += I * (1 - W/100) on entering a cell.
-  wearPerStep: 1.4, // spec 0.75; research raised it to 1.0, the 20-seed trunk-share sweep to 1.4
-  sideShare: 0.35, // spec 0.15, research 0.25; share of I given to the two side neighbours
+  // Round 2 tuning (seeds 1 to 20 only): with the flow discount below, modest
+  // wear forms narrow trails that merge into shared trunks.
+  wearPerStep: 1.8, // spec 0.75
+  sideShare: 0.3, // spec 0.15; share of I given to the two side neighbours
   // Ground-state thresholds: grass < 10 <= trampled < 25 <= trail < 50 <= track.
   // Hollow way needs W >= 85 held for hollowHoldSimSec.
   stateThresholds: [10, 25, 50, 85] as const,
@@ -34,11 +36,23 @@ export const PARAMS = {
   // Index by state: grass, trampled, trail, track, hollow way.
   surfaceCost: [1.0, 0.95, 0.85, 0.75, 0.72] as const,
   stateSpeedMul: [1.0, 1.0, 1.1, 1.2, 1.2] as const,
-  // Half-life of wear by band, in sim seconds. Spec: 1, 2, 4 seasons (60/120/240 s);
-  // research lengthened them so trails at 200 walkers persist.
-  halfLifeLow: 90, // W < 25
-  halfLifeMid: 180, // 25 <= W < 50
-  halfLifeHigh: 360, // W >= 50
+  // Routing cost of worn ground. Instead of the four-step surfaceCost table,
+  // a smooth convex discount: cost x (1 - trailDiscount * min(1, W/discScale)^discPow).
+  // A lane worn by one house gets almost no discount; only lanes worn by
+  // several houses do, which is what makes house paths merge. 0 restores the table.
+  trailDiscount: 0.3,
+  discScale: 80,
+  discPow: 3,
+  // Flow discount: a second discount from recent traffic (a footstep count per
+  // cell that decays with flowHalfLife): cost x (1 - flowDiscount * (1 - exp(-flow/flowScale))).
+  // Walkers join the lane others are using now, not just the oldest one.
+  flowDiscount: 0.5,
+  flowScale: 40,
+  flowHalfLife: 20, // sim seconds
+  // Half-life of wear by band, in sim seconds. Spec: 1, 2, 4 seasons (60/120/240 s).
+  halfLifeLow: 60, // W < 25
+  halfLifeMid: 120, // 25 <= W < 50
+  halfLifeHigh: 240, // W >= 50
   halfLifeHollow: 2400, // spec: 40 seasons
   decayStepSimSec: 1,
 
@@ -63,6 +77,10 @@ export const PARAMS = {
   weidmannGamma: 1.913,
   weidmannRhoMax: 5.4,
   cellAreaM2: 4,
+
+  // Flow preview: trip counts per (house, destination) decay with this time
+  // constant, in days. Longer is steadier, shorter follows changes faster.
+  tripRateDays: 3,
 
   // Metrics
   metricWindowDays: 2,

@@ -2,11 +2,12 @@
 // TypeScript with no DOM and no Math.random, so tests run it headless and a
 // seed plus the same inputs at the same ticks always gives the same run.
 import { PARAMS, Ground, groundOf } from "./params";
-import { N, NC, DL, idx, inside } from "./grid";
-import { mulberry32, hash2, Rng } from "./rng";
+import { N, NC, idx, inside } from "./grid";
+import { mulberry32, Rng } from "./rng";
 import { generateMap, MapData, Building, BuildingKind } from "./mapgen";
-import { Heap, dijkstra, canStep } from "./path";
+import { Heap, dijkstra, chooseAim } from "./path";
 import { Metrics, HealthStats, largestTrail } from "./metrics";
+import { FlowPredictor, FlowPreview, Ov, WhatIf } from "./preview";
 
 const enum WS { Home, Out, Away, Back }
 
@@ -44,6 +45,16 @@ export interface Stats extends HealthStats {
 
 export const SEASONS = ["Spring", "Summer", "Autumn", "Winter"];
 
+
+// Cost multipliers from wear and from recent traffic, as lookup tables.
+const WEAR_LUT_STEPS = 10, FLOW_LUT_STEPS = 4;
+const wearLut = new Float32Array(100 * WEAR_LUT_STEPS + 1);
+const flowLut = new Float32Array(256 * FLOW_LUT_STEPS + 1);
+for (let i = 0; i < wearLut.length; i++)
+  wearLut[i] = 1 - PARAMS.trailDiscount * Math.pow(Math.min(1, i / WEAR_LUT_STEPS / PARAMS.discScale), PARAMS.discPow);
+for (let i = 0; i < flowLut.length; i++)
+  flowLut[i] = 1 - PARAMS.flowDiscount * (1 - Math.exp(-(i / FLOW_LUT_STEPS) / PARAMS.flowScale));
+
 export class World {
   readonly map: MapData;
   readonly seed: number;
@@ -67,6 +78,14 @@ export class World {
   metrics = new Metrics();
   /** Edit counter; the renderer redraws static layers when it changes. */
   version = 0;
+  /** Recent footsteps per cell, decaying with flowHalfLife: busy lanes are cheaper. */
+  flow = new Float32Array(NC);
+  /**
+   * Trips out for each (home, destination) building pair: a counter that decays
+   * with a time constant of tripRateDays, so counter / tripRateDays is trips per day.
+   * Pure bookkeeping for the flow preview; it never touches the RNG.
+   */
+  tripRate: Float32Array;
   private rng: Rng;
   private heap = new Heap(NC * 4);
   private nextId = 0;
@@ -78,6 +97,7 @@ export class World {
     this.map = generateMap(seed);
     this.rng = mulberry32(seed * 31 + 5);
     for (const b of this.map.buildings) this.byKind[b.kind].push(b.id);
+    this.tripRate = new Float32Array(this.map.buildings.length ** 2);
     for (let i = 0; i < NC; i++) this.land[i] = !this.map.water[i] && !this.map.footprint[i] ? 1 : 0;
     for (const _ of this.map.buildings) { this.fields.push(new Float32Array(NC)); this.fieldTime.push(-1e9); this.urgent.push(true); }
     this.buildCost(this.cost);
@@ -87,6 +107,7 @@ export class World {
 
   get buildings(): Building[] { return this.map.buildings; }
   get houses(): number[] { return this.byKind.house; }
+  kind(k: BuildingKind): number[] { return this.byKind[k]; }
 
   // ---------------------------------------------------------------- cost
 
@@ -96,26 +117,37 @@ export class World {
     return m.water[c] === 1 && !m.ford[c] && this.bridgeAt[c] < 0;
   }
 
-  /** Per-cell step cost. `extraBlocked` lets a what-if (the flow preview) add hypothetical fences. */
-  buildCost(out: Float32Array, extraBlocked?: Uint8Array): void {
+  /** Routing cost multiplier of a cell's ground: worn and busy ground is cheaper. */
+  surf = (c: number): number => {
+    const f = flowLut[Math.min(flowLut.length - 1, (this.flow[c] * FLOW_LUT_STEPS) | 0)];
+    if (PARAMS.trailDiscount > 0) return f * wearLut[Math.min(wearLut.length - 1, (this.wear[c] * WEAR_LUT_STEPS) | 0)];
+    return f * PARAMS.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)];
+  };
+
+  /** Step cost of cell c (Infinity where blocked); `ov` overrides its state for a what-if. */
+  cellCost(c: number, ov: Ov = Ov.None): number {
     const P = PARAMS, m = this.map;
-    const inv = 1 / (P.weidmannRhoMax);
-    for (let c = 0; c < NC; c++) {
-      if (this.blocked(c) || (extraBlocked && extraBlocked[c])) { out[c] = Infinity; continue; }
-      let k: number;
-      if (this.bridgeAt[c] >= 0) k = P.bridgeCost;
-      else {
-        k = P.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)] * (1 + P.staticNoise * m.noise[c]);
-        if (m.crop[c]) k += P.cropPenalty;
-        if (m.ford[c]) k *= P.fordCostMul;
-      }
-      const rho = this.occ[c] / P.cellAreaM2;
-      if (rho > 0.05) {
-        const v = Math.max(1 / P.crowdMaxCostMul, 1 - Math.exp(-P.weidmannGamma * (1 / rho - inv)));
-        k *= 1 + P.crowdStrength * (1 / Math.min(1, v) - 1);
-      }
-      out[c] = k;
+    if (ov === Ov.Block || m.footprint[c] || (this.fence[c] && ov !== Ov.Open)) return Infinity;
+    const bridge = ov === Ov.Bridge || (this.bridgeAt[c] >= 0 && ov !== Ov.CloseBridge);
+    if (m.water[c] && !m.ford[c] && !bridge) return Infinity;
+    let k: number;
+    if (bridge) k = P.bridgeCost;
+    else {
+      k = this.surf(c) * (1 + P.staticNoise * m.noise[c]);
+      if (m.crop[c]) k += P.cropPenalty;
+      if (m.ford[c]) k *= P.fordCostMul;
     }
+    const rho = this.occ[c] / P.cellAreaM2;
+    if (rho > 0.05) {
+      const v = Math.max(1 / P.crowdMaxCostMul, 1 - Math.exp(-P.weidmannGamma * (1 / rho - 1 / P.weidmannRhoMax)));
+      k *= 1 + P.crowdStrength * (1 / Math.min(1, v) - 1);
+    }
+    return k;
+  }
+
+  /** Per-cell step cost for routing. */
+  buildCost(out: Float32Array): void {
+    for (let c = 0; c < NC; c++) out[c] = this.cellCost(c);
   }
 
   private refreshField(t: number) {
@@ -124,21 +156,15 @@ export class World {
     this.urgent[t] = false;
   }
 
-  /** What-if field for a target under hypothetical extra blocked cells. Touches no live state. */
-  whatIfField(target: number, extraBlocked: Uint8Array): Float32Array {
-    const cost = new Float32Array(NC), out = new Float32Array(NC);
-    this.buildCost(cost, extraBlocked);
-    dijkstra(this.map.buildings[target].door, cost, out, new Heap(NC));
-    return out;
-  }
-
   private refreshFields() {
     const P = PARAMS;
     let rebuilt = false;
     const ensureCost = () => { if (!rebuilt) { this.buildCost(this.cost); rebuilt = true; } };
+    // After an edit, destination fields first: most walkers out are heading to one.
     let budget = P.urgentFieldsPerTick;
-    for (let t = 0; t < this.fields.length && budget > 0; t++)
-      if (this.urgent[t]) { ensureCost(); this.refreshField(t); budget--; }
+    for (const pass of [0, 1])
+      for (let t = 0; t < this.fields.length && budget > 0; t++)
+        if (this.urgent[t] && (this.map.buildings[t].kind === "house") === (pass === 1)) { ensureCost(); this.refreshField(t); budget--; }
     if (rebuilt) return;
     // Otherwise rebuild at most the one stalest field, once it is due.
     let oldest = 0;
@@ -201,6 +227,19 @@ export class World {
     w.stuck = 0;
     w.hasAim = false;
     this.here[w.cell]++;
+    if (state === WS.Out) this.tripRate[w.home * this.map.buildings.length + target] += 1;
+  }
+
+  /** Flow preview for a hypothetical edit, computed in one go (the page spreads it over frames). Read-only. */
+  previewFlows(change: WhatIf, maxPairs = 5): FlowPreview {
+    this.predictor ??= new FlowPredictor(this);
+    return this.predictor.compute(change, maxPairs);
+  }
+  private predictor?: FlowPredictor;
+
+  /** Recent trips per day from house `home` to building `dest` (building indices). */
+  tripRatePerDay(home: number, dest: number): number {
+    return this.tripRate[home * this.map.buildings.length + dest] / PARAMS.tripRateDays;
   }
 
   private arrive(w: Walker) {
@@ -223,80 +262,15 @@ export class World {
     w.y = w.py = ((w.cell / N) | 0) + 0.5;
   }
 
-  /** One step of field descent from cell u, with this walker's taste. -1 if none. */
-  private descend(w: Walker, u: number): number {
-    const f = this.fields[w.target], cost = this.cost;
-    const fu = f[u];
-    if (!(fu < Infinity)) return -1;
-    const P = PARAMS;
-    let best = -1, bv = Infinity;
-    for (let k = 0; k < 8; k++) {
-      const v = canStep(u, k, cost);
-      if (v < 0 || !(f[v] < fu)) continue; // strict progress, so no loops
-      const edge = DL[k] * 0.5 * (cost[u] + cost[v]);
-      const g = groundOf(this.wear[v], this.hollow[v] === 1);
-      // Taste scales the worn-ground discount; step noise spreads walkers over near-equal lanes.
-      const discount = (1 - P.surfaceCost[g]) * DL[k];
-      const val = f[v] + edge * (1 + P.stepNoise * (hash2(w.id, v) * 2 - 1)) - w.taste * discount;
-      if (val < bv) { bv = val; best = v; }
-    }
-    return best;
-  }
-
-  /**
-   * Cost of walking straight from (x0,y0) to (x1,y1), or Infinity if the line
-   * crosses a blocked cell or cuts a blocked corner.
-   */
-  private lineCost(x0: number, y0: number, x1: number, y1: number): number {
-    const cost = this.cost;
-    const len = Math.hypot(x1 - x0, y1 - y0);
-    const steps = Math.max(1, Math.ceil(len / 0.2)), ds = len / steps;
-    let pcx = Math.floor(x0), pcy = Math.floor(y0), sum = 0;
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
-      const cx = Math.floor(x0 + (x1 - x0) * t), cy = Math.floor(y0 + (y1 - y0) * t);
-      const c = cy * N + cx;
-      if (cx !== pcx || cy !== pcy) {
-        if (cost[c] === Infinity) return Infinity;
-        if (cx !== pcx && cy !== pcy && (cost[pcy * N + cx] === Infinity || cost[cy * N + pcx] === Infinity)) return Infinity;
-        pcx = cx; pcy = cy;
-      }
-      sum += cost[c] * ds;
-    }
-    return sum;
-  }
-
-  /** Looks a few cells down the field and aims at the farthest one in clear sight. */
+  /** Picks the walker's next straight-line aim from its target's field (see path.ts chooseAim). */
   private computeAim(w: Walker): boolean {
-    const door = this.map.buildings[w.target].door;
-    const path = this.aimPath;
-    path.length = 0;
-    let u = w.cell;
-    for (let s = 0; s < PARAMS.lookahead && u !== door; s++) {
-      u = this.descend(w, u);
-      if (u < 0) break;
-      path.push(u);
-    }
-    if (!path.length) return false;
-    // Take the farthest look-ahead cell whose straight line is open and no
-    // dearer than the field's route there: walkers cut across uniform grass
-    // but keep to a trail that bends.
-    const f = this.fields[w.target], fHere = f[w.cell];
-    for (let j = path.length - 1; j >= 0; j--) {
-      const ax = (path[j] % N) + 0.5, ay = ((path[j] / N) | 0) + 0.5;
-      const lc = this.lineCost(w.x, w.y, ax, ay);
-      if (j === 0 || lc <= (fHere - f[path[j]]) * PARAMS.shortcutSlack) {
-        if (lc === Infinity) {
-          // Off-centre next to a corner: step back to the cell centre first.
-          w.aimX = (w.cell % N) + 0.5; w.aimY = ((w.cell / N) | 0) + 0.5;
-        } else { w.aimX = ax; w.aimY = ay; }
-        w.hasAim = true;
-        return true;
-      }
-    }
-    return false;
+    const ok = chooseAim(this.fields[w.target], this.cost, w.x, w.y, w.cell, this.map.buildings[w.target].door,
+      w.taste, this.surf, w.id, this.aimPath, this.aimOut);
+    if (ok) { w.aimX = this.aimOut[0]; w.aimY = this.aimOut[1]; w.hasAim = true; }
+    return ok;
   }
   private aimPath: number[] = [];
+  private aimOut = new Float64Array(2);
 
   private speedOn(c: number): number {
     const P = PARAMS, m = this.map;
@@ -332,6 +306,7 @@ export class World {
         }
       }
     }
+    this.flow[c]++;
     this.metrics.footstep(c);
   }
 
@@ -394,6 +369,8 @@ export class World {
     this.metrics.advance(this.time);
     const a = dt / P.crowdAvgSimSec, keep = 1 - a, occ = this.occ, here = this.here;
     for (let i = 0; i < NC; i++) occ[i] = occ[i] * keep + here[i] * a;
+    const tr = this.tripRate, tk = Math.exp(-dt / (P.tripRateDays * P.daySimSec));
+    for (let i = 0; i < tr.length; i++) tr[i] *= tk;
     this.refreshFields();
     for (const w of this.walkers) this.stepWalker(w, dt);
     if (this.time >= this.nextDecay) {
@@ -409,7 +386,8 @@ export class World {
     const fLow = Math.pow(0.5, dt / P.halfLifeLow), fMid = Math.pow(0.5, dt / P.halfLifeMid);
     const fHigh = Math.pow(0.5, dt / P.halfLifeHigh), fHol = Math.pow(0.5, dt / P.halfLifeHollow);
     const [, t25, t50, t85] = P.stateThresholds;
-    const wear = this.wear;
+    const wear = this.wear, flow = this.flow, ff = Math.pow(0.5, dt / P.flowHalfLife);
+    for (let i = 0; i < NC; i++) flow[i] *= ff;
     for (let i = 0; i < NC; i++) {
       const w = wear[i];
       if (w <= 0) continue;
