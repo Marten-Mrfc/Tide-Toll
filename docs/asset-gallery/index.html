@@ -1,0 +1,886 @@
+<title>Tide &amp; Toll Asset Gallery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of book pages; each section is a gathering of cards on Paper, ruled with Ink. */
+:root{
+  --paper:#F2EAD8; --sheet:#F8F3E7; --ink:#2B2620; --ink-soft:#5E4A36; --rule:#C9BFA8; --river:#3F5F75; --brick:#A4553A;
+  --tag-bg:#E9E2CF; --chip-paper:#F2EAD8; --chip-ink:#2B2620; --focus:#3F5F75;
+  --p0:#F2EAD8;--p1:#2B2620;--p2:#7FA35B;--p3:#A9B86E;--p4:#B89568;--p5:#8C6A48;--p6:#5E4A36;--p7:#5B7F95;--p8:#3F5F75;--p9:#C9A55A;--p10:#A4553A;--p11:#5E6B78;--p12:#7A4436;--p13:#44604F;--p14:#A9A69C;--p15:#6F6450;--p16:#E9E2CF;
+  --f-display:'f-unc', 'Alegreya', Georgia, serif;
+  --f-head:'f-ale', Georgia, 'Times New Roman', serif;
+  --f-body:'f-atk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono:ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#221E19; --sheet:#2B2620; --ink:#EDE4D0; --ink-soft:#BFAF92; --rule:#4A4137; --river:#8FB1C6; --brick:#D9876A;
+  --tag-bg:#3A332B; --chip-paper:#F2EAD8; --chip-ink:#2B2620; --focus:#8FB1C6; --p0:#F2EAD8;--p1:#2B2620;--p2:#7FA35B;--p3:#A9B86E;--p4:#B89568;--p5:#8C6A48;--p6:#5E4A36;--p7:#5B7F95;--p8:#3F5F75;--p9:#C9A55A;--p10:#A4553A;--p11:#5E6B78;--p12:#7A4436;--p13:#44604F;--p14:#A9A69C;--p15:#6F6450;--p16:#E9E2CF; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#221E19; --sheet:#2B2620; --ink:#EDE4D0; --ink-soft:#BFAF92; --rule:#4A4137; --river:#8FB1C6; --brick:#D9876A;
+  --tag-bg:#3A332B; --chip-paper:#F2EAD8; --chip-ink:#2B2620; --focus:#8FB1C6; --p0:#F2EAD8;--p1:#2B2620;--p2:#7FA35B;--p3:#A9B86E;--p4:#B89568;--p5:#8C6A48;--p6:#5E4A36;--p7:#5B7F95;--p8:#3F5F75;--p9:#C9A55A;--p10:#A4553A;--p11:#5E6B78;--p12:#7A4436;--p13:#44604F;--p14:#A9A69C;--p15:#6F6450;--p16:#E9E2CF; color-scheme:dark }
+@font-face{font-family:'f-atk';src:url('media/fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:'f-atk';src:url('media/fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'f-ale';src:url('media/fonts/Alegreya-Variable.ttf') format('truetype');font-weight:400 900;font-display:swap}
+@font-face{font-family:'f-unc';src:url('media/fonts/UncialAntiqua-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--river)} a:focus-visible,audio:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+code{font-family:var(--f-mono);font-size:.8em;color:var(--ink-soft);font-weight:400;word-break:break-all}
+h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0;line-height:1.15}
+header.title{display:grid;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:24px}
+.eyebrow{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(2.2rem,6vw,3.6rem)}
+.lead{font-size:1.15rem;max-width:62ch;margin:0}
+.counts{display:flex;flex-wrap:wrap;gap:8px 20px;margin:0;padding:0;list-style:none;font-variant-numeric:tabular-nums;color:var(--ink-soft);font-size:.92rem}
+.counts b{color:var(--ink)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.95rem}
+section{margin-top:56px;display:grid;gap:20px}
+section>header{display:grid;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:10px}
+h2{font-size:clamp(1.6rem,3.5vw,2.1rem);font-weight:600}
+section>header p{margin:0;max-width:70ch;color:var(--ink-soft)}
+h3{font-size:1.2rem;font-weight:600;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;display:grid;align-content:start;min-width:0;overflow:hidden}
+.card .body{padding:14px 16px 16px;display:grid;gap:10px;min-width:0}
+.card p{margin:0}
+.card figure{margin:0;border-bottom:1px solid var(--rule);background:var(--chip-paper)}
+dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;font-size:.88rem}
+dt{color:var(--ink-soft)} dd{margin:0;min-width:0;overflow-wrap:anywhere}
+dl.nums dd{font-variant-numeric:tabular-nums}
+dl.facts{border-top:1px dashed var(--rule);padding-top:10px}
+.muted{color:var(--ink-soft);font-weight:400}
+.tag{display:inline-block;background:var(--tag-bg);border-radius:2px;padding:0 6px;font-size:.82rem;margin-right:4px}
+.wide{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;margin:0;overflow:hidden}
+.wide img{width:100%;background:var(--chip-paper)}
+.wide figcaption{padding:10px 16px;font-size:.9rem;color:var(--ink-soft)}
+.palette{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;font-size:.88rem}
+.palette li{display:flex;align-items:center;gap:8px}
+.chip{width:22px;height:22px;border:1px solid var(--rule);border-radius:2px;flex:none}
+.swatch{aspect-ratio:2/1;max-width:100%;background-size:50% auto;background-repeat:repeat;image-rendering:auto;border-bottom:1px solid var(--rule)}
+.swatch:not(.tiled){background-size:contain;background-repeat:no-repeat;background-position:center;background-color:var(--chip-paper);image-rendering:pixelated}
+.ramp{display:grid;gap:6px}
+.ramp img{width:100%;height:40px;image-rendering:auto;border:1px solid var(--rule)}
+.ramp .scale{display:flex;justify-content:space-between;font-size:.8rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.icons{list-style:none;margin:0;padding:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+.icons li{background:var(--sheet);border:1px solid var(--rule);border-radius:3px;overflow:hidden;min-width:0}
+.icons p{margin:0;padding:8px 12px;font-size:.92rem;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.pair{display:grid;grid-template-columns:1fr 1fr}
+.pair>div{display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 8px}
+.on-paper{background:var(--chip-paper);color:var(--chip-ink)}
+.on-ink{background:var(--chip-ink);color:var(--chip-paper)}
+.ico{display:inline-block;background:currentColor;-webkit-mask:var(--src) center/contain no-repeat;mask:var(--src) center/contain no-repeat}
+.s20{width:20px;height:20px}.s32{width:32px;height:32px}.s48{width:48px;height:48px}
+.specimen{padding:22px 16px;border-bottom:1px solid var(--rule);font-size:1.6rem;line-height:1.25;overflow-wrap:anywhere}
+.f-atk{font-family:'f-atk',system-ui,sans-serif}.f-ale{font-family:'f-ale',Georgia,serif}.f-unc{font-family:'f-unc',Georgia,serif;font-size:2.2rem}
+.sfx{grid-column:1/-1}
+.takes{list-style:none;margin:0;padding:0 16px 16px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))}
+.take{display:grid;gap:6px;align-content:start;min-width:0}
+.take-head{font-size:.92rem;display:flex;gap:8px;flex-wrap:wrap}
+.take img{border:1px solid var(--rule);width:100%}
+audio{width:100%;max-width:100%;height:36px}
+.meta{font-size:.8rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.loop{grid-column:1/-1}
+.pics{display:grid;gap:12px;padding:0 16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.pics figure{margin:0;border:0;background:none}
+.pics img{border:1px solid var(--rule);width:100%}
+.pics figcaption{font-size:.82rem;color:var(--ink-soft);padding-top:4px}
+.melody{font-family:var(--f-mono);font-size:.85rem;background:var(--tag-bg);padding:6px 10px;border-radius:2px;overflow-wrap:anywhere}
+.label{font-family:var(--f-body);color:var(--ink-soft);margin-right:6px}
+.notes{display:grid;gap:8px;max-width:75ch;margin:0;padding-left:20px}
+footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:16px;font-size:.88rem;color:var(--ink-soft);display:grid;gap:6px}
+footer p{margin:0}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+<div class="wrap">
+<header class="title">
+  <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-24</p>
+  <h1>The Hamlet asset set</h1>
+  <p class="lead">Every model, texture, icon, font and sound made for the first era, with how it was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
+  <ul class="counts"><li><b>95</b> files in the ledger</li><li>24 models, 9 textures, 14 icons, 4 fonts, 40 sounds, 3 musics, 1 ambience</li></ul>
+  <nav class="toc" aria-label="Sections"><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a></nav>
+</header>
+
+<section id="models">
+  <header><h2>Models</h2>
+  <p>24 glTF binary models, 4,175 triangles in all. One cell is 2 m; front faces +Z (south). Each contact sheet shows, top row: from above, then tilted 45 degrees from the south, east and north; bottom row: low side views at yaw 0, 90, 180 and 270. Triangle budgets are from the pipeline guide.</p></header>
+  <figure class="wide"><img src="media/models/hamlet-scene.png" alt="All Hamlet models together at true scale" width="2880" height="720"><figcaption>All models together at true scale (preview scene built by <code>assets/src/models/_scene.py</code>).</figcaption></figure>
+  <div class="grid">
+<article class="card model" id="cottage-01">
+  <figure><img src="media/models/cottage-01.png" alt="Contact sheet of Longhouse: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Longhouse <code>cottage-01.glb</code></h3>
+    <p>Daub walls in a timber frame under a hipped thatch roof; door on the south (+Z) side.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>8 x 6 m</dd>
+      <dt>Height</dt><dd>5.84 m</dd>
+      <dt>Triangles</dt><dd>272 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/cottage.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: houses (longhouse, daub)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="cottage-02">
+  <figure><img src="media/models/cottage-02.png" alt="Contact sheet of Longhouse with byre: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Longhouse with byre <code>cottage-02.glb</code></h3>
+    <p>Plank walls, owl gables at the ridge ends, a byre door on the east end and a hay rick at the back.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>8 x 6 m</dd>
+      <dt>Height</dt><dd>5.59 m</dd>
+      <dt>Triangles</dt><dd>268 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/cottage.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: houses (longhouse with byre, plank walls)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="cottage-03">
+  <figure><img src="media/models/cottage-03.png" alt="Contact sheet of Small hut: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Small hut <code>cottage-03.glb</code></h3>
+    <p>3 x 2 cells; daub walls under a steep hipped thatch.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>6 x 4 m</dd>
+      <dt>Height</dt><dd>4.94 m</dd>
+      <dt>Triangles</dt><dd>220 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/cottage.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: houses (small hut)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="well">
+  <figure><img src="media/models/well.png" alt="Contact sheet of Well: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Well <code>well.glb</code></h3>
+    <p>Stone ring with water, windlass, crank, bucket and a narrow thatch roof.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2.36 x 2.22 m</dd>
+      <dt>Height</dt><dd>3 m</dd>
+      <dt>Triangles</dt><dd>168 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/well.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: well (landmark)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="market-stall">
+  <figure><img src="media/models/market-stall.png" alt="Contact sheet of Market stall: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Market stall <code>market-stall.glb</code></h3>
+    <p>Trestle counter under a striped Brick and Limewash awning, with baskets, a sack and cabbages; a crate and a stool behind.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>4 x 3.01 m</dd>
+      <dt>Height</dt><dd>2.93 m</dd>
+      <dt>Triangles</dt><dd>378 <span class="muted">of 400</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/market-stall.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: market stall</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="field-sprouting">
+  <figure><img src="media/models/field-sprouting.png" alt="Contact sheet of Field, spring: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Field, spring <code>field-sprouting.glb</code></h3>
+    <p>16 m plot that tiles: ten ridges running east-west with green rows.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>16 x 16 m</dd>
+      <dt>Height</dt><dd>0.4 m</dd>
+      <dt>Triangles</dt><dd>370 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/field.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: fields (spring, sprouting rows)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="field-ripe">
+  <figure><img src="media/models/field-ripe.png" alt="Contact sheet of Field, summer: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Field, summer <code>field-ripe.glb</code></h3>
+    <p>The same plot with golden rows.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>16 x 16 m</dd>
+      <dt>Height</dt><dd>0.56 m</dd>
+      <dt>Triangles</dt><dd>230 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/field.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: fields (summer, golden rows)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="field-stubble">
+  <figure><img src="media/models/field-stubble.png" alt="Contact sheet of Field, autumn: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Field, autumn <code>field-stubble.glb</code></h3>
+    <p>Stubble rows and six stooks, all under 0.6 m.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>16 x 16 m</dd>
+      <dt>Height</dt><dd>0.58 m</dd>
+      <dt>Triangles</dt><dd>278 <span class="muted">of 500</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/field.py (seed 7); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: fields (autumn, stubble and stooks)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="fence-wattle">
+  <figure><img src="media/models/fence-wattle.png" alt="Contact sheet of Wattle fence: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Wattle fence <code>fence-wattle.glb</code></h3>
+    <p>One 2 m cell edge along X; posts at x = -1 and +1 are shared with the next segment.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2.22 x 0.22 m</dd>
+      <dt>Height</dt><dd>1 m</dd>
+      <dt>Triangles</dt><dd>100 <span class="muted">of 100</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/fence.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: fence, straight 2 m segment (woven wattle)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="fence-post">
+  <figure><img src="media/models/fence-post.png" alt="Contact sheet of Fence post: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Fence post <code>fence-post.glb</code></h3>
+    <p>Corner or end post.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.26 x 0.26 m</dd>
+      <dt>Height</dt><dd>1.1 m</dd>
+      <dt>Triangles</dt><dd>20 <span class="muted">of 100</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/fence.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: fence, corner or end post</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="fence-gate">
+  <figure><img src="media/models/fence-gate.png" alt="Contact sheet of Hurdle gate: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Hurdle gate <code>fence-gate.glb</code></h3>
+    <p>Braced gate on two posts, one 2 m cell edge.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2.24 x 0.25 m</dd>
+      <dt>Height</dt><dd>1.25 m</dd>
+      <dt>Triangles</dt><dd>124 <span class="muted">of 150</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/fence.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: gate (hurdle gate, 2 m)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="footbridge-span">
+  <figure><img src="media/models/footbridge-span.png" alt="Contact sheet of Footbridge span: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Footbridge span <code>footbridge-span.glb</code></h3>
+    <p>2 m module along Z: deck at 0.6 m, stringers, piles 0.8 m into the water, rails 1.2 m above the deck.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2 x 2.16 m</dd>
+      <dt>Height</dt><dd>1.8 m, reaches 0.8 m below y = 0</dd>
+      <dt>Triangles</dt><dd>180 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/footbridge.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: footbridge, 2 m span module (repeat across 3 to 5 cells)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="footbridge-end">
+  <figure><img src="media/models/footbridge-end.png" alt="Contact sheet of Footbridge landing: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Footbridge landing <code>footbridge-end.glb</code></h3>
+    <p>Ramp from the bank (+Z) up to the deck (-Z); turn 180 degrees for the far bank.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2 x 2.16 m</dd>
+      <dt>Height</dt><dd>1.8 m, reaches 0.11 m below y = 0</dd>
+      <dt>Triangles</dt><dd>142 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/footbridge.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: footbridge, bank landing (one per bank)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="ford-stones">
+  <figure><img src="media/models/ford-stones.png" alt="Contact sheet of Ford stones: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Ford stones <code>ford-stones.glb</code></h3>
+    <p>Flat stepping stones along Z; y = 0 is the river bed, tops at 0.3 m.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.63 x 2 m</dd>
+      <dt>Height</dt><dd>0.3 m</dd>
+      <dt>Triangles</dt><dd>121 <span class="muted">of 150</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/ford-stones.py (seed 11); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: ford (stepping stones)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="rowboat">
+  <figure><img src="media/models/rowboat.png" alt="Contact sheet of Rowboat: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Rowboat <code>rowboat.glb</code></h3>
+    <p>Drawn at 1.5x. Bow +Z, floor, two thwarts, stowed oars; y = 0 is the waterline.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2.4 x 6.65 m</dd>
+      <dt>Height</dt><dd>1.1 m, reaches 0.3 m below y = 0</dd>
+      <dt>Triangles</dt><dd>182 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/rowboat.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: boats (rowboat)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="tree-oak">
+  <figure><img src="media/models/tree-oak.png" alt="Contact sheet of Oak: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Oak <code>tree-oak.glb</code></h3>
+    <p>Broad lumpy round canopy with a darker underside.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>6.06 x 5.68 m</dd>
+      <dt>Height</dt><dd>7.4 m</dd>
+      <dt>Triangles</dt><dd>264 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/tree.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: trees (oak)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="tree-willow">
+  <figure><img src="media/models/tree-willow.png" alt="Contact sheet of Pollard willow: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Pollard willow <code>tree-willow.glb</code></h3>
+    <p>Fat trunk, pale Bent-grass crown.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>4.46 x 4.2 m</dd>
+      <dt>Height</dt><dd>5.45 m</dd>
+      <dt>Triangles</dt><dd>250 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/tree.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: trees (pollard willow)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="tree-poplar">
+  <figure><img src="media/models/tree-poplar.png" alt="Contact sheet of Poplar: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Poplar <code>tree-poplar.glb</code></h3>
+    <p>Tall narrow column.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>2.9 x 2.9 m</dd>
+      <dt>Height</dt><dd>8.95 m</dd>
+      <dt>Triangles</dt><dd>108 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/tree.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: trees (poplar)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="reeds">
+  <figure><img src="media/models/reeds.png" alt="Contact sheet of Reed clump: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Reed clump <code>reeds.glb</code></h3>
+    <p>Tussocks with leaning blades in straw and green, two cattails.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.95 x 2.02 m</dd>
+      <dt>Height</dt><dd>1.5 m</dd>
+      <dt>Triangles</dt><dd>148 <span class="muted">of 150</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/reeds.py (seed 5); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Hamlet: reeds (bank and reed beds)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="villager">
+  <figure><img src="media/models/villager.png" alt="Contact sheet of Villager: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Villager <code>villager.glb</code></h3>
+    <p>Drawn at 1.5x. Nodes &#x27;body&#x27; and &#x27;head&#x27; for a bob-and-sway shader; the hood point at the back shows facing.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.96 x 0.98 m</dd>
+      <dt>Height</dt><dd>2.6 m</dd>
+      <dt>Triangles</dt><dd>204 <span class="muted">of 300</span></dd>
+      <dt>Nodes</dt><dd>body, head</dd>
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/villager.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: body and head (Hamlet outfit)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="villager-cargo-grain">
+  <figure><img src="media/models/villager-cargo-grain.png" alt="Contact sheet of Cargo: grain: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Cargo: grain <code>villager-cargo-grain.glb</code></h3>
+    <p>Round sack; origin at the bottom centre, attach at (0, 2.6, 0).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.68 x 0.7 m</dd>
+      <dt>Height</dt><dd>0.7 m</dd>
+      <dt>Triangles</dt><dd>58 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/villager.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: carried cargo (grain)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="villager-cargo-wool">
+  <figure><img src="media/models/villager-cargo-wool.png" alt="Contact sheet of Cargo: wool: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Cargo: wool <code>villager-cargo-wool.glb</code></h3>
+    <p>Square bale; attach at (0, 2.6, 0).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.66 x 0.66 m</dd>
+      <dt>Height</dt><dd>0.5 m</dd>
+      <dt>Triangles</dt><dd>22 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/villager.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: carried cargo (wool)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="villager-cargo-timber">
+  <figure><img src="media/models/villager-cargo-timber.png" alt="Contact sheet of Cargo: timber: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Cargo: timber <code>villager-cargo-timber.glb</code></h3>
+    <p>Long bar lying along X; attach at (0, 2.6, 0).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.6 x 0.44 m</dd>
+      <dt>Height</dt><dd>0.4 m</dd>
+      <dt>Triangles</dt><dd>36 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/villager.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: carried cargo (timber)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card model" id="villager-cargo-cloth">
+  <figure><img src="media/models/villager-cargo-cloth.png" alt="Contact sheet of Cargo: cloth: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Cargo: cloth <code>villager-cargo-cloth.glb</code></h3>
+    <p>Folded square; attach at (0, 2.6, 0).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.7 x 0.7 m</dd>
+      <dt>Height</dt><dd>0.38 m</dd>
+      <dt>Triangles</dt><dd>32 <span class="muted">of 300</span></dd>
+      
+    </dl>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/villager.py; script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: carried cargo (cloth)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article></div>
+</section>
+
+<section id="ground">
+  <header><h2>Ground and textures</h2>
+  <p>512 px tiles, shown here tiled 2 x 2 so seams would show. Every pixel is an exact palette colour except in the wear ramp, whose blends are soft on purpose. The five ground tiles are the wear stages a path passes through as villagers walk it.</p></header>
+  <figure class="wide"><img src="media/textures/ground-preview.png" alt="Ground preview: the five wear stages, a trail crossing grass, water, paper, a tiled grass sample and the wear ramp" loading="lazy" width="1536" height="1088"><figcaption>Generator preview: the five stages side by side, a trail crossing grass, water, paper, a 2 x 2 grass tiling and the ramp.</figcaption></figure>
+  <div class="grid">
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/ground-grass.png')" role="img" aria-label="Meadow texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Meadow <code>ground-grass.png</code></h3>
+    <p><span class="tag">wear 0 to 0.10</span> Gouache patches, grass tufts, wildflower specks, paper grain.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 11); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: meadow, wear 0-0.10 (grass)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/ground-trampled.png')" role="img" aria-label="Bent grass texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Bent grass <code>ground-trampled.png</code></h3>
+    <p><span class="tag">wear 0.10 to 0.30</span> Strokes run along +X, the walking direction; the shader turns the UVs.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 12); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: bent grass, wear 0.10-0.30 (trampled)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/ground-trail.png')" role="img" aria-label="Trail texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Trail <code>ground-trail.png</code></h3>
+    <p><span class="tag">wear 0.30 to 0.55</span> Bare trail earth with drifts of broken grass.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 13); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: trail, wear 0.30-0.55</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/ground-track.png')" role="img" aria-label="Track texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Track <code>ground-track.png</code></h3>
+    <p><span class="tag">wear 0.55 to 0.80</span> Packed earth with dry and damp patches and compaction lines.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 14); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: track, wear 0.55-0.80</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/ground-hollow-way.png')" role="img" aria-label="Hollow way texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Hollow way <code>ground-hollow-way.png</code></h3>
+    <p><span class="tag">wear 0.80 to 1.00</span> Dark compacted mud with a wet sheen; rain puddles are left to the shader.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 15); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: hollow way (worn way), wear 0.80-1.00</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/water-river.png')" role="img" aria-label="River water texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>River water <code>water-river.png</code></h3>
+    <p><span class="tag">scrolls</span> River slate blue with engraved Deep-water lines; periodic, so it can scroll.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 16); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ground: river and water surfaces (shader scrolls the waterlines)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch tiled" style="background-image:url('media/textures/paper-page.png')" role="img" aria-label="Book page texture, tiled 2 x 2"></div>
+  <div class="body">
+    <h3>Book page <code>paper-page.png</code></h3>
+    <p><span class="tag">page ground</span> Paper with Limewash sizing, fibres and grain.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py (seed 17); script written by Claude Opus 5.5; procedural gouache texture, palette colours only</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Book: page paper under the map, UI paper cards</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card tex">
+  <div class="swatch" style="background-image:url('media/textures/palette.png')" role="img" aria-label="Palette atlas texture"></div>
+  <div class="body">
+    <h3>Palette atlas <code>palette.png</code></h3>
+    <p><span class="tag">256 x 256</span> One 16 px swatch per palette colour; every model&#x27;s UVs point here.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/common/palette.py from the Palette table in docs/asset-pipeline.md (no seed; deterministic); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Models: shared 256 x 256 palette atlas (also embedded in every .glb)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article></div>
+  <article class="card"><div class="body">
+    <h3>Wear ramp <code>wear-ramp.png</code></h3>
+    <div class="ramp"><img src="media/textures/wear-ramp.png" alt="Wear ramp from Meadow through Bent grass, Trail earth, Packed earth to Mud"><div class="scale"><span>0</span><span>0.10</span><span>0.30</span><span>0.55</span><span>0.80</span><span>1.00</span></div></div>
+    <p>256 x 8; u is wear from 0 to 1. Colours blend over 0.035 either side of each stage boundary. Import with linear filtering, clamp, no mipmaps.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/ground.py; script written by Claude Opus 5.5; gradient through the five ground-state palette colours, blended in linear light (in-between pixels are off the palette by design)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Wear shader: wear 0-1 to ground colour (u = wear)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div></article>
+  <article class="card"><div class="body"><h3>Palette</h3><ul class="palette"><li><span class="chip" style="background:var(--p0)"></span>Paper</li><li><span class="chip" style="background:var(--p1)"></span>Ink</li><li><span class="chip" style="background:var(--p2)"></span>Meadow</li><li><span class="chip" style="background:var(--p3)"></span>Bent grass</li><li><span class="chip" style="background:var(--p4)"></span>Trail earth</li><li><span class="chip" style="background:var(--p5)"></span>Packed earth</li><li><span class="chip" style="background:var(--p6)"></span>Mud</li><li><span class="chip" style="background:var(--p7)"></span>River</li><li><span class="chip" style="background:var(--p8)"></span>Deep water</li><li><span class="chip" style="background:var(--p9)"></span>Reed and thatch</li><li><span class="chip" style="background:var(--p10)"></span>Brick</li><li><span class="chip" style="background:var(--p11)"></span>Slate roof</li><li><span class="chip" style="background:var(--p12)"></span>Soot brick</li><li><span class="chip" style="background:var(--p13)"></span>Cast-iron green</li><li><span class="chip" style="background:var(--p14)"></span>Concrete</li><li><span class="chip" style="background:var(--p15)"></span>Wet mudflat</li><li><span class="chip" style="background:var(--p16)"></span>Limewash</li></ul></div></article>
+</section>
+
+<section id="icons">
+  <header><h2>Icons</h2>
+  <p>14 SVGs on a 24-unit grid, one colour (Ink) with 2-unit round strokes. Shown at 20, 32 and 48 px on Paper and on Ink. Placement tools are named <code>tool-*</code>, the rest <code>ui-*</code>.</p></header>
+  <ul class="icons"><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/tool-fence.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-fence.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-fence.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/tool-fence.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-fence.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-fence.svg')"></span></div></div>
+<p><b>Fence</b> <code>tool-fence.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/tool-gate.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-gate.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-gate.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/tool-gate.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-gate.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-gate.svg')"></span></div></div>
+<p><b>Gate</b> <code>tool-gate.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/tool-footbridge.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-footbridge.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-footbridge.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/tool-footbridge.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-footbridge.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-footbridge.svg')"></span></div></div>
+<p><b>Footbridge</b> <code>tool-footbridge.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/tool-gravel.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-gravel.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-gravel.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/tool-gravel.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-gravel.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-gravel.svg')"></span></div></div>
+<p><b>Gravel</b> <code>tool-gravel.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/tool-erase.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-erase.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-erase.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/tool-erase.svg')"></span><span class="ico s32" style="--src:url('media/icons/tool-erase.svg')"></span><span class="ico s48" style="--src:url('media/icons/tool-erase.svg')"></span></div></div>
+<p><b>Erase</b> <code>tool-erase.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-play.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-play.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-play.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-play.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-play.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-play.svg')"></span></div></div>
+<p><b>Play</b> <code>ui-play.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-pause.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-pause.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-pause.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-pause.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-pause.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-pause.svg')"></span></div></div>
+<p><b>Pause</b> <code>ui-pause.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-speed.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-speed.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-speed.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-speed.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-speed.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-speed.svg')"></span></div></div>
+<p><b>Speed</b> <code>ui-speed.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-wear-overlay.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-wear-overlay.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-wear-overlay.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-wear-overlay.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-wear-overlay.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-wear-overlay.svg')"></span></div></div>
+<p><b>Wear overlay</b> <code>ui-wear-overlay.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-flow-preview.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-flow-preview.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-flow-preview.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-flow-preview.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-flow-preview.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-flow-preview.svg')"></span></div></div>
+<p><b>Flow preview</b> <code>ui-flow-preview.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-sound-on.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-sound-on.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-sound-on.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-sound-on.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-sound-on.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-sound-on.svg')"></span></div></div>
+<p><b>Sound on</b> <code>ui-sound-on.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-sound-off.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-sound-off.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-sound-off.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-sound-off.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-sound-off.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-sound-off.svg')"></span></div></div>
+<p><b>Sound off</b> <code>ui-sound-off.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-reset.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-reset.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-reset.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-reset.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-reset.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-reset.svg')"></span></div></div>
+<p><b>Reset</b> <code>ui-reset.svg</code> <span class="muted">self-made, icons.py</span></p></li><li><div class="pair"><div class="on-paper"><span class="ico s20" style="--src:url('media/icons/ui-new-map.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-new-map.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-new-map.svg')"></span></div><div class="on-ink"><span class="ico s20" style="--src:url('media/icons/ui-new-map.svg')"></span><span class="ico s32" style="--src:url('media/icons/ui-new-map.svg')"></span><span class="ico s48" style="--src:url('media/icons/ui-new-map.svg')"></span></div></div>
+<p><b>New map</b> <code>ui-new-map.svg</code> <span class="muted">self-made, icons.py</span></p></li></ul>
+  <article class="card"><div class="body"><h3>Ledger, all icons</h3><dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/icons.py; script written by Claude Opus 5.5; hand-drawn-style SVG written as code, one colour (Ink)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Tool bar: fence (wattle fence between two posts)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl></div></article>
+</section>
+
+<section id="fonts">
+  <header><h2>Fonts</h2>
+  <p>Three OFL families, unmodified TTF files from github.com/google/fonts. Each OFL text is saved in <code>assets/licences/</code> and ships with the game.</p></header>
+  <div class="grid">
+<article class="card font">
+  <p class="specimen f-atk" style="font-weight:400">Toll at the ford: 3 pennies. Wear 0.42. Villagers 1,280 / 12:05</p>
+  <div class="body">
+    <h3>Atkinson Hyperlegible <code>AtkinsonHyperlegible-Regular.ttf</code></h3>
+    <p>Body, UI and numbers.</p>
+    <dl class="facts"><dt>Source</dt><dd>Atkinson Hyperlegible 1.006 Regular, Copyright 2020 Braille Institute of America, Inc.; downloaded unmodified from github.com/google/fonts ofl/atkinsonhyperlegible (upstream googlefonts/atkinson-hyperlegible commit 1cb3116); sha256 7fb917c8...; OFL text in assets/licences/AtkinsonHyperlegible-OFL.txt; refetch: assets/src/2d/_fetch_fonts.sh</dd><dt>Licence</dt><dd>OFL-1.1 (<a href="https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible">github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible</a>)</dd><dt>Used in</dt><dd>UI: body text, numbers, buttons, tooltips</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card font">
+  <p class="specimen f-atk" style="font-weight:700">Place fence. Open gate. 16 x 16 m field, 0.6 m crops</p>
+  <div class="body">
+    <h3>Atkinson Hyperlegible Bold <code>AtkinsonHyperlegible-Bold.ttf</code></h3>
+    <p>Bold body and numbers.</p>
+    <dl class="facts"><dt>Source</dt><dd>Atkinson Hyperlegible 1.006 Bold, Copyright 2020 Braille Institute of America, Inc.; downloaded unmodified from github.com/google/fonts ofl/atkinsonhyperlegible (upstream commit 1cb3116); sha256 5a3b0c8c...; OFL text in assets/licences/AtkinsonHyperlegible-OFL.txt; refetch: assets/src/2d/_fetch_fonts.sh</dd><dt>Licence</dt><dd>OFL-1.1 (<a href="https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible">github.com/google/fonts/tree/main/ofl/atkinsonhyperlegible</a>)</dd><dt>Used in</dt><dd>UI: bold body text and numbers</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card font">
+  <p class="specimen f-ale" style="font-weight:500">The Hamlet by the river, in the year 1100</p>
+  <div class="body">
+    <h3>Alegreya (variable, 400 to 900) <code>Alegreya-Variable.ttf</code></h3>
+    <p>Headings and brand serif.</p>
+    <dl class="facts"><dt>Source</dt><dd>Alegreya variable font (wght 400-900; file Alegreya[wght].ttf renamed only), Copyright 2011 The Alegreya Project Authors (Juan Pablo del Peral, Huerta Tipografica); downloaded unmodified from github.com/google/fonts ofl/alegreya (upstream huertatipografica/Alegreya commit 1dd6b28); sha256 ba556463...; OFL text in assets/licences/Alegreya-OFL.txt; refetch: assets/src/2d/_fetch_fonts.sh</dd><dt>Licence</dt><dd>OFL-1.1 (<a href="https://github.com/google/fonts/tree/main/ofl/alegreya">github.com/google/fonts/tree/main/ofl/alegreya</a>)</dd><dt>Used in</dt><dd>UI: headings and brand serif</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article>
+<article class="card font">
+  <p class="specimen f-unc" style="font-weight:400">Tide and Toll</p>
+  <div class="body">
+    <h3>Uncial Antiqua <code>UncialAntiqua-Regular.ttf</code></h3>
+    <p>Hamlet display titles, 24 px and up.</p>
+    <dl class="facts"><dt>Source</dt><dd>Uncial Antiqua Regular, Copyright (c) 2011 Brian J. Bonislawsky DBA Astigmatic, Reserved Font Name &#x27;Uncial Antiqua&#x27; (shipped unmodified); downloaded from github.com/google/fonts ofl/uncialantiqua (upstream googlefonts/uncialantiqua commit 084af67); sha256 33a5128b...; OFL text in assets/licences/UncialAntiqua-OFL.txt; refetch: assets/src/2d/_fetch_fonts.sh</dd><dt>Licence</dt><dd>OFL-1.1 (<a href="https://github.com/google/fonts/tree/main/ofl/uncialantiqua">github.com/google/fonts/tree/main/ofl/uncialantiqua</a>)</dd><dt>Used in</dt><dd>UI: Hamlet era display titles (24 px and up only, never numbers, buttons or tooltips; always with a plain subtitle)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+</article></div>
+</section>
+
+<section id="sfx">
+  <header><h2>Sound effects</h2>
+  <p>Synthesised one-shots, played round-robin by the game with small random changes in level and pitch. Each take shows its waveform above a spectrogram. Loudness is the loudest 400 ms block; peak is true peak.</p></header>
+  <div class="grid">
+<article class="card sfx" id="step-grass">
+  <div class="body">
+    <h3>Footsteps on grass <code>step-grass-01..08.wav</code></h3>
+    <p>Heel swish, quieter toe swish, a few blade crackles, a faint thud. Soft leather shoes. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/step-grass.py (seed 101); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: footsteps on grass (Hamlet, soft leather)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>step-grass-01</b> <span class="muted">(seed 101)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-01.wav" aria-label="Play step-grass-01"></audio>
+  <img src="media/spectrograms/step-grass-01.png" alt="Waveform and spectrogram of step-grass-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -24.7 LUFS momentary max; peak -6.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-02</b> <span class="muted">(seed 102)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-02.wav" aria-label="Play step-grass-02"></audio>
+  <img src="media/spectrograms/step-grass-02.png" alt="Waveform and spectrogram of step-grass-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -25.4 LUFS momentary max; peak -8.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-03</b> <span class="muted">(seed 103)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-03.wav" aria-label="Play step-grass-03"></audio>
+  <img src="media/spectrograms/step-grass-03.png" alt="Waveform and spectrogram of step-grass-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -24.6 LUFS momentary max; peak -4.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-04</b> <span class="muted">(seed 104)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-04.wav" aria-label="Play step-grass-04"></audio>
+  <img src="media/spectrograms/step-grass-04.png" alt="Waveform and spectrogram of step-grass-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -25.3 LUFS momentary max; peak -6.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-05</b> <span class="muted">(seed 105)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-05.wav" aria-label="Play step-grass-05"></audio>
+  <img src="media/spectrograms/step-grass-05.png" alt="Waveform and spectrogram of step-grass-05, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -25.5 LUFS momentary max; peak -8.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-06</b> <span class="muted">(seed 106)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-06.wav" aria-label="Play step-grass-06"></audio>
+  <img src="media/spectrograms/step-grass-06.png" alt="Waveform and spectrogram of step-grass-06, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -24.7 LUFS momentary max; peak -7.6 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-07</b> <span class="muted">(seed 107)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-07.wav" aria-label="Play step-grass-07"></audio>
+  <img src="media/spectrograms/step-grass-07.png" alt="Waveform and spectrogram of step-grass-07, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -24.8 LUFS momentary max; peak -6.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-grass-08</b> <span class="muted">(seed 108)</span></div>
+  <audio controls preload="none" src="media/audio/step-grass-08.wav" aria-label="Play step-grass-08"></audio>
+  <img src="media/spectrograms/step-grass-08.png" alt="Waveform and spectrogram of step-grass-08, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.32 s, mono; -25.9 LUFS momentary max; peak -9.0 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="step-dirt">
+  <div class="body">
+    <h3>Footsteps on a dirt trail <code>step-dirt-01..08.wav</code></h3>
+    <p>Drier and shorter than grass, more low-mid body, heel and toe roll with a little grit. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/step-dirt.py (seed 201); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Villagers: footsteps on dirt trail (Hamlet, soft leather)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>step-dirt-01</b> <span class="muted">(seed 201)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-01.wav" aria-label="Play step-dirt-01"></audio>
+  <img src="media/spectrograms/step-dirt-01.png" alt="Waveform and spectrogram of step-dirt-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -24.4 LUFS momentary max; peak -3.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-02</b> <span class="muted">(seed 202)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-02.wav" aria-label="Play step-dirt-02"></audio>
+  <img src="media/spectrograms/step-dirt-02.png" alt="Waveform and spectrogram of step-dirt-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -25.5 LUFS momentary max; peak -5.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-03</b> <span class="muted">(seed 203)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-03.wav" aria-label="Play step-dirt-03"></audio>
+  <img src="media/spectrograms/step-dirt-03.png" alt="Waveform and spectrogram of step-dirt-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -24.2 LUFS momentary max; peak -4.6 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-04</b> <span class="muted">(seed 204)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-04.wav" aria-label="Play step-dirt-04"></audio>
+  <img src="media/spectrograms/step-dirt-04.png" alt="Waveform and spectrogram of step-dirt-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -24.7 LUFS momentary max; peak -3.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-05</b> <span class="muted">(seed 205)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-05.wav" aria-label="Play step-dirt-05"></audio>
+  <img src="media/spectrograms/step-dirt-05.png" alt="Waveform and spectrogram of step-dirt-05, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -25.7 LUFS momentary max; peak -5.5 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-06</b> <span class="muted">(seed 206)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-06.wav" aria-label="Play step-dirt-06"></audio>
+  <img src="media/spectrograms/step-dirt-06.png" alt="Waveform and spectrogram of step-dirt-06, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -26.0 LUFS momentary max; peak -6.3 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-07</b> <span class="muted">(seed 207)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-07.wav" aria-label="Play step-dirt-07"></audio>
+  <img src="media/spectrograms/step-dirt-07.png" alt="Waveform and spectrogram of step-dirt-07, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -24.3 LUFS momentary max; peak -3.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>step-dirt-08</b> <span class="muted">(seed 208)</span></div>
+  <audio controls preload="none" src="media/audio/step-dirt-08.wav" aria-label="Play step-dirt-08"></audio>
+  <img src="media/spectrograms/step-dirt-08.png" alt="Waveform and spectrogram of step-dirt-08, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.24 s, mono; -24.0 LUFS momentary max; peak -3.4 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="water-ford">
+  <div class="body">
+    <h3>Wading at the ford <code>water-ford-01..06.wav</code></h3>
+    <p>Soft slap, a sloshing body that falls away, rising bubble plinks, late drips. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/water-ford.py (seed 301); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Crossings: ford wading splash / lap</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>water-ford-01</b> <span class="muted">(seed 301)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-01.wav" aria-label="Play water-ford-01"></audio>
+  <img src="media/spectrograms/water-ford-01.png" alt="Waveform and spectrogram of water-ford-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.83 s, mono; -23.1 LUFS momentary max, -27.2 LUFS integrated; peak -7.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>water-ford-02</b> <span class="muted">(seed 302)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-02.wav" aria-label="Play water-ford-02"></audio>
+  <img src="media/spectrograms/water-ford-02.png" alt="Waveform and spectrogram of water-ford-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.90 s, mono; -23.8 LUFS momentary max, -28.1 LUFS integrated; peak -7.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>water-ford-03</b> <span class="muted">(seed 303)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-03.wav" aria-label="Play water-ford-03"></audio>
+  <img src="media/spectrograms/water-ford-03.png" alt="Waveform and spectrogram of water-ford-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.79 s, mono; -22.7 LUFS momentary max, -25.9 LUFS integrated; peak -6.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>water-ford-04</b> <span class="muted">(seed 304)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-04.wav" aria-label="Play water-ford-04"></audio>
+  <img src="media/spectrograms/water-ford-04.png" alt="Waveform and spectrogram of water-ford-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.86 s, mono; -23.2 LUFS momentary max, -26.9 LUFS integrated; peak -5.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>water-ford-05</b> <span class="muted">(seed 305)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-05.wav" aria-label="Play water-ford-05"></audio>
+  <img src="media/spectrograms/water-ford-05.png" alt="Waveform and spectrogram of water-ford-05, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.89 s, mono; -22.2 LUFS momentary max, -26.7 LUFS integrated; peak -6.3 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>water-ford-06</b> <span class="muted">(seed 306)</span></div>
+  <audio controls preload="none" src="media/audio/water-ford-06.wav" aria-label="Play water-ford-06"></audio>
+  <img src="media/spectrograms/water-ford-06.png" alt="Waveform and spectrogram of water-ford-06, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.76 s, mono; -22.5 LUFS momentary max, -26.0 LUFS integrated; peak -5.0 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="bell">
+  <div class="body">
+    <h3>Chapel bell in D <code>bell-01..06.wav</code></h3>
+    <p>Prime D5, hum D4, minor-third tierce; six strikes of the same bell at forces 0.7 to 1.15. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 4 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/bell.py (seed 501); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Buildings: Hamlet chapel bell, one strike (D5), strike force 1.0</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>bell-01</b> <span class="muted">(seed 501)</span></div>
+  <audio controls preload="none" src="media/audio/bell-01.wav" aria-label="Play bell-01"></audio>
+  <img src="media/spectrograms/bell-01.png" alt="Waveform and spectrogram of bell-01, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -21.0 LUFS momentary max, -27.9 LUFS integrated; peak -12.3 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>bell-02</b> <span class="muted">(seed 502)</span></div>
+  <audio controls preload="none" src="media/audio/bell-02.wav" aria-label="Play bell-02"></audio>
+  <img src="media/spectrograms/bell-02.png" alt="Waveform and spectrogram of bell-02, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -21.8 LUFS momentary max, -28.8 LUFS integrated; peak -11.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>bell-03</b> <span class="muted">(seed 503)</span></div>
+  <audio controls preload="none" src="media/audio/bell-03.wav" aria-label="Play bell-03"></audio>
+  <img src="media/spectrograms/bell-03.png" alt="Waveform and spectrogram of bell-03, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -20.5 LUFS momentary max, -27.5 LUFS integrated; peak -10.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>bell-04</b> <span class="muted">(seed 504)</span></div>
+  <audio controls preload="none" src="media/audio/bell-04.wav" aria-label="Play bell-04"></audio>
+  <img src="media/spectrograms/bell-04.png" alt="Waveform and spectrogram of bell-04, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -21.4 LUFS momentary max, -29.6 LUFS integrated; peak -11.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>bell-05</b> <span class="muted">(seed 505)</span></div>
+  <audio controls preload="none" src="media/audio/bell-05.wav" aria-label="Play bell-05"></audio>
+  <img src="media/spectrograms/bell-05.png" alt="Waveform and spectrogram of bell-05, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -20.8 LUFS momentary max, -26.6 LUFS integrated; peak -11.6 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>bell-06</b> <span class="muted">(seed 506)</span></div>
+  <audio controls preload="none" src="media/audio/bell-06.wav" aria-label="Play bell-06"></audio>
+  <img src="media/spectrograms/bell-06.png" alt="Waveform and spectrogram of bell-06, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">6.00 s, mono; -22.3 LUFS momentary max, -29.4 LUFS integrated; peak -14.5 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="place">
+  <div class="body">
+    <h3>Place a fence or bridge segment <code>place-01..06.wav</code></h3>
+    <p>One soft knock of a wattle stake, pitched in D Dorian: D4, E4, G4, A4, B4, D5. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 6 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/place.py (seed 601); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Tools: place fence or footbridge segment, soft wattle-stake knock pitched D4</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>place-01</b> <span class="muted">(seed 601)</span></div>
+  <audio controls preload="none" src="media/audio/place-01.wav" aria-label="Play place-01"></audio>
+  <img src="media/spectrograms/place-01.png" alt="Waveform and spectrogram of place-01, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -22.0 LUFS momentary max, -22.0 LUFS integrated; peak -5.3 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>place-02</b> <span class="muted">(seed 602)</span></div>
+  <audio controls preload="none" src="media/audio/place-02.wav" aria-label="Play place-02"></audio>
+  <img src="media/spectrograms/place-02.png" alt="Waveform and spectrogram of place-02, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -22.0 LUFS momentary max, -22.0 LUFS integrated; peak -4.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>place-03</b> <span class="muted">(seed 603)</span></div>
+  <audio controls preload="none" src="media/audio/place-03.wav" aria-label="Play place-03"></audio>
+  <img src="media/spectrograms/place-03.png" alt="Waveform and spectrogram of place-03, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -22.0 LUFS momentary max, -22.0 LUFS integrated; peak -5.0 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>place-04</b> <span class="muted">(seed 604)</span></div>
+  <audio controls preload="none" src="media/audio/place-04.wav" aria-label="Play place-04"></audio>
+  <img src="media/spectrograms/place-04.png" alt="Waveform and spectrogram of place-04, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -23.5 LUFS momentary max, -23.5 LUFS integrated; peak -7.0 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>place-05</b> <span class="muted">(seed 605)</span></div>
+  <audio controls preload="none" src="media/audio/place-05.wav" aria-label="Play place-05"></audio>
+  <img src="media/spectrograms/place-05.png" alt="Waveform and spectrogram of place-05, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -23.5 LUFS momentary max, -23.5 LUFS integrated; peak -7.5 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>place-06</b> <span class="muted">(seed 606)</span></div>
+  <audio controls preload="none" src="media/audio/place-06.wav" aria-label="Play place-06"></audio>
+  <img src="media/spectrograms/place-06.png" alt="Waveform and spectrogram of place-06, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.45 s, mono; -23.5 LUFS momentary max, -23.5 LUFS integrated; peak -6.8 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="erase">
+  <div class="body">
+    <h3>Erase <code>erase-01..06.wav</code></h3>
+    <p>Pull, snap, rustle: a brushing pull rising in pitch, one dry twig snap, a light rustle. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 8 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/erase.py (seed 701); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Tools: erase fence or footbridge segment (pull, snap, rustle)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>erase-01</b> <span class="muted">(seed 701)</span></div>
+  <audio controls preload="none" src="media/audio/erase-01.wav" aria-label="Play erase-01"></audio>
+  <img src="media/spectrograms/erase-01.png" alt="Waveform and spectrogram of erase-01, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.59 s, mono; -24.1 LUFS momentary max, -24.3 LUFS integrated; peak -8.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>erase-02</b> <span class="muted">(seed 702)</span></div>
+  <audio controls preload="none" src="media/audio/erase-02.wav" aria-label="Play erase-02"></audio>
+  <img src="media/spectrograms/erase-02.png" alt="Waveform and spectrogram of erase-02, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.51 s, mono; -24.7 LUFS momentary max, -25.1 LUFS integrated; peak -7.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>erase-03</b> <span class="muted">(seed 703)</span></div>
+  <audio controls preload="none" src="media/audio/erase-03.wav" aria-label="Play erase-03"></audio>
+  <img src="media/spectrograms/erase-03.png" alt="Waveform and spectrogram of erase-03, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.55 s, mono; -24.0 LUFS momentary max, -24.2 LUFS integrated; peak -5.6 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>erase-04</b> <span class="muted">(seed 704)</span></div>
+  <audio controls preload="none" src="media/audio/erase-04.wav" aria-label="Play erase-04"></audio>
+  <img src="media/spectrograms/erase-04.png" alt="Waveform and spectrogram of erase-04, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.54 s, mono; -24.5 LUFS momentary max, -24.7 LUFS integrated; peak -6.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>erase-05</b> <span class="muted">(seed 705)</span></div>
+  <audio controls preload="none" src="media/audio/erase-05.wav" aria-label="Play erase-05"></audio>
+  <img src="media/spectrograms/erase-05.png" alt="Waveform and spectrogram of erase-05, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.55 s, mono; -24.4 LUFS momentary max, -24.8 LUFS integrated; peak -5.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>erase-06</b> <span class="muted">(seed 706)</span></div>
+  <audio controls preload="none" src="media/audio/erase-06.wav" aria-label="Play erase-06"></audio>
+  <img src="media/spectrograms/erase-06.png" alt="Waveform and spectrogram of erase-06, 0 to 8 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -23.5 LUFS momentary max, -23.8 LUFS integrated; peak -5.9 dBTP</p>
+</li></ol>
+</article></div>
+</section>
+
+<section id="theme">
+  <header><h2>Theme and river</h2>
+  <p>The two loops. Both are seamless by construction; the seam pictures show the end of the file joined back to its start. The theme also exists as a 16-bit WAV master and as score data (<code>theme-hamlet-draft-score.json</code>), not played here.</p></header>
+  <div class="grid">
+<article class="card loop" id="theme-hamlet-draft">
+  <div class="body">
+    <h3>Theme, Hamlet arrangement (draft) <code>theme-hamlet-draft.ogg</code></h3>
+    <p>Eight bars in D Dorian, 3/4 at 64 BPM. Wooden pipe over a river drone (D2, D3, A3), a small lyre on the open fifth, a frame drum in bars 5 to 8. The bell motif is the first four notes, D E G A. Seamless loop.</p>
+    <p class="melody"><span class="label">Melody</span> D5 E5 G5 | A5 | B5 A5 G5 | A5 E5 | G5 A5 G5 | E5 F5 | E5 D5 E5 | D5</p>
+    <audio controls preload="none" src="media/audio/theme-hamlet-draft.ogg" aria-label="Play Theme, Hamlet arrangement (draft)"></audio>
+    <dl class="nums"><dt>Length</dt><dd>22.50 s, stereo, Ogg Vorbis 48 kHz</dd><dt>Loudness</dt><dd>-18.3 LUFS momentary max, -19.9 LUFS integrated</dd><dt>Peak</dt><dd>-10.6 dBTP</dd></dl>
+  </div>
+  <div class="pics">
+    <figure><img src="media/spectrograms/theme-hamlet-draft.png" alt="Waveform and spectrogram of Theme, Hamlet arrangement (draft), 0 to 6 kHz" loading="lazy" width="800" height="360"><figcaption>Whole loop, 0 to 6 kHz</figcaption></figure>
+    <figure><img src="media/spectrograms/theme-hamlet-draft-seam.png" alt="Loop seam of Theme, Hamlet arrangement (draft): the end joined to the start" loading="lazy" width="800" height="360"><figcaption>The seam: end joined to start</figcaption></figure>
+  </div>
+  <div class="body"><dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/theme-hamlet.py (seed 800); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Music: Tide &amp; Toll theme, Hamlet arrangement, first draft (8 bars, D Dorian, 3/4 at 64 BPM, 22.5 s seamless loop)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl></div>
+</article>
+<article class="card loop" id="water-river-loop">
+  <div class="body">
+    <h3>River loop <code>water-river-loop.ogg</code></h3>
+    <p>Calm river bed: a flowing low body, laps against the bank, bubble plinks, and a soft D drone about 13 dB under the water. Ten seconds, seamless by construction.</p>
+    
+    <audio controls preload="none" src="media/audio/water-river-loop.ogg" aria-label="Play River loop"></audio>
+    <dl class="nums"><dt>Length</dt><dd>10.00 s, stereo, Ogg Vorbis 48 kHz</dd><dt>Loudness</dt><dd>-25.9 LUFS momentary max, -27.2 LUFS integrated</dd><dt>Peak</dt><dd>-14.7 dBTP</dd></dl>
+  </div>
+  <div class="pics">
+    <figure><img src="media/spectrograms/water-river-loop.png" alt="Waveform and spectrogram of River loop, 0 to 12 kHz" loading="lazy" width="800" height="360"><figcaption>Whole loop, 0 to 12 kHz</figcaption></figure>
+    <figure><img src="media/spectrograms/water-river-loop-seam.png" alt="Loop seam of River loop: the end joined to the start" loading="lazy" width="800" height="360"><figcaption>The seam: end joined to start</figcaption></figure>
+  </div>
+  <div class="body"><dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/water-river-loop.py (seed 400); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Ambience: calm river bed with the D drone (Hamlet), 10 s seamless loop</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl></div>
+</article></div>
+  <article class="card"><div class="body"><h3>Theme score data <code>theme-hamlet-draft-score.json</code></h3><p>Key, mode, metre, tempo, bell motif and every note of the pipe, drum, lyre and drone parts.</p><dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/theme-hamlet.py (seed 800); script written by Claude Opus 5.5</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Music: the theme&#x27;s notes (score data for the Hamlet draft; source for later arrangements)</dd><dt>Verified</dt><dd>yes, 2026-11-24</dd></dl></div></article>
+</section>
+
+<section id="review">
+  <header><h2>For review</h2></header>
+  <ul class="notes">
+    <li>Nobody has listened to the audio yet; tone and mix were judged from spectrograms and loudness numbers only. The theme most needs a listening pass.</li>
+    <li>Seen from straight above, reed blades are too thin to show, so the reed clump reads as tussocks.</li>
+    <li>Fields and fences show many ink lines in low side views; at game camera tilts they read cleanly.</li>
+    <li>Alegreya was added for headings beyond the two faces asked for; drop its file and row if only two are wanted.</li>
+    <li>Icons are one colour, so in Godot they can only be darkened with modulate; swap the hex at load time or use an alpha-mask shader to draw them light.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Built from <code>assets/LEDGER.csv</code> and the files in <code>assets/</code> by <code>docs/asset-gallery/build.py</code>. Contact sheets: <code>tools/render-contact-sheet.sh --sides</code>. Spectrograms: <code>assets/src/audio/_synth.py</code>.</p>
+</footer>
+</div>
