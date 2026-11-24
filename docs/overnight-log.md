@@ -53,14 +53,25 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | # | Track | Goal | Result |
 | --- | --- | --- | --- |
 | 1 | Toy | Round 2 of the toy: natural trails with an honest trunk-share gate, flow preview, visual and bug fixes | Running since 19:00 UTC |
-| 2 | Setup | Phase 0: toolchain, repository skeleton, asset pipeline guide | Starting 19:50 UTC |
+| 2 | Setup | Phase 0: toolchain, repository skeleton, asset pipeline guide | Done 20:00 UTC. `./check` passes all 7 steps from a clean copy in 31 s; 31 simulation tests pass; the Windows export builds (not run on Windows). Review: no blockers |
+| 3 | Assets | The Hamlet asset set: shared generator tooling, models, textures, icons, font, sound effects, theme draft, gallery page | Running since 20:05 UTC |
 
 ## Next steps
 
 - When toy round 2 finishes: review it, read the changes, republish the toy, commit, push, update `ROUNDS.md`.
 - Toy round 3: sound in code (Web Audio, off until the Sound button), gravel and gate tools, and whatever the round 2 review lists.
 - Toy round 4: rain and mud, house growth, final polish in both themes and at phone width.
-- After the setup round: the Hamlet asset set and gallery, then the C# port of the simulation, then the Godot scene.
+- When the asset round finishes: review it, look at the contact sheets, publish the asset gallery Artifact from `docs/asset-gallery/` (page plus the files listed in `files.json`), commit, push.
+- When toy round 2 has finished: start the C# port of the simulation (world, wear, walkers, metrics, tools, flow preview) with the same gate tests as the toy. Carry over the setup review's open points: put the golden-value generator in the repository, add an `AGENTS.md`, register the Godot NuGet source from `check.sh`, add a Release benchmark behind `./check --bench`.
+- Then the Godot scene on the book's map page: wear shader, walkers, tools, UI and sound, using the Hamlet assets. Give the book depth (page edges, a slight curve at the gutter).
+
+## Toolchain facts (from the setup round)
+
+- Godot 4.7-stable .NET at `/opt/godot/4.7`, launcher `/usr/local/bin/godot`; .NET SDK 8.0.134 from apt. Reinstall with `tools/setup-linux.sh`.
+- `./check` runs the simulation build and tests, the Godot build, a headless smoke run, a screenshot and the ledger check. Options: `--export`, `--with-toy`, `--no-screenshot`.
+- Screenshots need a window: `xvfb-run` with `--rendering-method mobile --rendering-driver vulkan`. Rendering here is software only (about 4 to 40 fps), so frame rates measured in this container say nothing about a real graphics card; measure script time per frame instead.
+- Unhandled C# exceptions do not change Godot's exit code. Tests call `GetTree().Quit(code)` themselves.
+- A Windows export needs a `.sln` beside the Godot project; without one it exits 0 with a broken build.
 
 ## Gate status
 
@@ -82,6 +93,12 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 4 | The toy routes with one cost map per destination, not a search per trip | A search per trip costs 3 to 5 seconds of computing per second at 500 walkers and 8x speed |
 | 5 | The trunk-share gate is judged on seeds the model was not tuned on (101 to 120), counting every daily reading | Round 1 passed only on its own tuning seeds |
 | 6 | A CI workflow file will be kept as a template under `docs/`, not in `.github/workflows` | A push that adds a workflow file can be rejected for this session's token, which would block every later push |
+| 7 | Godot 4.7-stable with .NET 8 | 4.7 is the newest stable build that downloads here, and its C# library targets .NET 8 |
+| 8 | Projects are named `TideToll.Sim`, `TideToll.Sim.Tests` and `TideToll` in `sim/`, `sim.tests/` and `game/` | The Build Plan's folder layout was followed; the Engine tab's older code name "Delta" was not used |
+| 9 | The Mobile renderer, as the Engine tab asks | It works here under software rendering, so screenshots use the same renderer as the game |
+| 10 | The C# library keeps the toy's random-number generator and decimal costs for now | It lets tests prove the C# code gives exactly the toy's results; the Engine tab's PCG32 generator and whole-number costs can come with the full port |
+| 11 | Asset formats: `.glb` models, WAV at 48 kHz for single sounds, Ogg for loops and music, lowercase-hyphen names | The design doc leaves these open; the choices are written down in `docs/asset-pipeline.md` |
+| 12 | Assets live in `assets/` and are copied into `game/assets/` by a script | Godot only loads files inside the game folder, and the Build Plan puts assets at the top level |
 
 ## Needs you
 
@@ -89,6 +106,8 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | --- | --- | --- |
 | 1 | Allow the free asset sites in the environment's network settings: kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org | The container cannot reach them, so tonight's assets are made in code instead |
 | 2 | Play the toy and answer the feedback questions | Gates G1 and G2 need people |
+| 3 | Run the Windows build on your PC (`tools/export-windows.sh` makes it; `docs/setup-windows.md` has the steps to open the project in Godot) | The container has no Windows, so the build was made but never started |
+| 4 | Decide whether to switch on automated builds: copy `docs/ci/github-actions.yml` to `.github/workflows/` | It uses your GitHub Actions minutes, and this session may not be allowed to push workflow files |
 
 ## Assets
 

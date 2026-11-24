@@ -319,7 +319,12 @@ function previewBasicsTest() {
   check(steps > 0, `preview: the bridge then carries walkers (${steps} footsteps in 2 days)`);
 
   // Erase: removing a fence that is in the way gives a shorter route.
-  const f2 = fenceAcrossRoute(w, w.houses[1], 0.3, 9);
+  // A fence the preview says reroutes someone (tried house by house).
+  let f2: number[] = [];
+  for (const h of w.houses) {
+    f2 = fenceAcrossRoute(w, h, 0.3, 9);
+    if (f2.length && w.previewFlows({ block: f2 }).changes.some(c => c.reachable)) break;
+  }
   w.placeFence(f2);
   run(w, 3);
   const pe = w.previewFlows({ open: f2 });
