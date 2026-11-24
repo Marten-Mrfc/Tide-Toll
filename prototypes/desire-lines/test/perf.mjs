@@ -59,7 +59,13 @@ await page.evaluate(() => { __tt.reset(1); __tt.setWalkers(200); __tt.setSpeed(8
 await page.waitForTimeout(4000);
 await page.evaluate(() => __tt.setSpeed(1));
 await page.keyboard.press("f");
-const a = await page.evaluate(() => __tt.cellToClient(30, 40)), b = await page.evaluate(() => __tt.cellToClient(45, 60));
+// Across the busiest trail cell away from the river, so the preview has routes to change.
+const busy = await page.evaluate(() => {
+  const w = __tt.world, fw = w.metrics.window(); let b = -1;
+  for (let c = 0; c < 128 * 128; c++) { const x = c % 128, y = (c / 128) | 0; if (!w.land[c] || Math.abs(x - w.map.riverX[y]) < 10 || x < 12 || x > 115 || y < 12 || y > 115) continue; if (b < 0 || fw[c] > fw[b]) b = c; }
+  return [b % 128, (b / 128) | 0];
+});
+const a = await page.evaluate(([x, y]) => __tt.cellToClient(x - 7, y + 7), busy), b = await page.evaluate(([x, y]) => __tt.cellToClient(x + 7, y - 7), busy);
 await page.mouse.move(a.x, a.y); await page.mouse.down();
 await page.evaluate(() => __tt.perfStart());
 for (let i = 0; i <= 40; i++) { await page.mouse.move(a.x + ((b.x - a.x) * i) / 40, a.y + ((b.y - a.y) * i) / 40); await page.waitForTimeout(50); }

@@ -62,12 +62,12 @@ All of them are in `src/sim/params.ts`. The ones that differ from the design spe
 | --- | --- | --- | --- |
 | `walkSpeed` | 0.67 cells/s (1.34 m/s) | 3 cells/s | Time compression: at real speed a town of 200 crosses too few cells a day for any trail to form |
 | `dwellSimSec` | | 6 s | Same reason |
-| `wearPerStep` | 0.75 | 2.0 | Round 2 tuning on seeds 1 to 20 (research 1.8; raised to 2.0 with the floor below to keep the trunk-share minimum above 30%) |
+| `wearPerStep` | 0.75 | 2.4 | Round 2 tuning on seeds 1 to 20 (research 1.8; raised to 2.4 with the floor below, which costs trunk share: lowest daily sample on seeds 1 to 20 went from 31.2% at 2.0 to 32.5%) |
 | `sideShare` | 0.15 | 0.3 | Research: narrow trails (about 2 cells) with soft edges |
 | `halfLifeLow/Mid/High` | 60 / 120 / 240 s | 60 / 120 / 240 s | Back to the spec in round 2 |
 | `trailDiscount`, `discScale`, `discPow` | table 1.00 to 0.72 | 0.3, 80, 3 | Smooth convex wear discount; replaces the four-step table for routing (the table still sets ground states and speeds) |
 | `flowDiscount`, `flowScale`, `flowHalfLife` | | 0.5, 40, 20 s | Research: the flow discount is what merges house paths into trunks |
-| `minSurface` | trail discount capped at 0.72 | 0.6 | Floor on the combined discount. At the research settings without it (0.35), a new footbridge took 15% of crossings on seeds 1 to 10 (round 1: 76%); with it, 58% |
+| `minSurface` | trail discount capped at 0.72 | 0.6 | Floor on the combined discount. At the research settings without it (0.35), a new footbridge took 15% of crossings on seeds 1 to 10 (round 1: 76%); with it, 57% |
 | `stepNoise` | | 0.06 | Per-walker, per-cell noise on a step; spreads lanes a little |
 | `lookahead` | | 20 cells | How far a walker looks down the field to aim a straight line |
 | `fordCostMul` / `fordSpeedMul` | speed 0.4 | 3 / 0.4 | The ford is slow and walkers avoid it when there is a bridge |
@@ -78,6 +78,10 @@ All of them are in `src/sim/params.ts`. The ones that differ from the design spe
 Unchanged from the spec: the state thresholds (10, 25, 50, 85), state speeds, taste (plus or minus 8%), the crop penalty (+0.5), and the Weidmann curve (v0 1.34 m/s, rho max 5.4, gamma 1.913; crowding cost capped at 3x).
 
 The page caps simulation work at 10 ms per frame (and 8 ticks); on a slow machine the sim runs slower than the chosen speed instead of stalling.
+
+## Gate status (round 2)
+
+G3 fails on one held-out seed: seed 115 has 3 daily samples between 28.6% and 30% (its mean is 30.8%); the other 19 held-out seeds stay inside 30% to 70% every day (held-out mean 38.3%). The tuning set (seeds 1 to 20) and the final exam (201 to 220) stay inside on every day (lowest samples 32.5% and 30.4%). The research settings without the `minSurface` floor (`minSurface: 0`, `wearPerStep: 1.8`) passed G3 on the held-out seeds (lowest sample 32.4%) but left new footbridges with 15% of crossings and failed the bridge test; see the round 2 report.
 
 ## Health metrics
 

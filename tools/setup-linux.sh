@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs everything ./check needs on a fresh Ubuntu 24.04 machine: the .NET 8 SDK,
-# Godot 4.7 .NET, the Godot export templates, and Mesa/Vulkan/xvfb for screenshots.
+# Godot 4.7 .NET, the Godot export templates, and Mesa/Vulkan/xvfb for screenshots; plus the asset
+# tooling (tools/build-assets.sh): ffmpeg, rsync, and the Python packages in tools/requirements-assets.txt.
 # Idempotent and non-interactive. Run as root (or with passwordless sudo).
 #   tools/setup-linux.sh            everything
 #   tools/setup-linux.sh --no-templates   skip the 1.2 GB export templates (no Windows export)
@@ -24,6 +25,16 @@ $SUDO apt-get install -y --no-install-recommends \
   ca-certificates curl unzip file python3 dotnet-sdk-8.0 \
   xvfb xauth libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 vulkan-tools \
   libasound2t64 libfontconfig1 libxcursor1 libxinerama1 libxi6 libxrandr2 libxkbcommon0
+# Asset tooling: ffmpeg (Ogg Vorbis, loudness, PNG decode), rsync (tools/sync-assets.sh), Python packages.
+$SUDO apt-get install -y --no-install-recommends ffmpeg rsync python3-pip python3-numpy python3-scipy
+
+echo "== Python packages for assets/src (tools/requirements-assets.txt)"
+REQ="$(cd "$(dirname "$0")" && pwd)/requirements-assets.txt"
+if ! python3 -c "import numpy, scipy" 2>/dev/null; then
+  # Ubuntu's system Python is "externally managed"; fall back to --break-system-packages there.
+  $SUDO python3 -m pip install -r "$REQ" || $SUDO python3 -m pip install --break-system-packages -r "$REQ"
+fi
+python3 -c "import numpy, scipy; print('numpy', numpy.__version__, 'scipy', scipy.__version__)"
 
 echo "== Godot ${GODOT_VERSION} .NET"
 if [ ! -x "$GODOT_BIN" ]; then
@@ -59,5 +70,6 @@ if [ "$TEMPLATES" = 1 ]; then
 fi
 
 echo "== versions"
+ffmpeg -version | head -n 1
 dotnet --version
 godot --version

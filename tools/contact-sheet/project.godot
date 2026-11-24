@@ -1,0 +1,19 @@
+; Contact-sheet and SVG-raster tool project (Godot 4.7, Mobile renderer, same as the game). Not part of the game.
+; Run through tools/render-contact-sheet.sh and assets/src/common/svg.py, not directly.
+config_version=5
+
+[application]
+
+config/name="tide-toll-contact-sheet"
+run/main_scene="res://contact_sheet.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=480
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=false

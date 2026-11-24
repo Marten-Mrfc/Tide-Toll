@@ -1,0 +1,265 @@
+{
+ "source": "docs/asset-pipeline.md (## Palette)",
+ "atlas": "assets/textures/palette.png",
+ "layout": {
+  "size": 256,
+  "swatch": 16,
+  "columns": 16,
+  "rule": "swatch i at column i % 16, row i // 16"
+ },
+ "palette": [
+  {
+   "index": 0,
+   "name": "Paper",
+   "hex": "F2EAD8",
+   "use": "page, highlights",
+   "uv": [
+    0.03125,
+    0.03125
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Ink",
+   "hex": "2B2620",
+   "use": "outlines, icon strokes, text",
+   "uv": [
+    0.09375,
+    0.03125
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Meadow",
+   "hex": "7FA35B",
+   "use": "grass",
+   "uv": [
+    0.15625,
+    0.03125
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Bent grass",
+   "hex": "A9B86E",
+   "use": "trampled grass",
+   "uv": [
+    0.21875,
+    0.03125
+   ]
+  },
+  {
+   "index": 4,
+   "name": "Trail earth",
+   "hex": "B89568",
+   "use": "trails",
+   "uv": [
+    0.28125,
+    0.03125
+   ]
+  },
+  {
+   "index": 5,
+   "name": "Packed earth",
+   "hex": "8C6A48",
+   "use": "tracks, yards",
+   "uv": [
+    0.34375,
+    0.03125
+   ]
+  },
+  {
+   "index": 6,
+   "name": "Mud",
+   "hex": "5E4A36",
+   "use": "mud, wet ground, wood shadow",
+   "uv": [
+    0.40625,
+    0.03125
+   ]
+  },
+  {
+   "index": 7,
+   "name": "River",
+   "hex": "5B7F95",
+   "use": "water",
+   "uv": [
+    0.46875,
+    0.03125
+   ]
+  },
+  {
+   "index": 8,
+   "name": "Deep water",
+   "hex": "3F5F75",
+   "use": "deep water",
+   "uv": [
+    0.53125,
+    0.03125
+   ]
+  },
+  {
+   "index": 9,
+   "name": "Reed and thatch",
+   "hex": "C9A55A",
+   "use": "thatch roofs, reeds, straw",
+   "uv": [
+    0.59375,
+    0.03125
+   ]
+  },
+  {
+   "index": 10,
+   "name": "Brick",
+   "hex": "A4553A",
+   "use": "brick, tiles",
+   "uv": [
+    0.65625,
+    0.03125
+   ]
+  },
+  {
+   "index": 11,
+   "name": "Slate roof",
+   "hex": "5E6B78",
+   "use": "slate roofs",
+   "uv": [
+    0.71875,
+    0.03125
+   ]
+  },
+  {
+   "index": 12,
+   "name": "Soot brick",
+   "hex": "7A4436",
+   "use": "old brick, dark wood",
+   "uv": [
+    0.78125,
+    0.03125
+   ]
+  },
+  {
+   "index": 13,
+   "name": "Cast-iron green",
+   "hex": "44604F",
+   "use": "ironwork, foliage shadow",
+   "uv": [
+    0.84375,
+    0.03125
+   ]
+  },
+  {
+   "index": 14,
+   "name": "Concrete",
+   "hex": "A9A69C",
+   "use": "stone, later eras",
+   "uv": [
+    0.90625,
+    0.03125
+   ]
+  },
+  {
+   "index": 15,
+   "name": "Wet mudflat",
+   "hex": "6F6450",
+   "use": "banks, ford stones in water",
+   "uv": [
+    0.96875,
+    0.03125
+   ]
+  },
+  {
+   "index": 16,
+   "name": "Limewash",
+   "hex": "E9E2CF",
+   "use": "walls",
+   "uv": [
+    0.03125,
+    0.09375
+   ]
+  },
+  {
+   "index": 17,
+   "name": "Snow",
+   "hex": "EEF2F4",
+   "use": "winter",
+   "uv": [
+    0.09375,
+    0.09375
+   ]
+  },
+  {
+   "index": 18,
+   "name": "Night tint",
+   "hex": "2E3A5C",
+   "use": "night grade only",
+   "uv": [
+    0.15625,
+    0.09375
+   ]
+  }
+ ],
+ "state": [
+  {
+   "name": "flowing",
+   "hex": "009E73",
+   "shape": "circle"
+  },
+  {
+   "name": "slow",
+   "hex": "E69F00",
+   "shape": "triangle"
+  },
+  {
+   "name": "blocked",
+   "hex": "D55E00",
+   "shape": "diamond"
+  },
+  {
+   "name": "boat or water info",
+   "hex": "0072B2",
+   "shape": "anchor"
+  },
+  {
+   "name": "player preview",
+   "hex": "56B4E9",
+   "shape": "dotted outline"
+  },
+  {
+   "name": "heritage",
+   "hex": "CC79A7",
+   "shape": "shield"
+  },
+  {
+   "name": "money",
+   "hex": "F0E442",
+   "shape": "coin with ink outline"
+  }
+ ],
+ "aliases": {
+  "paper": "Paper",
+  "ink": "Ink",
+  "meadow": "Meadow",
+  "bent": "Bent grass",
+  "trail": "Trail earth",
+  "packed": "Packed earth",
+  "earth": "Packed earth",
+  "mud": "Mud",
+  "river": "River",
+  "water": "River",
+  "deep": "Deep water",
+  "thatch": "Reed and thatch",
+  "reed": "Reed and thatch",
+  "brick": "Brick",
+  "slate": "Slate roof",
+  "soot": "Soot brick",
+  "iron": "Cast-iron green",
+  "concrete": "Concrete",
+  "stone": "Concrete",
+  "mudflat": "Wet mudflat",
+  "lime": "Limewash",
+  "limewash": "Limewash",
+  "snow": "Snow",
+  "night": "Night tint"
+ }
+}

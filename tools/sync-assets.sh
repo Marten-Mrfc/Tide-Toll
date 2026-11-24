@@ -10,8 +10,9 @@ for d in models textures icons fonts audio; do
   if [ -d "$ROOT/assets/$d" ]; then
     mkdir -p "$DST/$d"
     if command -v rsync >/dev/null; then
-      # Keeps Godot's .import sidecars, so unchanged files are not imported again.
-      rsync -a --delete --exclude '*.import' "$ROOT/assets/$d/" "$DST/$d/"
+      # Keeps Godot's .import sidecars, so unchanged files are not imported again, and the palette atlas Godot
+      # extracts from each .glb (<model>_palette.png; asset names never contain "_"), so models are not re-imported.
+      rsync -a --delete --exclude '*.import' --exclude '*_palette.png' "$ROOT/assets/$d/" "$DST/$d/"
     else
       rm -rf "$DST/$d"; mkdir -p "$DST/$d"; cp -r "$ROOT/assets/$d/." "$DST/$d/"
     fi

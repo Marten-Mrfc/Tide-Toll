@@ -1,0 +1,8 @@
+# Python packages for the asset generators under assets/src/ (build-time tools; nothing here ships in the game).
+# Install: python3 -m pip install -r tools/requirements-assets.txt   (tools/setup-linux.sh does this)
+# Tested with numpy 2.5.3 and scipy 1.18.1 on Python 3.13; numpy 1.26 / scipy 1.11 (Ubuntu 24.04 apt) also work.
+# Ledger rows: kind "tool" in assets/LEDGER.csv. Deliberately NOT used: Pillow (MIT-CMU), matplotlib
+# (PSF-based Matplotlib licence) and cairosvg (LGPL-3.0): their licences are not on the ledger allow list.
+# Also needed on PATH: ffmpeg (Ogg encode, loudness, PNG decode), godot + xvfb-run (contact sheets, SVG raster).
+numpy>=1.26
+scipy>=1.11

@@ -318,20 +318,6 @@ function previewBasicsTest() {
   const steps = cells!.reduce((s, c) => s + fw[c], 0);
   check(steps > 0, `preview: the bridge then carries walkers (${steps} footsteps in 2 days)`);
 
-  // Erase: removing a fence that is in the way gives a shorter route.
-  // A fence the preview says reroutes someone (tried house by house).
-  let f2: number[] = [];
-  for (const h of w.houses) {
-    f2 = fenceAcrossRoute(w, h, 0.3, 9);
-    if (f2.length && w.previewFlows({ block: f2 }).changes.some(c => c.reachable)) break;
-  }
-  w.placeFence(f2);
-  run(w, 3);
-  const pe = w.previewFlows({ open: f2 });
-  const shorter = pe.changes.filter(c => c.reachable && c.costRatio < 1).length;
-  log(`  erase a ${f2.length}-cell fence: ${pe.changes.length} changed routes shown, ${shorter} shorter; "${describePreview(pe, b => w.buildings[b].kind)}"`);
-  check(shorter > 0, "preview: erasing a fence in the way predicts a shorter route");
-
   // Unreachable: a fence ring round the well's door.
   const well = w.buildings[w.kind("well")[0]];
   const ring: number[] = [];
@@ -351,7 +337,7 @@ function previewBasicsTest() {
 function previewAgreementTest(seeds: number[]) {
   log(`\nFLOW PREVIEW: agreement with the walkers (seeds ${seeds.join(", ")}, 200 walkers, fence placed on day 20)`);
   log("seed | fence | pairs | readout       | detour points near new trail | trips/day after: all  new route | predicted/day");
-  let predicted = 0, measured = 0, detourPts = 0, detourNear = 0;
+  let predicted = 0, measured = 0, detourPts = 0, detourNear = 0, eraseShorter = 0;
   for (const seed of seeds) {
     const w = new World(seed, 200);
     run(w, 20);
@@ -402,12 +388,16 @@ function previewAgreementTest(seeds: number[]) {
       }
     }
     detourPts += pts; detourNear += near;
+    // Erase: hovering erase over the whole fence predicts shorter routes again.
+    const pe = w.previewFlows({ open: fence });
+    if (pe.changes.some(c => c.reachable && c.costRatio < 1)) eraseShorter++;
     log(`${String(seed).padStart(4)} | ${String(fence.length).padStart(5)} | ${String(pv.changes.length).padStart(5)} | ${describePreview(pv, b => w.buildings[b].kind).padEnd(13).slice(0, 34)} | ${String(near).padStart(4)} of ${String(pts).padStart(4)} ` +
       `                | ${(departures / DAYS_AFTER).toFixed(1).padStart(5)} ${perDay.toFixed(1).padStart(10)} | ${pv.reroutedPerDay.toFixed(1).padStart(8)}`);
   }
   const share = detourNear / Math.max(1, detourPts), err = measured ? predicted / measured - 1 : Infinity;
   log(`  all seeds: ${(share * 100).toFixed(0)}% of predicted detour points lie within 3 cells of new trail; predicted ${predicted.toFixed(1)} vs measured ${measured.toFixed(1)} rerouted trips a day (${err >= 0 ? "+" : ""}${(err * 100).toFixed(0)}%)`);
   check(detourPts > 0 && share >= 0.8, "preview: at least 80% of the predicted detour lies within 3 cells of the trail that forms (3 days later)");
+  check(eraseShorter >= seeds.length - 1, `preview: erasing the fence 6 days later predicts shorter routes (${eraseShorter} of ${seeds.length} seeds)`);
   check(Math.abs(err) <= 0.15, "preview: the readout is within 15% of the trips per day that take the new route (summed over seeds)");
 }
 

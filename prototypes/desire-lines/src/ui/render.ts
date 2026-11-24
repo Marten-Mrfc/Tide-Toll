@@ -39,6 +39,9 @@ export class Renderer {
   private heat = document.createElement("canvas");
   private himg: ImageData;
   private layer = document.createElement("canvas");
+  // Ground, wear, overlay and static layer composited once per ground refresh,
+  // so a frame draws one full-size image plus walkers.
+  private bg = document.createElement("canvas");
   private layerKey = "";
   private baseKey = "";
   private groundAt = -1e9;
@@ -97,8 +100,9 @@ export class Renderer {
       while (k < stops.length - 2 && v > stops[k + 1][0]) k++;
       const [a, ca] = stops[k], [b, cb] = stops[k + 1];
       const c = mix(ca, cb, smooth((v - a) / (b - a)));
-      // Fade in from 2 to 14, so faint wear is a soft haze and trails have soft edges.
-      const al = v < 2 ? 0 : 0.25 + 0.75 * smooth((v - 2) / 12);
+      // Fade in from wear 4 to 26: trampled grass is a faint haze, and a trail's
+      // soft edge is where its side wear falls off, so trails read narrow.
+      const al = 0.95 * smooth((v - 4) / 22) + 0.05 * smooth((v - 26) / 30);
       this.lut[i] = ((Math.round(al * 255) << 24) | (Math.round(c[2]) << 16) | (Math.round(c[1]) << 8) | Math.round(c[0])) >>> 0;
     }
   }
@@ -335,7 +339,7 @@ export class Renderer {
     if (!cells.length) return;
     const s = this.scale, d = this.dpr;
     const lines = fenceLines(cells);
-    const rail = Math.max(2 * d, s * 0.32), post = Math.max(3.5 * d, s * 0.6);
+    const rail = Math.max(2.5 * d, s * 0.38), post = Math.max(3.5 * d, s * 0.6);
     const path = new Path2D(), posts: [number, number][] = [];
     for (const ln of lines) {
       for (let i = 0; i < ln.length; i += 2) {
@@ -375,28 +379,35 @@ export class Renderer {
   draw(alpha: number, now: number) {
     const ctx = this.ctx, w = this.world, s = this.scale, p = this.pal.css;
     const W = this.canvas.width;
-    const bkey = `${w.seed}|${w.map === undefined}`;
-    if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; }
+    let dirty = false;
+    const bkey = `${w.seed}`;
+    if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; dirty = true; }
     if (now - this.groundAt >= GROUND_MS || this.groundVersion !== w.version) {
       this.buildWear();
       this.groundAt = now;
       this.groundVersion = w.version;
+      dirty = true;
     }
     const key = `${W}|${w.version}|${w.seed}`;
-    if (key !== this.layerKey) { this.buildLayer(); this.layerKey = key; }
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
-    ctx.drawImage(this.wearCv, 0, 0, M, M, 0, 0, W, W);
-    if (this.overlay) {
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = p.paper;
-      ctx.fillRect(0, 0, W, W);
-      ctx.globalAlpha = 1;
-      ctx.drawImage(this.heat, 0, 0, N, N, 0, 0, W, W);
+    if (key !== this.layerKey) { this.buildLayer(); this.layerKey = key; dirty = true; }
+    if (dirty) {
+      const bg = this.bg;
+      if (bg.width !== W) bg.width = bg.height = W;
+      const g = bg.getContext("2d")!;
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = "low"; // the wear layer is already interpolated; "high" costs ~8 ms a refresh
+      g.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
+      g.drawImage(this.wearCv, 0, 0, M, M, 0, 0, W, W);
+      if (this.overlay) {
+        g.globalAlpha = 0.6;
+        g.fillStyle = p.paper;
+        g.fillRect(0, 0, W, W);
+        g.globalAlpha = 1;
+        g.drawImage(this.heat, 0, 0, N, N, 0, 0, W, W);
+      }
+      g.drawImage(this.layer, 0, 0);
     }
-    ctx.drawImage(this.layer, 0, 0);
+    ctx.drawImage(this.bg, 0, 0);
 
     // Walkers: a fixed small scatter per walker so a crowd on one lane reads as a crowd.
     const r = Math.max(1.4 * this.dpr, s * 0.3);
@@ -409,7 +420,7 @@ export class Renderer {
       halo.moveTo(x + r * 1.6, y); halo.arc(x, y, r * 1.6, 0, Math.PI * 2);
       dots.moveTo(x + r, y); dots.arc(x, y, r, 0, Math.PI * 2);
     }
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.75;
     ctx.fillStyle = p["walker-halo"];
     ctx.fill(halo);
     ctx.globalAlpha = 1;
