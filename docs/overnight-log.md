@@ -55,19 +55,20 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 1 | Toy | Round 2 of the toy: natural trails with an honest trunk-share gate, flow preview, visual and bug fixes | Done 20:54 UTC and republished. Flow preview works and is honest; trails merge and are about 3 cells wide. G3 fails on 1 of 20 held-out seeds (seed 115, 28.6%). Touch input breaks at 400 px because the map jumps when the readout appears |
 | 2 | Setup | Phase 0: toolchain, repository skeleton, asset pipeline guide | Done 20:00 UTC. `./check` passes all 7 steps from a clean copy in 31 s; 31 simulation tests pass; the Windows export builds (not run on Windows). Review: no blockers |
 | 3 | Assets | The Hamlet asset set: shared generator tooling, models, textures, icons, font, sound effects, theme draft, gallery page | Done 21:08 UTC. 95 asset files, all with ledger rows; everything except the fonts rebuilds identically from its generator; gallery published. Review: no blockers; willow tree and footbridge icon rated "redo"; icons vanish on dark grounds |
-| 4 | Port | The toy's simulation (as of commit a057b50) ported to C# with the same tests, a comparison against the toy, a headless runner and `AGENTS.md` | Running since 20:54 UTC |
+| 4 | Port | The toy's simulation (as of commit a057b50) ported to C# with the same tests, a comparison against the toy, a headless runner and `AGENTS.md` | Done 21:51 UTC. The C# library gives exactly the toy's results (wear, flow and cost grids, every metric, the flow preview) on all compared seeds. One simulation tick takes about 1 ms at 500 walkers with no memory allocated. 38 fast tests pass; the gate test fails on G3 exactly as the toy does. Review: no blockers. Open: results on Windows may differ in the last decimal because of the maths library; two small edge bugs (a fence line that leaves the map, a bridge at the map edge) |
 | 5 | Toy | Round 3 of the toy: trunk-share headroom with working bridges (gate on fresh seeds 401 to 420), phone-width input fix, gravel and gate tools, polish | Running since 21:05 UTC |
 | 6 | Assets | Fixes from the asset review; gallery rebuilt and republished to the same link | Done 21:36 UTC. 10 of 12 findings fixed, 2 partly (ground tiles still repeat a little; soft ink on trees). Now 99 asset files, 125 ledger rows; `./check` passes. Left for later: stiff willow fronds, a few icons lose detail on ink, tile repetition |
+| 7 | Godot | Phase 2: Prototype 1 on the map page of the book: wear shader, river, buildings, 500 walkers, ink outline, camera, tools, flow preview, interface, sound, headless tests, Windows build | Running since 21:55 UTC (workflow run `wf_2c94d350-f87`) |
 
 ## Next steps
 
 - When toy round 3 finishes: review it, republish the toy, commit, push, update `ROUNDS.md`.
 - Toy round 4: sound in code (Web Audio, off until the Sound button), rain and mud, house growth, and whatever the round 3 review lists.
-- Toy round 5: final polish in both themes and at phone width, and a last full check.
-- After toy rounds 3 and 4: a sync round that ports the toy's newer features (gravel, gate, rain, house growth, any model retune) to the C# library.
-- When the asset round finishes: review it, look at the contact sheets, publish the asset gallery Artifact from `docs/asset-gallery/` (page plus the files listed in `files.json`), commit, push.
-- When toy round 2 has finished: start the C# port of the simulation (world, wear, walkers, metrics, tools, flow preview) with the same gate tests as the toy. Carry over the setup review's open points: put the golden-value generator in the repository, add an `AGENTS.md`, register the Godot NuGet source from `check.sh`, add a Release benchmark behind `./check --bench`.
-- Then the Godot scene on the book's map page: wear shader, walkers, tools, UI and sound, using the Hamlet assets. Give the book depth (page edges, a slight curve at the gutter).
+- Toy round 5: final polish in both themes and at phone width, and a last full check. Then tick "Build Prototype 1" in the Build Plan.
+- When the Godot round (7) finishes: read the review, look at the screenshots, update the phase 2 gate, commit, push. If the review lists blockers, run a fix round.
+- After toy rounds 3 and 4: a sync round that ports the toy's newer features (gravel, gate, rain, house growth, any model retune) to the C# library and the Godot game, regenerates the comparison data, and closes the port review's open points (own maths functions so Windows gives the same results, read-only views, a tighter speed budget, a comparison that covers edits).
+- Phase 3 (the river prototype) only if phase 2's automated checks pass.
+- Then the morning report, in the chat and in the Build Plan tab.
 
 ## Toolchain facts (from the setup round)
 
@@ -85,7 +86,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | G2: testers move a trail within three attempts, flow preview on | Waiting for playtest. Stand-in after toy round 2: automated reroute test passes; the preview's ghost routes match where trails form (90 of 90 points) |
 | G3: trunk share stays between 30% and 70% in 20 seeds | Fail after toy round 2: 19 of 20 held-out seeds pass; seed 115 dips to 28.6% on 3 days. 40 of 40 other unseen seeds pass. Toy round 3 retunes for headroom |
 | G4: 200 agents at 60 fps in a desktop browser | Pass (headless Chromium, capped at 60 Hz) |
-| Phase 2: Prototype 1 in Godot at 60 fps with 500 walkers | Not started |
+| Phase 2: Prototype 1 in Godot at 60 fps with 500 walkers | In progress. The simulation part is done: about 1 ms per tick at 500 walkers. The scene is being built in round 7. A real 60 fps reading needs the owner's PC |
 
 ## Decisions made for you
 
