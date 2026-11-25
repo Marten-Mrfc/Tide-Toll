@@ -127,7 +127,7 @@ public partial class AudioDirector
     private void Oars(World w)
     {
         var r = w.River;
-        if (r == null || (_beatIndex & 1) == 1) return;
+        if (r == null || (_beatIndex & 1) == 1 || r.Frozen) return; // boats held in the ice make no sound
         var rig = _main.Rig;
         if (rig.Camera.Size > 300f) return; // far out, boats are silent
         var vp = GetViewport().GetVisibleRect().Size;

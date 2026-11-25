@@ -17,7 +17,7 @@ public static class ToolTargets
         if (cy < 0 || cy >= n) return "Point at the river to lay a footbridge.";
         int rx = (int)MathF.Floor(w.RiverX[cy]);
         if (Math.Abs(cx - rx) > w.Map.RiverHalfW + 4) return "A footbridge goes across the river: point at the water.";
-        if (Math.Abs(cy - w.Map.FordY) <= 2) return "Too close to the ford: villagers already cross here.";
+        if (Math.Abs(cy - w.Map.FordY) <= 2) return FordNote(w, "Too close to the ford: villagers already cross here");
         for (int x = Math.Max(0, rx - 8); x <= Math.Min(n - 1, rx + 8); x++)
             if (w.BridgeAt[cy * n + x] >= 0) return "There is already a footbridge here.";
         return "No footbridge fits here: both ends need open ground on the bank.";
@@ -36,10 +36,23 @@ public static class ToolTargets
         if (r.Money >= price - 1e-9)
         {
             var res = w.CheckCrossing(t, x, y);
-            return res.Ok ? null : res.Reason + ".";
+            return res.Ok ? null : Spot(w, res.Reason);
         }
-        if (w.CrossingWhatIf(t, x, y) == null) return w.CheckCrossing(t, x, y).Reason + "."; // the spot's reason comes first
+        if (w.CrossingWhatIf(t, x, y) == null) return Spot(w, w.CheckCrossing(t, x, y).Reason); // the spot's reason comes first
         return $"Not enough coin: the {World.CrossingName(t)} costs {RiverFeed.Coin(price)}, you have {RiverFeed.Coin(r.Money)}.";
+    }
+
+    /// <summary>A spot's reason in words, with the flood's news when it is about the ford.</summary>
+    private static string Spot(World w, string reason) => reason.Contains("ford") ? FordNote(w, reason) : reason + ".";
+
+    /// <summary>"Too close to the ford." and, while the spring flood has closed it, what that means for now.</summary>
+    public static string FordNote(World w, string reason)
+    {
+        var r = w.River;
+        if (r == null || !r.Flooded) return reason + ".";
+        double left = Math.Max(0, r.FloodEndsAt - w.Time) / w.Params.DaySimSec;
+        string when = left < 1 ? "later today" : left < 2 ? "tomorrow" : $"in {Math.Ceiling(left):0} days";
+        return $"{reason}. The ford is closed by the spring flood: it opens again {when}, when the water goes down.";
     }
 
     /// <summary>What erasing these crossing cells costs, in words ("Erase: taking down the ferry costs 20c.").</summary>
@@ -53,10 +66,13 @@ public static class ToolTargets
         {
             var x = xs[i];
             if (x.Type == CrossingType.Ford || x.Cells.Count == 0 || !cells.Contains(x.Cells[0])) continue;
-            cost += r.Rules.EraseCostShare * r.Rules.Price(x.Type);
+            cost += w.EraseCost(x.Type);
             what = what.Length == 0 ? World.CrossingName(x.Type) : "crossings";
         }
         if (what.Length == 0) return "Erase: click to remove the bridge.";
+        if (r.Money - cost < r.Rules.DebtLimit - 1e-9)
+            return $"Not enough coin: taking down the {what} costs {RiverFeed.Coin(cost)}, you have {RiverFeed.Coin(r.Money)} " +
+                   $"and the purse may not go below {RiverFeed.Coin(r.Rules.DebtLimit)}.";
         return $"Erase: taking down the {what} costs {RiverFeed.Coin(cost)} (no refund). Click to remove it.";
     }
 

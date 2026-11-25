@@ -505,6 +505,17 @@ console.log("\nSOUND (1280x860)");
       if (!C) continue;
       window[name] = class extends C { constructor(...a) { super(...a); window.__ac.push({ during: window.event ? window.event.type : "none", state: this.state }); } };
     }
+    // Live Web Audio nodes: made by a create call, released by disconnect() with no arguments.
+    const live = new Set();
+    let made = 0;
+    window.__nodes = () => ({ live: live.size, made });
+    const P = (window.BaseAudioContext || window.AudioContext).prototype;
+    for (const k of ["createGain", "createBufferSource", "createStereoPanner", "createBiquadFilter", "createOscillator", "createConvolver", "createDynamicsCompressor", "createWaveShaper"]) {
+      const f = P[k];
+      P[k] = function (...a) { const n = f.apply(this, a); live.add(n); made++; return n; };
+    }
+    const d = AudioNode.prototype.disconnect;
+    AudioNode.prototype.disconnect = function (...a) { if (a.length === 0) live.delete(this); return d.apply(this, a); };
   });
   await page.goto(url);
   await page.waitForFunction(() => window.__tt);
@@ -543,6 +554,8 @@ console.log("\nSOUND (1280x860)");
   console.log(`  sound after a minute at 8x: ${st.beats} beats, ${st.steps} steps (at most ${st.maxBeatSteps} a beat), ${st.cues} other cues (${st.bells} bells, ${st.themeNotes} theme notes), at most ${st.maxAlive} voices at once, ${st.dropped} dropped; day ${run.day}`);
   check(st.beats >= 50 && st.steps > 100 && st.cues > 5 && st.bells >= 3 && st.themeNotes > 0, "footsteps, tool cues, bells and the theme were scheduled");
   check(st.maxBeatSteps <= 8 && st.maxAlive <= 34, `the voice budget held (at most ${st.maxBeatSteps} step voices a beat, limit 8; ${st.maxAlive} voices at once, limit 34)`);
+  const nodes = await page.evaluate(() => window.__nodes());
+  check(nodes.live <= 300 && nodes.made > 4 * nodes.live, `audio nodes are released when their sounds end (${nodes.live} live of ${nodes.made} made after a minute; npm run soak runs 10 minutes)`);
   await page.click("#btn-pause");
   await page.waitForTimeout(500);
   const paused = await page.evaluate(() => __tt.sound());
@@ -554,6 +567,18 @@ console.log("\nSOUND (1280x860)");
   await page.waitForTimeout(400);
   const muted = await page.evaluate(() => __tt.sound());
   check(!muted.on && muted.ctxState === "suspended", "key M turns sound off");
+  // Days pass while it is off (8x, 7 s: about 4 days, past the bell's 6 s gap); switched back on at 1x,
+  // it rings no bell for them. Only a dawn after it is back on may ring.
+  await page.evaluate(() => __tt.setSpeed(8));
+  const d0 = await page.evaluate(() => Math.floor(__tt.world.time / 15));
+  await page.waitForTimeout(7000);
+  await page.evaluate(() => __tt.setSpeed(1));
+  const before = await page.evaluate(() => ({ bells: __tt.sound().stats.bells, day: Math.floor(__tt.world.time / 15) }));
+  await page.keyboard.press("m");
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => ({ bells: __tt.sound().stats.bells, day: Math.floor(__tt.world.time / 15), on: __tt.sound().on }));
+  check(after.on && before.day - d0 >= 2 && after.bells - before.bells <= after.day - before.day, `no stray bell when sound comes back on after ${before.day - d0} silent days (${after.bells - before.bells} bells in the next 1.2 s, ${after.day - before.day} dawns meanwhile)`);
+  await page.keyboard.press("m");
   await page.reload();
   await page.waitForFunction(() => window.__tt);
   await page.waitForTimeout(1000);
@@ -609,6 +634,80 @@ for (const scheme of ["light", "dark"]) {
   await page.waitForTimeout(400);
   check(await page.isVisible("#legend-heat"), `${scheme}: the wear overlay still works in rain`);
   await page.screenshot({ path: join(shots, `rain-overlay-1280-${scheme}.png`) });
+  check(errors.length === 0, `${scheme}: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await page.close();
+}
+
+// ---------------------------------------------------------------- readouts, the dawn mark, drying mud
+console.log("\nREADOUTS, DAWN MARK AND DRYING MUD (1280x860, both themes)");
+for (const scheme of ["light", "dark"]) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, colorScheme: scheme });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  // The dawn mark at its peak and through its fade: the day line's text colour stays put and
+  // reads at 4.5 to 1 or better against whatever is behind it.
+  const dawn = await page.evaluate(() => {
+    const el = document.getElementById("hud-time");
+    const rgba = c => { const m = c.match(/[\d.]+/g).map(Number); return [m[0], m[1], m[2], m.length > 3 ? m[3] : 1]; };
+    const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const page = rgba(getComputedStyle(document.body).backgroundColor);
+    el.classList.remove("dawn"); void el.offsetWidth; el.classList.add("dawn");
+    const anim = el.getAnimations()[0];
+    const out = [];
+    for (const t of [0, 200, 400, 800, 1200, 1599]) {
+      anim.pause(); anim.currentTime = t;
+      const cs = getComputedStyle(el), fg = rgba(cs.color), bg = rgba(cs.backgroundColor);
+      const mixed = [0, 1, 2].map(i => bg[i] * bg[3] + page[i] * (1 - bg[3]));
+      const a = lum(fg), b = lum(mixed);
+      out.push({ t, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), fg: cs.color, bg: cs.backgroundColor, line: cs.textDecorationColor });
+    }
+    return { found: !!anim, out };
+  });
+  const worst = Math.min(...dawn.out.map(o => o.ratio)), fgFixed = new Set(dawn.out.map(o => o.fg)).size === 1;
+  check(dawn.found && worst >= 4.5 && fgFixed, `${scheme}: the dawn mark keeps the day line readable (lowest contrast ${worst.toFixed(2)} to 1 over the fade, ${dawn.out[0].ratio.toFixed(2)} at the peak; text colour ${fgFixed ? "fixed" : "changes"}; tint ${dawn.out[0].bg}, underline ${dawn.out[0].line})`);
+  // The town readout's two parts stay apart in copied text.
+  await page.evaluate(() => { __tt.reset(1); __tt.pause(); const w = __tt.world; while (w.grown.length < 2) w.tick(); });
+  await page.waitForTimeout(700);
+  const town = await page.evaluate(() => ({ inner: document.getElementById("hud-houses").innerText, text: document.getElementById("hud-houses").textContent }));
+  check(/^Houses: \d+;\s*newest on day \d+$/.test(town.text) && !/\dnewest/.test(town.inner), `the town readout reads "${town.text}" (innerText ${JSON.stringify(town.inner)})`);
+  // A footbridge that saves under 5% of the walk (seed 1, row 88, day 10: about 2%) says so.
+  await page.evaluate(() => { __tt.reset(1); __tt.pause(); const w = __tt.world; for (let i = 0; i < 1500; i++) w.tick(); });
+  await page.keyboard.press("b");
+  const rx = await page.evaluate(() => Math.floor(__tt.world.map.riverX[88]));
+  const at = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [rx, 88]);
+  await page.mouse.move(at.x - 3, at.y); await page.mouse.move(at.x, at.y);
+  await page.waitForFunction(() => __tt.previewState().text !== "", null, { timeout: 5000 }).catch(() => {});
+  const bridge = await page.evaluate(() => __tt.previewState());
+  check(bridge.text.startsWith("Saves under 5% of the walk") && bridge.line.startsWith("Saves under 5%") && bridge.tipVisible, `a footbridge that saves little says so: "${bridge.text}" (status line and pointer)`);
+  await page.screenshot({ path: join(shots, `bridge-small-saving-1280-${scheme}.png`) });
+  await page.keyboard.press("Escape");
+  // Drying: halfway through the mud's last day the least-worn mud is drawn dry again while the
+  // busiest is still wet (drawing only). Compared with the same cells once the ground is dry.
+  await page.evaluate(() => { const w = __tt.world; while (w.time < 600) w.tick(); __tt.startRain(1); while (w.weather.raining) w.tick(); while (w.time < w.weather.mudUntil - 7) w.tick(); });
+  await page.waitForTimeout(600);
+  const grab = () => page.evaluate(() => {
+    const w = __tt.world, c = document.getElementById("map"), k = c.width / 128, g = c.getContext("2d");
+    const light = [], heavy = [];
+    for (let i = 0; i < 128 * 128; i++) if (w.mud[i] && !w.walkers.some(v => Math.abs((v.cell % 128) - (i % 128)) + Math.abs(((v.cell / 128) | 0) - ((i / 128) | 0)) < 3)) {
+      if (w.wear[i] < 32 && light.length < 40) light.push(i); else if (w.wear[i] >= 85 && heavy.length < 40) heavy.push(i);
+    }
+    const px = cells => cells.map(i => { const d = g.getImageData(((i % 128) + 0.5) * k, (((i / 128) | 0) + 0.5) * k, 1, 1).data; return d[0] + d[1] + d[2]; });
+    return { light, heavy, l: px(light), h: px(heavy), dp: 1 - (w.weather.mudUntil - w.time) / 15 };
+  });
+  const mid = await grab();
+  await page.screenshot({ path: join(shots, `drying-1280-${scheme}.png`) });
+  await page.evaluate(() => __tt.stopRain(true));
+  await page.waitForTimeout(600);
+  const dryPx = await page.evaluate(({ light, heavy }) => {
+    const c = document.getElementById("map"), k = c.width / 128, g = c.getContext("2d");
+    const px = cells => cells.map(i => { const d = g.getImageData(((i % 128) + 0.5) * k, (((i / 128) | 0) + 0.5) * k, 1, 1).data; return d[0] + d[1] + d[2]; });
+    return { l: px(light), h: px(heavy) };
+  }, { light: mid.light, heavy: mid.heavy });
+  const avg = a => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  const dl = avg(dryPx.l) - avg(mid.l), dh = avg(dryPx.h) - avg(mid.h);
+  check(mid.light.length >= 10 && mid.heavy.length >= 10 && dh > dl + 15, `${scheme}: mud dries from the least-worn cells first (half through its last day, ${(mid.dp * 100).toFixed(0)}%: light trail ${dl.toFixed(0)} below its dry brightness, busy track ${dh.toFixed(0)} below; ${mid.light.length} and ${mid.heavy.length} cells)`);
   check(errors.length === 0, `${scheme}: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
   await page.close();
 }

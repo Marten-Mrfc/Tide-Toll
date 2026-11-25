@@ -35,6 +35,8 @@ public partial class AudioDirector : Node2D
     /// <summary>Cue counts (played, or that would have played when silent).</summary>
     public int Steps, Splashes, Bells, Places, Erases, Refusals, Themes, Beats;
     public float RiverDb { get; private set; } = -80;
+    /// <summary>How far the river loop drops while the river is frozen.</summary>
+    public const float FrozenDb = 18f;
     /// <summary>Raised when the dawn bell rings (its visual twin listens).</summary>
     public event Action? Bell;
 
@@ -220,6 +222,8 @@ public partial class AudioDirector : Node2D
         float close = Mathf.Clamp((420f - rig.Camera.Size) / 330f, 0.25f, 1f);
         float gain = Mathf.Sqrt(f) * close;
         float db = gain < 0.01f ? -80 : Mathf.LinearToDb(gain) - 4;
+        // Frozen: the water's sound all but stops (18 dB down, easing over a couple of seconds); a flood is louder.
+        if (w.River is { } wr) { if (wr.Frozen) db -= FrozenDb; else if (wr.Flooded) db += 3f; }
         RiverDb = Mathf.MoveToward(RiverDb, db, 6f);
         _riverPlayer.VolumeDb = RiverDb;
         if (inView > 0)

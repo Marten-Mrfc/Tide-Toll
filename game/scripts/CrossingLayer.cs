@@ -35,15 +35,27 @@ public partial class CrossingLayer : Node3D
         public double Prev, Cur;          // progress at the previous and current tick
         public long Tick = -1;
         public float SignalA, BarrierA;   // eased arm angles, radians
+        public float SpanW, SpanE;        // the water span, metres (overview mark)
         public bool Keeper;
     }
 
     private SimDriver _sim = null!;
     private readonly List<View> _views = new();
+    /// <summary>Instances in the sign MultiMesh: ferry lines, overview marks for every crossing, drawbridge signals.</summary>
+    public const int LineSlots = 64;
+    private const int Stride = 16;
     private MultiMeshInstance3D _lines = null!;
-    private float[] _lineBuf = new float[32 * 16];
-    private int _lineCount;
+    private readonly float[] _lineBuf = new float[LineSlots * Stride];
     private float _mpp = 0.25f;
+    // Footbridges with the river rules on (EditLayer draws their models): their spans, for the overview mark.
+    private readonly float[] _footW = new float[LineSlots], _footE = new float[LineSlots], _footZ = new float[LineSlots];
+    private int _footCount;
+    /// <summary>0 up close, 1 at the play view's overview: the crossings' map marks fade in with it (Main sets it from the zoom).</summary>
+    public float Overview;
+    /// <summary>Overview marks drawn in the last frame (tests): one per ferry, footbridge and drawbridge while Overview is above 0.</summary>
+    public int OverviewMarks { get; private set; }
+    /// <summary>Whether the closed-ford bar is drawn (the spring flood closes the ford; tests).</summary>
+    public bool FordClosedShown { get; private set; }
 
     /// <summary>Rebuilds so far (tests), and the crossing views now drawn.</summary>
     public int Rebuilds { get; private set; }
@@ -57,7 +69,7 @@ public partial class CrossingLayer : Node3D
         mat.SetShaderParameter("ink", Palette.Ink);
         mat.SetShaderParameter("paper", Palette.Paper);
         var quad = new PlaneMesh { Size = Vector2.One, Material = mat };
-        var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = quad, InstanceCount = 32 };
+        var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = quad, InstanceCount = LineSlots };
         mm.VisibleInstanceCount = 0;
         _lines = new MultiMeshInstance3D { Name = "FerryLines", Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, ExtraCullMargin = 600 };
         AddChild(_lines);
@@ -123,20 +135,18 @@ public partial class CrossingLayer : Node3D
                 else if (x.Type == CrossingType.Drawbridge) _views.Add(BuildDrawbridge(w, x));
             }
         }
-        // Dotted crossing lines, one per ferry, south of the raft's path.
-        int k = 0;
-        foreach (var v in _views)
+        _footCount = 0;
+        if (r != null)
         {
-            if (v.Type != CrossingType.Ferry || k >= 16) continue;
-            float len = v.XB - v.XA + 6f;
-            int o = k * 16;
-            _lineBuf[o + 0] = len; _lineBuf[o + 1] = 0; _lineBuf[o + 2] = 0; _lineBuf[o + 3] = (v.XA + v.XB) / 2f;
-            _lineBuf[o + 4] = 0; _lineBuf[o + 5] = 1; _lineBuf[o + 6] = 0; _lineBuf[o + 7] = 0.2f;
-            _lineBuf[o + 8] = 0; _lineBuf[o + 9] = 0; _lineBuf[o + 10] = 0.7f; _lineBuf[o + 11] = v.Z + 2.6f;
-            _lineBuf[o + 12] = 3; _lineBuf[o + 13] = len / 1.6f; _lineBuf[o + 14] = 0.9f; _lineBuf[o + 15] = 0;
-            k++;
+            var xs = r.Crossings;
+            for (int i = 0; i < xs.Count && _footCount < LineSlots; i++)
+            {
+                if (xs[i].Type != CrossingType.Footbridge || xs[i].Cells.Count == 0) continue;
+                var (fw, fe, fz) = Span(w, xs[i]);
+                _footW[_footCount] = fw; _footE[_footCount] = fe; _footZ[_footCount] = fz;
+                _footCount++;
+            }
         }
-        _lineCount = k;
         Sync(0);
     }
 
@@ -151,7 +161,7 @@ public partial class CrossingLayer : Node3D
     private View BuildFerry(World w, Crossing x)
     {
         var (xw, xe, z) = Span(w, x);
-        var v = new View { Id = x.Id, Type = x.Type, Root = new Node3D { Name = $"Ferry{x.Id}" }, Z = z };
+        var v = new View { Id = x.Id, Type = x.Type, Root = new Node3D { Name = $"Ferry{x.Id}" }, Z = z, SpanW = xw, SpanE = xe };
         AddChild(v.Root);
         float s = RaftScale, zr = z - 1.95f * s;
         var pw = ModelLib.Instance("ferry-post", "PostW");
@@ -188,7 +198,7 @@ public partial class CrossingLayer : Node3D
         var (xw, xe, z) = Span(w, x);
         float cell = (float)w.Params.CellMeters;
         int n = w.Grid.Width;
-        var v = new View { Id = x.Id, Type = x.Type, Root = new Node3D { Name = $"Drawbridge{x.Id}" }, Z = z };
+        var v = new View { Id = x.Id, Type = x.Type, Root = new Node3D { Name = $"Drawbridge{x.Id}" }, Z = z, SpanW = xw, SpanE = xe };
         AddChild(v.Root);
         float west = -MathF.PI / 2f; // the model's +Z (its pier side) toward the west bank
         var lift = new Node3D { Name = "Lift", Position = new Vector3(xw + 2f, 0, z), Rotation = new Vector3(0, west, 0) };
@@ -248,16 +258,23 @@ public partial class CrossingLayer : Node3D
 
     public override void _Process(double delta) => Sync((float)delta);
 
-    /// <summary>Moves rafts, leaves, beams, chains, signals and barriers to this frame's state. Allocation-free.</summary>
+    /// <summary>
+    /// Moves rafts, leaves, beams, chains, signals and barriers to this frame's state, and writes the sign MultiMesh:
+    /// each ferry's dotted line, then (at overview zoom) a map mark per crossing that reads at a glance (the ferry's rope
+    /// as a dotted line with the raft on it, the footbridge as a plank deck, the drawbridge as a deck with its gantry,
+    /// open over the water while raised), then each drawbridge's signal disc (always drawn). Allocation-free.
+    /// </summary>
     public void Sync(float dt)
     {
         var w = _sim.World;
         var r = w.River;
-        if (r == null || _views.Count == 0) { _lines.Multimesh.VisibleInstanceCount = 0; return; }
+        OverviewMarks = 0;
+        if (r == null || (_views.Count == 0 && _footCount == 0 && !r.Flooded)) { FordClosedShown = false; _lines.Multimesh.VisibleInstanceCount = 0; Signals = 0; return; }
         var xs = r.Crossings;
         float alpha = _sim.Alpha, ease = dt <= 0 ? 1f : 1f - MathF.Exp(-dt * 8f);
-        int k = _lineCount;
-        float glyph = Math.Clamp(30f * _mpp, 3f, 26f);
+        float glyph = Math.Clamp(30f * _mpp, 3f, 90f);
+        float deckH = MathF.Max(3.2f, 16f * _mpp), ov = Math.Clamp(Overview, 0f, 1f) * 0.95f;
+        int k = 0;
         foreach (var v in _views)
         {
             Crossing? x = null;
@@ -273,6 +290,16 @@ public partial class CrossingLayer : Node3D
             if (v.Raft != null)
             {
                 v.Raft.Position = new Vector3(v.XA + (v.XB - v.XA) * p, 0.02f, v.Z);
+                // The dotted crossing line south of the raft's path (always), and the overview mark: rope and raft.
+                float len = v.XB - v.XA + 6f;
+                k = Put(k, (v.XA + v.XB) / 2f, 0.2f, v.Z + 2.6f, len, 0.7f, 3, len / 1.6f, 0.9f, 0);
+                if (ov > 0)
+                {
+                    // The rope runs 4 m onto each bank to its posts; the raft is three quarters of the mark's height long.
+                    float span = v.SpanE - v.SpanW + 8f, raftC = v.XA + (v.XB - v.XA) * p;
+                    k = Put(k, (v.SpanW + v.SpanE) / 2f, 1.2f, v.Z, span, deckH, 5, (raftC - (v.SpanW - 4f)) / span, ov, deckH * 0.75f / span);
+                    OverviewMarks++;
+                }
                 continue;
             }
             float a = Mathf.DegToRad(MaxLeafDeg) * p;
@@ -284,21 +311,55 @@ public partial class CrossingLayer : Node3D
             v.Signal!.Rotation = new Vector3(0, 0, v.SignalA);
             v.BarrierA += ((down ? Mathf.DegToRad(80) : 0f) - v.BarrierA) * ease;
             foreach (var b in v.Barriers) b.Rotation = new Vector3(0, 0, v.BarrierA);
-            // The signal read from above, at a fixed size on screen, just north of the pier.
-            if (k < 32)
+            if (ov > 0)
             {
-                int o = k * 16;
-                float sx = v.Leaf.GetParent<Node3D>().Position.X - 2f;
-                _lineBuf[o + 0] = glyph; _lineBuf[o + 1] = 0; _lineBuf[o + 2] = 0; _lineBuf[o + 3] = sx - glyph * 0.6f;
-                _lineBuf[o + 4] = 0; _lineBuf[o + 5] = 1; _lineBuf[o + 6] = 0; _lineBuf[o + 7] = 6f;
-                _lineBuf[o + 8] = 0; _lineBuf[o + 9] = 0; _lineBuf[o + 10] = glyph; _lineBuf[o + 11] = v.Z - glyph * 0.6f;
-                _lineBuf[o + 12] = 4; _lineBuf[o + 13] = v.SignalA / (MathF.PI / 2f); _lineBuf[o + 14] = 1; _lineBuf[o + 15] = 0;
-                k++;
+                // The deck over the water with the gantry at the lift's hinge (west); the leaf's part opens while raised.
+                float span = v.SpanE - v.SpanW + 2f;
+                k = Put(k, (v.SpanW + v.SpanE) / 2f, 1.3f, v.Z, span, deckH * 1.5f, 7, p, ov, MathF.Min(1f, 7f / span));
+                OverviewMarks++;
             }
             if (x.Keeper != v.Keeper) { v.Keeper = x.Keeper; v.KeeperHut!.Visible = x.Keeper; }
         }
-        Signals = k - _lineCount;
+        for (int f = 0; f < _footCount && ov > 0; f++)
+        {
+            float span = _footE[f] - _footW[f] + 2f;
+            k = Put(k, (_footW[f] + _footE[f]) / 2f, 1.1f, _footZ[f], span, deckH, 6, 0, ov, 0);
+            OverviewMarks++;
+        }
+        // A closed ford (spring flood): a vermillion bar across the river at the ford, at every zoom.
+        FordClosedShown = false;
+        int fy = w.Map.FordY;
+        if (r.Flooded && fy >= 0 && fy < w.Grid.Height)
+        {
+            float cell = (float)w.Params.CellMeters, water = (float)(w.Map.RiverHalfW * 2 * cell) + 4f;
+            int before = k;
+            k = Put(k, w.RiverX[fy] * cell, 0.8f, (fy + 0.5f) * cell, water, MathF.Max(3f, 12f * _mpp), 8, 0, 1, 0);
+            FordClosedShown = k > before;
+        }
+        // The signals last, so they lie over the marks: read from above at a fixed size on screen, just north-west of the pier.
+        int signals = 0;
+        foreach (var v in _views)
+        {
+            if (v.Leaf == null) continue;
+            float sx = v.Leaf.GetParent<Node3D>().Position.X - 2f;
+            int before = k;
+            k = Put(k, sx - glyph * 0.6f, 6f, v.Z - glyph * 0.6f, glyph, glyph, 4, v.SignalA / (MathF.PI / 2f), 1, 0);
+            if (k > before) signals++;
+        }
+        Signals = signals;
         if (k > 0) RenderingServer.MultimeshSetBuffer(_lines.Multimesh.GetRid(), _lineBuf);
         if (_lines.Multimesh.VisibleInstanceCount != k) _lines.Multimesh.VisibleInstanceCount = k;
+    }
+
+    /// <summary>One flat sign quad (sx metres along x, sz along z) at (x, y, z) with the shader's custom data; returns the next slot.</summary>
+    private int Put(int k, float x, float y, float z, float sx, float sz, float kind, float fill, float alpha, float extra)
+    {
+        if (k >= LineSlots) return k;
+        int o = k * Stride;
+        _lineBuf[o + 0] = sx; _lineBuf[o + 1] = 0; _lineBuf[o + 2] = 0; _lineBuf[o + 3] = x;
+        _lineBuf[o + 4] = 0; _lineBuf[o + 5] = 1; _lineBuf[o + 6] = 0; _lineBuf[o + 7] = y;
+        _lineBuf[o + 8] = 0; _lineBuf[o + 9] = 0; _lineBuf[o + 10] = sz; _lineBuf[o + 11] = z;
+        _lineBuf[o + 12] = kind; _lineBuf[o + 13] = fill; _lineBuf[o + 14] = alpha; _lineBuf[o + 15] = extra;
+        return k + 1;
     }
 }

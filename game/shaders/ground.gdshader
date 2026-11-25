@@ -16,6 +16,7 @@ uniform sampler2D g1 : source_color, filter_linear_mipmap, repeat_enable;   // t
 uniform sampler2D g2 : source_color, filter_linear_mipmap, repeat_enable;   // trail
 uniform sampler2D g3 : source_color, filter_linear_mipmap, repeat_enable;   // track
 uniform sampler2D g4 : source_color, filter_linear_mipmap, repeat_enable;   // hollow way
+uniform sampler2D season_tex : filter_linear, repeat_disable;              // RG8 128x128: R = ice wear/100, G = flood band
 uniform sampler2D paper_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D water_tex : source_color, filter_linear_mipmap, repeat_enable;
 
@@ -27,7 +28,11 @@ uniform float tile2 = 11.3;          // scale B (rotated, not a multiple of A, s
 uniform float ramp_mix = 0.2;       // the wear ramp's colour laid lightly over bare earth
 uniform float grain = 0.07;
 uniform float time_s = 0.0;          // animation seconds from C#: a paused game freezes the water
-uniform float overlay = 0.0;         // 0..1: wear heat map laid over the page like a tracing-paper sheet
+uniform float overlay = 0.0;
+uniform float flood = 0.0;           // 0..1, eased: the spring flood's wash fills the band outward from the bank
+uniform float mud = 0.0;             // 0..1: the band is mud after a flood (worn paths there darken)
+uniform float ice = 0.0;             // 0..1: the river is frozen
+uniform float band_m = 8.0;          // flood band width beyond the bank, metres         // 0..1: wear heat map laid over the page like a tracing-paper sheet
 uniform vec4 ink : source_color = vec4(0.169, 0.149, 0.125, 1.0);
 uniform vec4 water_col : source_color = vec4(0.357, 0.498, 0.584, 1.0);
 uniform vec4 deep_col : source_color = vec4(0.247, 0.373, 0.459, 1.0);
@@ -39,6 +44,8 @@ uniform vec4 heat1 : source_color = vec4(0.941, 0.765, 0.353, 1.0);
 uniform vec4 heat2 : source_color = vec4(0.878, 0.455, 0.173, 1.0);
 uniform vec4 heat3 : source_color = vec4(0.690, 0.165, 0.180, 1.0);
 uniform vec4 heat4 : source_color = vec4(0.298, 0.063, 0.212, 1.0);
+uniform vec4 ice_col : source_color = vec4(0.686, 0.769, 0.808, 1.0);   // pale ice, #AFC4CE
+uniform vec4 mud_col : source_color = vec4(0.369, 0.290, 0.212, 1.0);   // #5E4A36
 uniform vec3 shadow_tint = vec3(0.70, 0.74, 0.86);
 uniform float bank_px = 1.6;         // ink bank line width in screen pixels
 
@@ -157,14 +164,45 @@ void fragment() {
 	// engraved waterlines along the flow that drift slowly
 	float k = lp.y * 0.9 - time_s * 0.35 + sin(lp.x * 0.5 + lp.y * 0.05) * 0.5 + (lp.x - cx) * 0.25;
 	float line = smoothstep(0.965, 0.985, sin(k) * 0.5 + 0.5) * smoothstep(half_w, half_w - 1.2, abs(lp.x - cx));
-	wc = mix(wc, wc * 0.62, line * 0.8 * (1.0 - ford));
+	wc = mix(wc, wc * 0.62, line * 0.8 * (1.0 - ford) * (1.0 - ice));
 	// ford: shallow, lighter water with the earth bed and pale ripples showing
 	vec3 bed = two(g2, lp);
 	vec3 shallow = mix(mix(water_col.rgb, bed, 0.45), paper.rgb, 0.12);
 	float ripple = smoothstep(0.90, 0.97, sin(lp.y * 2.6 - time_s * 0.8 + sin(lp.x * 1.3) * 0.8) * 0.5 + 0.5);
 	shallow = mix(shallow, paper.rgb, ripple * 0.25);
 	wc = mix(wc, shallow, ford);
+	// Winter ice: the water goes pale and still, with ink cracks; paths walked on the ice (the ice-wear layer, never the
+	// wear grid) show as whiter scratched trails.
+	if (ice > 0.0) {
+		float n4 = vnoise(lp / 4.5), n5 = vnoise(lp / 1.7 + 11.0);
+		vec3 ic = ice_col.rgb * (0.96 + 0.06 * n5);
+		// Cracks: thin ink lines along a noise contour, about a pixel wide at any zoom, broken up by a second noise.
+		float cn = abs(n4 - 0.5);
+		float cw = max(fwidth(n4) * 1.1, 0.006);
+		float crack = (1.0 - smoothstep(cw * 0.5, cw * 1.5, cn)) * step(0.40, vnoise(lp / 7.0 + 5.0));
+		ic = mix(ic, ink.rgb, crack * 0.75);
+		float trod = smoothstep(0.02, 0.22, texture(season_tex, uv).r);
+		float scratch = step(0.66, vnoise(vec2(lp.x * 3.1, lp.y * 0.4) + 3.0)) * 0.6 + step(0.72, vnoise(vec2(lp.x * 0.4, lp.y * 3.1))) * 0.4;
+		vec3 path = mix(vec3(0.97, 0.97, 0.95), ink.rgb, scratch * 0.35);
+		ic = mix(ic, path, trod * 0.92);
+		wc = mix(wc, ic, ice);
+	}
 	float band = 1.0 - smoothstep(0.0, aa * bank_px, abs(d));  // ink line centred on the bank
+	// The flood band: mud on worn paths after the flood, and the flood's wash filling outward from the bank as it rises.
+	if (flood > 0.0 || mud > 0.0) {
+		float inBand = texture(season_tex, uv).g * (1.0 - inside);
+		float muddy = inBand * mud * (0.25 + 0.75 * smoothstep(0.10, 0.45, core));
+		c = mix(c, mud_col.rgb * (0.9 + 0.2 * n2), muddy * 0.7);
+		float reach = flood * (band_m + 1.0);
+		float wet = inBand * (1.0 - smoothstep(reach - 1.5, reach + 0.5, d));
+		vec3 wash = mix(water_col.rgb, paper.rgb, 0.35);
+		float drift = smoothstep(0.93, 0.98, sin(lp.y * 0.8 - time_s * 0.4 + sin(lp.x * 0.6) * 0.7) * 0.5 + 0.5);
+		wash = mix(wash, paper.rgb, drift * 0.35);
+		c = mix(c, wash, wet * 0.62);
+		// The flood's edge: a faint dotted ink line where the wash ends.
+		float edge = inBand * step(0.05, flood) * (1.0 - smoothstep(0.0, aa * 2.0, abs(d - reach))) * step(0.5, fract(lp.y * 0.6));
+		c = mix(c, ink.rgb, edge * 0.45);
+	}
 	c = mix(c, wc, inside);
 	c = mix(c, ink.rgb, band * (1.0 - 0.55 * ford));
 

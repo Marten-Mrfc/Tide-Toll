@@ -37,7 +37,7 @@ public partial class ChapterPage : PanelContainer
     // Parts that fold away, in this order, when the page is too short for everything (1280 x 720 book view):
     // the key reminder (every tab shows its key), then the how-to paragraph (the tabs' tooltips say it too).
     private Control[] _optional = System.Array.Empty<Control>();
-    private readonly float[] _optionalH = new float[8];
+    private readonly float[] _optionalH = new float[10];
     private StyleBox _onPage = null!, _slip = null!;
     private Rect2 _placed;
     private int _lastDay = -1, _lastSeason = -1, _lastYear = -1, _lastOut = -1, _lastWalkers = -1, _lastSeed = -1;
@@ -121,7 +121,7 @@ public partial class ChapterPage : PanelContainer
         col.AddChild(_preview);
         // With the river the page holds more, so the ground legend folds away too (the overlay key W still names it),
         // and then the older margin notes.
-        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2] } : new Control[] { _keysPara, _howPara };
+        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2], _repNote, _notes[1] } : new Control[] { _keysPara, _howPara };
         Folded = 0;
     }
 

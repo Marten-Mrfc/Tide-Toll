@@ -23,6 +23,7 @@ public partial class BridgeBadges : Control
         public Button Lever = null!, Keeper = null!;
         public StateGlyph Glyph = null!;
         public Vector3 Anchor;
+        public float XW, XE, Z;            // the bridge's span and row, map-local metres
         public BridgeState Shown = (BridgeState)255;
         public int ShownBoats = -1, ShownW = -1, ShownE = -1, ShownCoin = int.MinValue;
         public bool ShownKeeper, ShownSelected, Compact;
@@ -91,6 +92,9 @@ public partial class BridgeBadges : Control
             // Pinned up and to the left of the pier's end, so the river (boats, the landing) and the bank where walkers
             // queue stay clear; the card's bottom-right corner sits there.
             b.Anchor = new Vector3((x.Cells[0] % n) * cell - 7f, 0f, (x.Row + 0.5f) * cell - 3f);
+            b.XW = (x.Cells[0] % n) * cell - 4f;
+            b.XE = (x.Cells[x.Cells.Count - 1] % n + 1) * cell + 4f;
+            b.Z = (x.Row + 0.5f) * cell;
             _badges.Add(b);
             AddChild(b.Card);
         }
@@ -164,13 +168,14 @@ public partial class BridgeBadges : Control
     /// <summary>Places every badge over its bridge and updates what changed. Allocation-free unless a value changed.</summary>
     private void Refresh(bool force)
     {
-        if (_badges.Count == 0) return;
+        if (_badges.Count == 0 || !IsInsideTree()) return; // built before the interface joins the tree: placed next frame
         var w = _main.Sim.World;
         var r = w.River;
         if (r == null) return;
         var vp = GetViewportRect().Size;
         var xs = r.Crossings;
         int coin = (int)Math.Floor(r.Money + 1e-9);
+        int placedCount = 0;
         foreach (var b in _badges)
         {
             Crossing? x = null;
@@ -178,10 +183,11 @@ public partial class BridgeBadges : Control
             if (x == null) continue;
             var at = _main.Rig.LocalToScreen(b.Anchor);
             var size = b.Card.Size;
-            var pos = new Vector2(Mathf.Round(at.X - size.X), Mathf.Round(at.Y - size.Y));
             // Whole badge up close; only the state line at the play view's overview; none in the whole-book view.
             float zoom = _main.Rig.Camera.Size;
             bool on = at.X > 0 && at.Y > 0 && at.X < vp.X && at.Y < vp.Y && zoom < _main.Rig.PlaySize * 1.08f;
+            var pos = on ? Place(b, size, vp, placedCount) : b.Card.Position;
+            if (on && placedCount < _placed.Length) _placed[placedCount++] = new Rect2(pos, size);
             if (b.Card.Visible != on) b.Card.Visible = on;
             bool compact = zoom > CompactAbove && _main.Tools.SelectedBridge != b.Id;
             if (compact != b.Compact)
@@ -236,6 +242,55 @@ public partial class BridgeBadges : Control
                 b.Keeper.Modulate = x.Keeper || coin >= price ? Colors.White : new Color(1, 1, 1, 0.6f);
             }
         }
+    }
+
+    private readonly Rect2[] _placed = new Rect2[16];
+
+    /// <summary>The bridge's own rectangle on screen (its span and ramps, a few metres either side of its row).</summary>
+    public Rect2 BridgeRect(int id)
+    {
+        foreach (var b in _badges) if (b.Id == id) return BridgeRect(b);
+        return default;
+    }
+
+    private Rect2 BridgeRect(Badge b)
+    {
+        var rig = _main.Rig;
+        var a = rig.LocalToScreen(new Vector3(b.XW, 0, b.Z - 5f));
+        var c = rig.LocalToScreen(new Vector3(b.XE, 0, b.Z + 5f));
+        return new Rect2(a, c - a).Abs();
+    }
+
+    /// <summary>
+    /// Where the badge goes: the first of eight places round its bridge (up-left of the west end, as before, then
+    /// down-left, up-right, down-right, then further out) that stays on screen and clear of the bridge itself, the map's
+    /// paper tags (Well, Market, Field, Ford, "Ford closed") and the badges already placed; the least crowded one if none is.
+    /// </summary>
+    private Vector2 Place(Badge b, Vector2 size, Vector2 vp, int placed)
+    {
+        var bridge = BridgeRect(b);
+        float m = UiKit.Px(_s, 6);
+        var tags = _main.Ui.Tags;
+        Vector2 best = default;
+        float bestCost = float.MaxValue;
+        for (int i = 0; i < 8; i++)
+        {
+            float far = i < 4 ? 0 : size.Y + m;
+            float x = (i & 1) == 0 ? bridge.Position.X - m - size.X : bridge.End.X + m;
+            float y = (i & 2) == 0 ? bridge.Position.Y - m - size.Y - far : bridge.End.Y + m + far;
+            var cand = new Vector2(Mathf.Round(x), Mathf.Round(y));
+            var r = new Rect2(cand, size);
+            float cost = 0;
+            if (r.Position.X < 4 || r.Position.Y < 4 || r.End.X > vp.X - 4 || r.End.Y > vp.Y - 4) cost += 1000;
+            if (r.Intersects(bridge)) cost += 500;
+            for (int t = 0; t < tags.Count; t++)
+                if (tags.VisibleRect(t, out var tr) && r.Intersects(tr.Grow(m * 0.5f))) cost += 100;
+            for (int k = 0; k < placed; k++) if (r.Intersects(_placed[k])) cost += 100;
+            cost += i; // keep the first place when all are clear
+            if (cost < bestCost) { bestCost = cost; best = cand; }
+            if (cost < 8) break;
+        }
+        return best;
     }
 
     /// <summary>The bridge's state as a shape: a flat deck (down), a deck at an angle with a progress ring (moving), an upright leaf (up).</summary>

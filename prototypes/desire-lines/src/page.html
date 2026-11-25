@@ -162,7 +162,8 @@
   .sw-trail { background: var(--map-trail); } .sw-track { background: var(--map-track); }
   .sw-hollow { background: var(--map-hollow); }
   .sw-trunk { background: var(--map-trunk); }
-  .sw-mud { background: radial-gradient(circle at 70% 40%, var(--map-mud-glint) 0 1.5px, transparent 2px), var(--map-mud); }
+  /* Wet trail: the worn colour darkened towards wet earth, with a glint (as drawn on the map). */
+  .sw-mud { background: radial-gradient(circle at 70% 40%, var(--map-mud-glint) 0 1.5px, transparent 2px), color-mix(in srgb, var(--map-trail-worn) 58%, var(--map-mud)); }
   .sw-gravel { background: radial-gradient(circle at 25% 35%, var(--map-gravel) 0 1.2px, transparent 1.6px), radial-gradient(circle at 70% 65%, var(--map-gravel) 0 1.2px, transparent 1.6px), var(--map-gravel-wash); border-color: var(--map-gravel-rim); }
   .sw-new { background: var(--map-garden); position: relative; }
   .sw-new i { position: absolute; right: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--map-new); box-shadow: 0 0 0 1.5px var(--map-halo); }
@@ -183,6 +184,7 @@
     background: linear-gradient(90deg, var(--heat-0), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-4)); }
   .heat-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
   .hint { color: var(--muted); margin: 0; }
+  .hint + .hint { margin-top: 7px; }
   kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--line); border-radius: 2px; padding: 0 3px; }
 
   @media (max-width: 760px) {
@@ -208,6 +210,8 @@
     .g-pause { order: 1; } .g-sound { order: 2; } .g-speed { order: 3; } .g-walkers { order: 4; } .g-tools { order: 5; } .g-view { order: 6; }
     .g-speed button { min-width: 48px; }
     .volume input[type="range"] { width: 96px; }
+    /* One column for the panel, so the day line, the town note and the targets do not wrap. */
+    aside { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: no-preference) {
     button { transition: background-color 120ms, border-color 120ms; }
@@ -291,7 +295,7 @@
           <li><span class="swatch sw-track"></span>Track</li>
           <li><span class="swatch sw-trunk"></span>Busy trunk</li>
           <li><span class="swatch sw-hollow"></span>Hollow way</li>
-          <li><span class="swatch sw-mud"></span>Mud (after rain)</li>
+          <li><span class="swatch sw-mud"></span>Wet trail: mud (after rain)</li>
           <li><span class="swatch sw-gravel"></span>Gravel</li>
           <li><span class="swatch sw-new"><i></i></span>New house (marked a while)</li>
         </ul>
@@ -303,10 +307,11 @@
       </section>
       <section>
         <h2>How to play</h2>
-        <p class="hint">Villagers walk from their houses to the well, the field and the market, and wear the grass into trails. You never draw a road: draw <b>fences</b> to push the trails aside, put a <b>gate</b> in a fence to let walkers through (slowly), brush <b>gravel</b> where you want a young trail to run (it never grows back), or lay a <b>footbridge</b> across the river. Unused paths grow back.</p>
-        <p class="hint">With <b>Flow preview</b> on, a tool shows the typical routes that would change: dashed is now, solid is after, faint where they run together.</p>
-        <p class="hint">Rain turns worn trails to <b>mud</b>, which walkers avoid where they can; gravel never turns to mud. New families build cottages beside busy trails, so the town grows where you steer the paths.</p>
-        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> fence, <kbd>G</kbd> gravel, <kbd>T</kbd> gate, <kbd>B</kbd> footbridge, <kbd>E</kbd> erase, <kbd>Esc</kbd> no tool, <kbd>P</kbd> preview, <kbd>W</kbd> overlay, <kbd>M</kbd> sound, <kbd>R</kbd> reset, <kbd>N</kbd> new map</p>
+        <p class="hint">Villagers walk from their houses to the well, the field and the market, and wear the grass into trails. Unused paths grow back. You never draw a road; you steer the walkers:</p>
+        <p class="hint"><b>Fence</b>: drag a line they cannot cross. <b>Gate</b>: click or tap a fence to let them through it, slowly. <b>Gravel</b>: brush a strip where you want a trail; it draws walkers from about 3 cells away and never grows back or turns to mud. <b>Footbridge</b>: click or tap the river. <b>Erase</b>: click, tap or drag over fences, gates, gravel and bridges to take them away.</p>
+        <p class="hint"><b>Flow preview</b> shows, while a tool is in hand, the typical routes that would change: dashed is now, solid is after. <b>Wear overlay</b> colours every cell by how worn it is. <b>Walkers</b> sets how many villagers there are; <b>Sound</b> is off until you press it.</p>
+        <p class="hint">Rain turns worn trails to <b>mud</b> (darker, wet trail) for that day and the next; walkers step round light mud. New families build cottages beside busy trails, so the town grows where you steer the paths.</p>
+        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> fence, <kbd>G</kbd> gravel, <kbd>T</kbd> gate, <kbd>B</kbd> footbridge, <kbd>E</kbd> erase, <kbd>Esc</kbd> put the tool down, <kbd>P</kbd> preview, <kbd>W</kbd> wear overlay, <kbd>M</kbd> sound, <kbd>R</kbd> restart this map, <kbd>N</kbd> new map</p>
       </section>
     </aside>
   </main>

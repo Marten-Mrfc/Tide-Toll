@@ -31,6 +31,8 @@ const LABELS: Record<string, string> = { well: "Well", field: "Field", market: "
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private base = document.createElement("canvas");
+  /** The base scaled to the map's size once (it changes only with the map, a new house or the size), so a recomposite copies it 1:1. */
+  private baseBig = document.createElement("canvas");
   private ground = new WearLayer();
   private layer = document.createElement("canvas");
   // Ground, wear, overlay and static layer composited once per ground refresh,
@@ -303,7 +305,16 @@ export class Renderer {
     const W = this.canvas.width;
     let dirty = false;
     const bkey = `${w.seed}|${w.buildings.length}`;
-    if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; dirty = true; }
+    if (bkey !== this.baseKey || this.baseBig.width !== W) {
+      this.buildBase();
+      this.baseKey = bkey;
+      const B = this.baseBig;
+      B.width = B.height = W;
+      const bg2 = B.getContext("2d")!;
+      bg2.imageSmoothingEnabled = true;
+      bg2.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
+      dirty = true;
+    }
     // The worn ground: after an edit it is rebuilt at once (the player sees the change, and mud,
     // in the same frame); otherwise every GROUND_MS, one band of rows a frame (see ground.ts).
     const tg = performance.now();
@@ -333,7 +344,7 @@ export class Renderer {
       const g = bg.getContext("2d")!;
       g.imageSmoothingEnabled = true;
       g.imageSmoothingQuality = "low"; // the wear layer is already interpolated; "high" costs ~8 ms a refresh
-      g.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
+      g.drawImage(this.baseBig, 0, 0);
       g.drawImage(this.ground.canvas, 0, 0, this.ground.canvas.width, this.ground.canvas.height, 0, 0, W, W);
       // Wet ground is darker: grass and earth are multiplied by a cool grey as the ground wets,
       // fading out over the mud's last day as the trails dry (see ground.ts).

@@ -1,6 +1,8 @@
 // Things drawn every frame over the map, all cheap and allocation-free per frame:
-// - Rain: two layers of slanted streaks from one pre-drawn tile (a pattern),
-//   faded in with the weather's rain level, still while the game is paused.
+// - Rain: slanted streaks from one pre-drawn tile (a pattern) holding a near
+//   and a fainter far layer, so a frame fills the map once; faded in with the
+//   weather's rain level, still while the game is paused. Nothing is drawn or
+//   computed for rain while it is not raining.
 // - New houses: a short "raising" moment (the cottage rises out of its garden
 //   plot with a puff of dust), then rings that draw the eye and a small badge
 //   that stays a while, so the player notices where the town grew.
@@ -163,13 +165,11 @@ export class Effects {
       if (pat) {
         const W = r.canvas.width, T = TILE * d, c = this.rainClock;
         ctx.fillStyle = pat;
-        for (let k = 0; k < 2; k++) {
-          const ox = ((c * (0.08 + 0.03 * k) * d) % T) + k * T * 0.5, oy = ((c * (0.55 + 0.2 * k) * d) % T) + k * T * 0.37;
-          ctx.globalAlpha = (k ? 0.35 : 0.55) * rain;
-          ctx.translate(ox, oy);
-          ctx.fillRect(-ox, -oy, W, W);
-          ctx.translate(-ox, -oy);
-        }
+        const ox = (c * 0.09 * d) % T, oy = (c * 0.62 * d) % T;
+        ctx.globalAlpha = 0.6 * rain;
+        ctx.translate(ox, oy);
+        ctx.fillRect(-ox, -oy, W, W);
+        ctx.translate(-ox, -oy);
         ctx.globalAlpha = 1;
       }
     }
@@ -188,10 +188,11 @@ export class Effects {
     g.lineCap = "round";
     let seed = 7;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    for (let k = 0; k < 26; k++) {
-      const x = rnd() * T, y = rnd() * T, len = (7 + 9 * rnd()) * d;
-      g.globalAlpha = 0.45 + 0.55 * rnd();
-      g.lineWidth = (0.8 + 0.6 * rnd()) * d;
+    // 26 near streaks, then 26 fainter, thinner, shorter far ones between them.
+    for (let k = 0; k < 52; k++) {
+      const far = k >= 26, x = rnd() * T, y = rnd() * T, len = (7 + 9 * rnd()) * d * (far ? 0.75 : 1);
+      g.globalAlpha = (0.45 + 0.55 * rnd()) * (far ? 0.6 : 0.92);
+      g.lineWidth = (0.8 + 0.6 * rnd()) * d * (far ? 0.8 : 1);
       for (const [ox, oy] of [[0, 0], [-T, 0], [0, -T], [-T, -T]]) {
         g.beginPath();
         g.moveTo(x + ox, y + oy);

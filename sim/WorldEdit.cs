@@ -11,6 +11,15 @@ public sealed partial class World
     private void Edited()
     {
         _version++;
+        GroundChanged();
+    }
+
+    /// <summary>
+    /// What an edit does to the town apart from bumping Version (the player's edit count): costs rebuilt now, every
+    /// field refreshed urgently, walkers on newly blocked cells moved off. The river's flood and ice call this alone.
+    /// </summary>
+    private void GroundChanged()
+    {
         for (int t = 0; t < _urgent.Length; t++) _urgent[t] = true;
         // Rebuild costs now so walkers stop stepping onto new fences this tick.
         BuildCost(_cost);

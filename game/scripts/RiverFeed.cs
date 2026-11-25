@@ -37,6 +37,15 @@ public partial class RiverFeed : Node
     public int Drained { get; private set; }
     public int NotesWritten { get; private set; }
     public int NoteCount => _noteCount;
+    /// <summary>The day the last spring flood rose, and the day the river last froze (1-based; 0 none yet).</summary>
+    public int FloodDay { get; private set; }
+    public int FrozenDay { get; private set; }
+
+    private int Day()
+    {
+        var w = _main.Sim.World;
+        return (int)Math.Floor(w.Time / w.Params.DaySimSec + 1e-9) + 1;
+    }
 
     /// <summary>The i-th newest chronicle note (0 = newest).</summary>
     public string Note(int i) => i < _noteCount ? _notes[i] : "";
@@ -58,6 +67,7 @@ public partial class RiverFeed : Node
     private void OnWorldReplaced()
     {
         _noteCount = 0;
+        FloodDay = FrozenDay = 0;
         Array.Fill(_boatId, -1);
         Array.Clear(_cycleBoats); Array.Clear(_cycleQueue);
         Chronicle?.Invoke();
@@ -153,6 +163,24 @@ public partial class RiverFeed : Node
             case RiverEventKind.CannotAfford:
                 Write($"Not enough coin: that costs {Coin(e.Value)}");
                 break;
+            case RiverEventKind.FloodRising:
+                FloodDay = Day();
+                Write(e.Value >= 2 ? $"Spring flood: the river is over its banks for {e.Value:0} days and the ford is closed"
+                                   : "Spring flood: the river is over its banks for a day and the ford is closed");
+                break;
+            case RiverEventKind.FloodReceded:
+                Write("The flood went down: the ford is open again, and the banks are mud until summer");
+                break;
+            case RiverEventKind.FloodRepairs:
+                Write($"Flood repairs to the houses by the river: -{Coin(e.Value)}");
+                break;
+            case RiverEventKind.RiverFrozen:
+                FrozenDay = Day();
+                Write("The river froze: boats are held in the ice, and villagers cross anywhere");
+                break;
+            case RiverEventKind.Thaw:
+                Write("The ice broke up: the paths across it are gone and boats move again");
+                break;
         }
     }
 
@@ -185,8 +213,7 @@ public partial class RiverFeed : Node
 
     private void Write(string text)
     {
-        var w = _main.Sim.World;
-        int day = (int)Math.Floor(w.Time / w.Params.DaySimSec) + 1;
+        int day = Day();
         for (int i = ChronicleLines - 1; i > 0; i--) _notes[i] = _notes[i - 1];
         _notes[0] = $"Day {day}: {text}.";
         _noteCount = Math.Min(ChronicleLines, _noteCount + 1);

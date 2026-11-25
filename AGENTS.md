@@ -47,7 +47,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
 dotnet run --project tools/TideToll.Tools -c Release -- run --seed 1 --walkers 500 --days 30
-dotnet run --project tools/TideToll.Tools -c Release -- river --seed-sets 101-120,201-220 --sweep   # river bot, 12 and 30 days (~30 min); seeds 401-424 are the reviewer's only
+dotnet run --project tools/TideToll.Tools -c Release -- river --seed-sets 101-120,201-220 --sweep   # river bot, 12 and 30 days (~16 min); seeds 401-424 are the reviewer's only
 node sim.tests/golden/export.mjs <toy-dir>   # regenerate goldens from a toy folder with node_modules
 ```
 

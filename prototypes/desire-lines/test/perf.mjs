@@ -1,7 +1,8 @@
 // npm run perf: loads dist/index.html in headless Chromium and measures frame
 // times for 10 s at 1x and 8x, with 500 and then 200 walkers (pass criteria),
 // then 200 walkers at 8x in rain with sound on (pass criteria too), the same
-// 500-walker runs under 4x CPU throttling (report only), and the cost of a
+// 500-walker runs under 4x CPU throttling, dry and in rain, with the drawing's
+// share of each frame (report only), and the cost of a
 // flow preview while a fence is dragged. The page is loaded inside the Artifact
 // host's document skeleton (host.mjs).
 // Note: headless rAF is capped at 60 Hz, so the frame interval cannot show
@@ -70,6 +71,13 @@ for (const speed of [1, 8]) {
   await page.waitForTimeout(SECONDS * 1000);
   throttled.push({ walkers: 500, speed, ...(await page.evaluate(() => __tt.perfStop())) });
 }
+// The same in rain (streaks, wet ground, mud drawn as wet trail).
+await page.evaluate(() => __tt.startRain(20));
+await page.waitForTimeout(500);
+await page.evaluate(() => __tt.perfStart());
+await page.waitForTimeout(SECONDS * 1000);
+throttled.push({ walkers: "500 rain", speed: 8, ...(await page.evaluate(() => __tt.perfStop())) });
+await page.evaluate(() => __tt.stopRain(true));
 await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 
 // Flow preview while dragging a fence (200 walkers, 1x): frame times with the preview computing.

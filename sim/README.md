@@ -127,6 +127,9 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   `IceCostMul`, `IceSpeedMul` 1, chosen; the doc's snow is weather and not built). Footsteps there wear the separate
   ice-wear layer (`RiverView.IceWear`: x`IceWearMul` 2 gain, side cells too, no decay, read by routing like wear, so
   lines form fast) and never the wear grid; it is wiped at the thaw, and walkers on the ice step off to a bank.
+- **Not an edit**: the flood, the mud drying, the ice and the thaw rebuild costs, refresh every field urgently and move
+  walkers off cells that became blocked, but do not bump `World.Version` (the player's edits), so the game's edit
+  handlers do not run; a flow preview's base is at most a second old anyway.
 - **Weather stream**: the flood (two draws every spring, used or not) and the ice (one draw every winter) come from
   the river's own weather stream, `Mulberry32(seed * 7919 + 101)`, separate from the boat schedule's, so a flood or a
   freeze never moves a boat's arrival; the walkers' stream is never touched. The flood rises and the ice comes at the
@@ -204,7 +207,7 @@ Where this differs from the implementation spec (the design doc wins, or a spec 
 ### The river strategy bot
 
 ```
-dotnet run --project tools/TideToll.Tools -c Release -- river --seed-sets 101-120,201-220 --sweep   # the tuning table: 12 and 30 days (~30 min)
+dotnet run --project tools/TideToll.Tools -c Release -- river --seed-sets 101-120,201-220 --sweep   # the tuning table: 12 and 30 days (~16 min)
 dotnet run --project tools/TideToll.Tools -c Release -- river --seeds 4 --brief       # quick look: 30 days, medians only
 dotnet run --project tools/TideToll.Tools -c Release -- river --days 12 --only S2,S5-30,S6 --set KeeperPrice=15   # tuning runs
 dotnet test sim.tests -c Release --filter "FullyQualifiedName~RiverGateTests"         # the checks as tests (Category=Gate, ~10 min)

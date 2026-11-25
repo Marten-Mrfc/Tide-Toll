@@ -110,8 +110,10 @@ public partial class Main : Node3D
         Walkers.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
         Boats.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
         Crossings.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
-        // Boats grow up to 1.6x when zoomed out (as villagers do), so a barge still reads apart from a rowboat.
-        Boats.BoatScale = Mathf.Clamp(3.2f / pxPerM, 1f, 1.6f);
+        // Boats and the landing grow up to 2.2x when zoomed out (as villagers do), so at the play view a barge reads
+        // apart from a rowboat and a waiting boat from one under way; the crossings get their map marks there.
+        Boats.BoatScale = Mathf.Clamp(8f / pxPerM, 1f, 2.2f);
+        Crossings.Overview = Mathf.Clamp((Rig.Camera.Size - 110f) / 60f, 0f, 1f);
         Marks.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
     }
 

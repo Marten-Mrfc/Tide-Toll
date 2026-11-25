@@ -11,9 +11,12 @@ The page is one self-contained file, `dist/index.html`. It has no runtime librar
 ```sh
 npm install          # typescript and esbuild only
 npm run build        # writes dist/index.html; open it in a browser
-npm run check        # typecheck + build + headless simulation tests (about 9 minutes on 4 cores)
-npm run perf         # Playwright: frame times at 500 and 200 walkers, 1x and 8x; 200 walkers at 8x in rain with sound on; a 4x CPU-throttled run; preview while dragging
-npm run smoke        # Playwright: page contract, every control and tool (a gate on a diagonal fence too), the flow preview, rain and growth, 400 px layout in both themes, touch at 400 x 800 and 360 x 740 (a second finger too), sound (off until pressed, then a minute at 8x), rain, mud and new houses on screen
+npm run check        # typecheck + build + headless simulation tests (about 12 minutes on 4 shared cores)
+npm run perf         # Playwright: frame times at 500 and 200 walkers, 1x and 8x; 200 walkers at 8x in rain with sound on; 4x CPU-throttled runs (dry and in rain, with where the drawing time goes); preview while dragging
+npm run smoke        # Playwright: page contract, every control and tool (a gate on a diagonal fence too), the flow preview, rain and growth, 400 px layout in both themes, touch at 400 x 800 and 360 x 740 (a second finger too), sound (off until pressed, then a minute at 8x, nodes released, no stray bell), rain, mud, drying and new houses on screen, the dawn mark's contrast, the town and small-footbridge readouts
+npm run levels       # offline render of the sound engine: level of each bed and cue and of a busy mix, through the limiter (about 1 minute)
+npm run soak         # the page at 8x with sound on for 10 minutes, counting live Web Audio nodes (SOAK_MINUTES to change)
+npm run live -- 601-620,701-720   # the gate with rain and house growth on, on any seed sets, with how much of the time mud is on the map
 ```
 
 The perf and smoke scripts load the page the way the Artifact host serves it: `test/host.mjs` wraps `dist/index.html` in a document skeleton (doctype, charset, a `width=device-width` viewport meta, body) and writes `test-results/host.html`. The published page itself never carries those tags. Without the viewport meta, Playwright's mobile emulation lays the page out 980 px wide; the phone runs now assert `innerWidth` is 400 and 360.
@@ -30,7 +33,7 @@ Add `#seed=42` to the page URL to open a given map.
 | Speed 1x 2x 4x 8x | 1 2 3 4 | At 1x one in-game day is 15 s and a season is 60 s |
 | Walkers | | 50 to 500 villagers (default 200). The slider and its number follow the population, which new houses raise (by 3 a cottage, up to 248 from 200); moving it sets the population at once, and Reset starts again from the number you set |
 | Fence | F | Drag to draw a fence line; it is placed on release. Walkers cannot cross it |
-| Gravel | G | Drag to brush a strip of gravel; it is laid on release, and snaps onto a worn trail's centre line when one is within a cell. Gravel costs walkers 0.6 of grass (busy gravel gets cheaper still, down to the same 0.45 floor as a trunk), never grows back below trail and never turns to mud, so a trail up to about 5 cells away moves onto it and stays. A fence laid over gravel takes the gravel up. When a strip changes no route and no trail is within 6 cells of it, the readout says "Too far from any route to change anything" |
+| Gravel | G | Drag to brush a strip of gravel; it is laid on release, and snaps onto a worn trail's centre line when one is within a cell. Gravel costs walkers 0.6 of grass (busy gravel gets cheaper still, down to the same 0.45 floor as a trunk), never grows back below trail and never turns to mud. It reaches about 3 cells, sometimes 5: a trail 3 cells away moved onto it on 16 of 16 test sites, one 5 cells away on 4 of 17 (round 4 review). A fence laid over gravel takes the gravel up. The route search cannot see gravel win traffic over days, so when a strip changes no route now the readout says what it can: "May draw walkers from nearby trails" when a used route (trail, or recent footsteps) is within 3 cells, "On a route walkers already use: it keeps the trail from growing back" when most of the strip is on one, "Too far from any route to change anything" when no trail is within 6 cells, and "No change to routes" only between those |
 | Gate | T | Click (or tap) a fence to put a gate in it: walkers pass at a cost of 1.5 grass cells and at 0.4 of their speed, so a trail re-forms through it. On a gate, the tool takes it out again. It snaps to the nearest fence cell within 2 cells that can take a gate. A cell takes a gate when opening it joins the open ground on the two sides of the fence (any angle: on a diagonal fence, which is a staircase of cells, a stair's corner pair becomes one two-cell gate with half the delay in each cell). Otherwise the status line says why: "Gates go on fences: there is no fence here.", "No way through here: both sides are blocked." or "A gate needs fence beside it: this is a lone post." |
 | Footbridge | B | Hover over the river to preview, click to lay a bridge (not next to the ford). On touch: press to preview, release on the same spot to build, slide away to cancel |
 | Erase | E | Hover to preview what goes; click or drag over fences (with their gates), gravel and bridges to remove them. On touch: press to preview, release to remove, or drag |
@@ -41,16 +44,16 @@ Add `#seed=42` to the page URL to open a given map.
 | New map | N | Generates a new map from a new seed |
 | | Esc | Puts the tool down |
 
-At phone width the controls wrap into five rows of buttons at least 40 x 40 px (title, Pause and Sound; the four speeds, each 48 px wide; Walkers; the tools; Preview, Wear, Reset and New map, with short labels), and the whole map sits under them on the first screen at 400 x 800 and 360 x 740. Each press or drag on the map belongs to the finger that started it: a second finger during a fence drag, a gravel stroke or a footbridge or gate press is ignored. The status bar keeps a fixed height (one line on desktop, two on a phone), so the map never moves when a message or the readout appears; long text is cut with an ellipsis (the full text is in its tooltip).
+At phone width the controls wrap into five rows of buttons at least 40 x 40 px (title, Pause and Sound; the four speeds, each 48 px wide; Walkers; the tools; Preview, Wear, Reset and New map, with short labels; at 360 px, Sound and its Volume slider take a row of their own once sound is on), and the whole map sits under them on the first screen at 400 x 800 and 360 x 740. Below the map the panel is one column on a phone. Each press or drag on the map belongs to the finger that started it: a second finger during a fence drag, a gravel stroke or a footbridge or gate press is ignored. The status bar keeps a fixed height (one line on desktop, two on a phone), so the map never moves when a message or the readout appears; long text is cut with an ellipsis (the full text is in its tooltip).
 
-The side panel shows the day and season (the line flashes at each dawn), the walkers out, the town ("Houses: N" and the day the newest was built), the weather ("Dry", "Rain, day N" or "Mud until day N"), the frame rate, and the health metrics: detour ratio, trail coverage and trunk share (see below).
+The side panel shows the day and season (at each dawn the line gets a soft tint and an accent underline that fade over 1.6 s; the text colour never changes, so it reads at 10 to 1 or better in both themes at the mark's peak), the walkers out, the town ("Houses: N", and below it the day the newest was built; copied text and screen readers get "Houses: N; newest on day N"), the weather ("Dry", "Rain, day N" or "Mud until day N"), the frame rate, and the health metrics: detour ratio, trail coverage and trunk share (see below).
 
 Status messages count properly ("Fence placed (1 cell)."), and the last action's message is cleared when a new flow preview starts, so it never sits beside a readout about something else. With a mouse, the floating readout takes whichever of eight spots round the pointer covers the fewest ghost-route points. When a footbridge would save under 5% of the walk, its readout says "Saves under 5% of the walk, so many will keep to their old way" instead of promising a shorter route (round 3: such bridges take only 24% to 45% of the crossings).
 
 ## What the player sees
 
 - **Worn ground.** Trails fade in from a wide pale fringe of flattened grass with ragged edges. Along a trail the colour follows its wear; busy trunks (the walkers' recent footsteps, smoothed over a few seconds) pull towards a stronger compacted-earth colour, darker in the light theme and brighter in the dark one, so side trails stay lighter. Hollow ways keep the most extreme colour. This is drawing only: the wear data is untouched.
-- **Rain.** Light slanted streaks fall over the map (they stop while paused), the whole ground darkens as it wets, and every muddy cell turns wet, dark, churned earth with a few puddle glints, clearly unlike dry trail in both themes. The mud fades as the ground dries.
+- **Rain.** Light slanted streaks fall over the map (they stop while paused) and the whole ground darkens as it wets. Mud is drawn as **wet trail**: the same worn ground, darker and richer, more solid (wet earth is glossy, so the mottling evens out), with a few puddle glints only on the busiest cells, so trunks, side trails and fringes keep their own colours in rain. Over the mud's last in-game day it dries cell by cell, the least-worn first (a cell at wear 25 at the start of that day, the busiest track at its end), and the darkening of the whole ground fades with it. This is drawing only: the mud rule and its timing are unchanged.
 - **New houses.** A new cottage rises out of its garden plot with a puff of dust (about a second), two rings spread from it, and a small red badge marks it for about 15 seconds. Grown cottages stand in a garden (the plot is 3 x 3 cells), so they read apart from the first houses.
 - **Fences, gates, gravel.** A diagonal fence is one straight rail: stair steps are ironed out, with posts only at the ends and real corners. A gate is cut into the rail and drawn with its two posts and a leaf standing ajar, along the fence at any angle. Gravel is a pale strip with a thin dark rim and speckled grit.
 - **Tool marks.** A ring pops where something is placed, dust puffs where something is removed, and a red cross shakes where an action is refused.
@@ -60,12 +63,35 @@ Status messages count properly ("Fence placed (1 cell)."), and the last action's
 Made in code with Web Audio (`src/ui/audio.ts`, copied from the audio round's measured module, and `src/ui/sound.ts`, which drives it). No files are loaded.
 
 - **Off until pressed.** No AudioContext exists until the Sound button (or M) is pressed; it is made inside that press, and only one is ever made. Sound off costs one null check a frame. Nothing is stored, so a reload starts silent.
-- **Footsteps** are counted, not played per villager: every 120 ms the walkers out on the map are counted in a 4 x 2 grid of map areas, with the ground most of them are on (grass, worn earth, gravel, mud, the bridge deck) and how many are in the ford. Once a beat (64 BPM, fixed, whatever the game speed) the engine plays one step for 1 or 2 walkers, two for 3 to 11 and one pre-mixed shuffle for 12 or more, panned by the area's position, never more than 8 step voices a beat. Rain makes grass steps quieter and worn earth squelch.
+- **Footsteps** are counted, not played per villager: every 120 ms the walkers out on the map are counted in a 4 x 2 grid of map areas, with the ground most of them are on (grass, worn earth, gravel, mud, the bridge deck) and how many are in the ford. Once a beat (64 BPM, fixed, whatever the game speed) the engine plays one step for 1 or 2 walkers, two for 3 to 11 and one pre-mixed shuffle for 12 or more, panned by the area's position. The areas' shares are scaled to 8 voices a beat, and since round 5 a hard budget drops any step past the 8th (the round 4 review measured 10 to 12 when the random draws ran high). Rain makes grass steps quieter and worn earth squelch.
 - **Beds and cues.** The river with its D drone; the ford's wading; rain, with the weather's rain level; a bell at dawn each in-game day (at most one every 6 s at high speed); place, erase and refused cues for the tools; the 8-bar theme on a pipe with lyre and frame drum, quiet, with 12 to 26 s of silence between rounds.
-- **Pauses.** Sound pauses (the context is suspended) with the game and when the tab is hidden. A press on the page resumes a context the browser suspended.
-- **Visual twins.** Steps: the walkers. River and ford: the river and the walkers wading. Rain: the streaks and darker ground. Bell: the flashing day line. Tool cues: the tool marks above. Theme: a note on the Sound button while a round plays.
-- **Measured, not heard.** Levels were set offline against the game's own recipes (about -20 LUFS for a busy scene, peaks under -1 dBTP). The smoke test checks scheduling, not how it sounds: after a minute at 8x it counts beats, steps (at most 8 a beat), bells, theme notes and voices alive at once. Not proven: the sound itself, the loop seams, iOS (the hardware silent switch mutes Web Audio; no silent-audio workaround is added).
+- **Pauses.** Sound pauses (the context is suspended) with the game and when the tab is hidden. A press on the page resumes a context the browser suspended. Days that pass while sound is off ring no bell when it comes back on (round 4 rang a stray one).
+- **No leaks.** Every node a sound makes (source, gain, panner; a theme note's oscillators, noise and filters; a rain bed's filter and gain) is disconnected when its source ends or the bed stops. `npm run soak` counts live nodes for 10 minutes at 8x with showers: 113 live at the end of 9,367 made (most 132, flat from the first minute). The round 4 engine, run the same way, had 473 live after one minute and 1,123 after three, growing by about 325 a minute (its cues released only their source).
+- **Visual twins.** Steps: the walkers. River and ford: the river and the walkers wading. Rain: the streaks and darker ground. Bell: the dawn mark on the day line. Tool cues: the tool marks above. Theme: a note on the Sound button while a round plays.
+- **Measured, not heard.** Nobody can listen in the build container, so every level here is a measurement. `npm run levels` renders the engine offline (48 kHz, volume slider at 70%, through its limiter and soft ceiling). Round 5 raised the river bed by 10 dB, rain by 4 dB and the bell by 6 dB, which measured far below the footsteps:
+
+  | Scene | RMS before | RMS after | Loudest 400 ms after | Peak after |
+  | --- | --- | --- | --- | --- |
+  | River bed (the page plays it at level 0.5) | -50.7 dBFS | -40.5 | -39.2 | -23.5 |
+  | Rain bed, strongest shower | -38.9 | -34.9 | -34.7 | -19.6 |
+  | Rain bed, lightest shower (0.5) | -51.4 | -47.4 | -47.2 | -31.8 |
+  | Dawn bell (4 s) | -37.9 | -30.9 | -24.3 | -14.5 |
+  | Footsteps, 2 walkers on grass | -44.7 | -44.7 | -40.6 | -18.3 |
+  | Footsteps, 8 areas x 6 walkers on worn earth | -29.6 | -29.8 | -26.5 | -4.2 |
+  | Footsteps, 8 areas x 30 walkers on worn earth | -22.6 | -23.1 | -21.0 | -2.7 |
+  | Busy mix: river, heavy rain, 240 walkers, theme, bell, a tool | -24.4 | -23.9 | -20.1 | -6.4 |
+
+  Every scene peaks below -1 dBFS (the soft ceiling cannot pass -1.0 dBFS). The smoke test checks scheduling, not how it sounds: after a minute at 8x it counts beats, steps (at most 8 a beat), bells, theme notes, voices alive at once and live nodes. Not proven: the sound itself, the balance by ear, the loop seams, iOS (the hardware silent switch mutes Web Audio; no silent-audio workaround is added).
 - **Debug:** `__tt.sound()` returns whether it is on, whether a context exists, its state and the engine's counts.
+
+## What needs a human
+
+The stand-ins below are measurements; the questions are about people.
+
+- **Is steering worn paths fun?** (G1, G2.) Only playtests can say. The tests show the mechanics work: trails form in seconds, trunks merge, fences, gates, gravel and bridges move them, and the preview agrees with the walkers.
+- **The sound.** Every level is an offline measurement (`npm run levels`); nobody has heard it. Someone should listen on speakers and headphones: the balance of river, rain, steps and bell after this round's raises, the loop seams, the theme's silences, and iOS (the silent switch mutes Web Audio).
+- **How rain reads.** Wet trail and its drying were checked in screenshots of both themes, not by players: does rain read as weather rather than a slowdown, and is mud 37% of the time too much?
+- **Slow machines.** The frame numbers come from Chromium's 4x CPU throttling on a shared build machine, not from real phones.
 
 ## What is in, and what is not
 
@@ -84,7 +110,7 @@ Round 4 added rain and mud, house growth by the frontage rules and sound made in
 - **Walking.** A walker looks 20 cells down its target's field (with its own taste and a small per-cell noise) and heads in a straight line for the farthest of those cells it can reach in clear sight, as long as that line costs no more than the field's route. That gives trails at any angle instead of 8-direction staircases, while walkers still keep to a trail that bends.
 - **Wear.** Entering a cell adds `I * (1 - W/100)` to it and a share of that to the two cells either side of the heading. Wear decays with a half-life that depends on its band.
 - **Blocked walkers.** A walker on a newly fenced cell is moved to the nearest open cell; a walker cut off from its errand heads home; a walker with no way forward for 5 s is sent home.
-- **Drawing** (`src/ui/`). Worn ground (`ground.ts`) is a 512 x 512 layer bilinearly sampled from the wear grid and coloured through a lookup table by wear, traffic level (8) and mud level (6), with alpha, a fixed mottling, a per-pixel nudge of the value at trail edges, a 3 x 3 blur that widens the trampled fringe, and a gentle warp of up to 0.45 cells so long straight legs wander a little. It is rebuilt every 250 ms (about 3.3 ms). Wet ground is a multiply over the composited ground. Fences (`ink.ts`) are chains of cells smoothed (two 3-point averages with real corners held) and simplified into straight rails; gates are cut out of the rail. Rain, new houses and tool marks are drawn each frame by `effects.ts` from one pre-drawn rain tile and fixed buffers, with no allocation per frame.
+- **Drawing** (`src/ui/`). Worn ground (`ground.ts`) is a 512 x 512 layer bilinearly sampled from the wear grid and coloured through a lookup table by wear, traffic level (8) and mud level (6), with alpha, a fixed mottling, a per-pixel nudge of the value at trail edges, a 3 x 3 blur that widens the trampled fringe, and a gentle warp of up to 0.45 cells so long straight legs wander a little. It is rebuilt every 250 ms: the per-cell arrays are taken in one frame and the pixels drawn in 4 bands of rows over the next frames (about 1 ms a band unthrottled), so no single frame pays for the whole layer; after an edit it is rebuilt at once. Wet ground is a multiply over the composited ground. Fences (`ink.ts`) are chains of cells smoothed (two 3-point averages with real corners held) and simplified into straight rails; gates are cut out of the rail. Walkers are one path of dots, stroked for the halo and filled, with no allocation per frame. Rain, new houses and tool marks are drawn each frame by `effects.ts`; the rain is one fill from a pre-drawn tile that holds a near and a fainter far layer of streaks, and nothing is done for rain while it is not raining.
 
 ## Tunable parameters
 
@@ -111,9 +137,9 @@ All of them are in `src/sim/params.ts`. The ones that differ from the design spe
 | `urgentFieldsPerTick` | | 1 | After an edit the fields are rebuilt one per tick, destinations first, instead of three at once |
 | `tripRateDays` | | 3 | Time constant of the preview's trips-per-day counts |
 | `rainChance` | spring 30%, summer 15%, autumn 40% | the same; winter 0 | Winter has snow only in the spec, which the toy leaves out |
-| `mudDays` | that day plus one, plus two in autumn | 2, 2, 3, 2 days | See the conflict note under Rain and mud |
+| `mudDays` | that day plus one (two more in autumn in one section, 2 days in the season table) | 2, 2, 2, 2 days | The lead's decision in round 5: 2 days in autumn too |
 | `mudCostMul`, `mudReplace` | trail x1.6, track x1.7, hollow way x1.8 | the same, on the walker's own cost (`mudReplace` 0) | The spec does not say what the multiplier applies to |
-| `mudSpeedMul` | | 0.8 | Not in the spec (its speed column has no weather); the round asked for mud that slows walkers |
+| `mudSpeedMul` | | 0.7 | Not in the spec (its speed column has no weather); the round asked for mud that slows walkers (round 4 tuning: 0.8 barely showed) |
 | `wetUpSimSec`, `drySimSec`, `rainRampSimSec` | | 3 s, 7.5 s, 2 s | Not in the spec: the ground wets over 3 s, mud dries over the last half day of its run, rain fades in and out over 2 s (drawing and sound) |
 | `houseEverySimSec`, `houseFirstSimSec` | Hamlet: 1 household per 2 days | 30 s, 30 s | As the spec |
 | `hamletTarget`, `householdSize` | bell target 250; cottage 3 people | 250 people, 3 | The spec gives no household cap, only the Hamlet target, whose unit it does not state; the toy reads it as people |
@@ -121,20 +147,21 @@ All of them are in `src/sim/params.ts`. The ones that differ from the design spe
 
 Unchanged from the spec: the state thresholds (10, 25, 50, 85), state speeds, taste (plus or minus 8%), the crop penalty (+0.5), and the Weidmann curve (v0 1.34 m/s, rho max 5.4, gamma 1.913; crowding cost capped at 3x).
 
-The page caps simulation work at 10 ms per frame (and 8 ticks); on a slow machine the sim runs slower than the chosen speed instead of stalling. The cap is kept honestly: the page tracks the cost of a plain tick and of a heavy one (a tick that rebuilds a route field, or in which a household arrives, about four times a plain one; `World.nextTickRefreshes()` says which is next) and starts a tick only if it should still fit (the first tick of a frame always runs). The flow preview builds its base costs in four slices, so the first preview of a drag does not stall a frame. Neither changes any result.
+The page caps simulation work at 10 ms per frame (and 8 ticks), and at 5 ms on a frame that came more than 25 ms after the last, so a machine that is already late catches up on frames first; on a slow machine the sim runs slower than the chosen speed instead of stalling. The cap is kept honestly: the page tracks the cost of a plain tick and of a heavy one (a tick that rebuilds a route field, or in which a household arrives, about four times a plain one; `World.nextTickRefreshes()` says which is next) and starts a tick only if it should still fit (the first tick of a frame always runs). The flow preview builds its base costs in four slices, so the first preview of a drag does not stall a frame. Neither changes any result.
 
 ## Rain and mud (round 4)
 
 Spec: "Weather and mud", "Ground states" and "Seasons and weather" (Gameplay tab). Code: `src/sim/weather.ts` and `World.updateMud`.
 
 - **Weather stream.** The weather has a random stream of its own, seeded from the map seed. It rolls once at the start of every in-game day (15 s): rain with a chance of 30% in spring, 15% in summer, 40% in autumn and none in winter. Walker randomness never changes: the same seed rains on the same days with 50 or 300 walkers, and a forced shower does not move the daily rolls.
-- **Mud.** While it rains, every unpaved land cell at wear 25 or more (trail, track, hollow way; not gravel, a bridge or the ford) is mud. Mud stays on cells still worn to trail until the ground is dry: for the rain day plus one more (plus two in autumn), the last half day drying out. A rain day during mud extends it.
+- **Mud.** While it rains, every unpaved land cell at wear 25 or more (trail, track, hollow way; not gravel, a fence, a bridge or the ford) is mud. Mud stays on cells still worn to trail until the ground is dry: for the rain day plus one more, in every season, the last half day drying out. A rain day during mud extends it. Mud follows a tool at once, in the same call: gravel erased in rain turns to mud, and gravel or a fence laid on mud clears it (round 4 waited for the next sim second).
 - **Wetness** (0 to 1) rises over 3 s when rain starts and falls to 0 over the last 7.5 s of the mud. Costs and speeds on mud scale with it.
 - **Cost.** An ordinary walker's step on mud costs its dry cost times 1.6 on trail, 1.7 on track and 1.8 on a hollow way. A busy trunk (0.45) becomes 0.72, still cheaper than grass; a lightly worn trail (about 0.95) becomes about 1.5, dearer than the grass beside it, so walkers step beside light mud and keep to the trunks (in the test, walker time on lightly worn trail falls by about 40% in rain and time on the grass beside rises). Frugal walkers see 0.3 of the muddy cost, as they see 0.3 of all worn ground. Gravel never turns to mud, so in rain it is the cheapest ground there is.
-- **Speed.** Walkers are 0.8 times as fast on mud at full wetness.
+- **Speed.** Walkers are 0.7 times as fast on mud at full wetness.
 - **Switch.** `PARAMS.rainOn` (true: the player's default). `new World(seed, walkers, { rain: false })` turns it off; the old gate sets run with it off. The page's debug API has `__tt.startRain(days)`, `__tt.stopRain(dry)`, `__tt.setRules({ rain, growth })` and `__tt.weather()`.
 - **State for drawing and sound:** `world.weather.rain` (how hard it rains now, 0 to 1, fading in and out), `world.weather.wetness` (0 to 1), `world.weather.raining`, `world.mud` (a per-cell flag) and `world.mudCells` (a count); `__tt.weather()` returns them with the rain day count.
-- **Spec conflict for the lead:** autumn mud lasts "two more" days (3 in all) in "Weather and mud", "Seasons and weather" and the prototype test plan, but "mud lasts 2 days" in the autumn row of "The season cycle". The toy uses 3.
+- **Spec conflict, decided:** autumn mud lasts "two more" days (3 in all) in "Weather and mud", but "mud lasts 2 days" in the autumn row of "The season cycle". The lead chose 2 in round 5, so mud lasts the rain day plus one more in every season. The rain chances are the doc's.
+- **How much of the time there is mud** (`npm run live`, 45 days, rain and growth on): 36.8% of the time on 100 seeds (it rains 21% of the time; 9.5 rain days in 45). The round 4 review measured 45% with 3 days in autumn.
 - **Not in the spec, chosen here:** winter rain (none), what the mud multiplier applies to, wear gain in rain (unchanged), walking speed on mud, the drying rate, stacked rain days (mud lasts to the later end).
 - **How the cost was chosen** (tuning seeds 1-20, 101-120 and 201-220, rain on, growth off unless said): with the multiplier on the spec's base cost for the state (trail 0.85 x 1.6 = 1.36, dearer than grass on every trunk) walkers left every trail in rain, coverage doubled to about 10%, and trunk share left the 30% to 70% band on 30 of 60 seeds (21% to 78%). Multiplying the walker's own cost: 1 seed of 60 out of band; with growth on as well, 2 of 60 (and 2 to 4 of 60 at mud speeds 0.8, 0.9 and 1.0). The braiding came from the frugal walkers, who saw the full multiplier on a cost that keeps only 0.3 of the trail discount, so every muddy trail was dearer than grass to them. With frugal walkers seeing 0.3 of the muddy cost as of all ground: 0 of 60 out of band, lowest daily 34.7%, highest 56.1%, mean coverage 5.5% (5.4% without rain).
 
@@ -153,6 +180,21 @@ Spec: "Where houses appear", "Growth rate and density", "Frontage", "Households 
 - **State for drawing:** `world.grown`, one entry per new house in order: building index, x, y, w, h, door, frontage cell, sim time and in-game day built; `world.buildings` includes them. `__tt.houses()` returns them with the population, the target and the next arrival time.
 - **The flow preview** follows: it rebuilds its fields when the building count changes, counts pairs from 0.2 trips a day (a cottage's 3 villagers make about 0.3 to 0.4 a day to each destination; round 3's 0.5 hid them), and always reports a house it would cut off, however few its trips.
 - **Left out** (spec sheet): demand from jobs and trade, upgrades, abandonment and ruin, frontage rent, other house types, demolition.
+
+## Gate status (round 5)
+
+`npm run check` and `npm run live`, 25 November 2026, after the mud change. G3 passes on every seed of every set.
+
+| Seeds | Rules | Mean | Lowest daily | Highest daily | Seeds in band | Time with mud |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 to 20 | rain and growth on, player defaults | 43.9% | 34.4% | 56.4% | 20 of 20 | 38.0% |
+| 101 to 120 | rain and growth on | 45.3% | 36.4% | 55.0% | 20 of 20 | 39.5% |
+| 201 to 220 | rain and growth on | 44.2% | 35.6% | 53.0% | 20 of 20 | 33.9% |
+| 601 to 620 | rain and growth on | 45.4% | 35.3% | 56.5% | 20 of 20 | 35.5% |
+| 701 to 720 | rain and growth on (the round 4 reviewer's seeds) | 45.4% | 37.5% | 54.5% | 20 of 20 | 37.2% |
+| 401 to 420, 1 to 20, 101 to 120, 201 to 220, 301 to 320 | rain and growth off | bit-identical to `test/g3-baseline.txt` (round 3) | | | 100 of 100 | |
+
+All 100 rain-on seeds: mean 44.8%, lowest 34.4%, highest 56.5%. Seeds 801 to 820 are kept for the round 5 reviewer.
 
 ## Gate status (round 4)
 

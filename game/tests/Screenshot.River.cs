@@ -17,7 +17,11 @@ namespace TideToll.Game.Tests;
 /// - river-ferry: the ferry's raft on its rope, with riders when the timing allows;
 /// - river-blocked: a barge held below the footbridge (crossed-out mast) and, river-turnback, the moment it turns back
 ///   (vermillion diamond, "Turned back", the margin note);
-/// - river-ledger: the whole book with the chapter page's ledger and chronicle.
+/// - river-ledger: the whole book with the chapter page's ledger and chronicle;
+/// - river-flood: the play view during a spring flood (World.StartFlood): the wash over the flood band, the closed ford's
+///   bar and its "Ford closed" tag, the ledger's "Spring flood, day N" and the margin note;
+/// - river-ice and river-ice-close: the river frozen (World.Freeze) after a day and a half of walkers crossing on the
+///   ice: pale ice with ink cracks, boats held in it, the ice paths, the ledger's "Frozen since day N".
 /// Each scene is checked in the simulation before it is photographed (the bridge really is up, the barge really waits).
 /// </summary>
 public partial class Screenshot
@@ -100,11 +104,60 @@ public partial class Screenshot
         _main.Rig.FramePlay(instant: true);
         await Frames(4);
         Check(await Snap("river-map", true), "river-map");
+        // A slice of the day with frames between the ticks, so the ledger's "today" figures have something to count.
+        for (int i = 0; i < 16; i++) { sim.StepTicks(6); await Frames(1); }
         _main.Rig.FrameBook(instant: true);
         await Frames(6);
         GD.Print($"SCREENSHOT river-ledger: coin {r.Money:0}c, rep {r.Reputation:0}, notes {_main.Feed.NoteCount}: '{_main.Feed.Note(0)}'");
         Check(await Snap("river-ledger", true), "river-ledger");
+        await SeasonShots(sim, r);
         sim.SetPaused(false);
+    }
+
+    /// <summary>A spring flood at the play view, then (the flood gone) the river frozen with paths worn on the ice.</summary>
+    private async Task SeasonShots(SimDriver sim, RiverView r)
+    {
+        var w = sim.World;
+        for (int i = 0; i < 4 * _main.Params.TicksPerDay && r.Flooded; i++) sim.StepTicks(1); // any flood of its own first
+        var flood = w.StartFlood(2);
+        Need(flood.Ok && r.Flooded && !r.FordOpen, $"the flood did not start: {flood}");
+        sim.StepTicks(_main.Params.TicksPerDay / 3);
+        _main.Feed.Drain();
+        _main.Rig.FramePlay(instant: true);
+        await SnapSettled(() => _main.Ground.Flood >= 1f);
+        Need(_main.Crossings.FordClosedShown, "no closed-ford mark during the flood");
+        GD.Print($"SCREENSHOT river-flood: wash {_main.Ground.Flood:0.00}, ford tag {_main.Ui.Tags.Tag(MapTags.FordClosed).Visible}, note '{_main.Feed.Note(0)}'");
+        Check(await Snap("river-flood", true), "river-flood");
+        for (int i = 0; i < 3 * _main.Params.TicksPerDay && r.Flooded; i++) sim.StepTicks(1);
+        Need(!r.Flooded, "the flood never went down");
+        var ice = w.Freeze();
+        Need(ice.Ok && r.Frozen, $"the river did not freeze: {ice}");
+        sim.StepTicks(_main.Params.TicksPerDay * 3 / 2);
+        _main.Feed.Drain();
+        float most = 0;
+        for (int i = 0; i < r.IceWear.Length; i++) most = Math.Max(most, r.IceWear[i]);
+        _main.Ground.SnapNext();
+        _main.Ground.Upload();
+        _main.Rig.FramePlay(instant: true);
+        await SnapSettled(() => _main.Ground.Ice >= 1f);
+        GD.Print($"SCREENSHOT river-ice: ice {_main.Ground.Ice:0.00}, ice crossings {r.Stats.IceCrossings}, most ice wear {most:0.0}, ice uploads {_main.Ground.IceUploads}, note '{_main.Feed.Note(0)}'");
+        Need(r.Stats.IceCrossings > 0, "nobody crossed on the ice");
+        Check(await Snap("river-ice", true), "river-ice");
+        _main.Rig.LookAt(new Vector3(w.RiverX[r.LandingRow] * 2f, 0, (r.LandingRow + 6) * 2f), 110f);
+        await Frames(4);
+        Check(await Snap("river-ice-close", true), "river-ice-close");
+        w.Thaw();
+        sim.StepTicks(1);
+        _main.Feed.Drain();
+    }
+
+    /// <summary>Real frames until an eased look has arrived (the flood's wash, the ice), at most about ten seconds.</summary>
+    private async Task SnapSettled(Func<bool> done)
+    {
+        ulong end = Time.GetTicksMsec() + 10000;
+        await Frames(2);
+        while (!done() && Time.GetTicksMsec() < end) await Frames(1);
+        await Frames(2);
     }
 
     private string BoatList()

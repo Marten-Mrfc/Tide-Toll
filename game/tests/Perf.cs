@@ -21,7 +21,10 @@ public partial class Perf : Node
     // The third run drags a fence across the busiest trail with real mouse events, moving its end every 45 frames, so
     // the flow preview keeps recomputing (spread over frames within its 6 ms budget). Its allocation is reported, not
     // gated: each finished preview builds its result and route mesh (a few kilobytes), which is not steady state.
-    private static readonly (int speed, double budgetMs, bool preview)[] Runs = { (1, 6.0, false), (8, 10.0, false), (8, 10.0, true) };
+    // Two more runs at 8x with the river's seasons on (World.StartFlood, then World.Freeze), under the 8x budgets and the
+    // allocation gate: the flood wash and mud, the closed-ford mark and tag, then the ice and its ice-wear uploads.
+    private static readonly (int speed, double budgetMs, bool preview, char weather)[] Runs =
+        { (1, 6.0, false, ' '), (8, 10.0, false, ' '), (8, 10.0, true, ' '), (8, 10.0, false, 'f'), (8, 10.0, false, 'i') };
     private const int Warmup = 240;
     private const double AllocBudget = 64;
     /// <summary>Preview run: no frame above this (the simulation and a preview step must never stack up).</summary>
@@ -122,6 +125,34 @@ public partial class Perf : Node
         _frame = -Warmup;
         if (_run < Runs.Length) _main.Sim.SetSpeed(Runs[_run].speed);
         if (_run < Runs.Length && Runs[_run].preview) StartDrag();
+        if (_run < Runs.Length) Weather(Runs[_run].weather);
+    }
+
+    /// <summary>Sets the river's season for a run: 'f' a long flood, 'i' the river frozen, ' ' as it is.</summary>
+    private void Weather(char w)
+    {
+        var world = _main.Sim.World;
+        if (world.River == null || w == ' ') return;
+        if (_dragging) { EndDrag(); }
+        if (w == 'f') { if (world.River.Frozen) world.Thaw(); world.StartFlood(7); } // longer than the run (800 ticks at 8x)
+        if (w == 'i')
+        {
+            for (int i = 0; i < 8 * _main.Params.TicksPerDay && world.River.Flooded; i++) world.Tick(); // let the flood end first
+            if (!world.River.Frozen) world.Freeze();
+        }
+        GD.Print($"PERF weather '{w}': flooded {world.River.Flooded}, frozen {world.River.Frozen}, muddy {world.River.Muddy}");
+    }
+
+    private bool _dragging;
+    private int _weatherAgain;
+
+    private void EndDrag()
+    {
+        var p = Cell(_bx + 6, _by);
+        Input.ParseInputEvent(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.Left, Pressed = false });
+        Input.ParseInputEvent(new InputEventKey { Keycode = Key.Escape, Pressed = true });
+        Input.ParseInputEvent(new InputEventKey { Keycode = Key.Escape, Pressed = false });
+        _dragging = false;
     }
 
     private Vector2 _dragA;
@@ -142,6 +173,7 @@ public partial class Perf : Node
         Input.ParseInputEvent(new InputEventKey { Keycode = Key.F, Pressed = true });
         Input.ParseInputEvent(new InputEventKey { Keycode = Key.F, Pressed = false });
         _dragA = Cell(_bx - 6, _by);
+        _dragging = true;
         Input.ParseInputEvent(new InputEventMouseMotion { Position = _dragA, GlobalPosition = _dragA });
         Input.ParseInputEvent(new InputEventMouseButton { Position = _dragA, GlobalPosition = _dragA, ButtonIndex = MouseButton.Left, Pressed = true, ButtonMask = MouseButtonMask.Left });
     }
@@ -172,6 +204,9 @@ public partial class Perf : Node
             }
             _simMs += _main.Sim.SimMsThisFrame;
         }
+        // The seasons run on: spring thaws the ice and a flood ends; put them back so the whole run is measured in them.
+        if (Runs[_run].weather == 'i' && _main.Sim.World.River is { Frozen: false }) { _main.Sim.World.Freeze(); _weatherAgain++; }
+        if (Runs[_run].weather == 'f' && _main.Sim.World.River is { Flooded: false }) { _main.Sim.World.StartFlood(7); _weatherAgain++; }
         if (Runs[_run].preview && _frame % 45 == 0)
         {
             var p = Cell(_bx + 6, _by + (_frame / 45 % 5) - 2);
@@ -200,7 +235,7 @@ public partial class Perf : Node
 
     private void Report(long bytes, int gcs)
     {
-        var (speed, budget, preview) = Runs[_run];
+        var (speed, budget, preview, weather) = Runs[_run];
         var sorted = (double[])_ms.Clone();
         Array.Sort(sorted);
         double sum = 0;
@@ -210,7 +245,7 @@ public partial class Perf : Node
         var s = _main.Sim;
         bool ok = mean <= budget && (preview || perFrame <= AllocBudget);
         _failed |= !ok;
-        string what = preview ? $"{speed}x+preview" : $"{speed}x";
+        string what = preview ? $"{speed}x+preview" : weather == 'f' ? $"{speed}x+flood" : weather == 'i' ? $"{speed}x+ice" : $"{speed}x";
         if (preview)
         {
             // The preview run's own gates: the worst frame, and bytes per finished preview (so they cannot grow unseen).
@@ -236,6 +271,8 @@ public partial class Perf : Node
         if (_main.Sim.World.River is { } r)
             GD.Print($"PERF river {what}: boats drawn {_main.Boats.Drawn}, rings {_main.Boats.Rings}, crossings drawn {_main.Crossings.Count}, " +
                      $"events {_main.Feed.Drained}, served {r.Stats.Served[0] + r.Stats.Served[1]}, turned back {r.Stats.TurnedBack[0] + r.Stats.TurnedBack[1]}, " +
-                     $"coin {r.Money:0}c, sound cues bridge {_main.Audio.BridgeCues} calls {_main.Audio.Calls} coins {_main.Audio.CoinCues} oars {_main.Audio.OarCues}");
+                     $"coin {r.Money:0}c, sound cues bridge {_main.Audio.BridgeCues} calls {_main.Audio.Calls} coins {_main.Audio.CoinCues} oars {_main.Audio.OarCues} | " +
+                     $"flooded {r.Flooded} (wash {_main.Ground.Flood:0.00}, ford bar {_main.Crossings.FordClosedShown}), frozen {r.Frozen} (ice {_main.Ground.Ice:0.00}, " +
+                     $"ice uploads {_main.Ground.IceUploads}, ice crossings {r.Stats.IceCrossings}), weather restarted {_weatherAgain} times so far");
     }
 }

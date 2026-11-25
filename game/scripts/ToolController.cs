@@ -305,7 +305,8 @@ public partial class ToolController : Node
         }
         // A frame in which the simulation already took more than SkipAboveSimMs (several ticks at 8x) does no preview
         // work at all, so the two never stack into one long frame; the preview simply finishes a frame or two later.
-        // Otherwise the preview gets what the simulation left of the toy's 6 ms (at least 2 ms, so it always moves on).
+        // Otherwise the preview gets what the simulation left of the toy's 6 ms (at least 2 ms, so it always moves on),
+        // as a hard cap: bounded slices with the clock read before each (FlowPreviewer.Update).
         double sim = Sim.SimMsThisFrame;
         if (sim > FlowPreviewer.SkipAboveSimMs) PreviewSkips++;
         else Previewer.Update(Clock.Elapsed.TotalMilliseconds, Math.Max(2.0, FlowPreviewer.BudgetMs - sim));

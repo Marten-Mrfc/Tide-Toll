@@ -271,6 +271,7 @@ public partial class GameUi : CanvasLayer
         var vp = GetViewport().GetVisibleRect().Size;
         Place(vp);
         Tip(vp);
+        if (_main.Sim.World.River is { } rv) Chapter.TrackDay(rv, _main.Sim.World.Time, _main.Sim.World.Params.DaySimSec);
         _since += delta;
         if (_since < 0.5) return;
         _since = 0;
@@ -279,7 +280,7 @@ public partial class GameUi : CanvasLayer
         Chapter.Refresh(w.Stats(), w.WalkersOut(), sim.Seed, _now);
         if (w.River is { } river)
         {
-            Chapter.RefreshRiver(river);
+            Chapter.RefreshRiver(river, w.Time, w.Params.DaySimSec, _main.Feed);
             Tabs.ShowPrices(river.Money);
         }
         _fps.Text = $"{Engine.GetFramesPerSecond():0} fps · sim {sim.MsPerTick:0.00} ms/tick · {sim.TicksPerSecond:0} ticks/s";

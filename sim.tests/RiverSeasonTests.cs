@@ -57,8 +57,10 @@ public class RiverSeasonTests
         double bandCost = w.CellCost(band);
         Assert.True(w.CellCost(fordCells[0]) < double.PositiveInfinity && !w.IsBlocked(fordCells[0]));
         Drain(w);
+        int version = w.Version;
         Assert.True(w.StartFlood(1).Ok);
         Assert.True(r.Flooded && !r.FordOpen);
+        Assert.Equal(version, w.Version); // not a player's edit: the game's edit handlers do not run
         // The ford is closed; the band is waded at three times the cost.
         foreach (int c in fordCells) { Assert.True(w.IsBlocked(c)); Assert.True(double.IsPositiveInfinity(w.CellCost(c))); }
         Assert.Equal(3 * bandCost, w.CellCost(band), 6);
@@ -191,7 +193,9 @@ public class RiverSeasonTests
         int arrived = r.Stats.Arrived.Sum(), toBoats = r.Stats.GrainToBoats, market = r.Stats.GrainToMarket;
         var wearBefore = w.Wear.ToArray();
         Drain(w);
+        int version = w.Version;
         Assert.True(w.Freeze().Ok);
+        Assert.Equal(version, w.Version);
         Assert.Equal("The river is frozen: no boat can pass", w.SetBridge(draw.Id, true).Reason);
         Assert.Equal(0, ferry.Passengers);
         var water = Enumerable.Range(0, w.Grid.Count).Where(c => w.Map.Water[c] != 0 && w.BridgeAt[c] < 0).ToList();

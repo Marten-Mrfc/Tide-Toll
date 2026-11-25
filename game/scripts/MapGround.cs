@@ -11,6 +11,9 @@ namespace TideToll.Game;
 /// about 0.1 ms). The displayed wear eases toward the simulation's over a second or two, as the Art tab asks
 /// ("smooth wear visually so paths grow instead of flickering"); a new world snaps it.
 /// River centre line, ford and crop cells are fixed per map and uploaded when the world is replaced.
+/// With the river rules on, a second small RG8 texture carries the river's seasons: R = the ice-wear layer (uploaded
+/// with the wear while the river is frozen, cleared once at the thaw), G = the flood band (fixed per map). The flood,
+/// the mud after it and the ice are eased shader values (the wash fills outward from the bank as the river rises).
 /// </summary>
 public partial class MapGround : MeshInstance3D
 {
@@ -33,8 +36,20 @@ public partial class MapGround : MeshInstance3D
     private double _sinceUpload;
     private bool _snap;
     private float _overlay, _overlayTarget;
+    private byte[] _season = Array.Empty<byte>();
+    private Image? _seasonImg;
+    private ImageTexture? _seasonTex;
+    private bool _iceShown;
+    private float _flood, _ice, _mud;
 
-    private static readonly StringName TimeS = new("time_s"), Overlay = new("overlay");
+    private static readonly StringName TimeS = new("time_s"), Overlay = new("overlay"), FloodS = new("flood"), IceS = new("ice"), MudS = new("mud");
+
+    /// <summary>The flood wash (0..1, eased: it fills as the river rises), the ice and the mud as drawn (tests).</summary>
+    public float Flood => _flood;
+    public float Ice => _ice;
+    public float Mud => _mud;
+    /// <summary>Uploads of the ice-wear layer so far (tests and stats).</summary>
+    public int IceUploads { get; private set; }
 
     public void Init(SimDriver sim)
     {
@@ -107,6 +122,26 @@ public partial class MapGround : MeshInstance3D
             _wearTex = ImageTexture.CreateFromImage(_wearImg);
             Material.SetShaderParameter("wear_tex", _wearTex);
         }
+        // The seasons texture: G = flood band (fixed), R = ice wear (zero until a freeze).
+        if (_season.Length != _n * _n * 2)
+        {
+            _season = new byte[_n * _n * 2];
+            _seasonImg = Image.CreateFromData(_n, _n, false, Image.Format.Rg8, _season);
+            _seasonTex = ImageTexture.CreateFromImage(_seasonImg);
+            Material.SetShaderParameter("season_tex", _seasonTex);
+        }
+        Array.Clear(_season);
+        var r = w.River;
+        if (r != null)
+        {
+            var band = r.FloodBand;
+            for (int i = 0; i < band.Length && i < _n * _n; i++) _season[2 * i + 1] = band[i] != 0 ? (byte)255 : (byte)0;
+            Material.SetShaderParameter("band_m", (float)(r.Rules.FloodBandCells * cell));
+        }
+        _seasonImg!.SetData(_n, _n, false, Image.Format.Rg8, _season);
+        _seasonTex!.Update(_seasonImg);
+        _iceShown = false;
+        _flood = _ice = _mud = -1; // set at once on the next frame
         _snap = true;
         Upload();
     }
@@ -119,8 +154,29 @@ public partial class MapGround : MeshInstance3D
             _overlay = Mathf.MoveToward(_overlay, _overlayTarget, (float)delta * 4f);
             Material.SetShaderParameter(Overlay, _overlay);
         }
+        Seasons((float)delta);
         _sinceUpload += delta;
         if (_sinceUpload >= 1.0 / UploadsPerSecond && !_sim.Paused) Upload();
+    }
+
+    /// <summary>Eases the flood, ice and mud toward the river's state (a new world snaps them). Allocation-free.</summary>
+    private void Seasons(float dt)
+    {
+        var r = _sim.World.River;
+        float fT = r != null && r.Flooded ? 1f : 0f, iT = r != null && r.Frozen ? 1f : 0f, mT = r != null && r.Muddy ? 1f : 0f;
+        bool snap = _flood < 0;
+        if ((iT > 0) != _iceShown) UploadIce(); // a freeze or a thaw shows at once, even while paused
+        EaseTo(ref _flood, fT, snap ? 1f : dt * 0.45f, FloodS);   // the water rises over about two seconds
+        EaseTo(ref _ice, iT, snap ? 1f : dt * 0.6f, IceS);
+        EaseTo(ref _mud, mT, snap ? 1f : dt * 0.5f, MudS);
+    }
+
+    private void EaseTo(ref float v, float target, float step, StringName name)
+    {
+        float nv = v < 0 ? target : Mathf.MoveToward(v, target, step);
+        if (nv == v) return;
+        v = nv;
+        Material.SetShaderParameter(name, v);
     }
 
     /// <summary>Copies wear (eased) and the hollow flag into the texture. Allocation-free.</summary>
@@ -141,6 +197,25 @@ public partial class MapGround : MeshInstance3D
         _wearImg!.SetData(_n, _n, false, Image.Format.Rg8, _rg);
         _wearTex!.Update(_wearImg);
         Uploads++;
+        UploadIce();
+    }
+
+    /// <summary>The ice-wear layer into the seasons texture while frozen, and once more (cleared) after the thaw.</summary>
+    private void UploadIce()
+    {
+        var r = _sim.World.River;
+        bool frozen = r != null && r.Frozen;
+        if (!frozen && !_iceShown) return;
+        if (frozen)
+        {
+            var ice = r!.IceWear;
+            for (int i = 0; i < ice.Length && i < _n * _n; i++) _season[2 * i] = (byte)(Math.Clamp(ice[i], 0f, 100f) * 2.55f + 0.5f);
+        }
+        else for (int i = 0; i < _n * _n; i++) _season[2 * i] = 0;
+        _iceShown = frozen;
+        _seasonImg!.SetData(_n, _n, false, Image.Format.Rg8, _season);
+        _seasonTex!.Update(_seasonImg);
+        IceUploads++;
     }
 
     /// <summary>Snap the displayed wear to the simulation's on the next upload (after a fast-forward, for tests).</summary>

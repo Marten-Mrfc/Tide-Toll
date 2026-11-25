@@ -250,11 +250,13 @@ export class FlowPredictor {
     let rr = 0, rs = 0;
     for (const { change: c } of all) if (c.reachable) { rr += c.rate; rs += c.rate * c.costRatio; }
     const gravelOnly = !!change.gravel?.length && CHANGE_FLAGS.every(([k]) => k === "gravel" || !change[k]?.length);
+    const reroutedPerDay = all.reduce((s, x) => s + x.change.rate, 0);
     return {
-      note: gravelOnly && all.length === 0 ? gravelNote(w, change.gravel!) : undefined,
+      // The note stands in for "No change to routes", which the readout says below half a trip a day.
+      note: gravelOnly && reroutedPerDay < 0.5 ? gravelNote(w, change.gravel!) : undefined,
       changes: shown.map(x => x.change),
       more: Math.max(0, all.length - maxPairs),
-      reroutedPerDay: all.reduce((s, x) => s + x.change.rate, 0),
+      reroutedPerDay,
       meanCostRatio: rr > 0 ? rs / rr : 1,
       blocked: [...blocked].map(([dest, houses]) => ({ dest, houses })),
       version,

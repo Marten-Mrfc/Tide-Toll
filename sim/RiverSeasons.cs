@@ -76,10 +76,13 @@ public sealed partial class World
         }
     }
 
-    /// <summary>Costs, fields and walkers after the river changed under them (Edited), unless the world is still being made.</summary>
+    /// <summary>
+    /// Costs, fields and walkers after the river changed under them, unless the world is still being made. Not an edit:
+    /// World.Version (the player's edits) does not move; a flow preview's base is at most a second old anyway.
+    /// </summary>
     private void CostsChanged()
     {
-        if (_urgent != null) Edited();
+        if (_urgent != null) GroundChanged();
     }
 
     /// <summary>

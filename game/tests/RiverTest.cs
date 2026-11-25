@@ -19,7 +19,11 @@ namespace TideToll.Game.Tests;
 /// - Erase removes the ferry and the drawbridge (and their views and badge), charging half their price;
 /// - several in-game days with boats: river events arrive, the chronicle fills, the ledger shows the purse, coins
 ///   float up by the landing, and the river's sound cues are counted (nothing plays headless).
-/// Starts with 330c (ferry 40c + drawbridge 240c + keeper 30c = 310c), so a second drawbridge is refused for coin.
+/// - the river's seasons (RiverTest.Seasons.cs): a flood and a freeze driven through the simulation's hooks, with their
+///   marks, tags, notes and ledger lines appearing and going, the ford tool reason while the ford is closed, the river
+///   loop quieter on the ice; and the badge and the place tags kept apart at 1280 x 720 and 1920 x 1080.
+/// Starts with the ferry's, the drawbridge's and the keeper's prices (read from the rules) plus 20c, so a second
+/// drawbridge is refused for coin.
 /// Prints RIVER PASS or RIVER FAIL and quits with 0 or 1.
 /// </summary>
 public partial class RiverTest : Node
@@ -33,7 +37,8 @@ public partial class RiverTest : Node
         Input.UseAccumulatedInput = false;
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         _main.StartSeed = 1;
-        _main.River = RiverRules.Default with { StartMoney = 330 };
+        var rules = RiverRules.Default;
+        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 20 };
         AddChild(_main);
         Run();
     }
@@ -52,7 +57,9 @@ public partial class RiverTest : Node
             await Refused();
             await Lever(draw);
             await Keeper(draw);
+            await Overlaps(draw);
             await Days();
+            await Seasons();
             await EraseBoth(ferry, draw);
             GD.Print("RIVER PASS " + string.Join(" ", _notes));
             GetTree().Quit(0);
@@ -157,7 +164,7 @@ public partial class RiverTest : Node
         Check(_main.Tools.LastMessage.StartsWith("Not enough coin"), $"hover gives no coin reason: '{_main.Tools.LastMessage}'");
         await ClickAt(at);
         Check(R.Crossings.Count == count, "a drawbridge was built without the coin");
-        Check(_main.Tools.LastMessage.StartsWith("Not enough coin: the drawbridge costs 240c"), $"no reason in words: '{_main.Tools.LastMessage}'");
+        Check(_main.Tools.LastMessage.StartsWith($"Not enough coin: the drawbridge costs {RiverFeed.Coin(R.Rules.DrawbridgePrice)}"), $"no reason in words: '{_main.Tools.LastMessage}'");
         Check(_main.Audio.Refusals > refusals, "no refusal sound cue");
         TestInput.Key(Godot.Key.Escape);
         await TestInput.Frames(this, 1);
@@ -244,6 +251,7 @@ public partial class RiverTest : Node
         Check(_main.Ui.Floats.Coins > coins, "no coins floated up by the landing");
         Check(_main.Audio.CoinCues > coinCues, "no coin sound cue");
         Check(_main.Audio.Calls > calls || _main.Audio.BridgeCues > 0, "no boat or bridge sound cues");
+        Check(_main.Ui.Floats.Overlaps == 0, $"{_main.Ui.Floats.Overlaps} floating notes lie over a boat, a crossing or another note");
         var coin = _main.Ui.Chapter.GetNode<Label>("Column/Coin/Value").Text;
         Check(coin == $"{(int)Math.Floor(R.Money + 1e-9)}c", $"the ledger shows {coin}, the purse holds {R.Money:0.##}c");
         var note0 = _main.Ui.Chapter.GetNode<Label>("Column/Chronicle/Note0").Text;
