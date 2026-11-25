@@ -9,11 +9,14 @@
 //                             wear, flow, cost, costX and positions; walker 0's first trip; final stats; and, for seed 1
 //                             at 200, the wear hash of every tick of the first two days (to find a first divergence)
 //   tracesLive                seeds 1-3 at 200 and 1 at 500, rain and growth on: per day also mud, weather, houses
+//   tracesRain, tracesGrowth  the same with only rain on (seeds 1-3 at 200, 1 at 500) and only growth on (1-2 at 200),
+//                             so each rule can be proven on its own
 //   legacyCheck               the finished toy run with the round-2 values: per day wear hashes (export.mjs compares them
 //                             with the legacy file's traces)
 //   weather                   the weather alone, seeds 1-50, 120 days
 //   plots                     the growth plot search on seeds 1 and 2, days 3 and 9 (live worlds)
-//   edits                     edits at fixed ticks (fence, gravel, gates at five angles, bridge, erase, rain), off and live
+//   edits                     edits at fixed ticks (fence, gravel, gates at five angles, bridge, erase, rain), off, live
+//                             and rain only
 //   previews                  flow previews off (seeds 2, 4) and live (seed 2 with grown houses, gravel, gates)
 //   table, tableLive          the G3 gate rows on seeds 101-120 (off; with the toy's printed table) and 601-620 (live)
 //   baselines                 seeds 1-3 at 200 walkers, 20 days: day-20 wear hash and the next three walker draws,
@@ -147,6 +150,17 @@ const tracesLive = [];
 for (const [seed, walkers] of [[1, 200], [2, 200], [3, 200], [1, 500]]) {
   tracesLive.push(trace(seed, walkers, 45, LIVE, seed === 1 && walkers === 200 ? 2 * TPD : 0));
   say(`trace live seed ${seed} walkers ${walkers}`);
+}
+const RAIN = { rain: true, growth: false }, GROWTH = { rain: false, growth: true };
+const tracesRain = [];
+for (const [seed, walkers] of [[1, 200], [2, 200], [3, 200], [1, 500]]) {
+  tracesRain.push(trace(seed, walkers, 45, RAIN));
+  say(`trace rain seed ${seed} walkers ${walkers}`);
+}
+const tracesGrowth = [];
+for (const [seed, walkers] of [[1, 200], [2, 200]]) {
+  tracesGrowth.push(trace(seed, walkers, 45, GROWTH));
+  say(`trace growth seed ${seed} walkers ${walkers}`);
 }
 const legacyCheck = withParams(LEGACY, () => [1, 2, 3].map(seed => {
   const w = new World(seed, 200, OFF), wear: number[] = [];
@@ -301,6 +315,8 @@ const editsOff = edits(1, OFF);
 say("edits off");
 const editsLive = edits(1, LIVE);
 say("edits live");
+const editsRain = edits(1, RAIN);
+say("edits rain");
 
 // ---------------------------------------------------------------- previews
 const pvJson = (w: World, p: FlowPreview) => ({
@@ -392,7 +408,7 @@ writeFileSync(out, compact({
   note: "FNV-1a hashes are over the little-endian bytes of the toy's typed arrays (f64 lists: over their float64 bytes). Non-finite numbers are written as strings. Regenerate with the command; never edit by hand.",
   seconds: Math.round((Date.now() - t0) / 1000),
   params, legacyParams: LEGACY, probes, streams, explorers, dijkstraLow,
-  tracesOff, tracesLive, legacyCheck, legacyMatches, weather, plots, edits: [editsOff, editsLive],
+  tracesOff, tracesLive, tracesRain, tracesGrowth, legacyCheck, legacyMatches, weather, plots, edits: [editsOff, editsLive, editsRain],
   previews, previewsLive, table, tableText, tableLive, baselines,
 }) + "\n");
 say(`wrote ${out}`);

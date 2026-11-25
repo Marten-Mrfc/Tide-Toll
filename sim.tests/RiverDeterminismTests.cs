@@ -16,8 +16,8 @@ public class RiverDeterminismTests
         // and winter ice do change walkers' routes, on purpose: they are off here; RiverSeasonTests covers them.)
         for (int seed = 1; seed <= 2; seed++)
         {
-            var plain = new World(seed, 200);
-            var river = new World(seed, 200, SimParams.Default with { River = RiverRules.Default with { HaulGoods = false, SpringFlood = false, WinterIce = false } });
+            var plain = new World(seed, 200, RiverTestRules.Plain);
+            var river = new World(seed, 200, RiverTestRules.Trail with { River = RiverRules.Default with { HaulGoods = false, SpringFlood = false, WinterIce = false } });
             ToyHarness.Run(plain, 20);
             ToyHarness.Run(river, 20);
             Assert.Equal((ToyHarness.Fnv(plain.Wear), plain.RngState), (ToyHarness.Fnv(river.Wear), river.RngState));
@@ -28,7 +28,7 @@ public class RiverDeterminismTests
 
     private static (uint Wear, uint Rng, double Money, double Rep, string Boats, string Events) Scripted(int seed, int raiseAt)
     {
-        var w = new World(seed, 250, SimParams.Default with { River = RiverRules.Default with { StartMoney = 600 } });
+        var w = new World(seed, 250, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 600 } });
         var events = new List<RiverEvent>();
         var log = new System.Text.StringBuilder();
         int draw = -1;
@@ -62,7 +62,7 @@ public class RiverDeterminismTests
     [Fact]
     public void TickWithTheRiverOnAllocatesNothing()
     {
-        var w = new World(3, 500, SimParams.Default with { River = RiverRules.Default with { StartMoney = 1000 } });
+        var w = new World(3, 500, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 1000 } });
         Build(w, CrossingType.Ferry);
         int d = Build(w, CrossingType.Drawbridge, 9).Id;
         w.HireKeeper(d);

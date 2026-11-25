@@ -28,7 +28,7 @@ public class ToyV2PreviewTests
         Assert.Equal(g.GetProperty("wearFnv").GetUInt32(), Fnv(w.Wear));
         Assert.Equal(g.GetProperty("costFnv").GetUInt32(), Fnv(w.Cost));
         Assert.Equal(g.GetProperty("costXFnv").GetUInt32(), Fnv(w.CostX));
-        Assert.Equal(g.GetProperty("tripRateFnv").GetUInt32(), Fnv(w.TripRate));
+        Assert.Equal(g.GetProperty("tripRateFnv").GetUInt32(), Fnv<float>(TripTable(w)));
         Same(w, g.GetProperty("block"), w.PreviewFlows(new WhatIf { Block = Ints(g.GetProperty("fence")) }, 99), "block", log);
         Same(w, g.GetProperty("bridge"), w.PreviewFlows(new WhatIf { Bridge = Ints(g.GetProperty("bridgeCells")) }), "bridge", log);
         Same(w, g.GetProperty("enclose"), w.PreviewFlows(new WhatIf { Block = Ints(g.GetProperty("ring")) }), "enclose", log);
@@ -43,7 +43,7 @@ public class ToyV2PreviewTests
         Run(w, 1);
         var target = g.GetProperty("gateTarget");
         int[] gate = Ints(target.GetProperty("cells"));
-        Assert.Equal(1, gate.Length);
+        Assert.Single(gate);
         var t = w.GateTarget(gate[0] % w.Grid.Width + 0.5, gate[0] / w.Grid.Width + 0.5);
         Assert.Equal(gate, t.Cells);
         Assert.False(t.Remove);
@@ -56,6 +56,15 @@ public class ToyV2PreviewTests
         Assert.Equal(after.GetProperty("wearFnv").GetUInt32(), Fnv(w.Wear));
         Assert.Equal(after.GetProperty("costFnv").GetUInt32(), Fnv(w.Cost));
         Assert.Equal(after.GetProperty("costXFnv").GetUInt32(), Fnv(w.CostX));
+    }
+
+    /// <summary>The trip table as the toy stores it, Buildings.Length square (the world keeps a fixed stride when houses can grow).</summary>
+    internal static float[] TripTable(World w)
+    {
+        int b = w.Buildings.Length, s = w.TripRateStride;
+        var t = new float[b * b];
+        for (int h = 0; h < b; h++) for (int d = 0; d < b; d++) t[h * b + d] = w.TripRate[h * s + d];
+        return t;
     }
 
     private static GravelNote NoteOf(JsonElement e) => e.ValueKind == JsonValueKind.Null ? GravelNote.None : e.GetString() switch

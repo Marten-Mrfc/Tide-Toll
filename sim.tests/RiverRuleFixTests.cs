@@ -114,8 +114,8 @@ public class RiverRuleFixTests
     [InlineData(5)]
     public void DefaultRiverRulesWithNoGoodsAndNoCrossingsLeaveAPlainWorldsWearAloneOutsideTheBandAndWinter(int seed)
     {
-        var plain = new World(seed, 200);
-        var river = new World(seed, 200, SimParams.Default with { River = RiverRules.Default with { HaulGoods = false } });
+        var plain = new World(seed, 200, RiverTestRules.Plain);
+        var river = new World(seed, 200, RiverTestRules.Trail with { River = RiverRules.Default with { HaulGoods = false } });
         var band = river.River!.FloodBand.ToArray();
         var p = plain.Params;
         int winter = (int)(3 * p.SeasonSimSec / p.DaySimSec); // the first day of the first winter

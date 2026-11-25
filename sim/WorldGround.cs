@@ -108,6 +108,11 @@ public sealed partial class World
             else
             {
                 Grounds(c, gravel);
+                if (_rainOn)
+                {
+                    double wet = _weather.Wetness;
+                    if (wet > 0 && _mud[c] != 0 && !gravel) MudCosts(c, wet);
+                }
                 k = _gc0 * noise; kx = _gc1 * noise;
             }
             if (m.Crop[c] != 0) { k += _p.CropPenalty; kx += _p.CropPenalty; }

@@ -20,7 +20,10 @@ public sealed partial class World
     /// </summary>
     private void GroundChanged()
     {
-        for (int t = 0; t < _urgent.Length; t++) _urgent[t] = true;
+        for (int t = 0; t < _nb; t++) _urgent[t] = true;
+        // Mud follows a tool at once (gravel erased in rain turns to mud, gravel laid or a fence set down clears it),
+        // before the costs are rebuilt from it.
+        if (_rainOn) UpdateMud();
         // Rebuild costs now so walkers stop stepping onto new fences this tick.
         RebuildCosts();
         // Walkers standing on a cell that just became blocked are moved off it.
@@ -67,7 +70,7 @@ public sealed partial class World
     public bool CanFence(int c)
     {
         if (_map.Water[c] != 0 || _map.Footprint[c] != 0 || _bridgeAt[c] >= 0) return false;
-        foreach (var b in _map.Buildings) if (b.Door == c) return false;
+        for (int i = 0; i < _nb; i++) if (_b[i].Door == c) return false;
         if (_river != null) foreach (var x in _crossings) if (x.WestEnd == c || x.EastEnd == c) return false;
         return true;
     }

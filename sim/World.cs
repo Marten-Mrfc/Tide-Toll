@@ -44,6 +44,13 @@ public sealed partial class World
     private int _nextId;
     private double _nextDecay;
     private readonly int[][] _byKind = new int[5][];
+    // Buildings: the map's, then houses added by growth (pre-sized: _b has room for SimParams.MaxGrownHouses more when
+    // growth is on). _nb buildings stand now; _bs is the fixed stride of the trip table (home * _bs + dest).
+    private readonly Building[] _b;
+    private int _nb;
+    private readonly int _bs;
+    private readonly int[] _houses;
+    private int _houseCount;
     private readonly int[] _aimPath;
 
     public World(int seed, int? walkers = null, SimParams? p = null)
@@ -69,6 +76,16 @@ public sealed partial class World
             foreach (var x in b) if ((int)x.Kind == k) ids.Add(x.Id);
             _byKind[k] = ids.ToArray();
         }
+        _growthOn = _p.GrowthOn && _river == null;
+        int grow = _growthOn ? _p.MaxGrownHouses : 0;
+        _nb = b.Length;
+        _bs = b.Length + grow;
+        _b = new Building[_bs];
+        Array.Copy(b, _b, b.Length);
+        int[] h0 = _byKind[(int)BuildingKind.House];
+        _houses = new int[h0.Length + grow];
+        Array.Copy(h0, _houses, h0.Length);
+        _houseCount = h0.Length;
         _useFrugal = _p.UseFrugal;
         _wear = new float[_nc]; _hollowHold = new float[_nc]; _cost = new float[_nc];
         _costX = _useFrugal ? new float[_nc] : Array.Empty<float>();
@@ -78,30 +95,36 @@ public sealed partial class World
         _bridgeAt = new short[_nc];
         Array.Fill(_bridgeAt, (short)-1);
         _here = new ushort[_nc];
-        _tripRate = new float[b.Length * b.Length];
+        _tripRate = new float[_bs * _bs];
         _metrics = new Metrics(_p);
         _heap = new BinaryHeap(_nc * 4);
         _walkers = new Walker[_p.MaxWalkers];
         _aimPath = new int[_p.Lookahead];
         _nextDecay = _p.DecayStepSimSec;
+        _rainOn = _p.RainOn && _river == null;
+        _weather = new RainWeather(seed, _p);
+        _mud = new byte[_nc];
+        for (int i = 0; i < 5; i++) _mudCostMul[i] = _p.MudCostMul[i];
         for (int i = 0; i < _wearLut.Length; i++)
             _wearLut[i] = (float)(1 - _p.TrailDiscount * Math.Pow(Math.Min(1, (double)i / WearLutSteps / _p.DiscScale), _p.DiscPow));
         for (int i = 0; i < _flowLut.Length; i++)
             _flowLut[i] = (float)(1 - _p.FlowDiscount * (1 - Math.Exp(-((double)i / FlowLutSteps) / _p.FlowScale)));
         for (int i = 0; i < _nc; i++) _land[i] = (byte)(_map.Water[i] == 0 && _map.Footprint[i] == 0 ? 1 : 0);
         if (_river != null) InitRiver(seed);
-        _fields = new float[b.Length][];
-        _fieldsX = new float[b.Length][];
-        _fieldTime = new double[b.Length];
-        _urgent = new bool[b.Length];
-        for (int t = 0; t < b.Length; t++)
+        _fields = new float[_bs][];
+        _fieldsX = new float[_bs][];
+        _fieldTime = new double[_bs];
+        _urgent = new bool[_bs];
+        for (int t = 0; t < _bs; t++)
         {
             _fields[t] = new float[_nc];
             _fieldsX[t] = _useFrugal ? new float[_nc] : Array.Empty<float>();
             _fieldTime[t] = -1e9; _urgent[t] = true;
         }
         RebuildCosts();
-        for (int t = 0; t < _fields.Length; t++) RefreshField(t);
+        _fronted = new byte[_nc];
+        if (_growthOn) InitGrowth(seed);
+        for (int t = 0; t < _nb; t++) RefreshField(t);
         SetWalkerCount(walkers ?? _p.DefaultWalkers);
     }
 
@@ -109,8 +132,8 @@ public sealed partial class World
 
     private void RefreshField(int t)
     {
-        CostField.Dijkstra(_g, _map.Buildings[t].Door, _cost, _fields[t], _heap);
-        if (_useFrugal) CostField.Dijkstra(_g, _map.Buildings[t].Door, _costX, _fieldsX[t], _heap);
+        CostField.Dijkstra(_g, _b[t].Door, _cost, _fields[t], _heap);
+        if (_useFrugal) CostField.Dijkstra(_g, _b[t].Door, _costX, _fieldsX[t], _heap);
         _fieldTime[t] = _time;
         _urgent[t] = false;
     }
@@ -121,8 +144,8 @@ public sealed partial class World
         // After an edit, destination fields first: most walkers out are heading to one.
         int budget = _p.UrgentFieldsPerTick;
         for (int pass = 0; pass < 2; pass++)
-            for (int t = 0; t < _fields.Length && budget > 0; t++)
-                if (_urgent[t] && (_map.Buildings[t].Kind == BuildingKind.House) == (pass == 1))
+            for (int t = 0; t < _nb && budget > 0; t++)
+                if (_urgent[t] && (_b[t].Kind == BuildingKind.House) == (pass == 1))
                 {
                     if (!rebuilt) { RebuildCosts(); rebuilt = true; }
                     RefreshField(t);
@@ -131,7 +154,7 @@ public sealed partial class World
         if (rebuilt) return;
         // Otherwise rebuild at most the one stalest field, once it is due.
         int oldest = 0;
-        for (int t = 1; t < _fields.Length; t++) if (_fieldTime[t] < _fieldTime[oldest]) oldest = t;
+        for (int t = 1; t < _nb; t++) if (_fieldTime[t] < _fieldTime[oldest]) oldest = t;
         if (_time - _fieldTime[oldest] >= _p.FieldRefreshSimSec) { RebuildCosts(); RefreshField(oldest); }
     }
 
@@ -150,7 +173,10 @@ public sealed partial class World
         for (int i = 0; i < _nc; i++) occ[i] = (float)(occ[i] * keep + here[i] * a);
         float[] tr = _tripRate;
         double tk = Math.Exp(-dt / (_p.TripRateDays * _p.DaySimSec));
-        for (int i = 0; i < tr.Length; i++) tr[i] = (float)(tr[i] * tk);
+        for (int h = 0, nb = _nb; h < nb; h++)
+            for (int i = h * _bs, e = i + nb; i < e; i++) tr[i] = (float)(tr[i] * tk);
+        // A new shower turns worn ground to mud at once; dry ground clears it at once.
+        if (_rainOn && (_weather.Update(_time) || (_mudCells > 0 && _weather.Wetness <= 0 && !_weather.Raining))) UpdateMud();
         RefreshFields();
         if (_river != null) RiverStep(dt);
         for (int i = 0; i < _walkerCount; i++) { _curWalker = i; StepWalker(ref _walkers[i], dt); }
@@ -158,8 +184,14 @@ public sealed partial class World
         {
             _nextDecay += _p.DecayStepSimSec;
             Decay(_p.DecayStepSimSec);
+            if (_rainOn) UpdateMud();
             if (_metrics.FirstTrailTime < 0 && _metrics.LargestTrail(_wear, _land, _p.FirstTrailCells) >= _p.FirstTrailCells)
                 _metrics.FirstTrailTime = _time;
+        }
+        if (_growthOn && _time >= _nextHouseTime)
+        {
+            _nextHouseTime += _p.HouseEverySimSec;
+            GrowHouse();
         }
         if (_river != null) RiverSettle();
     }
@@ -189,6 +221,8 @@ public sealed partial class World
             double nw = w * f;
             // Gravel stops a trail regrowing: wear under it never decays below trail.
             if (_gravel[i] != 0 && w >= t25 && nw < t25) nw = t25;
+            // A fronted cell (a house's frontage) does not fade below track while the house stands.
+            if (_fronted[i] != 0 && w >= p.FrontageFloor && nw < p.FrontageFloor) nw = p.FrontageFloor;
             wear[i] = nw < 0.01 ? 0 : (float)nw;
         }
     }

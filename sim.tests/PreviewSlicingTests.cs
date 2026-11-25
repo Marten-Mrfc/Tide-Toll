@@ -78,8 +78,15 @@ public class PreviewSlicingTests
     [Fact]
     public void ASliceOfAThousandUnitsIsShort()
     {
-        // Thread CPU time, so a busy machine does not count; the worst of three previews' slices must stay under 2 ms.
-        var w = new World(2, 200);
+        // Thread CPU time, so a busy machine does not count; the worst of three previews' slices must stay under 2 ms,
+        // on both presets (the finished toy's preview makes two fields a destination and traces in its own phase).
+        foreach (var preset in new[] { SimParams.Legacy, SimParams.Toy })
+            WorstSlice(preset);
+    }
+
+    private static void WorstSlice(SimParams preset)
+    {
+        var w = new World(2, 200, preset);
         Run(w, 20);
         var change = new WhatIf { Block = FenceAcrossRoute(w, w.Houses[0], 0.3) };
         double best = double.PositiveInfinity;
@@ -97,7 +104,7 @@ public class PreviewSlicingTests
             }
             best = Math.Min(best, worst);
         }
-        Console.WriteLine($"PREVIEW SLICE worst 1000-unit slice {best:F2} ms ({(CpuClock.IsCpuTime ? "thread CPU time" : "wall time")})");
+        Console.WriteLine($"PREVIEW SLICE ({(preset.PreviewV2 ? "Toy" : "Legacy")}) worst 1000-unit slice {best:F2} ms ({(CpuClock.IsCpuTime ? "thread CPU time" : "wall time")})");
         if (TickBench.IsRelease) Assert.True(best < 2, $"worst slice {best:F2} ms");
     }
 }

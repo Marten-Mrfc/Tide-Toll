@@ -33,12 +33,20 @@ public class ToyV2ToolTests
     {
         var g = Golden2.Root.GetProperty("edits")[0];
         Assert.False(g.GetProperty("opts").GetProperty("rain").GetBoolean());
-        var w = new World(g.GetProperty("seed").GetInt32(), g.GetProperty("walkers").GetInt32(), Toy);
+        ReplayEdits(g, Toy);
+    }
+
+    /// <summary>
+    /// Replays one edits-at-fixed-ticks record of the comparison data on <paramref name="p"/>: every tool outcome, the
+    /// forced rain and its stop, and every hash each 50 ticks (positions drift by an ulp and are not compared).
+    /// </summary>
+    internal static void ReplayEdits(JsonElement g, SimParams p)
+    {
+        var w = new World(g.GetProperty("seed").GetInt32(), g.GetProperty("walkers").GetInt32(), p);
         var log = g.GetProperty("log").EnumerateArray().ToArray();
         var rows = g.GetProperty("rows").EnumerateArray().Select(r => r.EnumerateArray().Select(x => x.GetDouble()).ToArray()).ToArray();
         int li = 0, ri = 0;
         var gates = new List<int[]>();
-        var pos = new double[w.WalkerCount * 2];
         for (int t = 1; t <= 1500; t++)
         {
             w.Tick();
@@ -98,7 +106,13 @@ public class ToyV2ToolTests
                         break;
                     case "startRain":
                     case "stopRain":
-                        break; // rain is off in this world (and not ported yet)
+                        if (op == "startRain") w.StartRain(); else w.StopRain(dry: true);
+                        var x = w.Weather;
+                        double[] wx = { x.Rain, x.Wetness, x.Raining ? 1 : 0, x.RainStart, x.RainEnd, x.MudUntil, x.RainDays };
+                        if (w.RainOn)
+                            Assert.True(e.GetProperty("weather").EnumerateArray().Select(Golden2.D).SequenceEqual(wx), $"tick {t}: weather after {op} [{string.Join(",", wx)}]");
+                        Assert.Equal(e.GetProperty("mudCells").GetInt32(), w.MudCells);
+                        break;
                     default:
                         Assert.Fail($"unknown op {op}");
                         break;
@@ -108,12 +122,11 @@ public class ToyV2ToolTests
             {
                 var r = rows[ri++];
                 Assert.Equal(t, (int)r[0]);
-                for (int i = 0; i < w.WalkerCount; i++) { pos[2 * i] = w.Walkers[i].X; pos[2 * i + 1] = w.Walkers[i].Y; }
                 // columns: tick, wear, cost, costX, gravel, gate, gatePair, fence, mud, version, flow, pos (positions drift by an ulp: not compared)
-                var now = new double[] { Fnv(w.Wear), Fnv(w.Cost), Fnv(w.CostX), Fnv(w.Gravel), Fnv(w.Gate), Fnv(w.GatePair), Fnv(w.Fence), -1, w.Version, Fnv(w.Flow) };
+                var now = new double[] { Fnv(w.Wear), Fnv(w.Cost), Fnv(w.CostX), Fnv(w.Gravel), Fnv(w.Gate), Fnv(w.GatePair), Fnv(w.Fence), Fnv(w.Mud), w.Version, Fnv(w.Flow) };
                 string[] names = { "wear", "cost", "costX", "gravel", "gate", "gatePair", "fence", "mud", "version", "flow" };
                 for (int k = 0; k < now.Length; k++)
-                    if (names[k] != "mud") Assert.True(r[k + 1] == now[k], $"tick {t}: {names[k]} differs from the toy");
+                    Assert.True(r[k + 1] == now[k], $"tick {t}: {names[k]} differs from the toy");
             }
         }
         Assert.Equal(log.Length, li);

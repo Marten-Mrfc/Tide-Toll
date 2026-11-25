@@ -9,29 +9,30 @@ public sealed partial class World
     public void SetWalkerCount(int n)
     {
         n = Math.Max(0, Math.Min(_p.MaxWalkers, n));
-        int[] houses = _byKind[(int)BuildingKind.House];
         while (_walkerCount > n)
         {
             ref Walker w = ref _walkers[--_walkerCount];
             if (w.Visible) _here[w.Cell]--;
         }
-        while (_walkerCount < n && houses.Length > 0)
+        while (_walkerCount < n && _houseCount > 0) AddWalker(_houses[_nextId % _houseCount], ref _rng);
+    }
+
+    /// <summary>A new villager at home in building <paramref name="home"/>; its dwell and taste come from <paramref name="rng"/>.</summary>
+    private void AddWalker(int home, ref Mulberry32 rng)
+    {
+        int id = _nextId++;
+        int door = _b[home].Door;
+        double x = door % _n + 0.5, y = door / _n + 0.5;
+        // Timer first, taste second: the toy's order of draws.
+        double timer = rng.NextDouble() * _p.DwellSimSec * 2;
+        double taste = (rng.NextDouble() * 2 - 1) * _p.TasteNoise;
+        _walkers[_walkerCount++] = new Walker
         {
-            int id = _nextId++;
-            int home = houses[id % houses.Length];
-            int door = _map.Buildings[home].Door;
-            double x = door % _n + 0.5, y = door / _n + 0.5;
-            // Timer first, taste second: the toy's order of draws.
-            double timer = _rng.NextDouble() * _p.DwellSimSec * 2;
-            double taste = (_rng.NextDouble() * 2 - 1) * _p.TasteNoise;
-            _walkers[_walkerCount++] = new Walker
-            {
-                Id = id, Home = home, State = WalkState.Home, Cell = door, AimX = x, AimY = y, HasAim = false,
-                Timer = timer, Target = home, TripStart = door, TripLen = 0, Stuck = 0, Taste = taste,
-                Explorer = Hash.Hash2(id, 77) < _p.ExplorerShare,
-                X = x, Y = y, Px = x, Py = y,
-            };
-        }
+            Id = id, Home = home, State = WalkState.Home, Cell = door, AimX = x, AimY = y, HasAim = false,
+            Timer = timer, Target = home, TripStart = door, TripLen = 0, Stuck = 0, Taste = taste,
+            Explorer = Hash.Hash2(id, 77) < _p.ExplorerShare,
+            X = x, Y = y, Px = x, Py = y,
+        };
     }
 
     private double Dwell()
@@ -71,7 +72,7 @@ public sealed partial class World
         w.HasAim = false;
         w.Frugal = w.Explorer || OverDetourCap(w.Cell, target);
         _here[w.Cell]++;
-        if (state == WalkState.Out) _tripRate[w.Home * _map.Buildings.Length + target] += 1;
+        if (state == WalkState.Out) _tripRate[w.Home * _bs + target] += 1;
     }
 
     /// <summary>Whether a trip from <paramref name="start"/> to building <paramref name="target"/> is long enough a detour to be walked frugally.</summary>
@@ -79,7 +80,7 @@ public sealed partial class World
     {
         double cap = _p.DetourCap;
         if (!(cap > 0)) return false;
-        int door = _map.Buildings[target].Door, n = _n;
+        int door = _b[target].Door, n = _n;
         double d = JsMath.Hypot(start % n - door % n, start / n - door / n);
         return d > 4 && RouteLength(_fields[target], _cost, start, door) > cap * d;
     }
@@ -102,7 +103,7 @@ public sealed partial class World
         w.Hold = WalkerHold.None;
         if (w.Cargo != 0 && _river != null) _rs!.GrainLost += w.Cargo;
         w.Cargo = 0;
-        w.Cell = _map.Buildings[w.Home].Door;
+        w.Cell = _b[w.Home].Door;
         w.State = WalkState.Home;
         w.Timer = _p.RetrySimSec;
         w.HasAim = false;
@@ -114,7 +115,7 @@ public sealed partial class World
     private bool ComputeAim(ref Walker w)
     {
         bool fr = w.Frugal;
-        bool ok = ChooseAim(fr ? _fieldsX[w.Target] : _fields[w.Target], fr ? _costX : _cost, w.X, w.Y, w.Cell, _map.Buildings[w.Target].Door,
+        bool ok = ChooseAim(fr ? _fieldsX[w.Target] : _fields[w.Target], fr ? _costX : _cost, w.X, w.Y, w.Cell, _b[w.Target].Door,
             fr ? 0 : w.Taste, true, w.Id, _aimPath, out double ax, out double ay);
         if (ok) { w.AimX = ax; w.AimY = ay; w.HasAim = true; }
         return ok;
@@ -130,6 +131,7 @@ public sealed partial class World
             s *= _gravel[c] != 0 ? _p.GravelSpeedMul : _stateSpeedMul[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
             if (_map.Ford[c] != 0) s *= _p.FordSpeedMul;
             if (_gate[c] != 0) s *= _gatePair[c] != 0 ? 1 / (1 + (1 / _p.GateSpeedMul - 1) / 2) : _p.GateSpeedMul;
+            if (_rainOn) s *= MudSpeed(c);
             if (_river != null && _flooded && _band[c] != 0) s *= _river.FloodWadeSpeedMul;
         }
         double rho = _here[c] / _p.CellAreaM2;
@@ -190,7 +192,7 @@ public sealed partial class World
             }
         }
         // Walking.
-        if (w.Cell == _map.Buildings[w.Target].Door) { Arrive(ref w); return; }
+        if (w.Cell == _b[w.Target].Door) { Arrive(ref w); return; }
         if (!w.HasAim && !ComputeAim(ref w))
         {
             w.Stuck += dt;
@@ -235,7 +237,7 @@ public sealed partial class World
             if (move >= d) w.HasAim = false;
             if (!w.HasAim)
             {
-                if (w.Cell == _map.Buildings[w.Target].Door || !ComputeAim(ref w)) break;
+                if (w.Cell == _b[w.Target].Door || !ComputeAim(ref w)) break;
             }
         }
     }

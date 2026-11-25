@@ -47,18 +47,24 @@ public sealed partial class World
     public ReadOnlySpan<byte> Crop => _map.Crop;
     public ReadOnlySpan<byte> Footprint => _map.Footprint;
     public ReadOnlySpan<float> RiverX => _map.RiverX;
-    /// <summary>Trips out per (house, destination) pair, decaying; index home * Buildings.Length + dest.</summary>
+    /// <summary>Trips out per (house, destination) pair, decaying; index home * <see cref="TripRateStride"/> + dest.</summary>
     public ReadOnlySpan<float> TripRate => _tripRate;
+    /// <summary>
+    /// Row length of <see cref="TripRate"/>: Buildings.Length when growth is off; with growth on, room for every house it
+    /// can add, so the table never moves (the toy copies it into a bigger one per house: same values).
+    /// </summary>
+    public int TripRateStride => _bs;
 
     /// <summary>Walkers walking on each cell right now (Out or Back).</summary>
     public ReadOnlySpan<ushort> WalkersOnCell => _here;
     public ReadOnlySpan<Walker> Walkers => new(_walkers, 0, _walkerCount);
     public int WalkerCount => _walkerCount;
-    public ReadOnlySpan<Building> Buildings => _map.Buildings;
-    /// <summary>Building indices of the houses.</summary>
-    public ReadOnlySpan<int> Houses => _byKind[(int)BuildingKind.House];
-    /// <summary>Building indices of one kind, in map order.</summary>
-    public ReadOnlySpan<int> OfKind(BuildingKind k) => _byKind[(int)k];
+    /// <summary>The buildings standing now: the map's, then houses added by growth (indices never change).</summary>
+    public ReadOnlySpan<Building> Buildings => new(_b, 0, _nb);
+    /// <summary>Building indices of the houses, the map's first, then grown ones in the order they appeared.</summary>
+    public ReadOnlySpan<int> Houses => new(_houses, 0, _houseCount);
+    /// <summary>Building indices of one kind, in map order (houses: then grown ones).</summary>
+    public ReadOnlySpan<int> OfKind(BuildingKind k) => k == BuildingKind.House ? Houses : _byKind[(int)k];
     public IReadOnlyList<Bridge> Bridges => _bridges;
     /// <summary>Cost-to-go field towards building t's door.</summary>
     public ReadOnlySpan<float> Field(int t) => _fields[t];
@@ -72,7 +78,7 @@ public sealed partial class World
     public uint RngState => _rng.State;
 
     /// <summary>Recent trips per day from house <paramref name="home"/> to building <paramref name="dest"/>.</summary>
-    public double TripRatePerDay(int home, int dest) => _tripRate[home * _map.Buildings.Length + dest] / _p.TripRateDays;
+    public double TripRatePerDay(int home, int dest) => _tripRate[home * _bs + dest] / _p.TripRateDays;
 
     /// <summary>Walkers drawn on the map (those not inside a building).</summary>
     public int WalkersOut()

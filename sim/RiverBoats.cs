@@ -227,7 +227,7 @@ public sealed partial class World
     /// <summary>Hook at the end of a field visit: take one grain and carry it to the landing. False when there is nothing to haul.</summary>
     private bool HaulLeg(ref Walker w)
     {
-        if (_landingB < 0 || w.Cargo != 0 || _map.Buildings[w.Target].Kind != BuildingKind.Field) return false;
+        if (_landingB < 0 || w.Cargo != 0 || _b[w.Target].Kind != BuildingKind.Field) return false;
         if (!(_fields[_landingB][w.Cell] < float.PositiveInfinity)) return false;
         w.Cargo = 1;
         Depart(ref w, _landingB, WalkState.Out);
@@ -264,7 +264,7 @@ public sealed partial class World
             }
         }
         var rs = _rs!;
-        if (rs.MarketToday >= r.MarketUnitsPerHouseDay * _byKind[(int)BuildingKind.House].Length) { rs.GrainUnsold++; return; }
+        if (rs.MarketToday >= r.MarketUnitsPerHouseDay * _houseCount) { rs.GrainUnsold++; return; }
         rs.MarketToday++;
         Earn(r.GrainPrice * r.MarketShare, false);
         rs.GrainToMarket++;

@@ -111,6 +111,47 @@ public sealed record SimParams
     /// <summary>Added to a gate cell's step cost after crowding (half each on the two cells of a stair-corner gate).</summary>
     public double GateCost { get; init; } = 1.5;
     public double GateSpeedMul { get; init; } = 0.4;
+    /// <summary>
+    /// Rain and mud (toy round 4; RainWeather.cs). Off in both presets here (the toy's player default is on; the gate runs
+    /// with it off) and always off while the river rules are on (the river has its own flood mud). A weather stream of its
+    /// own rolls once a day for rain; while it rains every unpaved land cell at wear 25 or more is mud, until the ground dries.
+    /// </summary>
+    public bool RainOn { get; init; }
+    /// <summary>Chance of rain per day, by season (spring, summer, autumn, winter).</summary>
+    public IReadOnlyList<double> RainChance { get; init; } = new[] { 0.3, 0.15, 0.4, 0.0 };
+    /// <summary>Days of mud counting the rain day, by season.</summary>
+    public IReadOnlyList<double> MudDays { get; init; } = new[] { 2.0, 2.0, 2.0, 2.0 };
+    public double RainRampSimSec { get; init; } = 2;
+    /// <summary>The ground goes from dry to fully wet over this long once rain starts.</summary>
+    public double WetUpSimSec { get; init; } = 3;
+    /// <summary>Mud dries out over this last part of its run.</summary>
+    public double DrySimSec { get; init; } = 7.5;
+    /// <summary>Muddy cost by ground state, on the ordinary walkers' own worn-ground cost (MudReplace 0), blended with the dry cost by wetness.</summary>
+    public IReadOnlyList<double> MudCostMul { get; init; } = new[] { 1.0, 1.0, 1.6, 1.7, 1.8 };
+    public double MudReplace { get; init; } = 0;
+    /// <summary>Walking speed on mud at full wetness.</summary>
+    public double MudSpeedMul { get; init; } = 0.7;
+
+    /// <summary>
+    /// House growth by the frontage rules (toy round 4; Growth.cs). Off in both presets here (the toy's player default is
+    /// on; the gate runs with it off) and always off while the river rules are on (their prices assume a village of fixed
+    /// size). A Hamlet cottage (3 x 3 with its garden, HouseholdSize villagers) appears every HouseEverySimSec on the best
+    /// valid plot while the population is below HamletTarget; new villagers draw from a growth stream of their own.
+    /// </summary>
+    public bool GrowthOn { get; init; }
+    public double HouseEverySimSec { get; init; } = 30;
+    public double HouseFirstSimSec { get; init; } = 30;
+    public int HamletTarget { get; init; } = 250;
+    public int HouseholdSize { get; init; } = 3;
+    /// <summary>A plot's door must face a cell this worn (track).</summary>
+    public double FrontageWear { get; init; } = 50;
+    /// <summary>... and its footprint overlap no cell this worn (trail).</summary>
+    public double PlotClearWear { get; init; } = 25;
+    /// <summary>A fronted cell does not decay below this while its house stands.</summary>
+    public double FrontageFloor { get; init; } = 50;
+    /// <summary>+1 score per house within this many cells, up to 3.</summary>
+    public double PlotNeighbourRadius { get; init; } = 6;
+
     public double FieldRefreshSimSec { get; init; } = 5;
     public int UrgentFieldsPerTick { get; init; } = 1;
 
@@ -146,6 +187,11 @@ public sealed record SimParams
     public double SecondsPerTick => 1.0 / TickHz;
     /// <summary>Whether walkers ever use the frugal view (otherwise its costs and fields are not built).</summary>
     public bool UseFrugal => ExplorerShare > 0 || DetourCap > 0;
+    /// <summary>
+    /// The most houses growth can add (each brings HouseholdSize villagers and none comes once the town would pass
+    /// min(HamletTarget, MaxWalkers)): the world pre-sizes its buildings, fields and trip table for them.
+    /// </summary>
+    public int MaxGrownHouses => Math.Min(HamletTarget, MaxWalkers) / HouseholdSize + 1;
 
     /// <summary>The ground state of a cell with wear w (the toy's groundOf).</summary>
     public Ground GroundOf(double w, bool hollow)
@@ -160,7 +206,9 @@ public sealed record SimParams
     {
         if (GridWidth != GridHeight) throw new ArgumentException("The world needs a square grid.");
         if (GridWidth < 64) throw new ArgumentException("The map generator needs at least 64 cells per side.");
+        if (RainChance.Count != 4 || MudDays.Count != 4 || MudCostMul.Count != 5) throw new ArgumentException("RainChance and MudDays need one value per season, MudCostMul one per Ground state.");
         if (SurfaceCost.Count != 5 || StateSpeedMul.Count != 5) throw new ArgumentException("SurfaceCost and StateSpeedMul need one value per Ground state.");
+        if (HouseholdSize < 1) throw new ArgumentException("HouseholdSize must be at least 1.");
         if (MaxWalkers < 0 || MetricBuckets < 1 || Lookahead < 1) throw new ArgumentException("Invalid walker, bucket or lookahead count.");
     }
 }

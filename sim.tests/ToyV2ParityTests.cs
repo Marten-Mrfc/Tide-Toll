@@ -267,10 +267,16 @@ public class ToyV2ParityTests
     }
 
     /// <summary>Runs one off trace of the finished toy on SimParams.Toy; reports the first day each hash differs.</summary>
-    internal static (bool ok, string report) TraceV2(JsonElement t, int days)
+    internal static (bool ok, string report) TraceV2(JsonElement t, int days, SimParams? preset = null)
     {
         int seed = t.GetProperty("seed").GetInt32(), walkers = t.GetProperty("walkers").GetInt32();
-        var w = new World(seed, walkers, Toy);
+        var w = new World(seed, walkers, preset ?? Toy);
+        // Traces with rain or growth on also hash the mud and record the weather, houses and walkers every day.
+        bool live = t.TryGetProperty("mudFnv", out var mudEl);
+        uint[] mudGold = live ? Golden2.U(mudEl) : Array.Empty<uint>();
+        var wxGold = live ? t.GetProperty("weather").EnumerateArray().Select(a => a.EnumerateArray().Select(Golden2.D).ToArray()).ToArray() : Array.Empty<double[]>();
+        int[] housesGold = live ? Golden2.I(t.GetProperty("houses")) : Array.Empty<int>(), walkGold = live ? Golden2.I(t.GetProperty("walkerCount")) : Array.Empty<int>();
+        int mudDiff = -1, wxDiff = -1, popDiff = -1;
         int tpd = w.Params.TicksPerDay;
         var names = new[] { "wear", "flow", "cost", "costX", "positions" };
         var gold = new[] { "wearFnv", "flowFnv", "costFnv", "costXFnv", "posFnv" }.Select(k => Golden2.U(t.GetProperty(k))).ToArray();
@@ -288,12 +294,21 @@ public class ToyV2ParityTests
             if (tk % tpd == tpd - 1)
             {
                 int d = tk / tpd;
-                for (int i = 0; i < walkers; i++) { pos[2 * i] = w.Walkers[i].X; pos[2 * i + 1] = w.Walkers[i].Y; }
+                if (pos.Length != w.WalkerCount * 2) pos = new double[w.WalkerCount * 2];
+                for (int i = 0; i < w.WalkerCount; i++) { pos[2 * i] = w.Walkers[i].X; pos[2 * i + 1] = w.Walkers[i].Y; }
                 uint[] now = { Fnv(w.Wear), Fnv(w.Flow), Fnv(w.Cost), Fnv(w.CostX), Fnv<double>(pos) };
                 for (int k = 0; k < 5; k++) if (diff[k] < 0 && now[k] != gold[k][d]) diff[k] = d + 1;
                 int fr = 0;
                 foreach (var k in w.Walkers) if (k.Frugal && k.Visible) fr++;
                 if (frugalDiff < 0 && fr != frugal[d]) frugalDiff = d + 1;
+                if (live)
+                {
+                    var x = w.Weather;
+                    double[] wx = { x.Rain, x.Wetness, x.Raining ? 1 : 0, x.RainStart, x.RainEnd, x.MudUntil, x.RainDays };
+                    if (mudDiff < 0 && Fnv(w.Mud) != mudGold[d]) mudDiff = d + 1;
+                    if (wxDiff < 0 && !wx.SequenceEqual(wxGold[d])) wxDiff = d + 1;
+                    if (popDiff < 0 && (w.Houses.Length != housesGold[d] || w.WalkerCount != walkGold[d])) popDiff = d + 1;
+                }
             }
             ref readonly var k0 = ref w.Walkers[0];
             if (!tripDone)
@@ -309,9 +324,15 @@ public class ToyV2ParityTests
         var parts = new List<string>();
         for (int k = 0; k < 5; k++) parts.Add($"{names[k]} {(diff[k] < 0 ? "identical" : $"first differs on day {diff[k]}")}");
         parts.Add($"frugal walkers out {(frugalDiff < 0 ? "identical" : $"first differ on day {frugalDiff}")}");
+        if (live)
+        {
+            parts.Add($"mud {(mudDiff < 0 ? "identical" : $"first differs on day {mudDiff}")}");
+            parts.Add($"weather {(wxDiff < 0 ? "identical" : $"first differs on day {wxDiff}")}");
+            parts.Add($"houses and walkers {(popDiff < 0 ? "identical" : $"first differ on day {popDiff}")}");
+        }
         string report = $"seed {seed}, {walkers} walkers, {days} days: {string.Join("; ", parts)}; walker 0's first trip {(tripOk ? "identical" : "differs")}; explorers {explorers} {(exOk ? "identical" : "differ")}";
         // Positions drift by an ulp where .NET's exp differs from V8's (README, Parity); wear, costs and fields must not.
-        bool ok = diff[0] < 0 && diff[1] < 0 && diff[2] < 0 && diff[3] < 0 && frugalDiff < 0 && tripOk && exOk;
+        bool ok = diff[0] < 0 && diff[1] < 0 && diff[2] < 0 && diff[3] < 0 && frugalDiff < 0 && tripOk && exOk && mudDiff < 0 && wxDiff < 0 && popDiff < 0;
         if (days == 45)
         {
             var f = t.GetProperty("final");
@@ -321,6 +342,15 @@ public class ToyV2ParityTests
                 && s.FirstTrailTime == f.GetProperty("firstTrailTime").GetDouble();
             report += $"; final stats {(statsOk ? "identical" : "differ")}";
             ok &= statsOk;
+            if (t.TryGetProperty("grown", out var gr))
+            {
+                // [building, x, y, door, front, time, day] per grown house, in order.
+                var want = gr.EnumerateArray().Select(a => a.EnumerateArray().Select(Golden2.D).ToArray()).ToArray();
+                var have = w.Grown.ToArray().Select(h => new double[] { h.Building, h.X, h.Y, h.Door, h.Front, h.Time, h.Day }).ToArray();
+                bool grownOk = want.Length == have.Length && want.Zip(have).All(z => z.First.SequenceEqual(z.Second));
+                report += $"; grown houses {have.Length} {(grownOk ? "identical" : $"differ (toy {want.Length})")}";
+                ok &= grownOk;
+            }
         }
         return (ok, report);
     }

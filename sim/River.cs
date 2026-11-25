@@ -109,7 +109,7 @@ public sealed partial class World
         if (_ticks % _p.TicksPerSeason == 0)
         {
             var r = _river!;
-            double tax = r.HearthTax * _byKind[(int)BuildingKind.House].Length;
+            double tax = r.HearthTax * _houseCount;
             double costs = 0;
             foreach (var x in _crossings)
             {

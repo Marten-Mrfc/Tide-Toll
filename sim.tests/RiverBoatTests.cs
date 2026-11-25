@@ -12,7 +12,7 @@ public class RiverBoatTests
     internal static readonly RiverRules NoSchedule = RiverRules.Default with { RowboatGapSec = 1e9, BargeGapSec = 1e9, HaulGoods = false };
 
     internal static World Make(int seed = 1, int walkers = 0, RiverRules? rules = null)
-        => new(seed, walkers, SimParams.Default with { River = rules ?? NoSchedule });
+        => new(seed, walkers, RiverTestRules.Trail with { River = rules ?? NoSchedule });
 
     /// <summary>Builds a crossing at the first valid row from LandingRow + 4 southwards.</summary>
     internal static Crossing Build(World w, CrossingType t, int from = 4)
