@@ -31,6 +31,17 @@ public class PerfTests
             }
         }
     }
+
+    [ReleaseFact]
+    public void TickAt500WalkersWithTheRiverRulesIsWithinBudgetAndAllocationFree()
+    {
+        var r = TickBench.Measure(1, 500, river: true);
+        _out.WriteLine(TickBench.Line(r));
+        Console.WriteLine(TickBench.Line(r));
+        Assert.Equal(0, r.AllocatedBytes);
+        Assert.True(r.MeanMs < 5, TickBench.Line(r));
+        Assert.True(r.P99Ms < 25, TickBench.Line(r));
+    }
 }
 
 /// <summary>A fact that is skipped in Debug builds, where timings mean nothing.</summary>

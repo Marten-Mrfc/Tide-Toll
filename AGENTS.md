@@ -16,7 +16,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 | `sim/` | `TideToll.Sim`: the engine-free simulation (map, wear, walkers, tools, metrics, flow preview) |
 | `sim.tests/` | `TideToll.Sim.Tests` (xUnit); `Harness/` holds the toy's checks, also compiled into the tools |
 | `sim.tests/golden/` | `toy-golden.json` and its generator `export.mjs` (never edit the JSON by hand) |
-| `tools/TideToll.Tools/` | headless runner: `run`, `bench`, `gate`, `checks` |
+| `tools/TideToll.Tools/` | headless runner: `run`, `bench`, `gate`, `checks`, `river` (the river strategy bot) |
 | `game/` | the Godot project; references `sim/` |
 | `prototypes/desire-lines/` | the browser toy (Prototype 1) |
 | `assets/` | shipped art and sound, with `assets/LEDGER.csv` |
@@ -29,6 +29,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 - Same seed and same commands at the same ticks give the same run. Iterate arrays, never hash sets or dictionaries.
 - The game reads the simulation through read-only spans and changes it only through commands (`World` API in `sim/README.md`).
 - Files under about 400 lines, one system per file.
+- The river rules (`SimParams.River`) are off by default and must stay invisible when off: `RiverOffBaselineTests` holds hashes recorded before they existed, and river code runs only behind `_river != null`.
 - Until PCG32 and integer costs land, the port keeps the toy's mulberry32, float32 storage and V8's `Math.hypot`, so the goldens stay exact. A deliberate change of results means regenerating the goldens.
 
 ## Hot-path rules (anything `World.Tick` calls)
@@ -46,6 +47,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
 dotnet run --project tools/TideToll.Tools -c Release -- run --seed 1 --walkers 500 --days 30
+dotnet run --project tools/TideToll.Tools -c Release -- river --sweep   # river strategies S1..S6 on 20 seeds (~2 min)
 node sim.tests/golden/export.mjs <toy-dir>   # regenerate goldens from a toy folder with node_modules
 ```
 
@@ -57,12 +59,12 @@ Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, 
 
 ## Interrupted work (temporary note from the lead, 25 November 2026)
 
-The container restarted at about 00:20 UTC and stopped the agents that were working. If your task covers one of these folders, an earlier agent with the same task was interrupted part-way, and its unfinished work is in the working tree and in the snapshot commits:
+The container restarted twice tonight (about 00:20 and 01:08 UTC) and stopped the agents that were working. If your task covers one of these folders, an earlier agent with the same task was interrupted near the end of its work, and that work is in the working tree and in the snapshot commits. Check each item of your task against what is there, keep what is good, finish or redo the rest, and run the checks again. Do not start again from nothing.
 
-- `game/` and `tools/`: the polish pass was nearly finished (ground shader, villagers, labels, trees, bookmarks, the review's fixes). See it with `git diff 9ead7ed -- game tools`. Check each item against your task, keep what is good, finish or redo the rest. Do not start again from nothing.
-- `sim/` and `sim.tests/`: the river rules had barely begun; see `git diff 9ead7ed -- sim sim.tests tools/TideToll.Tools`.
-- `assets/`: the river asset set was finished before the restart.
-- `prototypes/desire-lines/`: round 4 had not changed any file yet.
+- `sim/`, `sim.tests/` and `tools/TideToll.Tools/`: the river rules were written and all 78 fast tests passed; the agent was running `./check` and `./check --bench` and writing the README section when it stopped. See `git diff 9ead7ed -- sim sim.tests tools/TideToll.Tools`.
+- `prototypes/desire-lines/` (round 4, the rules): gate and gravel fixes, rain and mud and house growth were written in `src/sim` with tests in `test/rules.test.ts`, and the round 3 gate tables were saved to `test/g3-baseline.txt`; the agent was updating the README and adding a smoke check when it stopped. See `git diff 08fbde8 -- prototypes/desire-lines`.
+- `game/` and `tools/`: the polish pass is finished and passed `./check`.
+- `assets/`: the river asset set is finished.
 
 ## Git
 

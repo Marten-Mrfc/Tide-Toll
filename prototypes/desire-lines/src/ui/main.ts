@@ -84,7 +84,7 @@ const TOOLS: [Tool, string, string][] = [
 const TOOL_HINTS: Record<Tool, string> = {
   none: "",
   fence: "Fence: drag to draw a fence line.",
-  gravel: "Gravel: brush a strip along a trail.",
+  gravel: "Gravel: brush a strip on or beside a route.",
   gate: "Gate: tap a fence to put a gate in it.",
   bridge: "Footbridge: tap the river to lay one.",
   erase: "Erase: tap or drag over what to remove.",
@@ -148,6 +148,7 @@ window.addEventListener("keydown", e => {
 
 // ------------------------------------------------------------------ loop
 let acc = 0, last = performance.now(), fps = 60, tickMs = 0, hudAt = 0, simMs = 0;
+let plainTickMs = 1, heavyTickMs = 4; // moving averages of a plain tick and of one that rebuilds a field
 let tipText = "";
 /**
  * The preview readout: always on the status bar's second line, and with a
@@ -184,9 +185,15 @@ function frame(now: number) {
       const ts = performance.now();
       let done = 0;
       while (done < n) {
+        // An honest budget: a tick is only started if it should fit. Ticks that rebuild a route
+        // field cost about four plain ones, so each kind's cost is tracked; at least one tick a frame runs.
+        const heavy = world.nextTickRefreshes();
+        if (done > 0 && performance.now() - ts + (heavy ? heavyTickMs : plainTickMs) > TICK_BUDGET_MS) break;
+        const t1 = performance.now();
         world.tick();
+        const d = performance.now() - t1;
+        if (heavy) heavyTickMs = heavyTickMs * 0.8 + d * 0.2; else plainTickMs = plainTickMs * 0.8 + d * 0.2;
         done++;
-        if (performance.now() - ts > TICK_BUDGET_MS) break;
       }
       const spent = performance.now() - ts;
       simMs = spent;
@@ -257,6 +264,23 @@ const api = {
   placeGravel: (cells: CellList) => world.placeGravel(toCells(cells)),
   /** A gate on the fence at or next to cell (x, y); false if there is no fence with a way through. */
   placeGate: (x: number, y: number) => world.placeGate(world.gateCellAt(x + 0.5, y + 0.5)),
+  /** What the Gate tool would do at cell (x, y): the gate's cells, whether it removes one, or why not. */
+  gateTarget: (x: number, y: number) => world.gateTarget(x + 0.5, y + 0.5),
+  /** Rain now (debug): for `days` in-game days (default 1); mud lasts as after a rain day. */
+  startRain: (days = 1) => world.startRain(days * PARAMS.daySimSec),
+  /** Stops the rain (debug); with dry = true the mud goes at once too. */
+  stopRain: (dry = false) => world.stopRain(dry),
+  /**
+   * Weather and growth state for drawing and sound: rain (0..1, how hard it rains now), wetness (0..1),
+   * whether it is raining, the mud cell count (world.mud is the per-cell flag), and the houses grown so far.
+   */
+  weather() {
+    const wx = world.weather;
+    return { rainOn: world.rainOn, raining: wx.raining, rain: wx.rain, wetness: wx.wetness, mudCells: world.mudCells, rainDays: wx.rainDays, mudUntil: wx.mudUntil, simTime: world.time };
+  },
+  houses() {
+    return { growthOn: world.growthOn, grown: world.grown.map(h => ({ ...h })), population: world.walkers.length, target: PARAMS.hamletTarget, nextHouseTime: world.nextHouseTime };
+  },
   removeGate: (x: number, y: number) => world.removeGate(idx(x, y)),
   erase: (cells: CellList) => world.erase(toCells(cells)),
   /** Client coordinates of a cell centre, for tests that drive the pointer. */

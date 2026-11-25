@@ -180,7 +180,7 @@ export class World {
     const g = P.trailDiscount > 0 ? this.wearLut[Math.min(this.wearLut.length - 1, (this.wear[c] * WEAR_LUT_STEPS) | 0)]
       : P.surfaceCost[groundOf(this.wear[c], this.hollow[c] === 1)];
     const fr = 1 + (Math.max(P.minSurface, f * g) - 1) * P.frugalDisc;
-    this.gc[0] = Math.max(P.minSurface, f * (gravel ? Math.min(g, P.gravelCost) : g));
+    this.gc[0] = gravel ? Math.max(P.gravelFloor, f * Math.min(g, P.gravelCost)) : Math.max(P.minSurface, f * g);
     this.gc[1] = gravel ? Math.min(fr, P.gravelCost) : fr;
   }
   private gc = new Float64Array(2);
@@ -259,9 +259,9 @@ export class World {
   private cc = new Float64Array(2);
 
   /** Per-cell step costs for routing: ordinary walkers into `out`, frugal ones into `outX` if given. */
-  buildCosts(out: Float32Array, outX?: Float32Array): void {
+  buildCosts(out: Float32Array, outX?: Float32Array, from = 0, to = NC): void {
     const cc = this.cc;
-    for (let c = 0; c < NC; c++) {
+    for (let c = from; c < to; c++) {
       this.cellCosts(c, 0);
       out[c] = cc[0];
       if (outX) outX[c] = cc[1];
@@ -278,6 +278,18 @@ export class World {
     if (useFrugal()) dijkstra(this.map.buildings[t].door, this.costX, this.fieldsX[t], this.heap);
     this.fieldTime[t] = this.time;
     this.urgent[t] = false;
+  }
+
+  /**
+   * Whether the next tick will rebuild a cost-to-go field (about four times
+   * the work of a plain tick), so the page can keep its frame budget honest by
+   * not starting one it has no time for. Pure: changes nothing.
+   */
+  nextTickRefreshes(): boolean {
+    for (let t = 0; t < this.urgent.length; t++) if (this.urgent[t]) return true;
+    let oldest = 0;
+    for (let t = 1; t < this.fields.length; t++) if (this.fieldTime[t] < this.fieldTime[oldest]) oldest = t;
+    return this.time + 1 / PARAMS.tickHz - this.fieldTime[oldest] >= PARAMS.fieldRefreshSimSec;
   }
 
   private refreshFields() {
@@ -511,7 +523,8 @@ export class World {
     for (let i = 0; i < NC; i++) occ[i] = occ[i] * keep + here[i] * a;
     const tr = this.tripRate, tk = Math.exp(-dt / (P.tripRateDays * P.daySimSec));
     for (let i = 0; i < tr.length; i++) tr[i] *= tk;
-    if (this.rainOn && this.weather.update(this.time)) this.updateMud();
+    // A new shower turns worn ground to mud at once; dry ground clears it at once.
+    if (this.rainOn && (this.weather.update(this.time) || (this.mudCells > 0 && this.weather.wetness <= 0 && !this.weather.raining))) this.updateMud();
     this.refreshFields();
     for (const w of this.walkers) this.stepWalker(w, dt);
     if (this.time >= this.nextDecay) {
@@ -600,10 +613,9 @@ export class World {
     for (const c of p.fronted) this.fronted[c]++;
     const time = this.time;
     this.grown.push({ building: id, x: p.x, y: p.y, w: 3, h: 3, door: p.door, front: p.front, time, day: Math.floor(time / P.daySimSec) + 1 });
+    // Every field is rebuilt, one a tick, as after any edit (the new house's own one too: its
+    // villagers first dwell at home and walk to a destination, so they need it only seconds later).
     this.edited();
-    // The new house's own field first (its villagers walk home on it), then the rest as after any edit.
-    this.rebuildCosts();
-    this.refreshField(id);
     for (let i = 0; i < P.householdSize && this.walkers.length < P.maxWalkers; i++) this.addWalker(id, this.growthRng);
     return id;
   }
@@ -717,45 +729,39 @@ export class World {
     return n;
   }
 
-  /** Whether a gate at fence cell c would open a straight way through (open ground on two opposite sides). */
-  private gatePasses(c: number): boolean {
-    const x = c % N, y = (c / N) | 0;
-    const open = (xx: number, yy: number) => inside(xx, yy) && !this.blocked(idx(xx, yy));
-    return (open(x - 1, y) && open(x + 1, y)) || (open(x, y - 1) && open(x, y + 1));
-  }
-
   /**
-   * The fence cell a gate click at (x, y) lands on: the clicked cell or the
-   * nearest fence cell within one cell that has open ground on two opposite
-   * sides, so walkers can pass straight through. -1 if none (a gate needs a
-   * fence). An existing gate there is returned too (the Gate tool removes it).
+   * What the Gate tool does at (x, y) in cell units: the gate cells (one, or
+   * a stair corner's two) on the nearest fence cell within 2 cells that can
+   * take a gate, or the existing gate there (to remove), or why not. See gates.ts.
    */
-  gateCellAt(x: number, y: number): number {
-    x = Math.floor(x); y = Math.floor(y);
-    if (!inside(x, y)) return -1;
-    let best = -1, bd = Infinity;
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        if (!inside(x + dx, y + dy)) continue;
-        const c = idx(x + dx, y + dy), d = dx * dx + dy * dy;
-        if (!this.fence[c] || d >= bd) continue;
-        if (this.gate[c] || this.gatePasses(c)) { best = c; bd = d; }
-      }
-    return best;
+  gateTarget(x: number, y: number): GateTarget {
+    return gateTarget(this, x, y);
   }
 
-  /** Turns fence cell c into a gate; false if it is not a fence cell with a way through. */
+  /** The first cell of what gateTarget finds at (x, y), or -1 (kept for the page and older tests). */
+  gateCellAt(x: number, y: number): number {
+    const t = gateTarget(this, x, y);
+    return t.cells.length ? t.cells[0] : -1;
+  }
+
+  /** The cells a gate placed at fence cell c takes (one or two), or null if no gate can go there. */
+  gateCellsFor(c: number): number[] | null {
+    return c >= 0 && c < NC ? gateCellsFor(this, c) : null;
+  }
+
+  /** Puts a gate in the fence at cell c (and its stair partner if it needs one); false if it cannot go there. */
   placeGate(c: number): boolean {
-    if (c < 0 || c >= NC || !this.fence[c] || this.gate[c] || !this.gatePasses(c)) return false;
-    this.gate[c] = 1;
+    const cells = this.gateCellsFor(c);
+    if (!cells) return false;
+    for (const g of cells) { this.gate[g] = 1; this.gatePair[g] = cells.length === 2 ? 1 : 0; }
     this.edited();
     return true;
   }
 
-  /** Turns a gate back into plain fence. */
+  /** Turns a gate (both cells of a two-cell gate) back into plain fence. */
   removeGate(c: number): boolean {
     if (c < 0 || c >= NC || !this.gate[c]) return false;
-    this.gate[c] = 0;
+    for (const g of this.gatePair[c] ? gateGroup(this, c) : [c]) { this.gate[g] = 0; this.gatePair[g] = 0; }
     this.edited();
     return true;
   }
@@ -799,7 +805,11 @@ export class World {
     let n = 0;
     for (const c of cells) {
       if (c < 0 || c >= NC) continue;
-      if (this.fence[c]) { this.fence[c] = 0; this.gate[c] = 0; n++; }
+      if (this.fence[c]) {
+        // Half of a two-cell gate: its partner stays a gate on its own.
+        if (this.gatePair[c]) for (const g of gateGroup(this, c)) this.gatePair[g] = 0;
+        this.fence[c] = 0; this.gate[c] = 0; n++;
+      }
       if (this.gravel[c]) { this.gravel[c] = 0; n++; }
       const b = this.bridgeAt[c];
       if (b >= 0) {

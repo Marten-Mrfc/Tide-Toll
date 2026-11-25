@@ -17,43 +17,28 @@ import { PARAMS } from "../src/sim/params";
 import { N, NC, idx, inside, line4 } from "../src/sim/grid";
 import { traceRoute } from "../src/sim/path";
 import { FlowPreview, describePreview, Ov } from "../src/sim/preview";
-import { trailWidth } from "../src/sim/metrics";
+import { readFileSync } from "node:fs";
+import { seedRow, exactTable, Row, SAMPLE_FROM, DAYS, WIDTH_DAY } from "./g3";
+import { gateAngleTests, gateRefusalTests, fenceOverGravelTest, rainTests, growthTests, newDeterminismTest, newIsolationTest, gravelNoteTest } from "./rules.test";
 
 const TPD = PARAMS.daySimSec * PARAMS.tickHz; // ticks per in-game day
+/** The tool and preview checks below predate rain and growth: they run with both off. */
+const OFF = { rain: false, growth: false };
 const run = (w: World, days: number) => { for (let i = 0; i < days * TPD; i++) w.tick(); };
 const pct = (v: number) => (v * 100).toFixed(1).padStart(5) + "%";
 const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
 
 // ------------------------------------------------------------------ one seed
-const SAMPLE_FROM = 20, DAYS = 45;
-interface Row { seed: number; walkers: number; ft: number; det: number; cov: number; mean: number; min: number; max: number; meanD: number; below: number; width: number; }
-const WIDTH_DAY = 30; // trunk width is measured on this day
-
-function seedRow(seed: number, walkers: number): Row {
-  const w = new World(seed, walkers);
-  const trunk: number[] = [], trunkD: number[] = [], det: number[] = [], cov: number[] = [];
-  let width = 0;
-  for (let d = 1; d <= DAYS; d++) {
-    run(w, 1);
-    if (d === WIDTH_DAY) width = trailWidth(w.wear, w.land, w.metrics.window());
-    if (d >= SAMPLE_FROM) {
-      const s = w.stats();
-      trunk.push(s.trunkShare); trunkD.push(s.trunkShareD); det.push(s.detourRatio); cov.push(s.trailCoverage);
-    }
-  }
-  return {
-    seed, walkers, ft: w.metrics.firstTrailTime, det: mean(det), cov: mean(cov), mean: mean(trunk),
-    min: Math.min(...trunk), max: Math.max(...trunk), meanD: mean(trunkD), below: trunk.filter(v => v < 0.3 || v > 0.7).length, width,
-  };
-}
-
-
-type Job = { kind: "trunk"; seed: number; walkers: number } | { kind: "bridge"; seed: number };
+// seedRow (test/g3.ts) runs one seed for 45 days and keeps every daily sample.
+// The five old sets run with rain and house growth off, the new set with both on.
+type Job = { kind: "trunk"; seed: number; walkers: number; live?: boolean } | { kind: "bridge"; seed: number };
 interface BridgeRow { kind: "bridge"; seed: number; share: number; bridge: number; ford: number; row: number; }
 type Result = (Row & { kind: "trunk" }) | BridgeRow;
 
 function runJob(job: Job): Result {
-  return job.kind === "trunk" ? { kind: "trunk", ...seedRow(job.seed, job.walkers) } : { kind: "bridge", ...bridgeShare(job.seed) };
+  if (job.kind === "bridge") return { kind: "bridge", ...bridgeShare(job.seed) };
+  // live: rain and house growth at the player's defaults; otherwise both off.
+  return { kind: "trunk", ...seedRow(job.seed, job.walkers, job.live ? {} : { rain: false, growth: false }) };
 }
 
 function runSeedsInWorkers(jobs: Job[], threads: number): Promise<Result[]> {
@@ -135,7 +120,7 @@ class CrossingCounter {
 
 // ------------------------------------------------------------------ reroute
 function rerouteTest(seed: number) {
-  const w = new World(seed, 200);
+  const w = new World(seed, 200, OFF);
   run(w, 20);
   const { cell: best, fence } = fenceAcrossBusiest(w);
   const bx = best % N, by = (best / N) | 0;
@@ -181,7 +166,7 @@ function rerouteTest(seed: number) {
  * trip; then 1 day to re-plan and 4 days of counting river crossings.
  */
 function bridgeRun(seed: number) {
-  const w = new World(seed, 200);
+  const w = new World(seed, 200, OFF);
   run(w, 15);
   const market = w.buildings.find(b => b.kind === "market")!;
   const my = (market.door / N) | 0;
@@ -232,7 +217,7 @@ function gravelTest(seeds: number[]) {
   log(`\nGRAVEL TEST (seeds ${seeds.join(", ")}, 200 walkers): a 24-cell strip 3 cells beside a house-market route on day 1; 6 days later`);
   let pulled = 0, predicted = 0;
   for (const seed of seeds) {
-    const a = new World(seed, 200), b = new World(seed, 200);
+    const a = new World(seed, 200, OFF), b = new World(seed, 200, OFF);
     run(a, 1); run(b, 1);
     const strip = besideRoute(a, a.houses[seed % a.houses.length], 24, 3);
     if (!strip.length) { log(`  seed ${seed}: no spot for a strip`); continue; }
@@ -252,7 +237,7 @@ function gravelTest(seeds: number[]) {
   check(pulled >= seeds.length - 1, `gravel: a strip beside a young route pulls the trail onto it (3x the footsteps, half of it trail) on ${pulled} of ${seeds.length} seeds`);
 
   // No regrowth below trail: worn ground under gravel stays trail with no traffic.
-  const w = new World(1, 50);
+  const w = new World(1, 50, OFF);
   let g = -1, h = -1;
   for (let c = 0; c < NC && (g < 0 || h < 0); c++) {
     const x = c % N, y = (c / N) | 0;
@@ -290,7 +275,7 @@ function besideRoute(w: World, house: number, len: number, off: number): number[
  * through it at a time cost, and the trail re-forms through the gate.
  */
 function gateTest(seed: number) {
-  const w = new World(seed, 200);
+  const w = new World(seed, 200, OFF);
   run(w, 20);
   const { cell: best, fence } = fenceAcrossBusiest(w);
   const bx = best % N, by = (best / N) | 0;
@@ -360,7 +345,7 @@ function fenceAcrossBusiest(w: World): { cell: number; fence: number[] } {
 
 // ------------------------------------------------------------------ robustness
 function robustnessTest() {
-  const w = new World(5, 300);
+  const w = new World(5, 300, OFF);
   run(w, 4);
   // Wall a house in completely, fence a crowded strip, then check every walker.
   const h = w.buildings[w.houses[0]];
@@ -389,7 +374,7 @@ function robustnessTest() {
 }
 
 function determinismTest() {
-  const a = new World(9, 250), b = new World(9, 250);
+  const a = new World(9, 250, OFF), b = new World(9, 250, OFF);
   const act = (w: World) => { run(w, 3); w.placeFence(line4(30, 30, 50, 60)); w.placeBridge(w.map.riverX[20], 20); run(w, 2); };
   act(a); act(b);
   let same = true;
@@ -421,7 +406,7 @@ function rngState(w: World): number[] {
 }
 
 function previewIsolationTest() {
-  const a = new World(3, 250), b = new World(3, 250);
+  const a = new World(3, 250, OFF), b = new World(3, 250, OFF);
   run(a, 2); run(b, 2);
   let calls = 0;
   for (let i = 0; i < 3 * TPD; i++) {
@@ -445,7 +430,7 @@ function previewIsolationTest() {
 
 function previewBasicsTest() {
   log("\nFLOW PREVIEW: basics (seed 2, 200 walkers, day 20)");
-  const w = new World(2, 200);
+  const w = new World(2, 200, OFF);
   run(w, 20);
   const empty = w.previewFlows({});
   check(empty.changes.length === 0 && empty.reroutedPerDay === 0, "preview: an empty change shows no changed routes");
@@ -501,7 +486,7 @@ function previewAgreementTest(seeds: number[]) {
   log("seed | fence | pairs | readout       | detour points near new trail | trips/day after: all  new route | predicted/day");
   let predicted = 0, measured = 0, detourPts = 0, detourNear = 0, eraseShorter = 0;
   for (const seed of seeds) {
-    const w = new World(seed, 200);
+    const w = new World(seed, 200, OFF);
     run(w, 20);
     const fence = fenceAcrossRoute(w, w.houses[seed % w.houses.length], 0.3);
     const pv: FlowPreview = w.previewFlows({ block: fence }, 99);
@@ -605,6 +590,15 @@ async function main() {
   previewIsolationTest();
   previewBasicsTest();
   previewAgreementTest([1, 2, 3, 4, 5, 6]);
+  // Round 4 rules (test/rules.test.ts).
+  gateAngleTests(check, log);
+  gateRefusalTests(check, log);
+  fenceOverGravelTest(check);
+  gravelNoteTest(check, log);
+  rainTests(check, log);
+  growthTests(check, log);
+  newDeterminismTest(check);
+  newIsolationTest(check, log);
 
   const results = await tables;
   const rows = results.filter((r): r is Row & { kind: "trunk" } => r.kind === "trunk");
@@ -629,6 +623,14 @@ async function main() {
     check(r.length === n && r.every(x => x.min >= 0.3 && x.max <= 0.7), `G3 ${name}: every daily trunk-share sample (days ${SAMPLE_FROM} to ${DAYS}) within 30%-70% on all ${r.length} seeds`);
   }
   check(gate.every(r => r.ft >= 0 && r.ft <= 3 * PARAMS.daySimSec), `a first trail forms within 3 in-game days (45 s at 1x) on every seed of 401 to ${400 + n}`);
+  if (!quick) {
+    // With rain and growth off, the five old sets must give the round 3 numbers bit for bit.
+    const baseline = readFileSync(new URL("../test/g3-baseline.txt", import.meta.url), "utf8"); // the bundle runs from .cache/
+    const now = sets.map(([name, first]) => exactTable(`G3 ${name} (200 walkers, rain and growth off)`, pick(first, first + n - 1)) + "\n").join("\n");
+    const same = now.trim() === baseline.trim();
+    if (!same) console.log(`\nEXACT TABLES NOW (differ from test/g3-baseline.txt):\n${now}`);
+    check(same, "G3 old sets with rain and growth off: per-seed numbers bit-identical to the round 3 baseline (test/g3-baseline.txt)");
+  }
   console.log(out.join("\n"));
   console.log(`\n${failures.length ? `FAILED: ${failures.length} check(s)` : "ALL CHECKS PASSED"} in ${((performance.now() - t0) / 1000).toFixed(0)} s (${threads} worker threads)${quick ? " [quick mode: 4 fresh gate seeds, no other sets or reports]" : ""}`);
   if (failures.length) process.exitCode = 1;

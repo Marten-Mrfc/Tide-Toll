@@ -68,7 +68,7 @@ public sealed class Crossing
     // Drawbridge.
     internal double NextPass;
     internal int PassedThisRaise;
-    internal double KeeperT;
+    internal double KeeperT = -1;
 
     internal Crossing(int id, CrossingType type, int row, int[] cells, int westEnd, int eastEnd, int bridgeId, RiverRules rules, int maxWalkers)
     {

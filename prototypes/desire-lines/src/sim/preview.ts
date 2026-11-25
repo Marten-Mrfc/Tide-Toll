@@ -30,6 +30,7 @@ export const Ov = {
   Ungravel: 32,
   Gate: 64, // a fence cell that becomes a gate
   Ungate: 128, // a gate that becomes plain fence
+  GatePair: 256, // with Gate: one of the two cells of a stair-corner gate (half the delay each)
 } as const;
 
 /** A hypothetical edit. Cells are grid indices. */
@@ -40,7 +41,7 @@ export interface WhatIf {
   closeBridge?: number[]; // footbridge cells that become water again
   gravel?: number[]; // new gravel
   ungravel?: number[]; // gravel removed
-  gate?: number[]; // fence cells that become gates
+  gate?: number[]; // fence cells that become one gate (two cells: a stair-corner gate)
   ungate?: number[]; // gates that become fence
 }
 
@@ -69,6 +70,8 @@ export interface FlowPreview {
   meanCostRatio: number;
   blocked: { dest: number; houses: number }[]; // destinations cut off, and for how many houses
   version: number; // world.version when the computation started
+  /** "far": a gravel strip that changes no route and lies away from every trail (see FAR_CELLS). */
+  note?: "far";
 }
 
 const MIN_RATE = 0.5; // pairs with fewer trips a day than this are ignored
@@ -78,6 +81,7 @@ const SAME_COST = 0.002; // a route whose cost changes less than this is unchang
 const AFFECTED_COST = 0.03; // ... and is affected if it changes more than this
 const AFFECTED_CELLS = 3; // ... or moves more than this many cells anywhere
 const GROUPS_PER_STEP = 8; // route groups classified between two yields
+const FAR_CELLS = 6; // a gravel strip with no cell within this many cells of a trail is "too far from any route"
 
 /** One set of fields (ordinary and frugal) over one pair of costs. */
 interface FieldSet { cost: Float32Array; costX: Float32Array; f: Float32Array[]; fX: Float32Array[]; }
@@ -88,17 +92,27 @@ interface Candidate { change: RouteChange; x0: boolean; f0: Float32Array; c0: Fl
 export class FlowPredictor {
   private base: FieldSet;
   private hyp: FieldSet;
-  private flags = new Uint8Array(NC);
+  private flags = new Uint16Array(NC);
   private heap = new Heap(NC);
   /** Typical routes on the base fields, by destination, house and kind; valid while the base is. */
   private baseRoutes = new Map<number, Float32Array>();
   private baseTime = -1e9;
   private baseVersion = -1;
-  private dests: number[];
-  private doors: number[];
+  private dests: number[] = [];
+  private doors: number[] = [];
+  /** Buildings when the sets were made: house growth adds buildings, and the sets follow. */
+  private nb = -1;
 
   constructor(private world: World) {
-    const b = world.buildings;
+    this.base = this.hyp = { cost: new Float32Array(0), costX: new Float32Array(0), f: [], fX: [] };
+    this.init();
+  }
+
+  private init() {
+    const world = this.world, b = world.buildings;
+    this.nb = b.length;
+    this.baseVersion = -1;
+    this.baseRoutes.clear();
     this.dests = b.filter(x => x.kind !== "house").map(x => x.id);
     this.doors = world.houses.map(h => b[h].door);
     const set = (): FieldSet => {
@@ -117,12 +131,14 @@ export class FlowPredictor {
    * `value` is the preview.
    */
   *run(change: WhatIf, maxPairs = 5): Generator<void, FlowPreview, void> {
+    if (this.world.buildings.length !== this.nb) this.init();
     const w = this.world, B = w.buildings, P = PARAMS, base = this.base, hyp = this.hyp;
     const version = w.version;
     if (w.version !== this.baseVersion || w.time - this.baseTime > BASE_MAX_AGE) {
       this.baseVersion = -1; // marks the base incomplete until the loop below ends
       const time = w.time;
-      w.buildCosts(base.cost, base.costX);
+      // The base costs in four slices, so the first preview of a drag does not stall a frame.
+      for (let k = 0; k < 4; k++) { w.buildCosts(base.cost, base.costX, (k * NC) >> 2, ((k + 1) * NC) >> 2); yield; }
       for (const d of this.dests) {
         yield; dijkstra(B[d].door, base.cost, base.f[d], this.heap, this.doors);
         yield; dijkstra(B[d].door, base.costX, base.fX[d], this.heap, this.doors);
@@ -136,7 +152,12 @@ export class FlowPredictor {
     hyp.costX.set(base.costX);
     const flags = this.flags, touched: number[] = [];
     for (const [key, flag] of CHANGE_FLAGS)
-      for (const c of change[key] ?? []) { if (c < 0 || c >= NC) continue; if (!flags[c]) touched.push(c); flags[c] |= flag; }
+      for (const c of change[key] ?? []) {
+        if (c < 0 || c >= NC) continue;
+        if (!flags[c]) touched.push(c);
+        flags[c] |= flag;
+        if (key === "gate" && change.gate!.length === 2) flags[c] |= Ov.GatePair;
+      }
     for (const c of touched) {
       hyp.cost[c] = w.cellCost(c, flags[c]);
       hyp.costX[c] = w.cellCost(c, flags[c], true);
@@ -210,7 +231,9 @@ export class FlowPredictor {
     }
     let rr = 0, rs = 0;
     for (const { change: c } of all) if (c.reachable) { rr += c.rate; rs += c.rate * c.costRatio; }
+    const gravelOnly = !!change.gravel?.length && CHANGE_FLAGS.every(([k]) => k === "gravel" || !change[k]?.length);
     return {
+      note: gravelOnly && all.length === 0 && farFromTrails(w.wear, change.gravel!) ? "far" : undefined,
       changes: shown.map(x => x.change),
       more: Math.max(0, all.length - maxPairs),
       reroutedPerDay: all.reduce((s, x) => s + x.change.rate, 0),
@@ -271,6 +294,18 @@ export function maxDeviation(a: Float32Array, b: Float32Array): number {
   return Math.sqrt(worst);
 }
 
+/** Whether no cell of `cells` lies within FAR_CELLS of a trail (wear 25 or more). */
+function farFromTrails(wear: Float32Array, cells: number[]): boolean {
+  const thr = PARAMS.stateThresholds[1];
+  for (const c of cells) {
+    const x = c % N, y = (c / N) | 0;
+    for (let yy = y - FAR_CELLS; yy <= y + FAR_CELLS; yy++)
+      for (let xx = x - FAR_CELLS; xx <= x + FAR_CELLS; xx++)
+        if (xx >= 0 && yy >= 0 && xx < N && yy < N && wear[yy * N + xx] >= thr) return false;
+  }
+  return true;
+}
+
 /** The route up to the first point that the change blocks. */
 function cutAtBlock(pts: Float32Array, cost: Float32Array): Float32Array {
   for (let i = 0; i < pts.length; i += 2)
@@ -286,7 +321,7 @@ export function describePreview(p: FlowPreview, name: (b: number) => string): st
   const parts: string[] = [];
   for (const b of p.blocked) parts.push(`Blocks the ${name(b.dest)} for ${b.houses} house${b.houses === 1 ? "" : "s"}`);
   const n = p.reroutedPerDay;
-  if (n < 0.5) return parts[0] ?? "No change to routes";
+  if (n < 0.5) return parts[0] ?? (p.note === "far" ? "Too far from any route to change anything" : "No change to routes");
   const shown = n < 5 ? `${Math.max(1, Math.round(n))}` : `about ${Math.max(5, Math.round(n / 5) * 5)}`;
   let line = `Reroutes ${shown} walker${shown === "1" ? "" : "s"} a day`;
   if (Math.abs(p.meanCostRatio - 1) >= 0.02) {

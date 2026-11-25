@@ -15,6 +15,19 @@ public readonly struct WhatIf
     public int[]? Bridge { get; init; }
     /// <summary>Footbridge cells that become water again.</summary>
     public int[]? CloseBridge { get; init; }
+    /// <summary>A river crossing that would be built (river rules only); see <see cref="World.CrossingWhatIf"/>.</summary>
+    public CrossingWhatIf? Crossing { get; init; }
+}
+
+/// <summary>
+/// A crossing in a what-if: its water cells get the same per-cell cost as the built crossing, with no learned wait
+/// yet (a ferry's expected load, headway and ride; a bridge's deck). Row and clearance give the boats it would hold.
+/// </summary>
+public readonly struct CrossingWhatIf
+{
+    public CrossingType Type { get; init; }
+    public int Row { get; init; }
+    public int[] Cells { get; init; }
 }
 
 /// <summary>One (house, destination) pair whose typical route the change would alter.</summary>
@@ -46,6 +59,9 @@ public sealed class FlowPreview
     public List<(int Dest, int Houses)> Blocked { get; } = new();
     /// <summary>World.Version the preview was computed against.</summary>
     public int Version { get; init; }
+    /// <summary>River rules: boats a day that the previewed crossing would turn back (masts above its clearance), and those that would need a drawbridge raised.</summary>
+    public double BoatsBlockedPerDay { get; init; }
+    public double BoatsNeedRaisePerDay { get; init; }
 }
 
 /// <summary>
@@ -79,6 +95,7 @@ public sealed class FlowPredictor
     private int _di, _pendingVersion, _maxPairs;
     private double _pendingTime;
     private int[] _block = Array.Empty<int>(), _open = Array.Empty<int>(), _bridge = Array.Empty<int>(), _close = Array.Empty<int>();
+    private CrossingWhatIf? _crossing;
 
     public FlowPredictor(World world)
     {
@@ -112,6 +129,7 @@ public sealed class FlowPredictor
         _open = (int[])(change.Open ?? Array.Empty<int>()).Clone();
         _bridge = (int[])(change.Bridge ?? Array.Empty<int>()).Clone();
         _close = (int[])(change.CloseBridge ?? Array.Empty<int>()).Clone();
+        _crossing = change.Crossing is { } cw ? new CrossingWhatIf { Type = cw.Type, Row = cw.Row, Cells = (int[])(cw.Cells ?? Array.Empty<int>()).Clone() } : null;
         _maxPairs = maxPairs;
         Result = null;
         _phase = Phase.Start;
@@ -167,6 +185,7 @@ public sealed class FlowPredictor
         Apply(_bridge, CostOverride.Bridge);
         Apply(_close, CostOverride.CloseBridge);
         Apply(_block, CostOverride.Block);
+        if (_crossing is { } cw) foreach (int c in cw.Cells) _cost[c] = (float)_w.WhatIfCrossingCost(cw.Type, cw.Cells.Length, c);
         _di = 0;
         _phase = _dests.Length > 0 ? Phase.Hyp : Phase.Collect;
     }
@@ -215,7 +234,9 @@ public sealed class FlowPredictor
         }
         double rerouted = 0;
         foreach (var c in all) rerouted += c.Rate;
-        var p = new FlowPreview { More = Math.Max(0, all.Count - _maxPairs), ReroutedPerDay = rerouted, Version = w.Version };
+        double boatsBlocked = 0, boatsRaise = 0;
+        if (_crossing is { } cw) (boatsBlocked, boatsRaise) = w.BoatsHeldPerDay(cw.Type, cw.Row);
+        var p = new FlowPreview { More = Math.Max(0, all.Count - _maxPairs), ReroutedPerDay = rerouted, Version = w.Version, BoatsBlockedPerDay = boatsBlocked, BoatsNeedRaisePerDay = boatsRaise };
         for (int i = 0; i < all.Count && i < _maxPairs; i++) p.Changes.Add(all[i]);
         p.Blocked.AddRange(blocked);
         return p;
@@ -289,6 +310,20 @@ public sealed class FlowPredictor
 
     /// <summary>One-line readout, e.g. "Reroutes about 40 walkers a day (+8% longer)".</summary>
     public static string Describe(FlowPreview p, Func<int, string> name)
+    {
+        string line = DescribeRoutes(p, name);
+        if (p.BoatsBlockedPerDay > 0.05) line += $". Blocks barges: about {Boats(p.BoatsBlockedPerDay)} a day will turn back";
+        if (p.BoatsNeedRaisePerDay > 0.05) line += $". Barges need it raised: about {Boats(p.BoatsNeedRaisePerDay)} a day";
+        return line;
+    }
+
+    private static string Boats(double n)
+    {
+        double r = Math.Max(1, JsMath.Round(n));
+        return Num(r) + (r == 1 ? " boat" : " boats");
+    }
+
+    private static string DescribeRoutes(FlowPreview p, Func<int, string> name)
     {
         var parts = new List<string>();
         foreach (var (dest, houses) in p.Blocked)

@@ -11,7 +11,6 @@ public sealed partial class World
 
     private void SpawnBoats()
     {
-        var r = _river!;
         for (int k = 0; k < 2; k++)
         {
             if (_time < _nextArrival[k]) continue;
@@ -31,7 +30,7 @@ public sealed partial class World
             Id = _nextBoatId, Kind = kind, State = BoatState.Sailing, Mast = (byte)r.Mast(kind), Y = y, PrevY = y, Dir = -1,
             Capacity = r.Capacity(kind), PatienceLeft = r.PatienceSec, WaitingAt = -1, Through = -1, Berth = -1,
         };
-        _rs!.Arrived[(int)kind]++;
+        _rs!.ArrivedK[(int)kind]++;
         Emit(RiverEventKind.BoatArrived, _nextBoatId, -1, (int)kind);
         _nextBoatId++;
     }
@@ -61,6 +60,20 @@ public sealed partial class World
         }
     }
 
+    /// <summary>Whether crossing id stops a mast of this class while it is not raised.</summary>
+    private bool MastBlocked(int id, int mast)
+    {
+        var x = CrossingById(id);
+        if (x == null) return false;
+        var r = _river!;
+        return x.Type switch
+        {
+            CrossingType.Footbridge => mast > r.FootbridgeClearance,
+            CrossingType.Drawbridge => mast > r.DrawbridgeClosedClearance,
+            _ => false,
+        };
+    }
+
     private void MoveBoats(double dt)
     {
         var r = _river!;
@@ -73,7 +86,7 @@ public sealed partial class World
             if (b.State == BoatState.Mooring)
             {
                 b.MoorLeft -= dt;
-                if (b.MoorLeft <= 0) LeaveBerth(ref b);
+                if (b.MoorLeft <= 1e-9) LeaveBerth(ref b);
                 continue;
             }
             // How far north this boat may go: the landing, a crossing it cannot pass, or the boat ahead.
@@ -100,9 +113,11 @@ public sealed partial class World
                 if (j == i) continue;
                 ref Boat o = ref _boats[j];
                 if (o.State == BoatState.TurnedBack || o.State == BoatState.Mooring || !(o.Y < b.Y)) continue;
+                // A boat held at a crossing this one can pass is overtaken, not queued behind.
+                if (o.State == BoatState.Waiting && o.WaitingAt >= 0 && !MastBlocked(o.WaitingAt, b.Mast)) continue;
                 if (ahead < 0 || o.Y > _boats[ahead].Y) ahead = j;
             }
-            if (ahead >= 0 && _boats[ahead].Y + r.StopRows > limit)
+            if (ahead >= 0 && _boats[ahead].Y + r.StopRows > limit + 1e-9)
             {
                 limit = _boats[ahead].Y + r.StopRows;
                 blocker = BoatAhead;
@@ -118,11 +133,18 @@ public sealed partial class World
                 b.State = BoatState.Waiting;
                 b.WaitingAt = at;
                 if (at >= 0) { var x = CrossingById(at); if (x != null) x.BoatsWaiting++; }
-                // A served boat never turns back; it waits for free.
-                if (!b.Served)
+                b.PatienceLeft -= dt;
+                if (b.PatienceLeft <= 1e-9)
                 {
-                    b.PatienceLeft -= dt;
-                    if (b.PatienceLeft <= 0) TurnBack(ref b);
+                    if (!b.Served) TurnBack(ref b);
+                    else
+                    {
+                        // A served boat held north of the landing (a footbridge there never opens) goes home the way
+                        // it came, with no loss of reputation, rather than blocking the river for ever.
+                        b.State = BoatState.TurnedBack;
+                        b.Dir = 1;
+                        b.WaitingAt = -1;
+                    }
                 }
             }
             else
@@ -137,7 +159,7 @@ public sealed partial class World
         {
             ref Boat b = ref _boats[i];
             bool gone = b.State == BoatState.TurnedBack ? b.Y > _n + 2 : b.Y < -1.5;
-            if (gone) { if (b.State != BoatState.TurnedBack) Emit(RiverEventKind.BoatLeft, b.Id, -1, b.Earned); continue; }
+            if (gone) { if (b.State != BoatState.TurnedBack || b.Served) Emit(RiverEventKind.BoatLeft, b.Id, -1, b.Earned); continue; }
             if (keep != i) _boats[keep] = b;
             keep++;
         }
@@ -165,9 +187,10 @@ public sealed partial class World
         b.Berth = -1;
         b.Served = true;
         b.State = BoatState.Leaving;
+        b.PatienceLeft = r.PatienceSec; // only counts down if something north of the landing holds it
         Earn(b.Earned, true);
         _rep = Math.Min(100, _rep + r.ReputationServed);
-        _rs!.Served[(int)b.Kind]++;
+        _rs!.ServedK[(int)b.Kind]++;
         _rs.ServedToday++;
         Emit(RiverEventKind.BoatSold, b.Id, -1, b.Earned);
     }
@@ -180,7 +203,7 @@ public sealed partial class World
         b.WaitingAt = -1;
         b.Through = -1;
         _rep = Math.Max(0, _rep - r.ReputationTurnedBack);
-        _rs!.TurnedBack[(int)b.Kind]++;
+        _rs!.TurnedBackK[(int)b.Kind]++;
         _rs.TurnedBackToday++;
         Emit(RiverEventKind.BoatTurnedBack, b.Id, -1, 0);
     }

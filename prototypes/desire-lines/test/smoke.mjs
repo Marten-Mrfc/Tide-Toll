@@ -201,6 +201,24 @@ console.log("\nCONTROLS (1280x860, light)");
   await page.click("#btn-newmap");
   check((await stats()).seed !== before.seed, "New map changes the seed");
 
+  // Rain and house growth through the debug API (the page draws them in a later round).
+  const wx = await page.evaluate(async () => {
+    __tt.reset(1); __tt.setWalkers(200); __tt.setSpeed(8); __tt.play();
+    __tt.startRain(1);
+    await new Promise(r => setTimeout(r, 1500));
+    const wet = __tt.weather();
+    __tt.stopRain(true);
+    await new Promise(r => setTimeout(r, 300));
+    const dry = __tt.weather();
+    await new Promise(r => setTimeout(r, 4500));
+    return { wet, dry, houses: __tt.houses() };
+  });
+  check(wx.wet.rainOn && wx.wet.raining && wx.wet.wetness > 0.5 && wx.wet.mudCells > 0 && !wx.dry.raining && wx.dry.mudCells === 0,
+    `startRain and stopRain work (raining, wetness ${wx.wet.wetness.toFixed(2)}, ${wx.wet.mudCells} mud cells; then dry)`);
+  check(wx.houses.growthOn && wx.houses.grown.length >= 1 && wx.houses.population === 200 + 3 * wx.houses.grown.length,
+    `houses grow on the page (${wx.houses.grown.length} by ${(await stats()).simTime.toFixed(0)} s, population ${wx.houses.population})`);
+  await page.evaluate(() => { __tt.setSpeed(1); });
+
   // Focus is visible on keyboard navigation.
   await page.focus("#btn-reset");
   const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);

@@ -171,7 +171,7 @@ public sealed partial class World
         double p = x.State == BridgeState.Lowering ? x.Progress : 0;
         x.State = BridgeState.Raising;
         x.StateT = p * _river!.RaiseSec;
-        x.KeeperT = 0;
+        x.KeeperT = -1;
         Emit(RiverEventKind.BridgeRaising, -1, x.Id, 0);
     }
 
@@ -192,10 +192,11 @@ public sealed partial class World
                 x.Progress = 0;
                 if (x.Keeper && MastedBoatNear(x, r.KeeperSeeRows))
                 {
-                    x.KeeperT += dt;
+                    // The keeper sees the boat this tick and raises KeeperDelaySec later.
+                    x.KeeperT = x.KeeperT < 0 ? 0 : x.KeeperT + dt;
                     if (x.KeeperT >= r.KeeperDelaySec - 1e-9) StartRaise(x);
                 }
-                else x.KeeperT = 0;
+                else x.KeeperT = -1;
                 break;
             case BridgeState.Raising:
                 x.StateT += dt;
@@ -262,7 +263,7 @@ public sealed partial class World
         if (x.Sailing)
         {
             x.StateT += dt;
-            double t = Math.Min(1, x.StateT / r.FerryCrossSec);
+            double t = Math.Min(1, x.StateT / r.FerryCrossSec + 1e-9);
             x.Progress = x.FerryFrom < 0 ? t : 1 - t;
             int from = x.FerryFrom < 0 ? x.WestEnd : x.EastEnd, to = x.FerryFrom < 0 ? x.EastEnd : x.WestEnd;
             double fx = from % n + 0.5, fy = from / n + 0.5, tx = to % n + 0.5, ty = to / n + 0.5;

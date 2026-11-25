@@ -83,8 +83,9 @@ export const PARAMS = {
   bridgeCost: 0.8,
   bridgeSpeedMul: 1.2,
   // Steering tools added in round 3 (spec "Tool table" and "Ground states").
-  gravelCost: 0.8, // a gravel cell's surface cost; worn ground and traffic can still make it cheaper
+  gravelCost: 0.6, // round 4 (spec 0.8): the toy's worn ground is cheaper than the spec's (floor 0.45 against 0.72), so 0.8 could not pull a trail more than a cell or two; traffic can make gravel cheaper still
   gravelSpeedMul: 1.15,
+  gravelFloor: 0.45, // floor on a busy gravel cell's cost (minSurface for worn ground)
   gateCost: 1.5, // added to a gate cell's step cost: the spec's 1.5 s delay, one cost unit per grass cell
   gateSpeedMul: 0.4, // crossing a gate cell takes about 0.5 sim s longer, the same 1.5 cells of walking
   fieldRefreshSimSec: 5, // each cost-to-go field is rebuilt this often

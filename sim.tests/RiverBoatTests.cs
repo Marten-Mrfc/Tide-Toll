@@ -76,7 +76,9 @@ public class RiverBoatTests
         var r = w.River!;
         var fb = Build(w, CrossingType.Footbridge);
         Assert.Equal(1, fb.Clearance);
-        int barge = w.SpawnBoat(BoatKind.Barge).Id, row = w.SpawnBoat(BoatKind.Rowboat).Id;
+        int barge = w.SpawnBoat(BoatKind.Barge).Id;
+        for (int i = 0; i < 3; i++) w.Tick(); // two rows apart, as boats keep
+        int row = w.SpawnBoat(BoatKind.Rowboat).Id;
         Drain(w);
         long waitStart = -1;
         while (Exists(w, barge) && BoatById(w, barge).State != BoatState.TurnedBack)
@@ -89,17 +91,17 @@ public class RiverBoatTests
                 Assert.Equal(fb.Row + 0.5 + r.Rules.StopRows, b.Y, 9); // stops 2 rows below
                 Assert.Equal(fb.Id, b.WaitingAt);
             }
-            if (b.State == BoatState.Waiting) Assert.Equal(1, fb.BoatsWaiting);
+            if (b.State == BoatState.Waiting && b.WaitingAt == fb.Id) Assert.Equal(1, fb.BoatsWaiting);
         }
         Assert.Equal(150, w.Ticks - waitStart + 1); // 15 s of patience, counted from the first waiting tick
         Assert.Equal(45, r.Reputation); // -5 per boat turned back
         Assert.Equal(1, r.Stats.TurnedBack[(int)BoatKind.Barge]);
         // The rowboat (mast class 0) never waited.
         var ev = Drain(w);
-        Assert.DoesNotContain(ev, e => e.Boat == row && e.Kind == RiverEventKind.BoatWaiting);
+        Assert.False(ev.Any(e => e.Boat == row && e.Kind == RiverEventKind.BoatWaiting), string.Join("; ", ev));
         Assert.Contains(ev, e => e.Boat == row && e.Kind == RiverEventKind.BoatMoored);
         Assert.Contains(ev, e => e.Boat == barge && e.Kind == RiverEventKind.BoatTurnedBack);
-        while (Exists(w, barge)) { w.Tick(); Assert.True(BoatById(w, barge).Y >= BoatById(w, barge).PrevY || !Exists(w, barge)); }
+        while (Exists(w, barge)) { double y = BoatById(w, barge).Y; w.Tick(); if (Exists(w, barge)) Assert.True(BoatById(w, barge).Y > y, "a turned-back boat sails south"); }
     }
 
     [Fact]
@@ -168,14 +170,18 @@ public class RiverBoatTests
         Assert.True(r.LandingBuilding >= 0);
         Assert.Equal(BuildingKind.Landing, w.Buildings[r.LandingBuilding].Kind);
         Assert.Equal(r.LandingCell, w.Buildings[r.LandingBuilding].Door);
-        // Two days with no boat: the market buys at 70% of 2c, at most one unit per house per day.
-        ToyHarness.Run(w, 2);
+        // Four days with no boat: the market buys at 70% of 2c, at most one unit per house per day.
+        ToyHarness.Run(w, 4);
         var s = r.Stats;
         Assert.True(s.GrainToMarket > 0);
         Assert.Equal(0, s.GrainToBoats);
         Assert.Equal(s.GrainToMarket * 1.4, s.MarketIncome, 6);
-        Assert.True(s.GrainToMarket <= 2 * w.Houses.Length, $"{s.GrainToMarket} sold to the market");
-        Assert.True(s.GrainUnsold > 0, "200 walkers haul more than the market takes");
+        Assert.True(s.GrainToMarket <= 4 * w.Houses.Length, $"{s.GrainToMarket} sold to the market");
+        // With a smaller market the rest goes unsold.
+        var small = Make(2, 200, NoSchedule with { HaulGoods = true, MarketUnitsPerHouseDay = 0.25 });
+        ToyHarness.Run(small, 4);
+        Assert.True(small.River!.Stats.GrainToMarket <= Math.Ceiling(0.25 * w.Houses.Length) * 4);
+        Assert.True(small.River.Stats.GrainUnsold > 0);
         // A barge moors: it buys at 4c, and the coin is booked when it leaves.
         int barge = w.SpawnBoat(BoatKind.Barge).Id;
         while (BoatById(w, barge).State != BoatState.Mooring) w.Tick();
@@ -185,7 +191,7 @@ public class RiverBoatTests
         {
             double m = r.Money;
             w.Tick();
-            Assert.True(r.Money - m < 1.5 || BoatById(w, barge).State != BoatState.Mooring, "boat coin is booked only on leaving"); // market sales stop while it is moored
+            Assert.True(r.Money - m < 1e-9 || BoatById(w, barge).State != BoatState.Mooring, $"money rose by {r.Money - m} at tick {w.Ticks} while the barge was moored (cargo {BoatById(w, barge).Cargo})"); // the barge buys everything: no market sales
         }
         var bb = BoatById(w, barge);
         Assert.True(bb.Cargo > 0 && bb.Cargo <= 40);

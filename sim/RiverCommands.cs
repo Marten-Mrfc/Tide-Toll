@@ -34,17 +34,9 @@ public sealed partial class World
     /// </summary>
     public RiverResult CheckCrossing(CrossingType t, double x, double y)
     {
-        if (_river == null) return Refuse("The river rules are off");
-        if (t == CrossingType.Ford) return Refuse("Fords are where the river is shallow; they cannot be built");
-        int ix = (int)Math.Floor(x), iy = (int)Math.Floor(y);
-        if (!_g.Inside(ix, iy)) return Refuse("That is off the map");
-        if (Math.Abs(ix - (int)Math.Floor(_map.RiverX[iy])) > _map.RiverHalfW + 4) return Refuse("Crossings go across the river: click on the water");
-        if (Math.Abs(iy - _map.FordY) <= 2) return Refuse("Too close to the ford");
-        if (Math.Abs(iy - _landingRow) <= 1) return Refuse("That would block the landing");
-        foreach (var c in _crossings)
-            if (c.Type != CrossingType.Ford && Math.Abs(c.Row - iy) < 3) return Refuse($"Too close to the {CrossingName(c.Type)}: boats need room to wait between crossings");
-        if (!BridgeCellsAt(x, y, _bridgeScratch)) return Refuse("Both banks must be open ground here");
-        double price = _river.Price(t);
+        string? spot = SpotProblem(t, x, y);
+        if (spot != null) return Refuse(spot);
+        double price = _river!.Price(t);
         if (_money < price - 1e-9)
         {
             Emit(RiverEventKind.CannotAfford, -1, -1, price);
@@ -52,6 +44,56 @@ public sealed partial class World
         }
         _lastRefusal = "";
         return RiverResult.Success(-1);
+    }
+
+    /// <summary>Why a crossing cannot stand at (x, y), or null if it can (coin aside). Fills the bridge scratch list.</summary>
+    private string? SpotProblem(CrossingType t, double x, double y)
+    {
+        if (_river == null) return "The river rules are off";
+        if (t == CrossingType.Ford) return "Fords are where the river is shallow; they cannot be built";
+        int ix = (int)Math.Floor(x), iy = (int)Math.Floor(y);
+        if (!_g.Inside(ix, iy)) return "That is off the map";
+        if (Math.Abs(ix - (int)Math.Floor(_map.RiverX[iy])) > _map.RiverHalfW + 4) return "Crossings go across the river: click on the water";
+        if (Math.Abs(iy - _map.FordY) <= 2) return "Too close to the ford";
+        if (Math.Abs(iy - _landingRow) <= 1) return "That would block the landing";
+        foreach (var c in _crossings)
+            if (c.Type != CrossingType.Ford && Math.Abs(c.Row - iy) < 3) return $"Too close to the {CrossingName(c.Type)}: boats need room to wait between crossings";
+        if (!BridgeCellsAt(x, y, _bridgeScratch)) return "Both banks must be open ground here";
+        return null;
+    }
+
+    /// <summary>
+    /// The flow-preview change for building a crossing of type <paramref name="t"/> at (x, y), or null when none can
+    /// stand there (coin is not checked: the preview shows what it would do). Allocates; for the tool ghost.
+    /// </summary>
+    public WhatIf? CrossingWhatIf(CrossingType t, double x, double y)
+    {
+        if (SpotProblem(t, x, y) != null) return null;
+        return new WhatIf { Crossing = new CrossingWhatIf { Type = t, Row = (int)Math.Floor(y), Cells = _bridgeScratch.ToArray() } };
+    }
+
+    /// <summary>Per-cell routing cost of a would-be crossing's water cell, with nothing learned yet.</summary>
+    public double WhatIfCrossingCost(CrossingType t, int cells, int c)
+        => t == CrossingType.Ferry && _river != null ? FerryCellCost(cells, 0) : CellCost(c, CostOverride.Bridge);
+
+    /// <summary>
+    /// Boats a day, at today's reputation, that a crossing of type t at a row would turn back (masts above a fixed
+    /// clearance) and that would need a drawbridge raised. A crossing north of the landing holds no arriving boat.
+    /// </summary>
+    public (double Blocked, double NeedRaise) BoatsHeldPerDay(CrossingType t, int row)
+    {
+        var r = _river;
+        if (r == null || row <= _landingRow) return (0, 0);
+        double blocked = 0, raise = 0;
+        for (int k = 0; k < 2; k++)
+        {
+            var kind = (BoatKind)k;
+            double perDay = r.ArrivalsPerDay(kind, _rep, _p.DaySimSec);
+            int mast = r.Mast(kind);
+            if (t == CrossingType.Footbridge && mast > r.FootbridgeClearance) blocked += perDay;
+            if (t == CrossingType.Drawbridge && mast > r.DrawbridgeClosedClearance) raise += perDay;
+        }
+        return (blocked, raise);
     }
 
     /// <summary>Builds a crossing across the river at the row of (x, y) and pays for it.</summary>

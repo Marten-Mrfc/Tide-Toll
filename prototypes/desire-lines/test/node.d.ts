@@ -16,3 +16,6 @@ declare module "node:worker_threads" {
 declare module "node:os" {
   export function availableParallelism(): number;
 }
+declare module "node:fs" {
+  export function readFileSync(path: URL | string, enc: "utf8"): string;
+}

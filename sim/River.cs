@@ -188,9 +188,11 @@ public sealed class RiverStats
     public int MarketToday { get; internal set; }
     public int ServedToday { get; internal set; }
     public int TurnedBackToday { get; internal set; }
-    public int[] Arrived { get; } = new int[2];
-    public int[] Served { get; } = new int[2];
-    public int[] TurnedBack { get; } = new int[2];
+    // Per boat kind (index by (int)BoatKind).
+    internal readonly int[] ArrivedK = new int[2], ServedK = new int[2], TurnedBackK = new int[2];
+    public IReadOnlyList<int> Arrived => ArrivedK;
+    public IReadOnlyList<int> Served => ServedK;
+    public IReadOnlyList<int> TurnedBack => TurnedBackK;
     public int WalkerWaits { get; internal set; }
     public double WalkerWaitSum { get; internal set; }
     public double WalkerWaitMax { get; internal set; }
@@ -204,7 +206,7 @@ public sealed class RiverStats
     public double TurnBackRate(BoatKind? k = null)
     {
         int s = 0, t = 0;
-        for (int i = 0; i < 2; i++) if (k == null || (int)k == i) { s += Served[i]; t += TurnedBack[i]; }
+        for (int i = 0; i < 2; i++) if (k == null || (int)k == i) { s += ServedK[i]; t += TurnedBackK[i]; }
         return s + t > 0 ? (double)t / (s + t) : 0;
     }
 }

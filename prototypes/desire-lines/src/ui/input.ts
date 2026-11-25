@@ -32,6 +32,7 @@ export class Input {
   private lastErase: [number, number] | null = null;
   private pressAt = -1; // footbridge or gate: the spot the press is previewing
   private pressed = false;
+  private gateReason = "Gates go on fences."; // why the Gate tool cannot place one at the pointer
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -90,7 +91,7 @@ export class Input {
     } else if (this.tool === "bridge" || this.tool === "gate") {
       this.pressed = true;
       this.hover(e);
-      if (this.pressAt < 0) this.say(this.tool === "bridge" ? "Footbridges go across open water, away from the ford." : "Gates go on fences.");
+      if (this.pressAt < 0) this.say(this.tool === "bridge" ? "Footbridges go across open water, away from the ford." : this.gateReason);
     } else if (this.tool === "erase") {
       this.eraseDown = c;
       this.lastErase = null;
@@ -138,7 +139,7 @@ export class Input {
           const b = w.placeBridge(p[0], p[1]);
           this.say(b ? `Footbridge built (${b.cells.length} cells).` : "No room for a footbridge there.");
         } else if (w.gate[before]) this.say(w.removeGate(before) ? "Gate removed." : "");
-        else this.say(w.placeGate(before) ? "Gate placed." : "Gates go on fences.");
+        else this.say(w.placeGate(before) ? "Gate placed." : this.gateReason);
       } else if (before >= 0) this.say(this.tool === "bridge" ? "Footbridge cancelled." : "Gate cancelled.");
       this.previewer.clear();
       this.hover(e);
@@ -245,11 +246,12 @@ export class Input {
       if (cells) this.previewer.request({ bridge: cells }, `b${cells[0]}`);
       else this.previewer.clear();
     } else if (this.tool === "gate") {
-      const c = w.gateCellAt(x, y);
+      // The nearest fence cell within 2 that takes a gate (a stair corner takes a two-cell gate), or why not.
+      const t = w.gateTarget(x, y), c = t.cells.length ? t.cells[0] : -1, remove = t.remove;
       this.pressAt = c;
-      const remove = c >= 0 && w.gate[c] === 1;
+      this.gateReason = t.reason || "Gates go on fences.";
       this.renderer.ghost = { kind: "gate", cell: c, remove, x, y };
-      if (c >= 0) this.previewer.request(remove ? { ungate: [c] } : { gate: [c] }, `${remove ? "u" : "t"}${c}`);
+      if (c >= 0) this.previewer.request(remove ? { ungate: t.cells } : { gate: t.cells }, `${remove ? "u" : "t"}${t.cells.join(",")}`);
       else this.previewer.clear();
     } else if (this.tool === "erase") {
       const t = this.eraseTargets(cx, cy);
