@@ -18,6 +18,8 @@ A town-builder where you never draw a road. Villagers wear their own paths into 
 
 Prototype 1 (the desire-lines toy) runs in Godot on the map page of an open book: the same town as the browser toy for the same seed, villagers wearing trails into the page, and the player steering them with fences, footbridges and the eraser, with a flow preview of the routes that would change ("Reroutes about 35 walkers a day (+47% longer)"). The left page is the chapter page: how to play, the village facts, the path-health figures with their bands, the legend and a status line. Paper bookmarks out of the map page hold pause, 1x to 8x, the tools, flow preview, wear overlay, sound and volume, reset, new map and a walker count from 50 to 500; every one has a key. Sound: the river, footsteps by the crowd on screen, a bell at dawn, tool knocks and the theme now and then. Run it with `godot --path game`, or the Windows build (see below).
 
+The river prototype (Prototype 1, step 2) is on in the game: rowboats and masted barges come up the river on a schedule to the landing and buy the grain villagers carry from the field; the player buys crossings from the bookmarks, each with its price (footbridge 50c, ferry 40c, drawbridge 240c), raises the drawbridge by hand (click it, L, or the lever on its badge) or hires a keeper (30c). A waiting boat shows its patience running down, a boat that gives up turns back with a mark on the water, coins float up by the landing, and the chapter page keeps a ledger (coin, income today, reputation, boats served and turned back) and margin notes of the latest events. `godot --path game -- --no-river` plays without it. Spring flood and winter ice are not built yet.
+
 ## How to run the checks
 
 On Ubuntu 24.04, install the toolchain once (needs root; about 2 GB with export templates):
@@ -29,7 +31,7 @@ sudo tools/setup-linux.sh
 Then, from the repository root:
 
 ```
-./check                 # sim build + tests, Godot build, headless smoke, tools, interface and perf tests,
+./check                 # sim build + tests, Godot build, headless smoke, tools, river, interface and perf tests,
                         # screenshots at 1280x720 and 1920x1080, ledger
 ./check --export        # also build the Windows x86_64 export into build/windows/ and check the pack holds every asset
 ./check --gate          # also the long statistical runs (gate tables, toy comparison, ~6 min)
@@ -38,16 +40,17 @@ Then, from the repository root:
 ./check --no-screenshot # skip the rendered screenshots (no xvfb)
 ```
 
-It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`book`, `map`, `wear` and `preview` at both window sizes, plus close-ups).
+It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`book`, `map`, `wear`, `preview` and the river's `river-*` views at both window sizes, plus close-ups).
 
 | Step | What it proves |
 | --- | --- |
 | `sim-build`, `sim-test` | the simulation builds and its fast tests pass (parity with the toy, no allocation per tick) |
 | `game-build`, `game-smoke` | the game builds; the scene is complete, the frame loop ticks, picking, camera limits, edits rebuild |
 | `game-tools` | fence, footbridge and erase through real mouse events; nothing placed through the toolbar; the flow preview never changes a run (same wear hash with and without it) |
+| `game-river` | the river through real input: ferry and drawbridge placed (and refused off the river or for coin, with the reason), the drawbridge raised and lowered by click, L, its badge's lever and Ctrl+1, the keeper hired, both erased; four in-game days of boats fill the chronicle, the ledger and the coins |
 | `game-ui` | every control exists, has a tooltip and label, and toggles by click; every shortcut; keyboard focus; text sizes at 720p and 1080p |
-| `game-perf` | CPU per frame with 500 walkers under 6 ms (1x) and 10 ms (8x) mean, under 64 bytes allocated per frame; the stand-in for "60 fps with 500 walkers" until a real graphics card measures it |
-| `screenshot`, `screenshot-1080` | rendered views with the interface, the wear overlay and a fence drag with the preview, at both sizes |
+| `game-perf` | with the river on (a ferry, a drawbridge and its keeper), CPU per frame with 500 walkers under 6 ms (1x) and 10 ms (8x) mean, under 64 bytes allocated per frame; the stand-in for "60 fps with 500 walkers" until a real graphics card measures it |
+| `screenshot`, `screenshot-1080` | rendered views with the interface, the wear overlay and a fence drag with the preview, and the river (a barge waiting at the lowered drawbridge, the bridge raised, the ferry, a barge held and turning back at a footbridge, all crossings, a rowboat moored close, the play view, the ledger), at both sizes |
 | `ledger` | every asset has a ledger row |
 
 On Windows, see [docs/setup-windows.md](docs/setup-windows.md) to run the exported build or open the game in Godot and press Play, and what to check on a real PC. Adding art or sound: [docs/asset-pipeline.md](docs/asset-pipeline.md).

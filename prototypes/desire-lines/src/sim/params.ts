@@ -110,12 +110,19 @@ export const PARAMS = {
   rainRampSimSec: 2, // rain fades in and out over this long (drawing and sound only)
   wetUpSimSec: 3, // the ground goes from dry to fully wet over this long once rain starts
   drySimSec: 7.5, // mud dries out over the last half day of its run (the spec gives no drying rate)
-  // Muddy cost: the spec's multipliers on the state's base cost (trail 0.85 x 1.6
-  // = 1.36), blended with the toy's own worn-ground cost by mudReplace
-  // (1 = the base cost alone, 0 = multiply the toy's discounted cost), then
-  // blended with the dry cost by wetness. Busy mud is no easier: no flow discount.
+  // Muddy cost ("Ground states", "In rain"): the ordinary walkers' cost x1.6 on
+  // trail, x1.7 track, x1.8 hollow way, blended with the dry cost by wetness.
+  // mudReplace 0 multiplies the toy's own worn-ground cost (a busy trunk at 0.45
+  // becomes 0.72, still cheaper than grass; a lightly worn trail at about 0.95
+  // becomes 1.5, dearer than the grass beside it); 1 would multiply the spec's
+  // base cost for the state instead (trail 0.85 x 1.6 = 1.36 on every trunk).
+  // Frugal walkers see frugalDisc of the muddy cost, as of all worn ground.
+  // Busy mud gets the flow discount like the dry ground under it.
+  // Round 4 tuning on seeds 1-20, 101-120, 201-220 (README): mudReplace 1, or
+  // frugal walkers seeing the full multiplier, braided trails so much that
+  // trunk share left the gate's band on 2 to 30 of the 60 seeds.
   mudCostMul: [1, 1, 1.6, 1.7, 1.8] as const, // by ground state; grass and trampled never get muddy
-  mudReplace: 1,
+  mudReplace: 0,
   mudSpeedMul: 0.8, // walking speed on mud at full wetness (not in the spec)
 
   // House growth (round 4; spec "Where houses appear", "Growth rate and density",

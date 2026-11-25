@@ -186,17 +186,17 @@ export class World {
   private gc = new Float64Array(2);
 
   /**
-   * Mud on cell c at wetness `wet`, applied to gc[0..1]: the spec's muddy cost
-   * (the state's base cost times its mud multiplier), blended with the toy's
-   * own cost times the multiplier by mudReplace, then with the dry cost by wetness.
+   * Mud on cell c at wetness `wet`, applied to gc[0..1]. The ordinary walkers'
+   * muddy cost is the spec's "cost x1.6" (x1.7 track, x1.8 hollow way) on their
+   * own worn-ground cost (mudReplace 0; 1 would put it on the spec's base cost
+   * for the state instead), blended with the dry cost by wetness. Frugal walkers
+   * see frugalDisc of that, as they do of all ground: 1 + (muddy - 1) x frugalDisc.
    */
   private mudCosts(c: number, wet: number): void {
-    const P = PARAMS, s = groundOf(this.wear[c], this.hollow[c] === 1), mul = P.mudCostMul[s];
-    for (let i = 0; i < 2; i++) {
-      const dry = this.gc[i];
-      const muddy = (P.mudReplace * P.surfaceCost[s] + (1 - P.mudReplace) * dry) * mul;
-      this.gc[i] = dry + (muddy - dry) * wet;
-    }
+    const P = PARAMS, s = groundOf(this.wear[c], this.hollow[c] === 1), dry = this.gc[0];
+    const muddy = (P.mudReplace * P.surfaceCost[s] + (1 - P.mudReplace) * dry) * P.mudCostMul[s];
+    this.gc[0] = dry + (muddy - dry) * wet;
+    this.gc[1] = 1 + (this.gc[0] - 1) * P.frugalDisc;
   }
 
   /** The ordinary walkers' ground multiplier for cell c (also their taste discount). */

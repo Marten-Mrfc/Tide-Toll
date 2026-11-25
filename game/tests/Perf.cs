@@ -82,13 +82,38 @@ public partial class Perf : Node
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         _main.StartSeed = 1;
         _main.StartWalkers = _walkers;
+        // The river rules on (as the game plays) with a purse for every crossing: a ferry north of the landing and a
+        // drawbridge with its keeper south of it, so boats, queues, the raft and the leaf all run during the measure.
+        _main.River = TideToll.Sim.RiverRules.Default with { StartMoney = 600 };
         AddChild(_main);
         if (_noHud) _main.GetNode("Hud").Free(); // to see what the HUD's text costs
-        _main.Sim.StepTicks(12 * _main.Params.TicksPerDay);
+        _main.Sim.StepTicks(6 * _main.Params.TicksPerDay);
+        string river = PlaceCrossings();
+        _main.Sim.StepTicks(6 * _main.Params.TicksPerDay);
         _ms = new double[_frames];
         GD.Print($"PERF setup: seed 1, {_main.Sim.World.WalkerCount} walkers, day {_main.Sim.World.Stats().Day}, " +
                  $"{_main.Sim.World.WalkersOut()} out, {_frames} measured frames per speed after {Warmup} warm-up frames");
+        GD.Print($"PERF river: {river}");
         Next();
+    }
+
+    private string PlaceCrossings()
+    {
+        var w = _main.Sim.World;
+        var r = w.River;
+        if (r == null) return "off";
+        int Row(int from, int step)
+        {
+            for (int y = from; y > 6 && y < w.Grid.Width - 6; y += step)
+                if (w.CrossingWhatIf(TideToll.Sim.CrossingType.Drawbridge, w.RiverX[y], y + 0.5) != null) return y;
+            return -1;
+        }
+        int fr = Row(r.LandingRow - 8, -1), dr = Row(r.LandingRow + 8, +1);
+        var f = _main.Sim.PlaceCrossing(TideToll.Sim.CrossingType.Ferry, (int)w.RiverX[fr], fr);
+        var d = _main.Sim.PlaceCrossing(TideToll.Sim.CrossingType.Drawbridge, (int)w.RiverX[dr], dr);
+        var k = d.Ok ? _main.Sim.HireKeeper(d.Id) : d;
+        if (!f.Ok || !d.Ok || !k.Ok) throw new InvalidOperationException($"river crossings for the perf run: ferry {f}, drawbridge {d}, keeper {k}");
+        return $"ferry at row {fr}, drawbridge with keeper at row {dr}, landing row {r.LandingRow}";
     }
 
     private void Next()
@@ -200,7 +225,7 @@ public partial class Perf : Node
             GD.Print($"PERF preview gates: worst frame {worst:F3} ms (gate < {PreviewWorstMs}) {(worstOk ? "ok" : "OVER")}; " +
                      $"(sim {_worstSim:F2} ms in {_worstTicks} ticks, preview {_worstPreview:F2} ms, longest preview step {t.Previewer.StepMs:F2} ms); " +
                      $"{perPreview / 1024:F1} KB allocated per finished preview (gate {PreviewAllocBudget / 1024:F0} KB) {(allocOk ? "ok" : "OVER")}: " +
-                     $"predictor {pred / 1024:F1} KB, route mesh {route / 1024:F1} KB per build, the rest ghost, requests and readout");
+                     $"predictor {pred / 1024:F1} KB, route mesh {route / 1024:F1} KB per build (peak {t.Routes.PeakVertices} vertices of {RouteLayer.ReserveVertices} reserved), the rest ghost, requests and readout");
             ok &= worstOk && allocOk;
             if (done < 3) { ok = false; GD.Print("PERF preview did not run"); }
         }
@@ -208,5 +233,9 @@ public partial class Perf : Node
         GD.Print($"PERF {_walkers} walkers {what}: cpu ms/frame mean {mean:F3} p95 {p95:F3} worst {worst:F3} (budget mean {budget}; of which sim {_simMs / _frames:F3}) | " +
                  $"alloc {perFrame:F1} B/frame, gen0 GCs {gcs} | sim {s.MsPerTick:F3} ms/tick, budget hits {s.BudgetHits}, " +
                  $"walkers drawn {_main.Walkers.Drawn}, wear uploads {_main.Ground.Uploads}, frame delta {_delta * 1000:F2} ms | {(ok ? "ok" : "OVER BUDGET")}");
+        if (_main.Sim.World.River is { } r)
+            GD.Print($"PERF river {what}: boats drawn {_main.Boats.Drawn}, rings {_main.Boats.Rings}, crossings drawn {_main.Crossings.Count}, " +
+                     $"events {_main.Feed.Drained}, served {r.Stats.Served[0] + r.Stats.Served[1]}, turned back {r.Stats.TurnedBack[0] + r.Stats.TurnedBack[1]}, " +
+                     $"coin {r.Money:0}c, sound cues bridge {_main.Audio.BridgeCues} calls {_main.Audio.Calls} coins {_main.Audio.CoinCues} oars {_main.Audio.OarCues}");
     }
 }

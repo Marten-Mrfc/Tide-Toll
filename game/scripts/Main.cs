@@ -109,6 +109,9 @@ public partial class Main : Node3D
         Walkers.WalkerScale = Mathf.Clamp(7f / pxPerM, 1f, 1.8f);
         Walkers.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
         Boats.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
+        Crossings.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
+        // Boats grow up to 1.6x when zoomed out (as villagers do), so a barge still reads apart from a rowboat.
+        Boats.BoatScale = Mathf.Clamp(3.2f / pxPerM, 1f, 1.6f);
         Marks.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
     }
 

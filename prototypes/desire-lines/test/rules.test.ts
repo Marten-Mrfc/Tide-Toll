@@ -14,6 +14,7 @@ type Log = (...a: unknown[]) => void;
 const TPD = PARAMS.daySimSec * PARAMS.tickHz;
 const run = (w: World, days: number) => { for (let i = 0; i < Math.round(days * TPD); i++) w.tick(); };
 const OFF = { rain: false, growth: false };
+const pct = (v: number) => (v * 100).toFixed(1) + "%";
 
 // ------------------------------------------------------------------ gates at any angle
 /**
@@ -168,6 +169,22 @@ export function rainTests(check: Check, log: Log) {
   log(`  forced shower: mud for ${(until - forced).toFixed(1)} s (${PARAMS.mudDays[season]} days in ${["spring", "summer", "autumn", "winter"][season]}: ${expected} s); dry ${(w.time - forced).toFixed(1)} s after it began (${w.weather.rainDays - rolled0} rain day(s) rolled meanwhile); then wetness ${w.weather.wetness}, ${w.mudCells} mud cells, cost ${w.cellCost(c).toFixed(3)}`);
   check(Math.abs(until - forced - expected) < 0.01 && w.weather.wetness === 0 && w.mudCells === 0 && w.cellCost(c) < wet && maxWet === 1, "rain: mud lasts the rain day plus one (two in autumn), then the ground dries and costs fall back");
 
+  // Walkers step beside mud: two identical runs, one with a shower; walker time on lightly
+  // worn trail (wear 25 to 50, dearer than grass when muddy) falls and time on the ground beside rises.
+  const ta = [0, 0, 0], tb = [0, 0, 0];
+  for (const seed of [2, 3, 4, 5]) {
+    const mk = () => { const v = new World(seed, 200, { rain: true, growth: false }); run(v, 10); v.stopRain(true); return v; };
+    const a = mk(), b = mk();
+    b.startRain(PARAMS.daySimSec);
+    const band = new Uint8Array(NC); // 1 light trail, 2 track or more, 0 other ground
+    for (let v = 0; v < NC; v++) if (a.land[v] && !a.gravel[v]) band[v] = a.wear[v] >= 50 ? 2 : a.wear[v] >= 25 ? 1 : 0;
+    const count = (v: World, t: number[]) => { for (const k of v.walkers) if (k.state === 1 || k.state === 3) t[band[k.cell]]++; };
+    for (let i = 0; i < TPD; i++) { a.tick(); b.tick(); count(a, ta); count(b, tb); }
+  }
+  const share = (t: number[], i: number) => t[i] / (t[0] + t[1] + t[2]);
+  log(`  seeds 2 to 5, day 10, one day with and without a shower: walker time on lightly worn trail ${pct(share(ta, 1))} dry, ${pct(share(tb, 1))} in rain; on track ${pct(share(ta, 2))} / ${pct(share(tb, 2))}; on other ground ${pct(share(ta, 0))} / ${pct(share(tb, 0))}`);
+  check(share(tb, 1) < 0.8 * share(ta, 1) && share(tb, 0) > 1.1 * share(ta, 0), "rain: walkers step off lightly worn mud onto the ground beside it");
+
   // Natural weather over 60 days: the seasons' chances, and the walkers' stream untouched.
   const days: number[][] = [];
   for (const walkers of [50, 300]) {
@@ -305,13 +322,19 @@ export function newIsolationTest(check: Check, log: Log) {
   const same = (x: ArrayLike<number>, y: ArrayLike<number>) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false; return true; };
   const ok = same(a.wear, b.wear) && same(a.cost, b.cost) && same(a.mud, b.mud) && same(a.tripRate, b.tripRate) && a.fields.every((f, t) => same(f, b.fields[t])) &&
     a.walkers.length === b.walkers.length && a.walkers.every((k, i) => k.x === b.walkers[i].x && k.cell === b.walkers[i].cell) && a.grown.length === b.grown.length;
-  // After houses were added, previews still work and see the new houses' trips.
-  run(b, 2);
-  const p = b.previewFlows({ block: line4(20, 20, 60, 90).filter(c => b.canFence(c)) }, 99);
-  const newHomes = p.changes.filter(c => b.grown.some(h => h.building === c.home)).length;
-  log(`\nFLOW PREVIEW WITH RAIN AND GROWTH (seed 3): ${calls} queries in 3 days with ${a.grown.length - g0} houses added and a shower; then "${describePreview(p, k => b.buildings[k].kind)}", ${newHomes} changed routes from new houses`);
+  // After houses were added, previews still work and see the new houses' trips:
+  // a fence ring round the oldest grown house cuts its own villagers off.
+  run(b, 5);
+  const h = b.grown[0];
+  // The ring in the one-cell gap every house keeps round its 3 x 3 plot: nothing else stands there.
+  const ring: number[] = [];
+  for (let x = h.x - 1; x <= h.x + 3; x++) ring.push(idx(x, h.y - 1), idx(x, h.y + 3));
+  for (let y = h.y; y <= h.y + 2; y++) ring.push(idx(h.x - 1, y), idx(h.x + 3, y));
+  const p = b.previewFlows({ block: ring }, 99);
+  const fromNew = p.changes.filter(c => c.home === h.building && !c.reachable).length;
+  log(`\nFLOW PREVIEW WITH RAIN AND GROWTH (seed 3): ${calls} queries in 3 days with ${a.grown.length - g0} houses added and a shower; then a fence ring round grown house ${h.building} (built day ${h.day}): "${describePreview(p, k => b.buildings[k].kind)}", ${fromNew} cut-off routes from that house`);
   check(calls >= 100 && ok && a.grown.length > g0, "preview: with rain and growth on, queries leave the run byte-identical across new houses and mud");
-  check(p.changes.length > 0, "preview: works after houses are added");
+  check(ring.every(c => b.canFence(c)) && fromNew > 0 && p.blocked.length > 0, "preview: sees the trips of grown houses (a fence round one shows its villagers cut off)");
 }
 
 export function gravelNoteTest(check: Check, log: Log) {

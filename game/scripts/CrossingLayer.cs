@@ -41,7 +41,9 @@ public partial class CrossingLayer : Node3D
     private SimDriver _sim = null!;
     private readonly List<View> _views = new();
     private MultiMeshInstance3D _lines = null!;
-    private float[] _lineBuf = new float[16 * 16];
+    private float[] _lineBuf = new float[32 * 16];
+    private int _lineCount;
+    private float _mpp = 0.25f;
 
     /// <summary>Rebuilds so far (tests), and the crossing views now drawn.</summary>
     public int Rebuilds { get; private set; }
@@ -55,7 +57,7 @@ public partial class CrossingLayer : Node3D
         mat.SetShaderParameter("ink", Palette.Ink);
         mat.SetShaderParameter("paper", Palette.Paper);
         var quad = new PlaneMesh { Size = Vector2.One, Material = mat };
-        var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = quad, InstanceCount = 16 };
+        var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = quad, InstanceCount = 32 };
         mm.VisibleInstanceCount = 0;
         _lines = new MultiMeshInstance3D { Name = "FerryLines", Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, ExtraCullMargin = 600 };
         AddChild(_lines);
@@ -134,8 +136,7 @@ public partial class CrossingLayer : Node3D
             _lineBuf[o + 12] = 3; _lineBuf[o + 13] = len / 1.6f; _lineBuf[o + 14] = 0.9f; _lineBuf[o + 15] = 0;
             k++;
         }
-        if (k > 0) RenderingServer.MultimeshSetBuffer(_lines.Multimesh.GetRid(), _lineBuf);
-        _lines.Multimesh.VisibleInstanceCount = k;
+        _lineCount = k;
         Sync(0);
     }
 
@@ -237,6 +238,14 @@ public partial class CrossingLayer : Node3D
         v.Root.AddChild(end);
     }
 
+    public void SetMetresPerPixel(float mpp)
+    {
+        if (float.IsFinite(mpp) && mpp > 0) _mpp = mpp;
+    }
+
+    /// <summary>Signal glyphs drawn (tests): one per drawbridge, after the ferry lines.</summary>
+    public int Signals { get; private set; }
+
     public override void _Process(double delta) => Sync((float)delta);
 
     /// <summary>Moves rafts, leaves, beams, chains, signals and barriers to this frame's state. Allocation-free.</summary>
@@ -244,9 +253,11 @@ public partial class CrossingLayer : Node3D
     {
         var w = _sim.World;
         var r = w.River;
-        if (r == null || _views.Count == 0) return;
+        if (r == null || _views.Count == 0) { _lines.Multimesh.VisibleInstanceCount = 0; return; }
         var xs = r.Crossings;
         float alpha = _sim.Alpha, ease = dt <= 0 ? 1f : 1f - MathF.Exp(-dt * 8f);
+        int k = _lineCount;
+        float glyph = Math.Clamp(30f * _mpp, 3f, 26f);
         foreach (var v in _views)
         {
             Crossing? x = null;
@@ -273,7 +284,21 @@ public partial class CrossingLayer : Node3D
             v.Signal!.Rotation = new Vector3(0, 0, v.SignalA);
             v.BarrierA += ((down ? Mathf.DegToRad(80) : 0f) - v.BarrierA) * ease;
             foreach (var b in v.Barriers) b.Rotation = new Vector3(0, 0, v.BarrierA);
+            // The signal read from above, at a fixed size on screen, just north of the pier.
+            if (k < 32)
+            {
+                int o = k * 16;
+                float sx = v.Leaf.GetParent<Node3D>().Position.X - 2f;
+                _lineBuf[o + 0] = glyph; _lineBuf[o + 1] = 0; _lineBuf[o + 2] = 0; _lineBuf[o + 3] = sx - glyph * 0.6f;
+                _lineBuf[o + 4] = 0; _lineBuf[o + 5] = 1; _lineBuf[o + 6] = 0; _lineBuf[o + 7] = 6f;
+                _lineBuf[o + 8] = 0; _lineBuf[o + 9] = 0; _lineBuf[o + 10] = glyph; _lineBuf[o + 11] = v.Z - glyph * 0.6f;
+                _lineBuf[o + 12] = 4; _lineBuf[o + 13] = v.SignalA / (MathF.PI / 2f); _lineBuf[o + 14] = 1; _lineBuf[o + 15] = 0;
+                k++;
+            }
             if (x.Keeper != v.Keeper) { v.Keeper = x.Keeper; v.KeeperHut!.Visible = x.Keeper; }
         }
+        Signals = k - _lineCount;
+        if (k > 0) RenderingServer.MultimeshSetBuffer(_lines.Multimesh.GetRid(), _lineBuf);
+        if (_lines.Multimesh.VisibleInstanceCount != k) _lines.Multimesh.VisibleInstanceCount = k;
     }
 }

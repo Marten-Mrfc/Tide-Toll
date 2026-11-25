@@ -161,6 +161,32 @@ console.log("\nCONTROLS (1280x860, light)");
   await page.mouse.click(offFence.x, offFence.y);
   check((await stats()).gates === 1 && (await page.textContent("#status")).includes("Gates go on fences"), "a gate off a fence is refused with a message");
 
+  // A gate on a diagonal fence (a staircase of cells), and a lone post that is refused with its reason.
+  const open = await page.evaluate(() => {
+    const w = __tt.world;
+    for (let y = 8; y < 100; y += 2) for (let x = 8; x < 100; x += 2) {
+      let ok = true;
+      for (let yy = y - 2; yy < y + 22 && ok; yy++) for (let xx = x - 2; xx < x + 14 && ok; xx++) ok = w.canFence(yy * 128 + xx) && w.land[yy * 128 + xx] === 1 && !w.fence[yy * 128 + xx] && !w.gravel[yy * 128 + xx];
+      if (ok) return { x, y };
+    }
+    return null;
+  });
+  if (open) {
+    const stair = [];
+    for (let i = 0; i < 10; i++) stair.push([open.x + i, open.y + i], [open.x + i + 1, open.y + i]);
+    await page.evaluate(c => __tt.placeFence(c), stair);
+    const g0 = (await stats()).gates;
+    const mid = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [open.x + 5, open.y + 5]);
+    await page.mouse.click(mid.x, mid.y);
+    const placed = (await stats()).gates > g0 && (await page.textContent("#status")).includes("Gate placed");
+    check(placed, `a gate goes on a diagonal fence ("${await page.textContent("#status")}")`);
+    await page.evaluate(([x, y]) => __tt.placeFence([[x, y]]), [open.x + 5, open.y + 18]);
+    const post = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [open.x + 5, open.y + 18]);
+    await page.mouse.click(post.x, post.y);
+    check((await page.textContent("#status")).includes("lone post"), `a gate on a lone post is refused with its reason ("${await page.textContent("#status")}")`);
+    await page.evaluate(c => __tt.erase(c), [...stair, [open.x + 5, open.y + 18]]);
+  } else check(false, "an open patch for the diagonal fence");
+
   // Footbridge: press B and click on the river away from the ford.
   await page.keyboard.press("b");
   check((await pressed("tool-bridge")) === "true" && (await pressed("tool-fence")) === "false", "key B selects Footbridge");
@@ -211,12 +237,19 @@ console.log("\nCONTROLS (1280x860, light)");
     await new Promise(r => setTimeout(r, 300));
     const dry = __tt.weather();
     await new Promise(r => setTimeout(r, 4500));
-    return { wet, dry, houses: __tt.houses() };
+    const h1 = __tt.houses();
+    const off = __tt.setRules({ rain: false, growth: false });
+    await new Promise(r => setTimeout(r, 1500));
+    const offState = { weather: __tt.weather(), houses: __tt.houses() };
+    __tt.setRules({ rain: true, growth: true });
+    return { wet, dry, houses: h1, off, offState };
   });
   check(wx.wet.rainOn && wx.wet.raining && wx.wet.wetness > 0.5 && wx.wet.mudCells > 0 && !wx.dry.raining && wx.dry.mudCells === 0,
     `startRain and stopRain work (raining, wetness ${wx.wet.wetness.toFixed(2)}, ${wx.wet.mudCells} mud cells; then dry)`);
   check(wx.houses.growthOn && wx.houses.grown.length >= 1 && wx.houses.population === 200 + 3 * wx.houses.grown.length,
-    `houses grow on the page (${wx.houses.grown.length} by ${(await stats()).simTime.toFixed(0)} s, population ${wx.houses.population})`);
+    `houses grow on the page (${wx.houses.grown.length}, built on day ${wx.houses.grown.map(h => h.day).join(", ")}; population ${wx.houses.population})`);
+  check(!wx.off.rain && !wx.off.growth && !wx.offState.weather.rainOn && wx.offState.houses.grown.length === 0 && (await page.evaluate(() => __tt.weather().rainOn && __tt.houses().growthOn)),
+    "setRules switches rain and house growth off and on again (a new map each time)");
   await page.evaluate(() => { __tt.setSpeed(1); });
 
   // Focus is visible on keyboard navigation.

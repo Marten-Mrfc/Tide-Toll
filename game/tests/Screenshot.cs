@@ -146,7 +146,7 @@ public partial class Screenshot : Node
         Done("ground-d20-overview ground-d20-close ground-d45-overview ground-d45-close");
     }
 
-    private const string RiverNames = "river-waiting river-raised river-ferry river-blocked river-turnback river-map river-ledger";
+    private const string RiverNames = "river-waiting river-raised river-ferry river-blocked river-turnback river-crossings river-boats river-map river-ledger";
 
     private void Done(string names)
     {

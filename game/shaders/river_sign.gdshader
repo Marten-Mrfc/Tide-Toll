@@ -6,6 +6,8 @@ shader_type spatial;
 //   1 = a boat held by a crossing it can never pass (mast too tall): the same ring round a mast crossed out
 //   2 = a boat turned back here: a vermillion diamond with a paper cross, fading
 //   3 = a ferry's crossing: a dotted ink line along the quad's X (fill = number of dots)
+//   4 = a drawbridge's signal, read from above: a paper disc with the signal arm as a thick bar, lying flat across
+//       (fill 0: the walkers' turn, ink) or standing along the river (fill 1: the boats' turn, blue), turning between
 // Shape first, colour second: every state has its own glyph (Art tab, "Reading from above").
 render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_disabled, shadows_disabled, fog_disabled;
 uniform vec4 ink : source_color = vec4(0.169, 0.149, 0.125, 1.0);
@@ -57,6 +59,18 @@ void fragment() {
 			float cross = max(x1, x2) * step(max(abs(p.x), abs(p.y)), 0.2);
 			c = mix(c, stop.rgb, cross);
 		}
+		a = disc;
+	} else if (kind > 3.5) {
+		float r = length(p);
+		float disc = 1.0 - smoothstep(0.46 - px, 0.46, r);
+		float rim = band(abs(r - 0.455), px * 1.6);
+		float ang = fill * 1.5708;
+		vec2 q = vec2(cos(ang) * p.x + sin(ang) * p.y, -sin(ang) * p.x + cos(ang) * p.y);
+		float bar = step(abs(q.y), 0.075) * step(abs(q.x), 0.34);
+		float post = 1.0 - smoothstep(0.06, 0.06 + px, r);
+		vec3 arm = mix(ink.rgb, info.rgb, step(0.5, fill));
+		c = mix(paper.rgb, arm, bar);
+		c = mix(c, ink.rgb, max(rim, post));
 		a = disc;
 	} else if (kind > 2.5) {
 		float dots = step(0.5, fract(UV.x * custom.y));

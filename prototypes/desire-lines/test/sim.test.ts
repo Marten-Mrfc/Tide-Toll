@@ -7,7 +7,14 @@
 // sets: fresh seeds 401 to 420 (run only after the round 3 model was final,
 // never tuned on), and the earlier sets 1 to 20, 101 to 120 and 201 to 220 (the
 // round 3 tuning sets) and 301 to 320 (never tuned on). The gate passes only
-// if all five pass. Also reported: median trunk width per set, the share of
+// if all five pass. These five sets run with rain and house growth off and must
+// give the round 3 numbers bit for bit (test/g3-baseline.txt).
+//
+// Round 4 adds a sixth set: seeds 601 to 620 with rain and house growth on at the
+// player's defaults (200 walkers to start), first run after the round 4 rules
+// and numbers were final. The round 4 rule checks are in test/rules.test.ts.
+//
+// Also reported: median trunk width per set, the share of
 // river crossings a new footbridge takes on seeds 1 to 10, and 500 walkers on
 // seeds 1 to 5. The seeds run in worker threads; the other checks run meanwhile.
 import { Worker, isMainThread, parentPort } from "node:worker_threads";
@@ -562,6 +569,25 @@ function distToPts(x: number, y: number, pts: Float32Array): number {
 
 // ------------------------------------------------------------------ main
 const GATE_SETS: [string, number][] = [["seeds 401-420", 401], ["seeds 1-20", 1], ["seeds 101-120", 101], ["seeds 201-220", 201], ["seeds 301-320", 301]];
+/**
+ * Round 4: the gate with rain and house growth on at the player's defaults
+ * (200 walkers to start; growth adds households up to the Hamlet target), on
+ * seeds 601 to 620, first run only after the round 4 rules and numbers were final.
+ */
+const LIVE_FIRST = 601;
+
+/** The live set's table: the gate columns plus houses, population and rain days (report only). */
+function printLiveTable(title: string, rows: Row[]): void {
+  rows.sort((a, b) => a.seed - b.seed);
+  console.log(`\n${title}`);
+  console.log(`(rain and house growth on at the player's defaults; 200 walkers at the start; ${DAYS} in-game days; trunk share sampled daily, days ${SAMPLE_FROM} to ${DAYS}; detour, coverage, first trail and houses are report only)`);
+  console.log("seed | first trail | detour | coverage | trunk mean   min    max  | out of band | houses | population | rain days");
+  for (const r of rows)
+    console.log(`${String(r.seed).padStart(4)} | ${r.ft < 0 ? "   none" : (r.ft.toFixed(0) + " s").padStart(7)}     | ${r.det.toFixed(3)}  |  ${pct(r.cov)}  |     ${pct(r.mean)} ${pct(r.min)} ${pct(r.max)} | ${String(r.below).padStart(4)} days   | ${String(r.houses).padStart(6)} | ${String(r.finalWalkers).padStart(10)} | ${String(r.rainDays).padStart(9)}`);
+  const col = (k: keyof Row) => rows.map(r => r[k] as number);
+  console.log(`all  | ${(mean(col("ft")).toFixed(1) + " s").padStart(7)} avg | ${mean(col("det")).toFixed(3)}  |  ${pct(mean(col("cov")))}  |     ${pct(mean(col("mean")))} ${pct(Math.min(...col("min")))} ${pct(Math.max(...col("max")))} | ${String(rows.filter(r => r.below > 0).length).padStart(4)} seeds  | ${mean(col("houses")).toFixed(1).padStart(6)} | ${mean(col("finalWalkers")).toFixed(0).padStart(10)} | ${mean(col("rainDays")).toFixed(1).padStart(9)}`);
+  console.log(`     detour within 1.05-1.30 on ${rows.filter(r => r.det >= 1.05 && r.det <= 1.3).length} of ${rows.length}; coverage within 3%-8% on ${rows.filter(r => r.cov >= 0.03 && r.cov <= 0.08).length} of ${rows.length}; first trail within 45 s on ${rows.filter(r => r.ft >= 0 && r.ft <= 45).length} of ${rows.length}`);
+}
 
 async function main() {
   const t0 = performance.now();
@@ -574,6 +600,7 @@ async function main() {
     ...sets.flatMap(([, first]) => range(first, n).map(seed => ({ kind: "trunk" as const, seed, walkers: 200 }))),
     ...(quick ? [] : range(1, 10).map(seed => ({ kind: "bridge" as const, seed }))),
     ...(quick ? [] : range(1, 5).map(seed => ({ kind: "trunk" as const, seed, walkers: 500 }))),
+    ...(quick ? [] : range(LIVE_FIRST, 20).map(seed => ({ kind: "trunk" as const, seed, walkers: 200, live: true }))),
   ];
   const tables = runSeedsInWorkers(jobs, threads);
 
@@ -603,6 +630,7 @@ async function main() {
   const results = await tables;
   const rows = results.filter((r): r is Row & { kind: "trunk" } => r.kind === "trunk");
   const pick = (a: number, b: number, walkers = 200) => rows.filter(r => r.seed >= a && r.seed <= b && r.walkers === walkers);
+  const live = pick(LIVE_FIRST, LIVE_FIRST + 19);
   const gate = pick(401, 400 + n);
   printTable(`GATE G3, FRESH SEEDS 401 TO ${400 + n} (never run before round 3's model was final): every daily sample must lie within 30% to 70%`, gate);
   console.log(`\nGATE G3, ALL SETS (200 walkers, every daily sample from day ${SAMPLE_FROM} to ${DAYS} within 30% to 70%; tuning sets for round 3: 1-20, 101-120, 201-220)`);
@@ -614,6 +642,8 @@ async function main() {
     console.log("  " + bridges.map(b => `seed ${b.seed} ${b.share < 0 ? "no bridge" : `${(b.share * 100).toFixed(0)}% (${b.bridge}/${b.bridge + b.ford})`}`).join(", "));
     console.log(`  mean ${pct(mean(shares))}, lowest ${pct(Math.min(...shares))}`);
     printTable("500 WALKERS (seeds 1 to 5, report only)", pick(1, 5, 500));
+    printLiveTable(`GATE G3 WITH RAIN AND HOUSE GROWTH, SEEDS ${LIVE_FIRST} TO ${LIVE_FIRST + 19} (first run after the round 4 rules were final): every daily sample must lie within 30% to 70%`, live);
+    console.log("  " + summaryLine(`seeds ${LIVE_FIRST}-${LIVE_FIRST + 19} live`, live));
   }
   console.log(out.join("\n"));
   console.log("\nGATE CHECKS");
@@ -623,6 +653,8 @@ async function main() {
     check(r.length === n && r.every(x => x.min >= 0.3 && x.max <= 0.7), `G3 ${name}: every daily trunk-share sample (days ${SAMPLE_FROM} to ${DAYS}) within 30%-70% on all ${r.length} seeds`);
   }
   check(gate.every(r => r.ft >= 0 && r.ft <= 3 * PARAMS.daySimSec), `a first trail forms within 3 in-game days (45 s at 1x) on every seed of 401 to ${400 + n}`);
+  if (!quick)
+    check(live.length === 20 && live.every(x => x.min >= 0.3 && x.max <= 0.7), `G3 seeds ${LIVE_FIRST}-${LIVE_FIRST + 19} with rain and house growth on (player defaults): every daily trunk-share sample (days ${SAMPLE_FROM} to ${DAYS}) within 30%-70% on all ${live.length} seeds`);
   if (!quick) {
     // With rain and growth off, the five old sets must give the round 3 numbers bit for bit.
     const baseline = readFileSync(new URL("../test/g3-baseline.txt", import.meta.url), "utf8"); // the bundle runs from .cache/

@@ -132,9 +132,11 @@ public partial class WalkerLayer : MultiMeshInstance3D
             {
                 // A queue at a raised bridge or a ferry stage bunches up: each waiting walker steps a little off its
                 // stopping point, in a loose crowd back from the water, more of them the longer they wait.
-                float jx = (k.Id * 0.618034f) % 1f - 0.5f, jz = (k.Id * 0.754878f) % 1f - 0.5f;
+                float jx = (k.Id * 0.618034f) % 1f, jz = (k.Id * 0.754878f) % 1f - 0.5f;
                 float spread = 1.4f + MathF.Min(1.2f, k.WaitT * 0.1f);
-                x += jx * spread * 1.6f;
+                // Always back from the water, never into it.
+                float away = x / cell >= world.RiverX[Math.Clamp(k.Cell / world.Grid.Width, 0, world.Grid.Width - 1)] ? 1f : -1f;
+                x += away * jx * spread * 1.6f;
                 z += jz * spread * 2.2f;
                 moving = false;
             }

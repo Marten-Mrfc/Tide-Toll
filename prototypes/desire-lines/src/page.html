@@ -18,10 +18,19 @@
     --map-grass: #8ea36b;
     --map-grass-dark: #7a9460;
     /* Worn ground: more wear, more contrast with the grass. Track is worn earth, not paving. */
-    --map-trampled: #d2c68f;
-    --map-trail: #c39543;
-    --map-track: #9b6b3a;
-    --map-hollow: #4b2f19;
+    --map-trampled: #d9cf9e;
+    --map-trail: #c99a4b;
+    --map-trail-worn: #b3803f;
+    --map-track: #9a6a39;
+    --map-trunk: #6c4626;
+    --map-hollow: #43291a;
+    /* Rain: wet ground is multiplied by --map-wet; mud is wet, dark, churned earth with puddle glints. */
+    --map-mud: #463c33;
+    --map-mud-glint: #d5e2e8;
+    --map-wet: #7f8f99;
+    --map-rain: #f3f7fa;
+    --map-garden: #a4b97c;
+    --map-new: #b3261e;
     --map-crop: #c8bd67;
     --map-water: #33608c;
     --map-water-edge: #1b3654;
@@ -34,7 +43,9 @@
     --map-walker-halo: #f3f0e4;
     --map-fence: #4a280b;
     --map-gate: #d08a2a;
-    --map-gravel: #6f7270;
+    --map-gravel: #77796f;
+    --map-gravel-wash: #eeeadc;
+    --map-gravel-rim: #5a5c55;
     --map-bridge: #b48d5b;
     --map-ghost: #1f63b0;
     --map-invalid: #b42318;
@@ -52,11 +63,13 @@
     :root:not([data-theme="light"]) {
       --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
       --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-      --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535638;
-      --map-trail: #8d7443; --map-track: #c2a26a; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
+      --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5d6040;
+      --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
+      --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
+      --map-gravel-wash: #cfd2c9; --map-gravel-rim: #121511;
       --map-water: #1d3a57; --map-water-edge: #0d1d2e; --map-ford: #3f6488; --map-ink: #e6e1d2;
       --map-building: #d9d2bd; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
-      --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-gate: #f0a64a; --map-gravel: #aeb2ad; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
+      --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-gate: #f0a64a; --map-gravel: #6b6f68; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
       --map-invalid: #ff7a6b; --map-roof: #c8664a; --map-route: #f2b33d; --map-halo: #151916; --map-outline: #0e110d; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
       color-scheme: dark;
     }
@@ -64,11 +77,13 @@
   :root[data-theme="dark"] {
     --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
     --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-    --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535638;
-    --map-trail: #8d7443; --map-track: #c2a26a; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
+    --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5d6040;
+    --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
+    --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
+    --map-gravel-wash: #cfd2c9; --map-gravel-rim: #121511;
     --map-water: #1d3a57; --map-water-edge: #0d1d2e; --map-ford: #3f6488; --map-ink: #e6e1d2;
     --map-building: #d9d2bd; --map-label: #efeadb; --map-label-halo: #151916; --map-walker: #f4efe0;
-    --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-gate: #f0a64a; --map-gravel: #aeb2ad; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
+    --map-walker-halo: #11140f; --map-fence: #f4d9a6; --map-gate: #f0a64a; --map-gravel: #6b6f68; --map-bridge: #8a6a42; --map-ghost: #8dc0f5;
     --map-invalid: #ff7a6b; --map-roof: #c8664a; --map-route: #f2b33d; --map-halo: #151916; --map-outline: #0e110d; --heat-0: #2c2a1e; --heat-1: #8a6d1f; --heat-2: #d0782c; --heat-3: #f0a35a; --heat-4: #fff0c8;
     color-scheme: dark;
   }

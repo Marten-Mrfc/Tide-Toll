@@ -22,10 +22,10 @@ public partial class RouteLayer : MeshInstance3D
     private FlowPreview? _shown;
     private float _cell = 2f;
     private float _opacity, _mpp = -1;
-    private readonly List<Vector3> _v = new(), _n = new();
-    private readonly List<Vector2> _uv = new(), _uv2 = new();
-    private readonly List<Color> _c = new();
-    private readonly List<int> _i = new();
+    private readonly List<Vector3> _v = new(ReserveVertices), _n = new(ReserveVertices);
+    private readonly List<Vector2> _uv = new(ReserveVertices), _uv2 = new(ReserveVertices);
+    private readonly List<Color> _c = new(ReserveVertices);
+    private readonly List<int> _i = new(ReserveVertices * 3 / 2);
     private readonly List<float> _ring = new();
     private static readonly StringName Mpp = new("metres_per_px"), March = new("march"), Opacity = new("opacity");
 
@@ -48,7 +48,17 @@ public partial class RouteLayer : MeshInstance3D
         CastShadow = ShadowCastingSetting.Off;
         ExtraCullMargin = 400;
         Visible = false;
+        // Room for a busy preview up front (river routes to the landing are long), so the pooled upload arrays do not
+        // have to grow, and allocate, in the middle of play: about 1 MB once.
+        _va = new Vector3[ReserveVertices]; _na = new Vector3[ReserveVertices];
+        _uva = new Vector2[ReserveVertices]; _uv2a = new Vector2[ReserveVertices];
+        _ca = new Color[ReserveVertices];
+        _ia = new int[ReserveVertices * 3 / 2];
     }
+
+    /// <summary>Vertices the upload arrays hold from the start, and the most a preview has needed so far (perf test).</summary>
+    public const int ReserveVertices = 12288;
+    public int PeakVertices { get; private set; }
 
     /// <summary>Per frame: follow the zoom, march the dashes, fade in or out, and rebuild when the result changed.</summary>
     public void Show(FlowPreview? p, float metresPerPx, double time, double delta)
@@ -230,6 +240,7 @@ public partial class RouteLayer : MeshInstance3D
     private void Commit()
     {
         if (_v.Count == 0) { Mesh = null; return; }
+        PeakVertices = Math.Max(PeakVertices, _v.Count);
         Pool(ref _va, _v, _v[0]);
         Pool(ref _na, _n, Vector3.Right);
         Pool(ref _uva, _uv, Vector2.Zero);

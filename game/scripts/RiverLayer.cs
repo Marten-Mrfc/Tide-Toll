@@ -45,6 +45,10 @@ public partial class RiverLayer : Node3D
     private ShaderMaterial _wakeMat = null!;
     private Node3D _landing = null!;
     private float _mpp = 0.25f;
+    private float[] _cy = Array.Empty<float>();
+    private int[] _order = Array.Empty<int>();
+    /// <summary>Boats drawn up to 1.6x when zoomed out (Main sets it from the zoom), as villagers are.</summary>
+    public float BoatScale = 1f;
     private double _clock;
     private readonly Vector3[] _markAt = new Vector3[MaxMarks];
     private readonly double[] _markT = { -1e9, -1e9, -1e9, -1e9 };
@@ -65,6 +69,8 @@ public partial class RiverLayer : Node3D
         Name = "River";
         int max = sim.Params.River?.MaxBoats ?? 0;
         _slots = new Slot[max];
+        _cy = new float[max];
+        _order = new int[max];
         for (int i = 0; i < max; i++) _slots[i] = MakeSlot(i);
         _wakeMat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/wake.gdshader") };
         _wakeMat.SetShaderParameter("foam", Palette.Paper);
@@ -182,25 +188,30 @@ public partial class RiverLayer : Node3D
         float ring = Math.Clamp(34f * _mpp, 3.5f, 30f);
         foreach (var s in _slots) s.Seen = false;
         var boats = r.Boats;
-        int wakes = 0, signs = 0;
-        for (int i = 0; i < boats.Length; i++)
+        int wakes = 0, signs = 0, count = Math.Min(boats.Length, _cy.Length);
+        float sc = BoatScale;
+        // Hull centres in rows: the bow row plus half a hull to the south; moored boats lie either side of the jetty.
+        for (int i = 0; i < count; i++)
+        {
+            ref readonly Boat b = ref boats[i];
+            float bow = (b.Kind == BoatKind.Barge ? BargeBow : RowBow) * sc;
+            float y = (float)(b.PrevY + (b.Y - b.PrevY) * alpha);
+            _cy[i] = b.State == BoatState.Mooring
+                ? (float)(r.LandingRow + 0.5) + (b.Berth == 0 ? -1f : 1f) * (bow + 2.2f) / cell
+                : y + bow / cell;
+        }
+        SpaceQueue(boats, count, cell, sc);
+        for (int i = 0; i < count; i++)
         {
             ref readonly Boat b = ref boats[i];
             var s = SlotFor(b.Id);
             if (s == null) continue;
             bool barge = b.Kind == BoatKind.Barge;
-            float bow = barge ? BargeBow : RowBow, beam = barge ? BargeBeam : RowBeam;
-            // Hull centre in rows: the bow row plus half a hull to the south; moored boats lie either side of the jetty.
-            float y = (float)(b.PrevY + (b.Y - b.PrevY) * alpha);
-            float cy = y + bow / cell;
+            float bow = (barge ? BargeBow : RowBow) * sc, beam = (barge ? BargeBeam : RowBeam) * sc;
+            float cy = _cy[i];
             float room = MathF.Max(0f, (riverW - beam) / 2f - 0.2f);
             float lateral = 0f;
-            if (b.State == BoatState.Mooring)
-            {
-                cy = (float)(r.LandingRow + 0.5) + (b.Berth == 0 ? -1f : 1f) * (bow + 2.2f) / cell;
-                lateral = landSide * room;
-            }
-            else if (b.State == BoatState.Waiting) lateral = (b.Id % 2 == 0 ? -1f : 1f) * room * 0.8f;
+            if (b.State == BoatState.Mooring) lateral = landSide * room;
             else if (b.State == BoatState.TurnedBack) lateral = -landSide * room * 0.6f;
             float x = RiverXAt(rx, cy, n);
             // Heading: along the river's bend, northbound unless turned back.
@@ -223,8 +234,10 @@ public partial class RiverLayer : Node3D
             s.Pos = target + s.Off;
             s.Root.Position = s.Pos;
             s.Root.Rotation = new Vector3(0, s.Yaw, 0);
+            s.Root.Scale = new Vector3(sc, sc, sc);
             if (!s.Root.Visible) s.Root.Visible = true;
-            if (s.Row.Visible == barge) { s.Row.Visible = !barge; s.Barge.Visible = barge; }
+            if (s.Row.Visible == barge) s.Row.Visible = !barge;
+            if (s.Barge.Visible != barge) s.Barge.Visible = barge;
             bool loaded = b.Cargo > 0;
             if (barge) { if (s.Cargo.Visible != loaded) s.Cargo.Visible = loaded; }
             else if (s.Crate.Visible != loaded) s.Crate.Visible = loaded;
@@ -233,9 +246,9 @@ public partial class RiverLayer : Node3D
             if (speed > 1e-4f && b.State != BoatState.Mooring)
             {
                 var sf = new Vector3(MathF.Sin(s.Yaw), 0, MathF.Cos(s.Yaw));
-                float len = barge ? 18f : 10f, wide = barge ? 1f : 0.65f;
+                float len = (barge ? 18f : 10f) * sc, wide = barge ? 1f : 0.65f;
                 var at = s.Pos - sf * (bow + len / 2f - 0.5f) + new Vector3(0, 0.06f, 0);
-                var right = new Vector3(sf.Z, 0, -sf.X) * (barge ? 10f : 6f);
+                var right = new Vector3(sf.Z, 0, -sf.X) * (barge ? 10f : 6f) * sc;
                 Put(_wakeBuf, wakes++, right, -sf * len, at, 1f, wide, 0);
             }
             if (b.State == BoatState.Waiting)
@@ -262,6 +275,30 @@ public partial class RiverLayer : Node3D
         Upload(_wakes, _wakeBuf, wakes);
         Upload(_signs, _signBuf, signs);
         _wakeMat.SetShaderParameter(AnimTime, (float)(_sim.AnimTime % 3600.0));
+    }
+
+    /// <summary>
+    /// The simulation queues boats 2 rows apart, as points; a barge is over 6 rows long. Boats waiting in a queue are
+    /// drawn nose to tail instead (each pushed south of the one ahead by its length), so a queue reads as a queue.
+    /// </summary>
+    private void SpaceQueue(ReadOnlySpan<Boat> boats, int count, float cell, float sc)
+    {
+        int m = 0;
+        for (int i = 0; i < count; i++) if (boats[i].State == BoatState.Waiting) _order[m++] = i;
+        // Insertion sort by centre, north first (a handful of boats).
+        for (int a = 1; a < m; a++)
+        {
+            int v = _order[a], j = a - 1;
+            while (j >= 0 && _cy[_order[j]] > _cy[v]) { _order[j + 1] = _order[j]; j--; }
+            _order[j + 1] = v;
+        }
+        for (int a = 1; a < m; a++)
+        {
+            int p = _order[a - 1], q = _order[a];
+            float half = ((boats[p].Kind == BoatKind.Barge ? BargeBow : RowBow) + (boats[q].Kind == BoatKind.Barge ? BargeBow : RowBow)) * sc;
+            float min = _cy[p] + (half + 1f) / cell;
+            if (_cy[q] < min) _cy[q] = min;
+        }
     }
 
     private Slot? SlotFor(int id)

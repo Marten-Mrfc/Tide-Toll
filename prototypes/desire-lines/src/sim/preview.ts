@@ -74,7 +74,10 @@ export interface FlowPreview {
   note?: "far";
 }
 
-const MIN_RATE = 0.5; // pairs with fewer trips a day than this are ignored
+// Pairs with fewer trips a day than this are ignored, unless the change cuts the
+// house off. A grown cottage's 3 villagers make about 0.3 to 0.4 trips a day to
+// each destination (round 3 used 0.5, which hid every grown house).
+const MIN_RATE = 0.2;
 const MIN_GROUP_RATE = 0.05; // ... and groups (ordinary or explorer trips) with fewer than this
 const BASE_MAX_AGE = 1; // sim seconds before the base fields are rebuilt
 const SAME_COST = 0.002; // a route whose cost changes less than this is unchanged
@@ -189,7 +192,15 @@ export class FlowPredictor {
       const ex = (explorersOf.get(h) ?? 0) / Math.max(1, walkersOf.get(h) ?? 0);
       for (const d of this.dests) {
         const rate = w.tripRatePerDay(h, d);
-        if (rate < MIN_RATE || !(base.f[d][door] < Infinity)) continue; // rare, or not reachable now either
+        if (!(base.f[d][door] < Infinity)) continue; // not reachable now either
+        if (rate < MIN_RATE) {
+          // A rare pair still counts if the change cuts a house with villagers off.
+          if (!(walkersOf.get(h) ?? 0) || hyp.f[d][door] < Infinity) continue;
+          const change: RouteChange = { home: h, dest: d, rate, explorers: false, frugal: false, oldPts: EMPTY, newPts: EMPTY, reachable: false, costRatio: Infinity };
+          all.push({ change, x0: false, f0: base.f[d], c0: base.cost, f1: hyp.f[d], c1: hyp.cost, newPts: null });
+          blocked.set(d, (blocked.get(d) ?? 0) + 1);
+          continue;
+        }
         const to = B[d].door;
         const straight = Math.hypot((door % N) - (to % N), ((door / N) | 0) - ((to / N) | 0));
         const capped = (s: FieldSet) => P.detourCap > 0 && straight > 4 && routeLength(s.f[d], s.cost, door, to) > P.detourCap * straight;

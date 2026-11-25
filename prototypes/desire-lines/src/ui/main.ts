@@ -1,5 +1,5 @@
 // Page entry: owns the world, the frame loop, the controls and the debug API.
-import { World } from "../sim/world";
+import { World, WorldOptions } from "../sim/world";
 import { PARAMS } from "../sim/params";
 import { N, idx } from "../sim/grid";
 import { Renderer } from "./render";
@@ -25,7 +25,9 @@ function initialSeed(): number {
 
 let seed = initialSeed();
 let walkerCount = PARAMS.defaultWalkers;
-let world = new World(seed, walkerCount);
+/** Rain and house growth for new worlds: the player's defaults (both on, PARAMS.rainOn and growthOn) unless the debug API changes them. */
+let rules: WorldOptions = {};
+let world = new World(seed, walkerCount, rules);
 let paused = false;
 let speed = 1;
 
@@ -121,7 +123,7 @@ setPreview(previewSaved !== "0");
 
 function reset(newSeed = seed) {
   seed = newSeed >>> 0 || 1;
-  world = new World(seed, walkerCount);
+  world = new World(seed, walkerCount, rules);
   renderer.setWorld(world);
   previewer.setWorld(world);
   input.setTool(input.tool);
@@ -278,6 +280,8 @@ const api = {
     const wx = world.weather;
     return { rainOn: world.rainOn, raining: wx.raining, rain: wx.rain, wetness: wx.wetness, mudCells: world.mudCells, rainDays: wx.rainDays, mudUntil: wx.mudUntil, simTime: world.time };
   },
+  /** Switches rain and house growth for the next map and resets it (debug; both on by default). */
+  setRules(r: { rain?: boolean; growth?: boolean }) { rules = { ...rules, ...r }; reset(seed); return { rain: world.rainOn, growth: world.growthOn }; },
   houses() {
     return { growthOn: world.growthOn, grown: world.grown.map(h => ({ ...h })), population: world.walkers.length, target: PARAMS.hamletTarget, nextHouseTime: world.nextHouseTime };
   },

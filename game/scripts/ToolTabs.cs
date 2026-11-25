@@ -122,9 +122,11 @@ public partial class ToolTabs : VBoxContainer
         foreach (var (tab, price, tip, cost) in _priced)
         {
             bool ok = money >= cost - 1e-9;
-            price.Text = ok ? $"{cost:0}c" : $"{cost:0}c · short {System.Math.Ceiling(cost - money):0}c";
+            // Short on coin: the price in faded ink with the word "short" (shape, not colour alone); the tooltip and the
+            // tool's hover say by how much.
+            price.Text = ok ? $"{cost:0}c" : $"{cost:0}c · short";
             price.AddThemeColorOverride("font_color", ok ? UiKit.Ink : UiKit.FadedInk);
-            tab.TooltipText = ok ? tip : $"{tip}\nNot enough coin: it costs {cost:0}c, you have {coin}c.";
+            tab.TooltipText = ok ? tip : $"{tip}\nNot enough coin: it costs {cost:0}c, you have {coin}c ({System.Math.Ceiling(cost - money):0}c short).";
         }
     }
 

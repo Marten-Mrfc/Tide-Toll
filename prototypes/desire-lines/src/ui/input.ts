@@ -7,6 +7,9 @@
 // - Footbridge and Gate: hover (or press, on touch) previews; placed on release
 //   over the same spot, so sliding away cancels. The Gate tool on a gate removes it.
 // - Erase: hover (or press, on touch) previews what goes; click or drag removes.
+// Each press or drag belongs to the pointer that started it (its pointerId):
+// a second finger landing during a fence drag, a gravel stroke or a press is
+// ignored, and so are its moves, its release and its cancel.
 import { World } from "../sim/world";
 import { N, idx, inside, line4 } from "../sim/grid";
 import { WhatIf } from "../sim/preview";
@@ -14,6 +17,11 @@ import { Renderer } from "./render";
 import { FlowPreviewer } from "./previewer";
 
 export type Tool = "none" | "fence" | "bridge" | "gravel" | "gate" | "erase";
+
+/** What the player's action did, for sound and its visual twin on the map: placed, removed, or refused (with the cell). */
+export type Cue = "place" | "erase" | "refuse";
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** What the Erase tool would remove round a cell. */
 interface EraseTargets { fence: number[]; bridge: number[]; gravel: number[]; }
@@ -28,11 +36,17 @@ export class Input {
   private brush: number[] | null = null; // gravel cells brushed so far in this stroke
   private lastBrush = -1;
   private erasing = false;
+  private erased = false; // the current erase gesture removed something
   private eraseDown: [number, number] | null = null;
   private lastErase: [number, number] | null = null;
   private pressAt = -1; // footbridge or gate: the spot the press is previewing
   private pressed = false;
   private gateReason = "Gates go on fences."; // why the Gate tool cannot place one at the pointer
+  /** The pointer that owns the current press or drag (-1: none). Other pointers are ignored until it lifts. */
+  private owner = -1;
+  private lastKey = "";
+  /** Called when an action places, removes or is refused, with the cell (fractional cell units). */
+  onCue: (cue: Cue, x: number, y: number) => void = () => {};
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -42,11 +56,22 @@ export class Input {
     private say: (msg: string) => void,
   ) {
     canvas.addEventListener("pointerdown", e => this.down(e));
-    canvas.addEventListener("pointermove", e => this.move(e));
-    canvas.addEventListener("pointerup", e => this.up(e));
-    canvas.addEventListener("pointercancel", () => this.cancel());
-    canvas.addEventListener("pointerleave", () => { if (!this.busy) this.cancel(); });
+    canvas.addEventListener("pointermove", e => { if (this.mine(e)) this.move(e); });
+    canvas.addEventListener("pointerup", e => { if (this.mine(e)) { this.up(e); this.owner = -1; } });
+    canvas.addEventListener("pointercancel", e => { if (this.mine(e)) this.cancel(); });
+    canvas.addEventListener("pointerleave", e => { if (this.mine(e) && !this.busy) this.cancel(); });
   }
+
+  /** Whether an event belongs to the pointer that owns the gesture (any pointer while none does). */
+  private mine(e: PointerEvent): boolean { return this.owner < 0 || e.pointerId === this.owner; }
+
+  /** Asks for a flow preview; a new one clears the last action's status message, which described something else. */
+  private request(change: WhatIf, key: string) {
+    if (key !== this.lastKey) { this.lastKey = key; this.say(""); }
+    this.previewer.request(change, key);
+  }
+
+  private clearPreview() { this.lastKey = ""; this.previewer.clear(); }
 
   /** Whether a press or drag is in progress. */
   get busy(): boolean { return !!this.dragStart || !!this.brush || this.erasing || !!this.eraseDown || this.pressed; }
@@ -76,11 +101,13 @@ export class Input {
   }
 
   private down(e: PointerEvent) {
+    if (this.owner >= 0 && e.pointerId !== this.owner) { e.preventDefault(); return; } // a second finger
     if (this.tool === "none" || (e.pointerType === "mouse" && e.button !== 0)) return;
     const c = this.cell(e);
     if (!c) return;
     e.preventDefault();
-    this.canvas.setPointerCapture(e.pointerId);
+    this.owner = e.pointerId;
+    try { this.canvas.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ }
     if (this.tool === "fence") {
       this.dragStart = c;
       this.fenceGhost(c);
@@ -91,7 +118,7 @@ export class Input {
     } else if (this.tool === "bridge" || this.tool === "gate") {
       this.pressed = true;
       this.hover(e);
-      if (this.pressAt < 0) this.say(this.tool === "bridge" ? "Footbridges go across open water, away from the ford." : this.gateReason);
+      if (this.pressAt < 0) { this.say(this.tool === "bridge" ? "Footbridges go across open water, away from the ford." : this.gateReason); this.cueAt("refuse", e); }
     } else if (this.tool === "erase") {
       this.eraseDown = c;
       this.lastErase = null;
@@ -118,36 +145,44 @@ export class Input {
     if (this.tool === "fence" && this.dragStart) {
       const c = this.cell(e);
       const n = c ? w.placeFence(this.fenceCells(c)) : 0;
-      this.say(n ? `Fence placed (${n} cells).` : "Nothing to fence there.");
       this.dragStart = null;
-      this.previewer.clear();
+      this.clearPreview();
       this.hover(e);
+      this.say(n ? `Fence placed (${plural(n, "cell")}).` : "Nothing to fence there.");
+      this.cueAt(n ? "place" : "refuse", e);
     } else if (this.tool === "gravel" && this.brush) {
       const n = w.placeGravel(this.brush);
-      this.say(n ? `Gravel laid (${n} cells).` : "Nothing to gravel there.");
       this.brush = null;
-      this.previewer.clear();
+      this.clearPreview();
       this.hover(e);
+      this.say(n ? `Gravel laid (${plural(n, "cell")}).` : "Nothing to gravel there.");
+      this.cueAt(n ? "place" : "refuse", e);
     } else if ((this.tool === "bridge" || this.tool === "gate") && this.pressed) {
       const before = this.pressAt;
       this.pressed = false;
       this.hover(e);
       // Placed only if released over the same spot; sliding away cancels.
+      let msg = "", cue: Cue | null = null;
       if (before >= 0 && this.pressAt === before) {
         const p = this.at(e)!;
         if (this.tool === "bridge") {
           const b = w.placeBridge(p[0], p[1]);
-          this.say(b ? `Footbridge built (${b.cells.length} cells).` : "No room for a footbridge there.");
-        } else if (w.gate[before]) this.say(w.removeGate(before) ? "Gate removed." : "");
-        else this.say(w.placeGate(before) ? "Gate placed." : this.gateReason);
-      } else if (before >= 0) this.say(this.tool === "bridge" ? "Footbridge cancelled." : "Gate cancelled.");
-      this.previewer.clear();
+          msg = b ? `Footbridge built (${plural(b.cells.length, "cell")}).` : "No room for a footbridge there.";
+          cue = b ? "place" : "refuse";
+        } else if (w.gate[before]) { const ok = w.removeGate(before); msg = ok ? "Gate removed." : ""; cue = ok ? "erase" : null; }
+        else { const ok = w.placeGate(before); msg = ok ? "Gate placed." : this.gateReason; cue = ok ? "place" : "refuse"; }
+      } else if (before >= 0) msg = this.tool === "bridge" ? "Footbridge cancelled." : "Gate cancelled.";
+      this.clearPreview();
       this.hover(e);
+      if (msg) this.say(msg);
+      if (cue) this.cueAt(cue, e);
     } else if (this.tool === "erase" && this.eraseDown) {
       if (!this.erasing) this.eraseAt(e); // a tap on touch
-      this.previewer.clear();
+      this.clearPreview();
       this.hover(e);
+      if (this.erased) this.say("Removed.");
     }
+    this.erased = false;
     this.erasing = false;
     this.eraseDown = null;
     this.lastErase = null;
@@ -162,8 +197,16 @@ export class Input {
     this.pressed = false;
     this.pressAt = -1;
     this.pointer = null;
+    this.owner = -1;
+    this.erased = false;
     this.renderer.ghost = null;
-    this.previewer.clear();
+    this.clearPreview();
+  }
+
+  /** Reports a cue at the pointer's cell. */
+  private cueAt(cue: Cue, e: PointerEvent) {
+    const p = this.at(e);
+    if (p) this.onCue(cue, p[0], p[1]);
   }
 
   // ------------------------------------------------------------ fence
@@ -178,8 +221,8 @@ export class Input {
     const cells = this.fenceCells(end), ok = cells.map(c => w.canFence(c) && !w.fence[c]);
     this.renderer.ghost = { kind: "fence", cells, ok };
     const block = cells.filter((_, i) => ok[i]);
-    if (block.length) this.previewer.request({ block }, `f${block.join(",")}`);
-    else this.previewer.clear();
+    if (block.length) this.request({ block }, `f${block.join(",")}`);
+    else this.clearPreview();
   }
 
   // ------------------------------------------------------------ gravel
@@ -193,8 +236,8 @@ export class Input {
     this.lastBrush = s;
     for (const v of path) if (w.canGravel(v) && !w.gravel[v] && !brush.includes(v)) brush.push(v);
     this.renderer.ghost = { kind: "gravel", cells: brush.slice(), ok: true };
-    if (brush.length) this.previewer.request({ gravel: brush.slice() }, `g${brush.join(",")}`);
-    else this.previewer.clear();
+    if (brush.length) this.request({ gravel: brush.slice() }, `g${brush.join(",")}`);
+    else this.clearPreview();
   }
 
   // ------------------------------------------------------------ erase
@@ -227,8 +270,10 @@ export class Input {
       cells.push(...t.fence, ...t.bridge, ...t.gravel);
     }
     if (w.erase(cells)) {
+      this.erased = true;
+      this.clearPreview(); // what it showed is gone
       this.say("Removed.");
-      this.previewer.clear(); // what it showed is gone
+      this.cueAt("erase", e);
     }
     this.hover(e);
   }
@@ -243,32 +288,32 @@ export class Input {
       const cells = w.bridgeCellsAt(x, y);
       this.pressAt = cells ? cells[0] : -1;
       this.renderer.ghost = { kind: "bridge", cells, x, y };
-      if (cells) this.previewer.request({ bridge: cells }, `b${cells[0]}`);
-      else this.previewer.clear();
+      if (cells) this.request({ bridge: cells }, `b${cells[0]}`);
+      else this.clearPreview();
     } else if (this.tool === "gate") {
       // The nearest fence cell within 2 that takes a gate (a stair corner takes a two-cell gate), or why not.
       const t = w.gateTarget(x, y), c = t.cells.length ? t.cells[0] : -1, remove = t.remove;
       this.pressAt = c;
       this.gateReason = t.reason || "Gates go on fences.";
       this.renderer.ghost = { kind: "gate", cell: c, remove, x, y };
-      if (c >= 0) this.previewer.request(remove ? { ungate: t.cells } : { gate: t.cells }, `${remove ? "u" : "t"}${t.cells.join(",")}`);
-      else this.previewer.clear();
+      if (c >= 0) this.request(remove ? { ungate: t.cells } : { gate: t.cells }, `${remove ? "u" : "t"}${t.cells.join(",")}`);
+      else this.clearPreview();
     } else if (this.tool === "erase") {
       const t = this.eraseTargets(cx, cy);
       this.renderer.ghost = { kind: "erase", x, y, fence: t.fence, bridge: t.bridge, gravel: t.gravel };
       if (t.fence.length || t.bridge.length || t.gravel.length) {
         const change: WhatIf = { open: t.fence, closeBridge: t.bridge, ungravel: t.gravel };
-        this.previewer.request(change, `e${t.fence.join(",")}|${t.bridge[0] ?? ""}|${t.gravel.join(",")}`);
-      } else this.previewer.clear();
+        this.request(change, `e${t.fence.join(",")}|${t.bridge[0] ?? ""}|${t.gravel.join(",")}`);
+      } else this.clearPreview();
     } else if (this.tool === "fence") {
       const c = idx(cx, cy);
       this.renderer.ghost = { kind: "fence", cells: [c], ok: [w.canFence(c) && !w.fence[c]] };
-      this.previewer.clear();
+      this.clearPreview();
     } else if (this.tool === "gravel") {
       const c = w.gravelSnap(idx(cx, cy));
       this.renderer.ghost = { kind: "gravel", cells: [c], ok: w.canGravel(c) };
-      this.previewer.clear();
-    } else { this.renderer.ghost = null; this.previewer.clear(); }
+      this.clearPreview();
+    } else { this.renderer.ghost = null; this.clearPreview(); }
   }
 }
 

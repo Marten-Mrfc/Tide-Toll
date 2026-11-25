@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One command for everything that can be verified automatically. Exits non-zero if any step fails.
-#   ./check                 sim build + fast tests (Release), Godot C# build, headless smoke, tools, interface and perf
+#   ./check                 sim build + fast tests (Release), Godot C# build, headless smoke, tools, river, interface and perf
 #                           tests, screenshots at 1280x720 and 1920x1080, ledger
 #   ./check --no-screenshot skip the rendered screenshot (no xvfb, or in a hurry)
 #   ./check --gate          also run the long statistical runs: gate tables, toy comparison, Category=Gate tests (~6 min)
@@ -114,6 +114,11 @@ if have_godot; then
   # preview's isolation: the same seed with and without preview activity must end with the same wear hash.
   step game-tools tools/godot-test.sh 'TOOLS PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/tools.tscn --quit-after 4000
   note "$(grep -o 'TOOLS PASS.*' "$LOGS/game-tools.log" | head -1 | cut -c1-90)"
+  # The river through real input: ferry and drawbridge placed with a ghost and a reason where they cannot go, a purchase
+  # refused for coin, the drawbridge raised and lowered by click, L, the badge's lever and Ctrl+1, the keeper hired,
+  # both erased; then four in-game days with boats (events, chronicle, ledger, coins, sound cues).
+  step game-river tools/godot-test.sh 'RIVER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/river.tscn --quit-after 20000
+  note "$(grep -o 'RIVER PASS.*' "$LOGS/game-river.log" | head -1 | cut -c1-90)"
   # Every control exists, has a tooltip and label, toggles its state by mouse; every shortcut; focus; text sizes.
   step game-ui tools/godot-test.sh 'UI PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/ui.tscn --quit-after 4000
   note "$(grep -o 'UI PASS.*' "$LOGS/game-ui.log" | head -1 | cut -c1-90)"
@@ -131,13 +136,13 @@ if have_godot; then
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display.
     # The whole book, then the map page after about 20 in-game days at 8x, plus close-ups (book.png, map.png, ...).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1280x720 res://tests/screenshot.tscn --quit-after 5000 -- --out-dir="$SHOTS"
-    note "build/screenshots/{book,map,wear,preview}-1280x720.png + close-ups $(grep -o 'draw calls [0-9]*' "$LOGS/screenshot.log" | head -1)"
+    note "build/screenshots/{book,map,wear,preview,river-*}-1280x720.png + close-ups $(grep -o 'draw calls [0-9]*' "$LOGS/screenshot.log" | head -1)"
     # The interface views again at 1920x1080 (the interface is rebuilt at full scale).
     step screenshot-1080 tools/godot-test.sh 'SCREENSHOT PASS' timeout 600 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 5000 -- --out-dir="$SHOTS" --ui-only
-    note "build/screenshots/{book,map,wear,preview}-1920x1080.png"
+    note "build/screenshots/{book,map,wear,preview,river-*}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-tools game-ui game-perf screenshot; do
+  for s in game-build game-smoke game-tools game-river game-ui game-perf screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

@@ -12,6 +12,8 @@ namespace TideToll.Game.Tests;
 ///   boats on the river;
 /// - river-waiting: a barge waiting below the lowered drawbridge, its patience ring running down, walkers crossing;
 /// - river-raised: the same bridge raised by hand (L), walkers bunched at the barriers, the barge passing;
+/// - river-crossings: ferry, drawbridge and footbridge in one view at a middle zoom, a rowboat and a barge among them;
+/// - river-boats: a rowboat moored at the landing, close (a barge too when one is there);
 /// - river-ferry: the ferry's raft on its rope, with riders when the timing allows;
 /// - river-blocked: a barge held below the footbridge (crossed-out mast) and, river-turnback, the moment it turns back
 ///   (vermillion diamond, "Turned back", the margin note);
@@ -42,7 +44,7 @@ public partial class Screenshot
         for (int i = 0; i < 300 && !BoatWaitsAt(draw.Id); i++) sim.StepTicks(1);
         Need(BoatWaitsAt(draw.Id), "no barge waiting at the drawbridge");
         sim.StepTicks(30);
-        await Look(drawRow, 70f);
+        await Look(drawRow, 56f);
         Check(await Snap("river-waiting", true), "river-waiting");
         // Raised by hand with the L key, as a player would; walkers bunch on both banks.
         _main.Tools.Select(draw.Id);
@@ -51,7 +53,7 @@ public partial class Screenshot
         for (int i = 0; i < 40 && Find(draw.Id)!.State != BridgeState.Raised; i++) sim.StepTicks(1);
         sim.StepTicks(4);
         Need(Find(draw.Id)!.State == BridgeState.Raised, "the drawbridge did not rise");
-        await Look(drawRow, 70f);
+        await Look(drawRow, 56f);
         Check(await Snap("river-raised", true), "river-raised");
         for (int i = 0; i < 200 && Find(draw.Id)!.State != BridgeState.Closed; i++) sim.StepTicks(1);
         // The ferry: wait for the raft under way with riders (or at least for a crossing).
@@ -74,11 +76,27 @@ public partial class Screenshot
         sim.StepTicks(8);
         await Look(footRow + 2, 70f);
         Check(await Snap("river-turnback", true), "river-turnback");
-        // The whole river in the play view: boats on the move between the crossings.
+        // All three crossings at a middle zoom, a rowboat and a barge on the move between them, then the whole river.
+        _main.Tools.Select(-1);
+        // Clear water first (the turned-back barges sail off), then a rowboat and, 25 ticks behind it, a barge: boats
+        // sail a row a tick, so when the rowboat is between the drawbridge and the landing the barge has just reached
+        // the footbridge and waits below it.
+        for (int i = 0; i < 300 && Moving() > 0; i++) sim.StepTicks(1);
         w.SpawnBoat(BoatKind.Rowboat);
         sim.StepTicks(25);
         w.SpawnBoat(BoatKind.Barge);
-        sim.StepTicks(6);
+        sim.StepTicks(Math.Max(10, (int)(128.5 - (drawRow + land) / 2) - 25));
+        await Look((ferryRow + footRow) / 2, (footRow - ferryRow) * 2f + 40f);
+        Check(await Snap("river-crossings", true), "river-crossings");
+        // The rowboat moored at the landing, close: a short hull with no mast against a barge's length and sail bar.
+        for (int i = 0; i < 120 && !RowboatMoored(); i++) sim.StepTicks(1);
+        if (!RowboatMoored()) GD.Print("SCREENSHOT river-boats: the rowboat did not moor in time");
+        GD.Print("SCREENSHOT river-boats: " + BoatList());
+        _main.Ground.SnapNext();
+        _main.Ground.Upload();
+        _main.Rig.LookAt(_main.Boats.LandingAt + new Vector3(0, 0, 4f), 48f);
+        await Frames(4);
+        Check(await Snap("river-boats", true), "river-boats");
         _main.Rig.FramePlay(instant: true);
         await Frames(4);
         Check(await Snap("river-map", true), "river-map");
@@ -87,6 +105,31 @@ public partial class Screenshot
         GD.Print($"SCREENSHOT river-ledger: coin {r.Money:0}c, rep {r.Reputation:0}, notes {_main.Feed.NoteCount}: '{_main.Feed.Note(0)}'");
         Check(await Snap("river-ledger", true), "river-ledger");
         sim.SetPaused(false);
+    }
+
+    private string BoatList()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (ref readonly var b in _main.Sim.World.River!.Boats)
+        {
+            _main.Boats.BoatPosition(b.Id, out var at);
+            sb.Append($"{b.Kind} {b.State} row {b.Y:0.0} berth {b.Berth} drawn at {at.X:0},{at.Z:0}; ");
+        }
+        return sb.ToString();
+    }
+
+    private bool RowboatMoored()
+    {
+        foreach (ref readonly var b in _main.Sim.World.River!.Boats) if (b.State == BoatState.Mooring && b.Kind == BoatKind.Rowboat) return true;
+        return false;
+    }
+
+    /// <summary>Boats on the river that are not moored at the landing.</summary>
+    private int Moving()
+    {
+        int k = 0;
+        foreach (ref readonly var b in _main.Sim.World.River!.Boats) if (b.State != BoatState.Mooring) k++;
+        return k;
     }
 
     private int FreeRow(int from, int step)

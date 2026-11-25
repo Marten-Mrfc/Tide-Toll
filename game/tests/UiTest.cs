@@ -19,7 +19,7 @@ public partial class UiTest : Node
     private readonly List<string> _notes = new();
     private static readonly string[] Names =
     {
-        "Pause", "Speed1", "Speed2", "Speed4", "Speed8", "Fence", "Footbridge", "Erase", "FlowPreview", "WearOverlay",
+        "Pause", "Speed1", "Speed2", "Speed4", "Speed8", "Fence", "Footbridge", "Ferry", "Drawbridge", "Erase", "FlowPreview", "WearOverlay",
         "Sound", "Volume", "Reset", "NewMap", "Walkers",
     };
 
@@ -67,8 +67,11 @@ public partial class UiTest : Node
             Check(c.FocusMode == Control.FocusModeEnum.All, $"{n} cannot take keyboard focus");
             if (c is Button b)
             {
-                var label = b.GetNodeOrNull<Label>("Row/Text");
+                // A priced crossing tab (river rules) keeps its name and price on two lines.
+                var label = b.GetNodeOrNull<Label>("Row/Text") ?? b.GetNodeOrNull<Label>("Row/Lines/Text");
                 Check(label != null && label.Text.Length > 0, $"{n} has no label");
+                var price = b.GetNodeOrNull<Label>("Row/Lines/Price");
+                if (price != null) Check(price.Text.EndsWith("c") || price.Text.Contains("short"), $"{n} shows no price: '{price.Text}'");
             }
         }
         _notes.Add($"controls={Names.Length}");
@@ -170,13 +173,15 @@ public partial class UiTest : Node
         for (int i = 3; i >= 0; i--) { await Key(ks[i]); Check(sim.Speed == sp[i], $"key {i + 1} set speed {sim.Speed}"); }
         await Key(Godot.Key.F); Check(_main.Tools.Tool == Tool.Fence, "F");
         await Key(Godot.Key.B); Check(_main.Tools.Tool == Tool.Bridge, "B");
+        await Key(Godot.Key.Y); Check(_main.Tools.Tool == Tool.Ferry, "Y (ferry)");
+        await Key(Godot.Key.D); Check(_main.Tools.Tool == Tool.Drawbridge, "D (drawbridge)");
         await Key(Godot.Key.E); Check(_main.Tools.Tool == Tool.Erase, "E");
         await Key(Godot.Key.E); Check(_main.Tools.Tool == Tool.None, "E again should put the eraser down");
         await Key(Godot.Key.F); await Key(Godot.Key.Escape); Check(_main.Tools.Tool == Tool.None, "Escape");
         await Key(Godot.Key.P); Check(!_main.Tools.PreviewEnabled, "P off");
         await Key(Godot.Key.P); Check(_main.Tools.PreviewEnabled, "P on");
         await Key(Godot.Key.W); Check(_main.Ground.WearOverlay, "W on");
-        Check(_main.Ui.Chapter.GetNode<Control>("Column/HeatLegend").Visible || _main.Ui.Chapter.Slip, "heat legend not shown with the overlay");
+        Check(_main.Ui.Chapter.GetNode<Control>("Column/Legend/HeatLegend").Visible || _main.Ui.Chapter.Slip, "heat legend not shown with the overlay");
         await Key(Godot.Key.W); Check(!_main.Ground.WearOverlay, "W off");
         await Key(Godot.Key.M); Check(!_main.Audio.Enabled, "M off");
         await Key(Godot.Key.M); Check(_main.Audio.Enabled, "M on");

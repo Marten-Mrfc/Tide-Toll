@@ -6,7 +6,7 @@ using TideToll.Sim;
 namespace TideToll.Game;
 
 /// <summary>
-/// A badge by every drawbridge on the map (UX tab, bridge badge): a paper card pinned above the bridge with the state
+/// A badge by every drawbridge on the map (UX tab, bridge badge): a paper card pinned up and left of the bridge's west end with the state
 /// in words and as a glyph with a progress ring (down, raising, up, lowering), the boats waiting below it (hull icon and
 /// number) and the walkers waiting on each bank (west and east), the lever (Raise or Lower, key L) and the keeper
 /// (Hire keeper with its price, key K; greyed with the reason when the purse is short; "Keeper on duty" once hired).
@@ -25,7 +25,8 @@ public partial class BridgeBadges : Control
         public Vector3 Anchor;
         public BridgeState Shown = (BridgeState)255;
         public int ShownBoats = -1, ShownW = -1, ShownE = -1, ShownCoin = int.MinValue;
-        public bool ShownKeeper, ShownSelected;
+        public bool ShownKeeper, ShownSelected, Compact;
+        public Control Counts = null!, Buttons = null!;
     }
 
     private Main _main = null!;
@@ -34,6 +35,8 @@ public partial class BridgeBadges : Control
     private StyleBoxFlat _card = null!, _cardSelected = null!;
 
     public int Count => _badges.Count;
+    /// <summary>Above this camera size (metres of map in view) a badge shows only its state line, unless selected.</summary>
+    public const float CompactAbove = 170f;
 
     public void Build(Main main, float s)
     {
@@ -61,7 +64,7 @@ public partial class BridgeBadges : Control
     }
 
     private void OnEdited(int v) => Rebuild();
-    private void OnSelection() { foreach (var b in _badges) b.ShownSelected = !b.ShownSelected; } // forces a restyle
+    private void OnSelection() => Refresh(false); // restyles the frame at once (Refresh compares with what is shown)
 
     /// <summary>The badge's lever and keeper buttons for a drawbridge (tests).</summary>
     public Button? LeverButton(int id) { foreach (var b in _badges) if (b.Id == id) return b.Lever; return null; }
@@ -85,8 +88,9 @@ public partial class BridgeBadges : Control
             if (x.Type != CrossingType.Drawbridge) continue;
             k++;
             var b = MakeBadge(x.Id, k, r.Rules);
-            // Pinned over the lift's gantry, on the pier's (west) bank.
-            b.Anchor = new Vector3((x.Cells[0] % n) * cell, 8f, (x.Row + 0.5f) * cell);
+            // Pinned up and to the left of the pier's end, so the river (boats, the landing) and the bank where walkers
+            // queue stay clear; the card's bottom-right corner sits there.
+            b.Anchor = new Vector3((x.Cells[0] % n) * cell - 7f, 0f, (x.Row + 0.5f) * cell - 3f);
             _badges.Add(b);
             AddChild(b.Card);
         }
@@ -119,6 +123,7 @@ public partial class BridgeBadges : Control
         b.Walkers.Name = "Walkers";
         counts.AddChild(b.Walkers);
         col.AddChild(counts);
+        b.Counts = counts;
         var buttons = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         buttons.AddThemeConstantOverride("separation", UiKit.Px(_s, 4));
         b.Lever = SmallButton("Lever", "ui-raise-bridge", "Raise  L", $"Raise or lower drawbridge {number} by hand (L for the selected bridge, Ctrl+{number} for this one). Barges pass only while it is up; walkers wait at the barriers.");
@@ -128,6 +133,7 @@ public partial class BridgeBadges : Control
         b.Keeper.Pressed += () => { _main.Tools.Select(id); _main.Tools.HireKeeper(id); };
         buttons.AddChild(b.Keeper);
         col.AddChild(buttons);
+        b.Buttons = buttons;
         b.Card.AddChild(col);
         return b;
     }
@@ -172,9 +178,20 @@ public partial class BridgeBadges : Control
             if (x == null) continue;
             var at = _main.Rig.LocalToScreen(b.Anchor);
             var size = b.Card.Size;
-            var pos = new Vector2(Mathf.Round(at.X - size.X / 2f), Mathf.Round(at.Y - size.Y - 10 * _s));
-            bool on = at.X > 0 && at.Y > 0 && at.X < vp.X && at.Y < vp.Y && _main.Rig.Camera.Size < 420f;
+            var pos = new Vector2(Mathf.Round(at.X - size.X), Mathf.Round(at.Y - size.Y));
+            // Whole badge up close; only the state line at the play view's overview; none in the whole-book view.
+            float zoom = _main.Rig.Camera.Size;
+            bool on = at.X > 0 && at.Y > 0 && at.X < vp.X && at.Y < vp.Y && zoom < _main.Rig.PlaySize * 1.08f;
             if (b.Card.Visible != on) b.Card.Visible = on;
+            bool compact = zoom > CompactAbove && _main.Tools.SelectedBridge != b.Id;
+            if (compact != b.Compact)
+            {
+                b.Compact = compact;
+                b.Counts.Visible = b.Buttons.Visible = !compact;
+                b.Card.ResetSize();
+                b.ShownBoats = b.ShownW = b.ShownE = -1; // refresh the counts when they show again
+                b.ShownCoin = int.MinValue;
+            }
             if (b.Card.Position != pos) b.Card.Position = pos;
             bool selected = _main.Tools.SelectedBridge == b.Id;
             if (force || selected != b.ShownSelected)
@@ -199,6 +216,7 @@ public partial class BridgeBadges : Control
                 b.Card.ResetSize();
             }
             if (b.Glyph.Progress != (float)x.Progress) { b.Glyph.Progress = (float)x.Progress; b.Glyph.QueueRedraw(); }
+            if (b.Compact && !force) continue; // the counts and buttons are hidden: no text to build
             if (force || x.BoatsWaiting != b.ShownBoats)
             {
                 b.ShownBoats = x.BoatsWaiting;

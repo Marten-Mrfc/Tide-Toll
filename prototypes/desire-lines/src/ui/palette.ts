@@ -4,7 +4,8 @@
 export type RGB = [number, number, number];
 
 const KEYS = [
-  "paper", "grass", "grass-dark", "trampled", "trail", "track", "hollow", "crop",
+  "paper", "grass", "grass-dark", "trampled", "trail", "trail-worn", "track", "trunk", "hollow", "crop",
+  "mud", "mud-glint", "wet", "rain", "gravel-wash", "gravel-rim", "garden", "new",
   "water", "water-edge", "ford", "ink", "building", "label", "label-halo",
   "walker", "walker-halo", "fence", "gate", "gravel", "bridge", "ghost", "invalid", "roof", "route", "halo", "outline",
 ] as const;
