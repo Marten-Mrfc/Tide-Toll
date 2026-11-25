@@ -4,6 +4,19 @@ There are two ways: run the exported build (a few minutes, nothing to install), 
 
 ## A. Run the exported build
 
+### Download it from GitHub
+
+GitHub builds the Windows 64-bit game (Windows 10 and 11) by itself: the workflow `.github/workflows/windows-build.yml` runs on every push to `main` or a `claude/` branch that touches the game, the simulation, the assets or the tools. Work-in-progress commits (message starting with "Snapshot") are skipped.
+
+1. Open https://github.com/Marten-Mrfc/Tide-Toll/actions/workflows/windows-build.yml (sign in to GitHub first).
+2. Click the newest run with a green tick.
+3. At the bottom of the run page, under **Artifacts**, click **TideToll-windows-x64** to download a zip (about 70 MB). GitHub keeps it for 30 days.
+4. Unzip all of it into one folder and double-click `TideToll.exe`. A `README.txt` in the zip says which commit it was built from.
+
+Once the workflow file is on the default branch, the same page also has a **Run workflow** button to build any branch by hand. A private repository uses the account's free Actions minutes: about 4 minutes a run once the Godot download is cached.
+
+### Or build it yourself on Linux
+
 The build is made on Linux by `tools/export-windows.sh` (or `./check --export`) into `build/windows/`. It is not zipped. Copy the whole folder to the PC (a USB stick or a shared folder); it holds:
 
 | File | Size (this build) | What it is |
