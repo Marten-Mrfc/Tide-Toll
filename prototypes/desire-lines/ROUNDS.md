@@ -148,3 +148,33 @@ Not smooth yet: 500 walkers at 8x on a CPU throttled 4 times gives 33 fps with s
 5. The gravel preview must not say "No change" where gravel does pull walkers; the README should say gravel reaches about 3 cells, sometimes 5.
 6. Smoother frames at 8x with 500 walkers on slow machines, without changing results.
 7. A last look at both themes and phone width, and a last full check.
+
+## Round 5 (2026-11-25)
+
+**Built:** the last polish. Mud lasts 2 days in every season and is drawn as wet trail that dries from the least-worn cells first; mud updates at once when a tool is used; every audio node is released when its sound ends; a hard budget of 8 step voices a beat; river, rain and bell raised; the dawn mark keeps the day line readable; the gravel readout no longer says "No change" where gravel pulls walkers; drawing time halved on slow machines; a one-column panel on phones; "How to play" names every tool and key.
+
+**Final review:**
+
+| Id | Status | Evidence |
+| --- | --- | --- |
+| F1 | Pass | 223 KB page, page contract checks pass, no audio before the Sound press |
+| F2 to F11 | Pass | `npm run check` 86 of 86, smoke 3 of 3 (112 checks each), perf 2 of 2; every tool driven by real mouse and by real touch at 400 and 360 px |
+| F12 | Partial | Rain, mud, growth and sound all work and are measured; nobody has listened to the sound |
+| G1 | Needs people | Stand-in: first trail within seconds on every seed; trails merge into 2 or 3 trunks with soft side trails |
+| G2 | Needs people | Stand-in: reroute and preview isolation tests pass, also with rain and growth on |
+| G3 | Pass | The five old sets are bit-identical to the round 3 baseline with rain and growth off. With both on: 100 seeds in five sets (lowest 34.4%, highest 56.5%) and the reviewer's own seeds 801 to 820 (lowest 37.1%, highest 52.6%, mean 45.0%) |
+| G4 | Pass | 60 fps at 200 walkers, also in rain with sound on |
+
+No test was weakened in any round. Audio nodes alive: 132 after 1 minute, 113 after 10 (round 4: 473, then 1,123 after 3 minutes).
+
+**Lead's decision: the toy is finished and republished (version 5). It now waits for the owner's playtest.**
+
+Left as they are, for the owner to judge:
+
+- Mud is on the map about 40% of the time at the design doc's rain chances.
+- In the dark theme wet trail reads duller rather than clearly darker.
+- Mature trunks near the town still read a little like dirt roads.
+- A first fence often shows "No change to routes", which can look as if nothing happened.
+- At 8x with 500 walkers on a processor slowed 4 times it runs at about 35 fps.
+
+Small bugs found by the last bug hunt, not fixed in version 5: mud is drawn drying over a full day while its slowdown ends after half a day; when the step budget is hit, the same map areas lose their footsteps every time; the dawn mark is not reset by Reset or New map; with reduced motion the dawn underline stays on all day; the drying order follows wear as it changes during the day. They go into the next round as a short fix list.
