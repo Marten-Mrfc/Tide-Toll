@@ -67,6 +67,10 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 12 | Toy and plan | The toy's short bug list, checked independently; and, in parallel, the written plan for porting the toy's rounds 3 to 5 to the C# library and the game | Done 07:22 UTC. The seven small fixes are in, each with a test; simulation results unchanged; the independent check passed and the toy is republished as version 6 at the same link. The porting plan is `docs/plans/sync-plan.md`: nine library steps and six game steps, three of them high risk |
 | 13 | Sync | Make the branch green again (the ten stale river tests, the smoke test, four river bugs, no flood in the first spring), then bring the C# library in line with the finished toy following `docs/plans/sync-plan.md` (steps A1 to A9: new comparison data, the retuned trail model, gravel, gates, the preview, rain and mud, house growth, the river checked against the new model, defaults switched), then review | Running since 07:48 UTC (workflow run `wf_2d2fd8ce-918`; script copy in `build/wf/`). The builders keep `docs/plans/sync-progress.md` up to date step by step |
 
+## The owner's requests since the overnight brief
+
+- 25 November, about 09:00 UTC: "Make github build an exe for windows 11". Done with `.github/workflows/windows-build.yml` (the push of a workflow file was accepted). The lead can see runs with `gh run list --repo Marten-Mrfc/Tide-Toll` even though `gh auth status` complains. Commits whose message starts with "Snapshot" do not trigger a build, so keep using that prefix for work-in-progress commits and avoid it for finished rounds.
+
 ## Next steps
 
 - When round 13 (sync of the library) finishes: read the review (is the branch green; does the library give the finished toy's results on seeds the comparison data does not hold; how did the river table shift), update the report, commit, push. If it stopped part-way, `docs/plans/sync-progress.md` says where; run a continuation round.
@@ -142,8 +146,8 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | --- | --- | --- |
 | 1 | Allow the free asset sites in the environment's network settings: kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org | The container cannot reach them, so tonight's assets are made in code instead |
 | 2 | Play the toy and answer the feedback questions | Gates G1 and G2 need people |
-| 3 | Run the Windows build on your PC (`tools/export-windows.sh` makes it; `docs/setup-windows.md` has the steps to open the project in Godot) | The container has no Windows, so the build was made but never started |
-| 4 | Decide whether to switch on automated builds: copy `docs/ci/github-actions.yml` to `.github/workflows/` | It uses your GitHub Actions minutes, and this session may not be allowed to push workflow files |
+| 3 | Run the Windows build on your PC: download `TideToll-windows-x64` from the newest green run at https://github.com/Marten-Mrfc/Tide-Toll/actions/workflows/windows-build.yml, unzip, run `TideToll.exe` (`docs/setup-windows.md` has the list of what to check) | The container has no Windows, so the build has never been started |
+| 4 | Done on your request (25 November, 09:00 UTC): GitHub now builds the Windows exe. `.github/workflows/windows-build.yml` runs on pushes to `main` and `claude/` branches and attaches `TideToll-windows-x64` to the run; see `docs/setup-windows.md`. Still open: whether to also run the full `./check` on GitHub (`docs/ci/github-actions.yml` is the template) | It uses your GitHub Actions minutes |
 | 5 | Listen to the sounds and the theme draft in the asset gallery | Agents can only measure audio, not hear it |
 | 6 | Say whether you want AI-generated art, sound or music from an online service | Those need an account and a licence check; tonight everything was made by code instead |
 | 7 | Listen to the toy with Sound on, and to the game: are the river and rain audible, is the bell too loud or too soft, do the footsteps follow the walkers | Levels were set from measurements only |
