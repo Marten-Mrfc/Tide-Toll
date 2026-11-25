@@ -58,6 +58,7 @@ public partial class GameUi : CanvasLayer
         _main.Feed.Chronicle += OnChronicle;
         _main.Feed.Event += OnRiverEvent;
         _main.Feed.CycleNote += OnCycleNote;
+        _main.Sim.DayStarted += OnDayStarted;
     }
 
     public override void _ExitTree()
@@ -71,6 +72,7 @@ public partial class GameUi : CanvasLayer
         _main.Feed.Chronicle -= OnChronicle;
         _main.Feed.Event -= OnRiverEvent;
         _main.Feed.CycleNote -= OnCycleNote;
+        _main.Sim.DayStarted -= OnDayStarted;
     }
 
     private void OnResize() => CallDeferred(MethodName.RebuildIfResized);
@@ -117,7 +119,7 @@ public partial class GameUi : CanvasLayer
         _root.AddChild(Badges);
 
         Chapter = new ChapterPage();
-        Chapter.Build(_s, _main.Chapter);
+        Chapter.Build(_s, _main.Chapter, _main.Params.River);
         _root.AddChild(Chapter);
 
         Tabs = new ToolTabs();
@@ -247,6 +249,13 @@ public partial class GameUi : CanvasLayer
     public void NewMap() { _main.Sim.NewMap(); _main.Tools.Say($"New map, seed {_main.Sim.Seed}."); }
 
     private void OnWorldReplaced() { Sync(); Tags.SetWorld(_main.Sim.World); Badges.Rebuild(); Floats.Clear(); _since = 1; }
+    /// <summary>A new day began (also inside a fast-forward): today's ledger counts start now, and are shown next frame.</summary>
+    private void OnDayStarted(long day)
+    {
+        if (_main.Sim.World.River is not { } rv) return;
+        Chapter.SnapshotDay(rv, day);
+        _since = 1;
+    }
     private void OnChronicle() => Chapter.SetNotes(_main.Feed);
     private void OnRiverEvent(RiverEvent e) => Floats.OnEvent(e);
     private void OnCycleNote(int crossing, string text) => Floats.AtCrossing(crossing, text, false);

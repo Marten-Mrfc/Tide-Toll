@@ -80,6 +80,37 @@ public partial class RiverFloats : Control
     public void Clear()
     {
         foreach (var s in _slips) { s.Born = -1e9; s.Visible = false; s.Boat = -1; }
+        _wetShown = 0; _wetAt = -1e9; _turned = 0;
+    }
+
+    // Wet grain at the landing: the coin the ford cost, gathered and shown at most every WetEvery seconds as one note.
+    /// <summary>Seconds between two "wet grain" notes at the landing (the coin in between is added up).</summary>
+    public const float WetEvery = 2.5f;
+    /// <summary>Slip key of the landing's wet-grain note (a boat id no boat has), so a new one takes over the old.</summary>
+    private const int WetKey = int.MaxValue - 1;
+    private double _wetShown, _wetAt = -1e9;
+    /// <summary>"wet grain" notes started (tests).</summary>
+    public int WetNotes { get; private set; }
+    /// <summary>"A keeper will come now" notes started (tests).</summary>
+    public int UnlockNotes { get; private set; }
+
+    /// <summary>
+    /// When wet grain sold for less since the last note (RiverStats.WetValueLost), a note at the landing: "wet grain:
+    /// -3c". The fraction under a coin waits for the next. Allocation-free unless a note starts.
+    /// </summary>
+    private void WetGrain()
+    {
+        var r = _main.Sim.World.River;
+        if (r == null) return;
+        double lost = r.Stats.WetValueLost;
+        if (lost < _wetShown) _wetShown = lost; // a new world
+        double owed = lost - _wetShown;
+        if (owed < 1 - 1e-9 || _now - _wetAt < WetEvery) return;
+        int c = (int)Math.Floor(owed + 1e-9);
+        _wetShown += c;
+        _wetAt = _now;
+        WetNotes++;
+        At(_main.Boats.LandingAt + new Vector3(0, 3f, 3f), $"wet grain: -{c}c", false, WetKey);
     }
 
     /// <summary>A note at a map-local point (metres); with a boat id, it replaces any note about the same boat.</summary>
@@ -137,7 +168,7 @@ public partial class RiverFloats : Control
                 if (boats.BoatPosition(e.Boat, out var at))
                 {
                     boats.MarkTurnBack(at);
-                    At(at + new Vector3(0, 4f, 0), "Turned back", false, e.Boat);
+                    TurnedBack(at + new Vector3(0, 4f, 0));
                 }
                 break;
             case RiverEventKind.BoatWaiting when IsLowBridge(e.Crossing) && IsBarge(e.Boat):
@@ -146,7 +177,29 @@ public partial class RiverFloats : Control
             case RiverEventKind.KeeperHired:
                 AtCrossing(e.Crossing, "Keeper hired", false);
                 break;
+            case RiverEventKind.KeeperUnlocked:
+                AtCrossing(e.Crossing, "A keeper will come now", false);
+                UnlockNotes++;
+                break;
         }
+    }
+
+    /// <summary>Slip key of the merged "Turned back" note; boats that turn back while it shows add to its count.</summary>
+    private const int TurnKey = int.MaxValue - 2;
+    private int _turned;
+    /// <summary>The live "Turned back" note's count (tests).</summary>
+    public int TurnedBackCount => _turned;
+
+    /// <summary>
+    /// "Turned back" where a boat gave up; while that note still shows, the next one does not stack a second slip
+    /// beside it but becomes "Turned back ×2" (and so on), pinned at the newest place.
+    /// </summary>
+    private void TurnedBack(Vector3 at)
+    {
+        bool live = false;
+        foreach (var o in _slips) if (o.Boat == TurnKey && _now - o.Born < Seconds) { live = true; break; }
+        _turned = live ? _turned + 1 : 1;
+        At(at, _turned == 1 ? "Turned back" : $"Turned back ×{_turned}", false, TurnKey);
     }
 
     private bool IsLowBridge(int id)
@@ -170,6 +223,7 @@ public partial class RiverFloats : Control
     public override void _Process(double delta)
     {
         _now += delta;
+        WetGrain();
         var rig = _main.Rig;
         // Every boat drawn, as a box on screen (its hull's length both ways, as it may lie at any angle).
         int nb = 0;
@@ -199,6 +253,8 @@ public partial class RiverFloats : Control
                 _boxes[nb++] = new Rect2(a, b - a).Abs();
             }
         }
+        // The drawbridges' badges too: a note never hides under a badge (or the badge's buttons under a note).
+        nb = _main.Ui.Badges != null ? _main.Ui.Badges.ShownRects(_boxes, nb) : nb;
         float water = (float)(w.Map.RiverHalfW * cell) / mpp;
         int placed = 0, overlaps = 0;
         float gap = 3f * _s;

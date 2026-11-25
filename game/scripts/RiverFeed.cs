@@ -67,6 +67,7 @@ public partial class RiverFeed : Node
     private void OnWorldReplaced()
     {
         _noteCount = 0;
+        _lastBody = ""; _lastDay = -1; _repeat = 0;
         FloodDay = FrozenDay = 0;
         Array.Fill(_boatId, -1);
         Array.Clear(_cycleBoats); Array.Clear(_cycleQueue);
@@ -140,9 +141,20 @@ public partial class RiverFeed : Node
             case RiverEventKind.BridgeLowered:
             {
                 int k = e.Crossing & 15, boats = _cycleBoats[k], q = _cycleQueue[k];
-                string b = boats == 1 ? "+1 boat through" : $"+{boats} boats through";
-                CycleNote?.Invoke(e.Crossing, q > 0 ? $"{b}; {q} walker{(q == 1 ? "" : "s")} waited" : b);
+                // A raise nothing came through for says so only if it held walkers up; an empty one says nothing.
+                if (boats > 0 || q > 0)
+                {
+                    string b = boats == 0 ? "No boat came through" : boats == 1 ? "+1 boat through" : $"+{boats} boats through";
+                    CycleNote?.Invoke(e.Crossing, q > 0 ? $"{b}; {q} walker{(q == 1 ? "" : "s")} waited" : b);
+                }
                 _cycleBoats[k] = 0; _cycleQueue[k] = 0;
+                break;
+            }
+            case RiverEventKind.KeeperUnlocked:
+            {
+                var r = _main.Sim.World.River;
+                double price = r != null ? r.Rules.KeeperPrice : 0;
+                Write($"After {e.Value:0} raises by hand, a keeper will take the drawbridge on: hire one for {Coin(price)} (K)");
                 break;
             }
             case RiverEventKind.KeeperHired:
@@ -211,9 +223,22 @@ public partial class RiverFeed : Node
         return null;
     }
 
+    private string _lastBody = "";
+    private int _lastDay = -1, _repeat;
+
     private void Write(string text)
     {
         int day = Day();
+        if (_noteCount > 0 && day == _lastDay && text == _lastBody)
+        {
+            // The same note again on the same day (boats turning back one after another): one line with a count.
+            _repeat++;
+            _notes[0] = $"Day {day}: {text} (×{_repeat}).";
+            NotesWritten++;
+            Chronicle?.Invoke();
+            return;
+        }
+        _lastBody = text; _lastDay = day; _repeat = 1;
         for (int i = ChronicleLines - 1; i > 0; i--) _notes[i] = _notes[i - 1];
         _notes[0] = $"Day {day}: {text}.";
         _noteCount = Math.Min(ChronicleLines, _noteCount + 1);

@@ -319,8 +319,10 @@ public partial class Scenery : Node3D
         foreach (var (xf, row) in _reedList)
             if (!NearBridge(w, row, 1)) list.Add(xf);
         Fill(_reeds, list);
-        // With the river rules on, real boats sail the river: the moored decoration would read as one of them.
-        _boat.Visible = w.River == null && !NearBridge(w, _boatRow, 3);
+        // Never shown now (25 Nov 2026, the lead's chapters): Chapter I has no boats, so a moored rowboat there reads as a
+        // boat that does nothing, and in Chapter II real boats sail the river and the decoration would read as one of
+        // them. The node stays (placed from the seed) for a later chapter that wants it.
+        _boat.Visible = false;
     }
 
     private static bool NearBridge(World w, int row, int rows)

@@ -33,6 +33,18 @@ public partial class WalkerLayer : MultiMeshInstance3D
     private Rid _shadowRid;
     private float _metresPerPx = 0.2f;
     private Rid _rid;
+    // Grain sacks over the carriers' heads (Chapter II): a third MultiMesh with its own buffer, wet ones drawn wet.
+    private MultiMeshInstance3D _sacks = null!;
+    private Rid _sackRid;
+    private float[] _sackBuf = Array.Empty<float>();
+    private ShaderMaterial _sackMat = null!, _sackHull = null!;
+    /// <summary>Height of a carried sack's base above the villager's origin, in model units (just over the head).</summary>
+    public const float SackY = 2.42f;
+    /// <summary>Carried sacks are drawn this much larger than the cargo model.</summary>
+    public const float SackScale = 1.3f;
+    /// <summary>Sacks drawn in the last sync, and how many of them wet (tests).</summary>
+    public int SacksDrawn { get; private set; }
+    public int WetSacksDrawn { get; private set; }
 
     private static readonly StringName AnimTime = new("anim_time"), HullW = new("hull_w");
 
@@ -86,6 +98,24 @@ public partial class WalkerLayer : MultiMeshInstance3D
         CustomAabb = new Aabb(new Vector3(-8, -4, -8), new Vector3(sim.World.Grid.Width * 2f + 16, 16, sim.World.Grid.Height * 2f + 16));
         _shadows.CustomAabb = CustomAabb;
         AddChild(_shadows);
+        // The grain sack model (villager-cargo-grain.glb) with the cargo shaders: dry, or wet from the ford.
+        var sackSrc = ModelLib.Mesh("villager-cargo-grain");
+        var sack = (ArrayMesh)sackSrc.Duplicate();
+        _sackMat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/cargo.gdshader") };
+        _sackMat.SetShaderParameter("atlas", ((StandardMaterial3D)sackSrc.SurfaceGetMaterial(0)).AlbedoTexture);
+        _sackHull = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/cargo_hull.gdshader") };
+        _sackHull.SetShaderParameter("ink", Palette.Ink);
+        _sackMat.NextPass = _sackHull;
+        sack.SurfaceSetMaterial(0, _sackMat);
+        var kmm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, InstanceCount = Capacity, Mesh = sack,
+        };
+        kmm.VisibleInstanceCount = 0;
+        _sacks = new MultiMeshInstance3D { Name = "Sacks", Multimesh = kmm, CastShadow = ShadowCastingSetting.Off, CustomAabb = CustomAabb };
+        _sackRid = kmm.GetRid();
+        _sackBuf = new float[Capacity * Stride];
+        AddChild(_sacks);
     }
 
     /// <summary>Metres per screen pixel the ink hull is sized for (tests).</summary>
@@ -109,7 +139,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
         float alpha = _sim.Alpha;
         float s = WalkerScale;
         bool river = world.River != null;
-        int n = 0;
+        int n = 0, ns = 0, wet = 0;
         for (int i = 0; i < ws.Length && n < Capacity; i++)
         {
             ref readonly Walker k = ref ws[i];
@@ -149,8 +179,24 @@ public partial class WalkerLayer : MultiMeshInstance3D
             _buf[o + 13] = 1.6f + (k.Id % 5) * 0.08f; // strides per second
             _buf[o + 14] = moving ? 0.12f : 0f;       // bob height in metres before scale
             _buf[o + 15] = (k.Id * 0.7548777f + 0.31f) % 1f; // outfit: fixed per villager, neighbours differ
+            if (k.Cargo != 0)
+            {
+                // The sack rides on the head: the walker's own frame lifted to the top of the head, same bob data.
+                int q = ns * Stride;
+                Array.Copy(_buf, o, _sackBuf, q, Stride);
+                // A little larger than the model, so a sack reads from the play view (about 7 px a villager there).
+                for (int e = 0; e < 11; e++) if (e != 3 && e != 7) _sackBuf[q + e] *= SackScale;
+                _sackBuf[q + 7] = y + SackY * s;
+                _sackBuf[q + 15] = k.CargoWet ? 1f : 0f;
+                if (k.CargoWet) wet++;
+                ns++;
+            }
             n++;
         }
+        SacksDrawn = ns;
+        WetSacksDrawn = wet;
+        _sacks.Multimesh.VisibleInstanceCount = ns;
+        if (ns > 0) RenderingServer.MultimeshSetBuffer(_sackRid, _sackBuf);
         Drawn = n;
         Multimesh.VisibleInstanceCount = n;
         RenderingServer.MultimeshSetBuffer(_rid, _buf);
@@ -159,9 +205,11 @@ public partial class WalkerLayer : MultiMeshInstance3D
         float t = (float)_sim.AnimTime;
         _mat.SetShaderParameter(AnimTime, t);
         _hull.SetShaderParameter(AnimTime, t);
+        if (ns > 0) { _sackMat.SetShaderParameter(AnimTime, t); _sackHull.SetShaderParameter(AnimTime, t); }
         // About 1.2 px of ink up close, thinning to 0.8 px at overview zoom, where a villager is only 7 px across.
         float px = Mathf.Lerp(1.2f, 0.8f, Mathf.Clamp((_metresPerPx - 0.15f) / 0.25f, 0f, 1f));
         _hull.SetShaderParameter(HullW, px * _metresPerPx / Math.Max(0.01f, s));
+        if (ns > 0) _sackHull.SetShaderParameter(HullW, px * _metresPerPx / Math.Max(0.01f, s));
     }
 
     /// <summary>World-independent position of drawn instance i (map-local metres), for tests.</summary>

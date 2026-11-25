@@ -35,7 +35,9 @@ public partial class RiverLayer
         if (m > 0) ClearOfMoored(boats, count, _order[0], cell, sc);
         for (int a = 1; a < m; a++)
         {
+            // Behind the last boat in the middle lane (a rafted boat lies beside the queue, not in it).
             int p = _order[a - 1], q = _order[a];
+            for (int k = a - 1; k >= 0; k--) if (_lane[_order[k]] == 0) { p = _order[k]; break; }
             ClearOfMoored(boats, count, q, cell, sc);
             float hq = Half(boats[q], sc);
             float half = Half(boats[p], sc) + hq;
@@ -46,9 +48,59 @@ public partial class RiverLayer
             float most = limit - (hq + 0.6f) / cell;
             if (want <= most) { _cy[q] = want; continue; }
             _cy[q] = MathF.Max(_cy[q], most);
-            _lane[q] = _lane[p] > 0 ? -1f : 1f; // rafted beside the boat ahead
+            RaftBeside(boats, q, a, cell, sc);
             Clamped++;
         }
+        QueueOverlaps = CountOverlaps(boats, m, cell, sc);
+    }
+
+    /// <summary>Waiting boats drawn over one another after the last layout (same lane and their hulls' lengths meet; tests: 0).</summary>
+    public int QueueOverlaps { get; private set; }
+
+    /// <summary>
+    /// A boat with no room behind the queue lies rafted up in a side lane (a full beam out from the middle, so it never
+    /// lies over the boats in the middle). Of the two lanes it takes the one where it needs to move least to clear every
+    /// boat already lying in it (moving north, never south over the crossing or berth it was held short of).
+    /// </summary>
+    private void RaftBeside(ReadOnlySpan<Boat> boats, int q, int before, float cell, float sc)
+    {
+        float best = float.MaxValue, bestCy = _cy[q], bestLane = 1f;
+        float hq = Half(boats[q], sc) / cell;
+        for (int li = 0; li < 2; li++)
+        {
+            float lane = li == 0 ? (_lane[_order[before - 1]] > 0 ? -1f : 1f) : (_lane[_order[before - 1]] > 0 ? 1f : -1f);
+            float cy = _cy[q];
+            for (int pass = 0; pass < 8; pass++)
+            {
+                bool moved = false;
+                for (int k = 0; k < before; k++)
+                {
+                    int o = _order[k];
+                    if (_lane[o] != lane) continue;
+                    float gap = Half(boats[o], sc) / cell + hq + 0.3f / cell;
+                    if (MathF.Abs(_cy[o] - cy) < gap) { cy = _cy[o] - gap; moved = true; }
+                }
+                if (!moved) break;
+            }
+            float shift = _cy[q] - cy;
+            if (shift < best) { best = shift; bestCy = cy; bestLane = lane; }
+        }
+        _cy[q] = bestCy;
+        _lane[q] = bestLane;
+    }
+
+    private int CountOverlaps(ReadOnlySpan<Boat> boats, int m, float cell, float sc)
+    {
+        int n = 0;
+        for (int a = 0; a < m; a++)
+            for (int b = a + 1; b < m; b++)
+            {
+                int i = _order[a], j = _order[b];
+                if (_lane[i] != _lane[j]) continue;
+                float gap = (Half(boats[i], sc) + Half(boats[j], sc)) / cell;
+                if (MathF.Abs(_cy[i] - _cy[j]) < gap - 0.05f) n++;
+            }
+        return n;
     }
 
     /// <summary>A boat waiting for a berth lies south of the moored boats, never over them.</summary>

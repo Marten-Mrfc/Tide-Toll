@@ -28,6 +28,20 @@ public partial class MapTags : Control
     private readonly bool[] _has = new bool[5];
     private readonly Vector2[] _pin = new Vector2[5];
     private float _alpha = -1;
+    private readonly Rect2[] _boats = new Rect2[64];
+
+    /// <summary>The Ford tag's second line in Chapter II ("" in Chapter I), and whether a boat hid the tag last frame (tests).</summary>
+    public string FordHint { get; private set; } = "";
+    public bool FordHiddenByBoat { get; private set; }
+
+    /// <summary>"free · wet grain sells at half price", from RiverRules.WetGrainValueShare.</summary>
+    public static string FordHintText(RiverRules r)
+    {
+        double share = r.WetGrainValueShare;
+        string at = System.Math.Abs(share - 0.5) < 1e-9 ? "half price" : System.Math.Abs(share - 1) < 1e-9 ? "full price"
+            : $"{share * 100:0}% of its price";
+        return $"free · wet grain sells at {at}";
+    }
 
     /// <summary>Current opacity of the tags (tests): 1 at overview, 0 zoomed in.</summary>
     public float Alpha => Math.Max(0, _alpha);
@@ -61,7 +75,22 @@ public partial class MapTags : Control
             p.AddThemeStyleboxOverride("panel", box);
             var l = i == FordClosed ? UiKit.Text(Names[i], s, 15, UiKit.UiBold) : UiKit.Text(Names[i], s, 15, UiKit.Serif);
             l.Name = "Text";
-            p.AddChild(l);
+            if (i == 3 && main.Sim.World.River is { } river)
+            {
+                // Chapter II: the Ford tag says what wading costs (decision B), from the rules: grain gets wet and sells
+                // for less, and a walker with a sack wades slower.
+                var col = new VBoxContainer { Name = "Lines", MouseFilter = MouseFilterEnum.Ignore };
+                col.AddThemeConstantOverride("separation", 0);
+                l.HorizontalAlignment = HorizontalAlignment.Center;
+                col.AddChild(l);
+                FordHint = FordHintText(river.Rules);
+                var h = UiKit.Text(FordHint, s, 12, UiKit.UiFont, UiKit.FadedInk.Darkened(0.35f));
+                h.Name = "Hint";
+                h.HorizontalAlignment = HorizontalAlignment.Center;
+                col.AddChild(h);
+                p.AddChild(col);
+            }
+            else p.AddChild(l);
             p.Rotation = Mathf.DegToRad(i % 2 == 0 ? -1.5f : 1.2f);
             AddChild(p);
             _tags[i] = p;
@@ -99,6 +128,8 @@ public partial class MapTags : Control
         bool closed = r != null && r.Flooded;
         var vp = GetViewportRect().Size;
         bool moved = false;
+        int nb = r != null ? BoatBoxes(rig) : 0;
+        FordHiddenByBoat = false;
         for (int i = 0; i < 5; i++)
         {
             var t = _tags[i];
@@ -111,10 +142,34 @@ public partial class MapTags : Control
             var size = t.GetCombinedMinimumSize();
             var pos = new Vector2(Mathf.Round(pin.X - size.X / 2f), Mathf.Round(pin.Y - size.Y - UiKit.Px(_s, 9)));
             bool on = pos.X >= 4 && pos.Y >= 4 && pos.X + size.X <= vp.X - 4 && pos.Y + size.Y <= vp.Y - 4;
+            if (on && i == 3 && nb > 0 && UnderBoat(new Rect2(pos, size).Expand(pin), nb)) { on = false; FordHiddenByBoat = true; }
             if (t.Visible != on) { t.Visible = on; moved = true; }
             if (on && (t.Position != pos || _pin[i] != pin)) { t.Position = pos; t.Size = size; _pin[i] = pin; moved = true; }
         }
         if (moved) QueueRedraw();
+    }
+
+    /// <summary>Every boat drawn, as a box on screen (as RiverFloats does); returns how many.</summary>
+    private int BoatBoxes(CameraRig rig)
+    {
+        var boats = _main.Boats;
+        if (boats == null) return 0;
+        int nb = 0;
+        float mpp = Mathf.Max(1e-3f, rig.Camera.Size / Mathf.Max(1f, GetViewportRect().Size.Y));
+        for (int i = 0; i < boats.Slots && nb < _boats.Length; i++)
+        {
+            if (!boats.BoatBox(i, out var at, out float half)) continue;
+            var c = rig.LocalToScreen(at);
+            float rr = half / mpp + 2f;
+            _boats[nb++] = new Rect2(c.X - rr * 0.45f, c.Y - rr, rr * 0.9f, 2f * rr);
+        }
+        return nb;
+    }
+
+    private bool UnderBoat(Rect2 r, int nb)
+    {
+        for (int i = 0; i < nb; i++) if (r.Intersects(_boats[i])) return true;
+        return false;
     }
 
     /// <summary>The ink threads from each tag down to its place, with a small dot where it is pinned.</summary>

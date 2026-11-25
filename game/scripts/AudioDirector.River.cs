@@ -22,7 +22,7 @@ public partial class AudioDirector
 {
     public const int BoatVoices = 4, BridgeVoices = 2;
     /// <summary>River cue counts (played, or that would have played when silent).</summary>
-    public int BridgeCues, Calls, CoinCues, Ropes, OarCues, TurnAways;
+    public int BridgeCues, Calls, CoinCues, Ropes, OarCues, TurnAways, UnlockCues;
 
     private AudioStream[] _raise = null!, _lower = null!, _calls = null!, _coins = null!, _rope = null!, _oars = null!, _turn = null!;
     private readonly AudioStreamPlayer2D[] _boatV = new AudioStreamPlayer2D[BoatVoices], _bridgeV = new AudioStreamPlayer2D[BridgeVoices];
@@ -93,6 +93,10 @@ public partial class AudioDirector
                 if (_now - _lastRope < 1.5) break;
                 _lastRope = _now;
                 if (CrossingScreen(e.Crossing, out var fat)) PlayBoat(fat, _rope, 0, 4, 10, -12, ref Ropes);
+                break;
+            case RiverEventKind.KeeperUnlocked:
+                // The moment a keeper is earned: the dawn bell rung higher (no new sound file).
+                Play(_bellPlayer, _bells, 6, 0f, 1.25f, ref UnlockCues);
                 break;
             case RiverEventKind.BoatTurnedBack:
                 if (BoatScreen(e.Boat, out var tat, out _)) PlayBoat(tat, _turn, 0, 3, 11, -8, ref TurnAways);

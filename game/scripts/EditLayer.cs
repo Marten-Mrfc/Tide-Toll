@@ -32,6 +32,8 @@ public partial class EditLayer : Node3D
     public int Rebuilds { get; private set; }
     public int WattlePieces => _wattle.Multimesh.VisibleInstanceCount;
     public int PostPieces => _posts.Multimesh.VisibleInstanceCount;
+    /// <summary>The toy's gate colour.</summary>
+    public static readonly Color GateColour = Color.FromHtml("#D08A2A");
     /// <summary>Gates drawn (each a leaf standing ajar between two gate posts cut into the rail).</summary>
     public int GatePieces => _gates.Multimesh.VisibleInstanceCount;
     public Node3D BridgesNode => _bridges;
@@ -47,6 +49,13 @@ public partial class EditLayer : Node3D
         _wattle = ModelLib.Multi("fence-wattle", "Wattle", 512);
         _posts = ModelLib.Multi("fence-post", "Posts", 512);
         _gates = ModelLib.Multi("fence-gate", "Gates", 64);
+        // The leaf in the toy's gate orange (#D08A2A, --map-gate in page.html), flat like the palette, so a gate reads as a gate and not
+        // only as a gap in the rail at play zoom.
+        _gates.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = GateColour, DiffuseMode = BaseMaterial3D.DiffuseModeEnum.Lambert,
+            SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled, MetallicSpecular = 0f, Roughness = 1f,
+        };
         _fences.AddChild(_wattle);
         _fences.AddChild(_posts);
         _fences.AddChild(_gates);

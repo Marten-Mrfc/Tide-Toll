@@ -53,6 +53,8 @@ public partial class MapGround : MeshInstance3D
 
     /// <summary>The flood wash (0..1, eased: it fills as the river rises), the ice and the mud as drawn (tests).</summary>
     public float Flood => _flood;
+    /// <summary>The flood band's dotted edge is marked on the dry map (river rules on; tests).</summary>
+    public bool BandMarked { get; private set; }
     public float Ice => _ice;
     public float Mud => _mud;
     /// <summary>Uploads of the ice-wear layer so far (tests and stats).</summary>
@@ -176,6 +178,8 @@ public partial class MapGround : MeshInstance3D
             for (int i = 0; i < band.Length && i < _n * _n; i++) _season[2 * i + 1] = band[i] != 0 ? (byte)255 : (byte)0;
             Material.SetShaderParameter("band_m", (float)(r.Rules.FloodBandCells * cell));
         }
+        BandMarked = r != null;
+        Material.SetShaderParameter("band_mark", BandMarked ? 1f : 0f);
         _seasonImg!.SetData(_n, _n, false, Image.Format.Rg8, _season);
         _seasonTex!.Update(_seasonImg);
         if (_wetMud.Length != _n * _n) InitRain();

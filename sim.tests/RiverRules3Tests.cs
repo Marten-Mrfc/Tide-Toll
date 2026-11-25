@@ -96,29 +96,28 @@ public class RiverRules3Tests
         // No boats, a market that buys everything: every unit is sold at the market. A footbridge as well, so some grain
         // comes over dry. Per walker, the test tracks whether its load has been in the ford since it was picked up.
         var rules = NoSchedule with { HaulGoods = true, StartMoney = 500, MarketUnitsPerHouseDay = 1000, WetGrainValueShare = 0.4 };
-        World? w = null;
-        int seed = 0;
-        foreach (int s in Enumerable.Range(1, 12))
+        // A town whose ford is within reach of the landing, so walkers use both (the first such seed where both happen).
+        World w = null!;
+        RiverView r = null!;
+        foreach (int seed in Enumerable.Range(1, 16))
         {
-            var m = Make(s, 0, rules);
-            // A town whose ford is within reach of the landing, so walkers use both.
-            if (Math.Abs(m.Map.FordY - m.River!.LandingRow) <= 12) { seed = s; break; }
-        }
-        Assert.True(seed > 0);
-        w = Make(seed, 250, rules);
-        Build(w, CrossingType.Footbridge, 8);
-        var r = w.River!;
-        var inFord = new Dictionary<int, bool>();
-        for (int t = 0; t < 6 * w.Params.TicksPerDay; t++)
-        {
-            w.Tick();
-            foreach (var k in w.Walkers)
+            if (Math.Abs(Make(seed, 0, rules).Map.FordY - Make(seed, 0, rules).River!.LandingRow) > 14) continue;
+            w = Make(seed, 250, rules);
+            Build(w, CrossingType.Footbridge, 8);
+            r = w.River!;
+            var inFord = new Dictionary<int, bool>();
+            for (int t = 0; t < 6 * w.Params.TicksPerDay; t++)
             {
-                if (k.Cargo == 0) { inFord[k.Id] = false; continue; }
-                bool f = inFord.GetValueOrDefault(k.Id) || (k.Visible && !r.Frozen && w.Map.Water[k.Cell] != 0 && w.Map.Ford[k.Cell] != 0);
-                inFord[k.Id] = f;
-                Assert.Equal(f, k.CargoWet);
+                w.Tick();
+                foreach (var k in w.Walkers)
+                {
+                    if (k.Cargo == 0) { inFord[k.Id] = false; continue; }
+                    bool f = inFord.GetValueOrDefault(k.Id) || (k.Visible && !r.Frozen && w.Map.Water[k.Cell] != 0 && w.Map.Ford[k.Cell] != 0);
+                    inFord[k.Id] = f;
+                    Assert.Equal(f, k.CargoWet);
+                }
             }
+            if (r.Stats.GrainDeliveredWet > 0 && r.Stats.GrainDeliveredDry > 0) break;
         }
         var s2 = r.Stats;
         Assert.True(s2.GrainDeliveredWet > 0, "no grain came through the ford");

@@ -441,7 +441,17 @@ compile: the world runs the search once at construction (it only fills scratch).
 run and lists the worst with what ran in them. Measured with `ticks --days 20`, seed 1, 3000 ticks (4 shared cores, so
 single ticks above about 8 ms without a route search are the machine):
 
-PERF_TABLE
+| Run (seed 1, 20 days) | Before: mean / p99 / worst ms | After: mean / p99 / worst ms |
+| --- | --- | --- |
+| river rules, 200 walkers | 1.56 / 7.17 / 9.04 | 0.94 / 4.16 / 17.75 (repeats: 11.90, 11.03, each tick 1 or a lone spike) |
+| river rules, 500 walkers | 1.78 / 7.83 / 13.85 | 1.10 / 4.04 / 6.38 |
+| Default (rain, growth), 200 walkers | 1.90 / 6.85 / 12.44 | 1.15 / 4.21 / 6.87 |
+| Default (rain, growth), 500 walkers | 1.58 / 6.25 / 9.18 | 1.00 / 3.36 / 7.03 |
+
+Before is the round's starting tree (12b250b) with the same profiler. A tick with a field refresh: about 3.0 ms after
+(0.3 to 0.5 ms without). The game's 27.8 ms tick is not reproduced headless; every tick above about 8 ms here moves
+between repeats (other agents share the 4 cores), and the first tick of a run is the code's first compile.
+`./check --bench` after: 500 walkers 1.216 ms mean, p99 4.95 (A9: 1.602, p99 6.03), river 1.158 / 4.21, 0 bytes.
 
 **The lead's decisions B, C and D** (rules above): wet grain at the ford (`WetGrainValueShare` 0.5, `LoadedWadeSpeedMul`
 0.7, both new and chosen); the keeper unlocked by `KeeperUnlockRaises` (10, new) hand raises of that drawbridge; the

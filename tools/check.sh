@@ -119,6 +119,10 @@ if have_godot; then
   # both erased; then four in-game days with boats (events, chronicle, ledger, coins, sound cues).
   step game-river tools/godot-test.sh 'RIVER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/river.tscn --quit-after 20000
   note "$(grep -o 'RIVER PASS.*' "$LOGS/game-river.log" | head -1 | cut -c1-90)"
+  # The river's third-pass rules as shown: wet grain at the ford, the keeper earned by use, the starting purse, the
+  # flood band's edge, merged turn-back notes, the Ford tag and boats, queues never overlapping, the ledger after a jump.
+  step game-river-rules tools/godot-test.sh 'RIVER RULES PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/river-rules.tscn --quit-after 30000
+  note "$(grep -o 'RIVER RULES PASS.*' "$LOGS/game-river-rules.log" | head -1 | cut -c1-90)"
   # The two chapters: the game opens on Chapter I (no river), the chapter bookmark and C turn the page (the leaf covers
   # the book while it is built again), Chapter II has the river rules, reset and new map stay inside the chapter.
   step game-chapter tools/godot-test.sh 'CHAPTER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/chapter.tscn --quit-after 8000
@@ -157,7 +161,7 @@ if have_godot; then
     note "build/screenshots/{hamlet-*,chapter-turn}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-tools game-river game-chapter game-hamlet game-ui game-perf screenshot; do
+  for s in game-build game-smoke game-tools game-river game-river-rules game-chapter game-hamlet game-ui game-perf screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

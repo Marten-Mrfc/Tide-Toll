@@ -34,6 +34,7 @@ uniform float overlay = 0.0;
 uniform float flood = 0.0;           // 0..1, eased: the spring flood's wash fills the band outward from the bank
 uniform float mud = 0.0;             // 0..1: the band is mud after a flood (worn paths there darken)
 uniform float ice = 0.0;             // 0..1: the river is frozen
+uniform float band_mark = 0.0;      // 1 with the river rules: the flood band's outer edge drawn faintly dotted on the dry map
 uniform float band_m = 8.0;          // flood band width beyond the bank, metres         // 0..1: wear heat map laid over the page like a tracing-paper sheet
 uniform vec4 ink : source_color = vec4(0.169, 0.149, 0.125, 1.0);
 uniform vec4 water_col : source_color = vec4(0.357, 0.498, 0.584, 1.0);
@@ -248,6 +249,14 @@ void fragment() {
 		// The flood's edge: a faint dotted ink line where the wash ends.
 		float edge = inBand * step(0.05, flood) * (1.0 - smoothstep(0.0, aa * 2.0, abs(d - reach))) * step(0.5, fract(lp.y * 0.6));
 		c = mix(c, ink.rgb, edge * 0.45);
+	}
+	// Where the spring flood will reach, marked faintly on the dry map from the first day (a dotted ink edge, as a
+	// surveyor marks a flood line), so a flood never comes as a surprise; the flood's own edge takes over while it rises.
+	if (band_mark > 0.0) {
+		float gb = texture(season_tex, uv).g * (1.0 - inside);
+		float at = band_m - 0.5;
+		float line = (1.0 - smoothstep(aa * 0.6, aa * 1.8, abs(d - at))) * step(0.1, gb) * step(0.5, fract(lp.y * 0.3));
+		c = mix(c, ink.rgb, line * 0.5 * band_mark * (1.0 - step(0.05, flood)));
 	}
 	c = mix(c, wc, inside);
 	c = mix(c, ink.rgb, band * (1.0 - 0.55 * ford));

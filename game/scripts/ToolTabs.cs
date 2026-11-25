@@ -34,8 +34,9 @@ public partial class ToolTabs : VBoxContainer
     public static float WidthFor(float s) => 188f * s;
 
     // Crossing tabs with a price line: the price label, the tooltip without the coin note, and the price.
-    private readonly List<(Button tab, Label price, string tip, double cost)> _priced = new();
+    private readonly List<(Button tab, Label price, string tip, double cost, PurseGauge gauge)> _priced = new();
     private int _shownCoin = int.MinValue;
+    private readonly int[] _okShown = { -1, -1, -1, -1, -1, -1, -1, -1 }; // per priced tab: -1 unknown, 0 short, 1 can buy
 
     public void Build(float s, RiverRules? river = null, int chapter = 1)
     {
@@ -81,9 +82,9 @@ public partial class ToolTabs : VBoxContainer
             Bridge = Priced("Footbridge", "tool-footbridge", "Footbridge", "B", river.FootbridgePrice,
                 "Footbridge (B): a low bridge across the river. Quickest for walkers, but masted barges cannot pass under it and turn back.");
             Ferry = Priced("Ferry", "tool-ferry", "Ferry", "Y", river.FerryPrice,
-                $"Ferry (Y): a raft on a rope. Every boat passes; walkers wait for the raft, six at a time. {river.FerryUpkeep + river.FerryWage:0}c a season for the ferryman and upkeep.");
+                $"Ferry (Y): a raft on a rope. Every boat passes; walkers wait for the raft, {river.FerryCapacity} at a time. {river.FerryUpkeep + river.FerryWage:0}c a season for the ferryman and upkeep.");
             Drawbridge = Priced("Drawbridge", "tool-drawbridge", "Drawbridge", "D", river.DrawbridgePrice,
-                $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges, or hire a keeper ({river.KeeperPrice:0}c, K) to do it. {river.DrawbridgeUpkeep:0}c a season.");
+                $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges; after {river.KeeperUnlockRaises} raises by hand a keeper ({river.KeeperPrice:0}c, K) will do it for you. {river.DrawbridgeUpkeep:0}c a season.");
             Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, gates, gravel, bridges and ferries to remove them. Taking down a crossing costs half its price.", true);
         }
         Gap(10);
@@ -112,13 +113,16 @@ public partial class ToolTabs : VBoxContainer
         var lines = new VBoxContainer { Name = "Lines", MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
         lines.AddThemeConstantOverride("separation", 0);
         lines.AddChild(label);
-        var price = UiKit.Text($"{cost:0}c", _s, 13, UiKit.UiBold);
+        var price = UiKit.Text($"{cost:0}c · can buy", _s, 13, UiKit.UiBold);
         price.Name = "Price";
         lines.AddChild(price);
+        // How much of the price is in the purse: a thin ink rule filling toward the price (full = can buy).
+        var gauge = new PurseGauge { Name = "Gauge", CustomMinimumSize = new Vector2(0, Mathf.Max(3, UiKit.Px(_s, 3))), Scale1 = _s, MouseFilter = MouseFilterEnum.Ignore };
+        lines.AddChild(gauge);
         row.AddChild(lines);
         row.MoveChild(lines, at);
         label.Name = "Text";
-        _priced.Add((b, price, tip, cost));
+        _priced.Add((b, price, tip, cost, gauge));
         return b;
     }
 
@@ -128,22 +132,57 @@ public partial class ToolTabs : VBoxContainer
         int coin = (int)System.Math.Floor(money + 1e-9);
         if (coin == _shownCoin) return;
         _shownCoin = coin;
-        foreach (var (tab, price, tip, cost) in _priced)
+        for (int i = 0; i < _priced.Count; i++)
         {
+            var (tab, price, tip, cost, gauge) = _priced[i];
             bool ok = money >= cost - 1e-9;
-            // Short on coin: the price in faded ink with the word "short" (shape, not colour alone); the tooltip and the
-            // tool's hover say by how much.
-            price.Text = ok ? $"{cost:0}c" : $"{cost:0}c · short";
-            price.AddThemeColorOverride("font_color", ok ? UiKit.Ink : UiKit.FadedInk);
-            tab.TooltipText = ok ? tip : $"{tip}\nNot enough coin: it costs {cost:0}c, you have {coin}c ({System.Math.Ceiling(cost - money):0}c short).";
+            // What the purse can buy, at once: "40c · can buy" in ink; what it cannot yet, the coin still to save, in
+            // faded ink (shape, not colour alone), so a short purse reads as "not yet", never as a broken tab. The tab
+            // still works: its ghost and preview show, and a click says what is missing.
+            // Text only where it changes: the price line with the can-buy state, the tooltip's purse figures while short.
+            int state = ok ? 1 : 0;
+            if (_okShown[i] != state)
+            {
+                _okShown[i] = state;
+                price.Text = ok ? $"{cost:0}c · can buy" : $"{cost:0}c · not yet";
+                price.AddThemeColorOverride("font_color", ok ? UiKit.Ink : UiKit.FadedInk.Darkened(0.2f));
+                if (ok) tab.TooltipText = tip + "\nThe purse holds enough to buy it now.";
+            }
+            float fill = cost <= 0 ? 1f : (float)System.Math.Clamp(money / cost, 0, 1);
+            if (gauge.Fill != fill) { gauge.Fill = fill; gauge.QueueRedraw(); }
+            if (!ok) tab.TooltipText = $"{tip}\nNot yet: it costs {cost:0}c and you have {coin}c ({System.Math.Ceiling(cost - money - 1e-9):0}c to save). Boats pay for grain at the landing.";
         }
     }
 
     /// <summary>Whether a priced tab shows its price as affordable (tests).</summary>
     public bool PriceAffordable(string name)
     {
-        foreach (var p in _priced) if (p.tab.Name == name) return !p.price.Text.Contains("short");
+        foreach (var p in _priced) if (p.tab.Name == name) return p.price.Text.EndsWith("can buy");
         return false;
+    }
+
+    /// <summary>A priced tab's purse gauge, 0..1 of the price in hand (tests).</summary>
+    public float PurseFill(string name)
+    {
+        foreach (var p in _priced) if (p.tab.Name == name) return p.gauge.Fill;
+        return -1;
+    }
+
+    /// <summary>
+    /// The purse against a price, as a thin rule under it: a faint track and an ink fill to the share already in hand,
+    /// with a coin-yellow fill once the whole price is there. Saving up reads as progress, not as a broken tab.
+    /// </summary>
+    public partial class PurseGauge : Control
+    {
+        public float Fill, Scale1 = 1;
+        private static readonly Color Coin = Color.FromHtml("#E0C640");
+
+        public override void _Draw()
+        {
+            float h = Size.Y, w = Size.X * 0.8f;
+            DrawRect(new Rect2(0, 0, w, h), new Color(UiKit.FadedInk, 0.35f));
+            if (Fill > 0) DrawRect(new Rect2(0, 0, w * Fill, h), Fill >= 1f ? Coin : UiKit.FadedInk.Darkened(0.3f));
+        }
     }
 
     /// <summary>

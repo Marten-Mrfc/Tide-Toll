@@ -25,13 +25,27 @@ public partial class ChapterPage : PanelContainer
         "fences, gates, gravel and bridges away. Rain turns worn trails to mud for that day and the next, and walkers step " +
         "round it; new families build cottages beside busy trails, so the hamlet grows where you steer the paths. With the " +
         "flow preview on (P), a tool shows the typical routes that would change: dashed is now, solid is after.";
-    /// <summary>Chapter II's "How to play": the same paths, then the river's trade.</summary>
-    public const string RiverHowTo =
-        "Villagers wear trails from their houses to the well, the field and the market, and carry grain to the landing. " +
-        "Fences (F), gates (T), gravel (G) and erase (E) work as in Chapter I and cost nothing. Boats come up the river to buy " +
-        "the grain: a low footbridge (B) turns masted barges back, a ferry (Y) lets every boat by, and a drawbridge (D) must " +
-        "be raised for them (click it, or L) unless you hire a keeper (K). With the flow preview on (P), a tool shows the " +
-        "routes that would change: dashed is now, solid is after.";
+    /// <summary>
+    /// Chapter II's "How to play", in the book's words: what boats want, what each crossing does to them and to walkers,
+    /// and what the ford costs. Every price, count and share is read from the rules.
+    /// </summary>
+    public static string RiverHowTo(RiverRules r)
+    {
+        double share = r.WetGrainValueShare;
+        string wet = System.Math.Abs(share - 0.5) < 1e-9 ? "half its price" : $"{share * 100:0}% of its price";
+        string raises = r.KeeperUnlockRaises == 1 ? "once" : $"{r.KeeperUnlockRaises} times";
+        return
+            "Villagers wear trails to the well, the field and the market, and carry the field's grain down to the landing, " +
+            "where boats come up the river to buy it. A boat wants open water and a full hold: kept waiting at a crossing " +
+            "too long, it turns back, and fewer boats come after. The ford costs nothing, but grain carried through it " +
+            $"gets wet and sells for {wet}, and a villager with a sack wades slowly. A footbridge (B, {r.FootbridgePrice:0}c) " +
+            $"is the quickest way over, but masted barges cannot pass under it. A ferry (Y, {r.FerryPrice:0}c) lets every boat " +
+            $"by, but walkers wait for the raft, {r.FerryCapacity} at a time. A drawbridge (D, {r.DrawbridgePrice:0}c) carries " +
+            "walkers while it is down and must be raised for barges (click it, or L); raise it by hand " + raises +
+            $" and a keeper (K, {r.KeeperPrice:0}c) will do it for you. Fences (F), gates (T), gravel (G) and erase (E) " +
+            $"cost nothing. The purse starts at {r.StartMoney:0}c. With the flow preview on (P), a tool shows the routes " +
+            "that would change: dashed is now, solid is after.";
+    }
     public const string Keys =
         "Space pauses, 1 to 4 set the speed; W lays the wear overlay over the page and M turns the sound on or off; R starts " +
         "this map again and N draws a new one; C turns the page to the other chapter. Esc or a right-click puts a tool down; " +
@@ -65,7 +79,7 @@ public partial class ChapterPage : PanelContainer
     /// <summary>Least distance in pixels kept between the page's edge and any line on it (UX: at least 12 px).</summary>
     public const float MinInset = 12f;
 
-    public void Build(float s, int chapter = 1)
+    public void Build(float s, int chapter = 1, RiverRules? rules = null)
     {
         bool river = chapter == 2;
         _s = s;
@@ -90,7 +104,7 @@ public partial class ChapterPage : PanelContainer
         _title = title;
 
         var how = new VBoxContainer { Name = "HowTo", MouseFilter = MouseFilterEnum.Ignore };
-        _howPara = Para(river ? RiverHowTo : HowTo, 16, UiKit.Serif, UiKit.Ink);
+        _howPara = Para(river ? RiverHowTo(rules ?? RiverRules.Default) : HowTo, 16, UiKit.Serif, UiKit.Ink);
         _howPara.Name = "HowToText";
         _keysPara = Para(Keys, 13, UiKit.UiFont, UiKit.FadedInk.Darkened(0.35f));
         _keysPara.Name = "KeysText";

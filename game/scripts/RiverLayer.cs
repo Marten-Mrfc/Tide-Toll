@@ -253,7 +253,7 @@ public partial class RiverLayer : Node3D
             float lateral = 0f;
             if (b.State == BoatState.Mooring) lateral = landSide * room;
             else if (b.State == BoatState.TurnedBack) lateral = -landSide * room * 0.6f;
-            else if (b.State == BoatState.Waiting) lateral = _lane[i] * MathF.Max(room, beam * 0.45f);
+            else if (b.State == BoatState.Waiting) lateral = _lane[i] * MathF.Max(room, beam * 1.05f); // a full beam out: rafted, never on top
             float x = RiverXAt(rx, cy, n);
             // Heading: along the river's bend, northbound unless turned back.
             float slope = RiverXAt(rx, cy - 1f, n) - RiverXAt(rx, cy + 1f, n); // x change per two rows going north

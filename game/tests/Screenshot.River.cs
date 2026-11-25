@@ -114,7 +114,8 @@ public partial class Screenshot
         GD.Print($"SCREENSHOT river-ledger: coin {r.Money:0}c, rep {r.Reputation:0}, notes {_main.Feed.NoteCount}: '{_main.Feed.Note(0)}'");
         Check(await Snap("river-ledger", true), "river-ledger");
         await SeasonShots(sim, r);
-        sim.SetPaused(false);
+        await RiverRulesShots(); // the book is built again: the third pass's rules with their own purse
+        _main.Sim.SetPaused(false);
     }
 
     /// <summary>A spring flood at the play view, then (the flood gone) the river frozen with paths worn on the ice.</summary>

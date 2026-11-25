@@ -60,6 +60,20 @@ public partial class SimDriver : Node
     /// <summary>Grown houses announced so far (World.Grown.Length once the frame's ticks are told).</summary>
     public int HousesSeen => _grownSeen;
     private int _grownSeen;
+    /// <summary>
+    /// A new in-game day began during a tick (raised from inside the tick loop, also during a fast-forward, right after
+    /// the tick that closed the day): the ledger snapshots its running totals here, so "today" is right after a jump.
+    /// Argument: the new day's index from 0. Never allocates.
+    /// </summary>
+    public event Action<long>? DayStarted;
+    private long _day;
+
+    private void TickOnce()
+    {
+        World.Tick();
+        long d = (long)Math.Floor(World.Time / World.Params.DaySimSec + 1e-9);
+        if (d != _day) { _day = d; DayStarted?.Invoke(d); }
+    }
 
     private double _acc;
     private int _seenVersion = -1;
@@ -110,6 +124,7 @@ public partial class SimDriver : Node
         BudgetHits = 0;
         _seenVersion = World.Version;
         _grownSeen = World.Grown.Length;
+        _day = (long)Math.Floor(World.Time / World.Params.DaySimSec + 1e-9);
         WorldReplaced?.Invoke();
     }
 
@@ -131,7 +146,7 @@ public partial class SimDriver : Node
                 int done = 0;
                 while (done < n)
                 {
-                    World.Tick();
+                    TickOnce();
                     done++;
                     if (Stopwatch.GetTimestamp() > limit) break;
                 }
@@ -170,7 +185,7 @@ public partial class SimDriver : Node
     /// <summary>Runs ticks at once, outside the frame loop (tests, fast-forward). Raises Edited if needed.</summary>
     public void StepTicks(int ticks)
     {
-        for (int i = 0; i < ticks; i++) World.Tick();
+        for (int i = 0; i < ticks; i++) TickOnce();
         Alpha = 1f;
         CheckGrowth();
         CheckVersion();

@@ -15,10 +15,13 @@ public partial class ChapterPage
 {
     private Control? _ledgerHead, _chronicle;
     private Label _coin = null!, _today = null!, _rep = null!, _repNote = null!, _boats = null!;
-    private Label _river = null!, _grain = null!, _waited = null!;
+    private Label _river = null!, _grain = null!, _waited = null!, _ford = null!;
     private const int Slots = 16;
     private long _ledgerDay = -1;
     private int _grain0, _lost0, _lastGrain = -1, _lastLost = -1, _lastRiverState = -1, _lastRiverDay = -1;
+    // The ford's cost in trade: wet sacks and the coin they did not fetch, today (less the day's snapshot) and in all.
+    private int _wet0, _lastWet = -1, _lastWetToday = -1, _lastWetAll = -1;
+    private double _wetLost0;
     private readonly int[] _xId = new int[Slots], _xCrossed0 = new int[Slots], _xWaited0 = new int[Slots];
     private readonly int[] _shownCrossed = new int[Slots], _shownWaited = new int[Slots], _shownType = new int[Slots];
     private int _shownCount = -1;
@@ -42,6 +45,7 @@ public partial class ChapterPage
         _boats = Entry(col, "Boats today", out _, false);
         _river = Entry(col, "The river", out _, false);
         _grain = Entry(col, "Grain today", out _, false);
+        _ford = Entry(col, "The ford", out _, false);
         _waited = Entry(col, "Waited to cross", out _, false);
         var chron = new VBoxContainer { Name = "Chronicle", MouseFilter = MouseFilterEnum.Ignore };
         chron.AddThemeConstantOverride("separation", UiKit.Px(_s, 1));
@@ -102,15 +106,29 @@ public partial class ChapterPage
         var st = r.Stats;
         var xs = r.Crossings;
         long day = (long)System.Math.Floor(time / daySec + 1e-9);
-        bool rebase = day != _ledgerDay || st.GrainDelivered < _grain0 || st.GrainLost < _lost0;
-        if (rebase)
-        {
-            _ledgerDay = day;
-            _grain0 = st.GrainDelivered; _lost0 = st.GrainLost;
-            for (int i = 0; i < Slots; i++) _xId[i] = -1;
-            for (int i = 0; i < xs.Count && i < Slots; i++) { _xId[i] = xs[i].Id; _xCrossed0[i] = xs[i].WalkersCrossed; _xWaited0[i] = xs[i].WalkersWaited; }
-        }
+        bool rebase = day != _ledgerDay || st.GrainDelivered < _grain0 || st.GrainLost < _lost0 || st.GrainDeliveredWet < _wet0;
+        if (rebase) SnapshotDay(r, day);
     }
+
+    /// <summary>
+    /// Today's counts start here: the running totals as the day begins. Called by the driver's DayStarted from inside the
+    /// tick loop (so a fast-forward over several days still starts "today" at the last dawn), and by TrackDay as a
+    /// fallback (a new world, ticks run outside the driver). Allocation-free.
+    /// </summary>
+    public void SnapshotDay(RiverView r, long day)
+    {
+        if (_ledgerHead == null) return;
+        var st = r.Stats;
+        var xs = r.Crossings;
+        _ledgerDay = day;
+        _grain0 = st.GrainDelivered; _lost0 = st.GrainLost;
+        _wet0 = st.GrainDeliveredWet; _wetLost0 = st.WetValueLost;
+        for (int i = 0; i < Slots; i++) _xId[i] = -1;
+        for (int i = 0; i < xs.Count && i < Slots; i++) { _xId[i] = xs[i].Id; _xCrossed0[i] = xs[i].WalkersCrossed; _xWaited0[i] = xs[i].WalkersWaited; }
+    }
+
+    /// <summary>The ford's line (tests): what wading cost in trade today and in all.</summary>
+    public string FordText => _ford?.Text ?? "";
 
     private void RiverToday(RiverView r, RiverFeed feed)
     {
@@ -133,7 +151,18 @@ public partial class ChapterPage
         if (grain != _lastGrain || lost != _lastLost)
         {
             _lastGrain = grain; _lastLost = lost;
-            _grain.Text = lost > 0 ? $"{grain} sacks to the landing · {lost} dropped on the way" : $"{grain} sacks to the landing";
+            string sacks = grain == 1 ? "1 sack" : $"{grain} sacks";
+            _grain.Text = lost > 0 ? $"{sacks} to the landing · {lost} dropped on the way" : $"{sacks} to the landing";
+        }
+        // The ford's cost: grain that waded through got wet and sold for less (RiverRules.WetGrainValueShare).
+        int wet = st.GrainDeliveredWet - _wet0;
+        int wetToday = (int)System.Math.Floor(st.WetValueLost - _wetLost0 + 1e-9), wetAll = (int)System.Math.Floor(st.WetValueLost + 1e-9);
+        if (wet != _lastWet || wetToday != _lastWetToday || wetAll != _lastWetAll)
+        {
+            _lastWet = wet; _lastWetToday = wetToday; _lastWetAll = wetAll;
+            _ford.Text = st.GrainDeliveredWet == 0 ? "no grain has waded through yet"
+                : wet == 0 ? $"no wet grain today · {wetAll}c lost to wet grain in all"
+                : $"{wet} {(wet == 1 ? "sack" : "sacks")} came wet today, {wetToday}c less · {wetAll}c in all";
         }
         // Per crossing: walkers who waited today out of those who crossed there today. Built only when a count moved.
         bool changed = xs.Count != _shownCount;

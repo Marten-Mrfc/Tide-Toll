@@ -79,7 +79,9 @@ public partial class UiTest : Node
                 var label = b.GetNodeOrNull<Label>("Row/Text") ?? b.GetNodeOrNull<Label>("Row/Lines/Text");
                 Check(label != null && label.Text.Length > 0, $"{n} has no label");
                 var price = b.GetNodeOrNull<Label>("Row/Lines/Price");
-                if (price != null) Check(price.Text.EndsWith("c") || price.Text.Contains("short"), $"{n} shows no price: '{price.Text}'");
+                // Restated this round (price line now says what the purse can do: "40c · can buy" or "200c · not yet"):
+                // the line must still open with the price.
+                if (price != null) Check(System.Text.RegularExpressions.Regex.IsMatch(price.Text, @"^\d+c( · (can buy|not yet))?$"), $"{n} shows no price: '{price.Text}'");
             }
         }
         _notes.Add($"controls={Names.Length}");

@@ -19,13 +19,14 @@ public partial class BridgeBadges : Control
     {
         public int Id;
         public PanelContainer Card = null!;
-        public Label State = null!, Boats = null!, Walkers = null!;
+        public Label State = null!, Boats = null!, Walkers = null!, Unlock = null!;
         public Button Lever = null!, Keeper = null!;
         public StateGlyph Glyph = null!;
         public Vector3 Anchor;
         public float XW, XE, Z;            // the bridge's span and row, map-local metres
         public BridgeState Shown = (BridgeState)255;
-        public int ShownBoats = -1, ShownW = -1, ShownE = -1, ShownCoin = int.MinValue;
+        public int ShownBoats = -1, ShownW = -1, ShownE = -1, ShownCoin = int.MinValue, ShownToGo = -1;
+        public double UnlockedAt = -1e9;
         public bool ShownKeeper, ShownSelected, Compact;
         public Control Counts = null!, Buttons = null!;
     }
@@ -128,6 +129,10 @@ public partial class BridgeBadges : Control
         counts.AddChild(b.Walkers);
         col.AddChild(counts);
         b.Counts = counts;
+        // The keeper is earned by use (decision C): how many hand raises are still to go, in words, until a keeper will come.
+        b.Unlock = UiKit.Text("", _s, 13, UiKit.Serif, UiKit.Ink);
+        b.Unlock.Name = "Unlock";
+        col.AddChild(b.Unlock);
         var buttons = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         buttons.AddThemeConstantOverride("separation", UiKit.Px(_s, 4));
         b.Lever = SmallButton("Lever", "ui-raise-bridge", "Raise  L", $"Raise or lower drawbridge {number} by hand (L for the selected bridge, Ctrl+{number} for this one). Barges pass only while it is up; walkers wait at the barriers.");
@@ -163,7 +168,19 @@ public partial class BridgeBadges : Control
         return b;
     }
 
-    public override void _Process(double delta) => Refresh(false);
+    /// <summary>Seconds the keeper button glows once enough hand raises have earned a keeper.</summary>
+    public const double UnlockGlowSec = 4.0;
+    private double _now;
+
+    /// <summary>"Raise by hand 3 more times to earn a keeper" (1: "once more").</summary>
+    public static string RaiseText(int toGo) => toGo == 1 ? "Raise by hand once more to earn a keeper" : $"Raise by hand {toGo} more times to earn a keeper";
+
+    /// <summary>A badge's unlock line (tests): "" once a keeper can be hired.</summary>
+    public string UnlockText(int id) { foreach (var b in _badges) if (b.Id == id) return b.Unlock.Text; return ""; }
+    /// <summary>Whether a badge's keeper button is glowing for a fresh unlock (tests).</summary>
+    public bool Glowing(int id) { foreach (var b in _badges) if (b.Id == id) return _now - b.UnlockedAt < UnlockGlowSec; return false; }
+
+    public override void _Process(double delta) { _now += delta; Refresh(false); }
 
     /// <summary>Places every badge over its bridge and updates what changed. Allocation-free unless a value changed.</summary>
     private void Refresh(bool force)
@@ -176,6 +193,7 @@ public partial class BridgeBadges : Control
         var xs = r.Crossings;
         int coin = (int)Math.Floor(r.Money + 1e-9);
         int placedCount = 0;
+        _placedCount = 0;
         foreach (var b in _badges)
         {
             Crossing? x = null;
@@ -194,6 +212,7 @@ public partial class BridgeBadges : Control
             {
                 b.Compact = compact;
                 b.Counts.Visible = b.Buttons.Visible = !compact;
+                b.Unlock.Visible = !compact && b.ShownToGo > 0;
                 b.Card.ResetSize();
                 b.ShownBoats = b.ShownW = b.ShownE = -1; // refresh the counts when they show again
                 b.ShownCoin = int.MinValue;
@@ -222,6 +241,7 @@ public partial class BridgeBadges : Control
                 b.Card.ResetSize();
             }
             if (b.Glyph.Progress != (float)x.Progress) { b.Glyph.Progress = (float)x.Progress; b.Glyph.QueueRedraw(); }
+            _placedCount = placedCount;
             if (b.Compact && !force) continue; // the counts and buttons are hidden: no text to build
             if (force || x.BoatsWaiting != b.ShownBoats)
             {
@@ -233,18 +253,45 @@ public partial class BridgeBadges : Control
                 b.ShownW = x.QueueWest; b.ShownE = x.QueueEast;
                 b.Walkers.Text = $" · walkers W {x.QueueWest}, E {x.QueueEast}";
             }
-            if (force || x.Keeper != b.ShownKeeper || coin != b.ShownCoin)
+            int toGo = x.RaisesToKeeper;
+            if (force || x.Keeper != b.ShownKeeper || coin != b.ShownCoin || toGo != b.ShownToGo)
             {
-                b.ShownKeeper = x.Keeper; b.ShownCoin = coin;
+                if (b.ShownToGo > 0 && toGo == 0) b.UnlockedAt = _now; // the moment it is earned: the button glows a while
+                b.ShownKeeper = x.Keeper; b.ShownCoin = coin; b.ShownToGo = toGo;
                 double price = r.Rules.KeeperPrice;
-                b.Keeper.Disabled = x.Keeper;
-                b.Keeper.Text = x.Keeper ? "Keeper on duty" : coin >= price ? $"Keeper {price:0}c  K" : $"Keeper {price:0}c · short {Math.Ceiling(price - r.Money):0}c";
-                b.Keeper.Modulate = x.Keeper || coin >= price ? Colors.White : new Color(1, 1, 1, 0.6f);
+                bool locked = toGo > 0 && !x.Keeper;
+                b.Keeper.Disabled = x.Keeper || locked;
+                b.Keeper.Text = x.Keeper ? "Keeper on duty" : locked ? $"Keeper {price:0}c · {toGo} to go"
+                    : coin >= price ? $"Keeper {price:0}c  K" : $"Keeper {price:0}c · {Math.Ceiling(price - r.Money):0}c to save";
+                b.Keeper.TooltipText = x.Keeper ? "A keeper raises the bridge for each barge and lowers it once it is through."
+                    : locked ? $"No keeper will take this bridge on yet: {RaiseText(toGo)} ({x.HandRaises} of {r.Rules.KeeperUnlockRaises} done). Then a keeper costs {price:0}c and {r.Rules.KeeperWage:0}c a season."
+                    : $"Hire a keeper ({price:0}c, then {r.Rules.KeeperWage:0}c a season): raises the bridge for each barge and lowers it once it is through." +
+                      (coin >= price ? "" : $" You have {coin}c.");
+                b.Keeper.Modulate = x.Keeper || (!locked && coin >= price) ? Colors.White : new Color(1, 1, 1, 0.6f);
+                b.Unlock.Text = locked ? RaiseText(toGo) : "";
+                b.Unlock.Visible = locked && !b.Compact;
+                b.Card.ResetSize();
+            }
+            // The moment a keeper is earned: the keeper button glows Focus-blue and fades back over UnlockGlowSec.
+            double since = _now - b.UnlockedAt;
+            if (since >= 0 && since < UnlockGlowSec + 0.1)
+            {
+                float g = since < UnlockGlowSec ? 0.5f + 0.5f * Mathf.Cos((float)since * 6f) : 1f;
+                var m = since < UnlockGlowSec ? new Color(1, 1, 1).Lerp(UiKit.Focus, (1 - g) * (1 - (float)(since / UnlockGlowSec))) : Colors.White;
+                if (b.Keeper.SelfModulate != m) b.Keeper.SelfModulate = m;
             }
         }
     }
 
     private readonly Rect2[] _placed = new Rect2[16];
+    private int _placedCount;
+
+    /// <summary>The badges on screen after the last layout, written into <paramref name="into"/> from <paramref name="at"/>; returns the new count.</summary>
+    public int ShownRects(Rect2[] into, int at)
+    {
+        for (int i = 0; i < _placedCount && at < into.Length; i++) into[at++] = _placed[i];
+        return at;
+    }
 
     /// <summary>The bridge's own rectangle on screen (its span and ramps, a few metres either side of its row).</summary>
     public Rect2 BridgeRect(int id)
