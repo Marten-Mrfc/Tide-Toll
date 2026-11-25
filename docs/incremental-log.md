@@ -74,6 +74,7 @@ Stopping
 | Round | Commit | Run | Result |
 | --- | --- | --- | --- |
 | 1 | `55543fc` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45705589636 | success, artifact `TideToll-windows-x64` |
+| 2 | `9298da5` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45716021068 | success, artifact `TideToll-windows-x64` |
 
 ## Scheduled check
 
@@ -92,11 +93,12 @@ Stopping
 | 2c | Rules v2.2 in `build/wt/sim2`, then the balancer | `wf_952633fe-0b0`, script `build/wf/r2c.js` | 22:17 | 22:43 | DONE and green: 203 fast tests pass, no pacing misses on seeds 1 to 10. Committed on `wt/sim2` as `98130e6`. Balance report `docs/plans/town-balance-r2.md`: about 158 purchases an age, no kind above 26 percent (speed was 80, now 16), 3 to 5 kinds within reach at once |
 | 2d | Art and sounds for the second age (`docs/plans/age2-design.md`). Main checkout, `assets/` only | `wf_cccbed52-22a`, script `build/wf/age2-assets.js` | 22:19 | 22:32 | DONE: 6 models (pasture, sheep, weaver's cottage, crane, seal stone, tide post), 14 icons, 23 sounds and `assets/audio/sfx/river-sounds.json`, all with ledger rows |
 | 3s | In `build/wt/age2` (local branch `wt/age2`, from `wt/sim2`): rules v3 (choices of two, the charter drive, gains shown in the shop, extra places where people queue), then the simulation of the second age, then a balancer | `wf_e793e2e2-16b`, script `build/wf/age2-sim.js` | 22:45 | | |
+| 3a | Main checkout (rules v2.2 merged at 22:46 as `b24db6d`), one agent after the other: (1) the game learns rules v2 and fixes `docs/plans/r3-review.md` parts A, B, C1 to C6; (2) sounds, music rotation, achievements page, charter moment, a whole-age real-input check step. Beside it: a real-input play-test of round 2 in `build/pt/r2` (report `docs/plans/r2-playtest.md`), then a bug hunt of the game code (`docs/plans/r3-game-bugs.md`) | `wf_5f563f02-5ca`, script `build/wf/r3a.js` | 22:48 | | |
 
 ## Next steps
 
 0. The lead's plan is `docs/plans/lead-plan.md`; the fix list for round 3 is `docs/plans/r3-review.md`; the second age's design is `docs/plans/age2-design.md`.
-1. Round 2 is committed as a finished round. Next: merge `wt/sim2` (rules v2.2) into `claude/prototype-1` (`git merge --no-ff wt/sim2`), then round 3 in the main checkout: the game learns rules v2 and fixes the list (workflow 3a), beside a real-input play-test of round 2 in `build/pt/r2`.
+1. Round 2 is committed as a finished round (`9298da5`) and rules v2.2 are merged (`b24db6d`). Round 3 is running in the main checkout (workflow 3a) beside a play-test of round 2. When it returns: read its reports, look at the screenshots, run `./check --export`, write the round into this log, commit as a finished round, push, and wait for the GitHub build.
 2. When 3s (rules v3 and the second age's simulation) is green: commit in `build/wt/age2`, merge `wt/age2`, then round 4: the game learns rules v3 and the second age (river layers and boats back from `game/legacy/`).
 3. Then: the screenshot tour scene (`docs/plans/lead-plan.md` has the list), play-test and fix rounds until 05:00 UTC.
 4. Stopping: full `./check --export`, a finished-round commit so GitHub builds the exe, at least 30 screenshots at 1920 x 1080, the review page as an Artifact, the report, cancel the scheduled check.
