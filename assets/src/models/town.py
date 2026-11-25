@@ -130,8 +130,9 @@ def bell_frame():
     for sx in (-1, 1):
         beam(m, (sx * 1.15, 2.4, 0), (sx * 0.6, 3.0, 0), 0.18, 0.18, WOOD)              # knee braces
     m.add_box((0, HANG_Y + 0.08, 0), (0.5, 0.2, 0.4), WOOD, bottom=WOOD)                # hanger block
-    m.add_gable((0, 3.3, 0), 3.2, 1.1, 0.55, "Reed and thatch", gable=WOOD, overhang=0.12, bottom=WOOD)
-    beam(m, (-1.62, 3.83, 0), (1.62, 3.83, 0), 0.25, 0.14, "Packed earth")              # ridge binding
+    # a narrow thatch cap over the crossbeam only, so the bell still shows from straight above
+    m.add_gable((0, 3.3, 0), 3.2, 0.5, 0.4, "Reed and thatch", gable=WOOD, overhang=0.06, bottom=WOOD)
+    beam(m, (-1.62, 3.68, 0), (1.62, 3.68, 0), 0.22, 0.12, "Packed earth")              # ridge binding
     # a rope cleat on the east post, with the bell rope's coil, so the side has a detail
     m.add_box((1.32, 1.1, 0), (0.12, 0.4, 0.2), "Packed earth", bottom="Packed earth")
     m.add_cylinder((1.42, 0.42, 0.0), 0.2, 0.18, "Reed and thatch", segments=6)
@@ -159,12 +160,12 @@ CORD_Y = 0.55
 
 def stake(tag=False):
     m = glb.Mesh()
-    m.add_box((0, 0, 0), (0.2, 0.75, 0.2), "Packed earth")
-    m.add_frustum((0, 0.75, 0), 0.14, 0.05, 0.18, "Packed earth", segments=4, cap_bottom=False)
-    m.add_cylinder((0, 0, 0), 0.24, 0.06, "Trail earth", segments=5)                    # trodden earth at the foot
-    m.add_box((0, CORD_Y - 0.06, 0), (0.24, 0.12, 0.24), "Reed and thatch", bottom="Reed and thatch")   # cord lashing
+    m.add_box((0, 0, 0), (0.3, 0.85, 0.3), "Packed earth", top="Trail earth")
+    m.add_frustum((0, 0.85, 0), 0.2, 0.07, 0.22, "Trail earth", segments=4, cap_bottom=False)   # cut point
+    m.add_cylinder((0, 0, 0), 0.36, 0.06, "Trail earth", segments=5)                    # trodden earth at the foot
+    m.add_box((0, CORD_Y - 0.08, 0), (0.36, 0.16, 0.36), "Limewash", bottom="Limewash")  # cord lashing
     if tag:
-        m.add_box((0.1, 0.55, 0.12), (0.06, 0.35, 0.3), "Limewash", bottom="Limewash")   # cloth tag
+        m.add_box((0.15, 0.62, 0.2), (0.06, 0.4, 0.4), "Brick", bottom="Brick")          # red cloth tag
     return m
 
 
@@ -172,7 +173,7 @@ def cord(axis):
     """Cord between two stakes along X (8 m) or Z (6 m), centred on the node origin."""
     m = glb.Mesh()
     a, b = ((-PX, CORD_Y, 0), (PX, CORD_Y, 0)) if axis == "x" else ((0, CORD_Y, -PZ), (0, CORD_Y, PZ))
-    beam(m, a, b, 0.07, 0.07, "Reed and thatch")
+    beam(m, a, b, 0.12, 0.12, "Limewash")
     return m
 
 
@@ -261,3 +262,7 @@ if __name__ == "__main__":
         out = asset_path(f"models/{name}.glb")
         print(glb.report(out, glb.write_glb(out, parts, max_tris=budget)))
         ledger.add("models", out, kind="model", generator=__file__, note=BLOCKED, used_in=used, verified=True)
+    # preview only (not shipped): the water yoke lifted 1 m, so the contact sheet's ground does not hide the buckets
+    from common import ROOT
+    prev = ROOT / "build" / "previews" / "villager-cargo-water-lifted.glb"
+    glb.write_glb(prev, glb.Mesh().append(cargo_water(), (0, 1.0, 0)))

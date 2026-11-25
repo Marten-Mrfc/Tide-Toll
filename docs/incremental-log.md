@@ -81,7 +81,8 @@ Stopping
 
 ## Next steps
 
-1. Round 1 workflow is running or about to start (see the table). When it returns: read the reports in `docs/plans/`, look at the screenshots, run `./check`, write the result here, commit and push.
+0. The lead's plan for rounds 2 to 4 and the final review page is `docs/plans/lead-plan.md`.
+1. Round 1 workflow is running (see the table), and beside it the settings pages builder (1b). When it returns: read the reports in `docs/plans/`, look at the screenshots, run `./check`, write the result here, commit and push.
 2. Round 2: the book behaviour and menus (zoom out to the book, pause closes it, settings pages) by one Opus builder in `game/`; beside it a Sonnet play-test of round 1 in a worktree under `build/pt/`, then a Haiku bug hunt. The builder starts by fixing what round 1's reports list.
 3. Round 3: the full first age in the game (about 30 minutes, second field, market, mill, achievements page, saving and loading), the music playlist wired in, a screenshot tour scene for the final review.
 4. Round 4, only if started before 05:00 UTC: the second age with the river, or polish if the first age is not yet good.
