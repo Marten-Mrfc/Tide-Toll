@@ -114,10 +114,9 @@ def ui_display():
 def ui_keys():
     ic = Icon("ui-keys")                     # a row of key caps on a board
     ic.rect(1.4, 5.0, 22.6, 19.0, r=2.0)
-    for y in (8.0, 11.4):
-        for x in (4.4, 8.4, 12.4, 16.4):
-            ic.rect(x, y, x + 2.6, y + 2.0, fill=INK)
-    ic.rect(7.0, 14.8, 17.0, 16.4, fill=INK)  # space bar
+    for x in (5.6, 10.8, 16.0):
+        ic.rect(x, 8.8, x + 2.4, 10.8, fill=INK)
+    ic.rect(7.4, 13.6, 16.6, 15.4, fill=INK)  # space bar
     return ic
 
 
@@ -155,10 +154,6 @@ def ui_check():
 
 def good_water():
     ic = Icon("good-water")                  # a drop with an ink highlight
-    pts = [(12.0, 1.8)]
-    for i in range(1, 16):
-        a = math.pi * (-0.15 + 1.3 * i / 16)
-        pts.append((12.0 + 7.2 * math.cos(a + math.pi), 14.6 + 7.2 * math.sin(-a)))
     pts = [(12.0, 1.8)] + [(12.0 + 7.4 * math.cos(t), 14.8 + 7.2 * math.sin(t))
                            for t in [math.pi * (-0.2 + 1.4 * k / 15) for k in range(16)]][::-1]
     ic.shape(pts)
@@ -168,13 +163,14 @@ def good_water():
 
 def good_grain():
     ic = Icon("good-grain")                  # an ear of grain: stalk and kernels in pairs
-    ic.rect(11.0, 9.0, 13.0, 22.6)           # stalk
-    for i, y in enumerate((14.0, 9.6, 5.2)):
+    ic.rect(10.6, 9.0, 13.4, 22.6)           # stalk
+    for y in (15.2, 8.8):
         for sx in (-1, 1):
-            c = (12.0 + sx * 3.0, y)
-            ic.shape([(c[0] + 3.2 * math.cos(t) * 0.62 - 3.2 * math.sin(t) * 0.0, c[1] + 3.2 * math.sin(t))
+            cx, cy = 12.0 + sx * 3.6, y
+            ic.shape([(cx + 2.6 * math.cos(t) * math.cos(sx * 0.5) - 3.4 * math.sin(t) * math.sin(sx * 0.5),
+                       cy + 2.6 * math.cos(t) * math.sin(sx * 0.5) + 3.4 * math.sin(t) * math.cos(sx * 0.5))
                       for t in [2 * math.pi * k / 10 for k in range(10)]])
-    ic.shape([(12.0, 0.8), (14.0, 3.2), (12.0, 5.6), (10.0, 3.2)])   # tip kernel
+    ic.shape([(12.0, 0.8), (14.6, 4.2), (12.0, 7.6), (9.4, 4.2)])   # tip kernel
     return ic
 
 

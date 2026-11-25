@@ -42,6 +42,13 @@ Every fifth level of a track gives a small named perk. Costs rise geometrically.
 - The first age takes 25 to 40 minutes for a sensible player, and there is always a next thing to reach until the charter.
 - Three bot players (cheapest first, best payback first, random) all finish the age; none is more than twice as fast as another.
 
+Further targets for the balancer (from the research; not yet tests):
+
+- No upgrade track is the best buy more than about 60 percent of the time (the best-payback bot reports each track's share).
+- Ringing the bell whenever it is ready earns 10 to 25 percent more per minute than never ringing it.
+- Adding villagers without paving lowers income per villager; paving the suggested road raises it.
+- Something new appears on the map at least every 2 to 3 minutes (a gift, a building or a road).
+
 If `docs/plans/incremental-research.md` exists, balancers and play-testers read it too: it lists pacing rules from other incremental games and ten recommendations for ours.
 
 ## The town plan
