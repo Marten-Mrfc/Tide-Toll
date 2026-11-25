@@ -70,9 +70,63 @@ public partial class SimDriver : Node
 
     private void TickOnce()
     {
-        World.Tick();
-        long d = (long)Math.Floor(World.Time / World.Params.DaySimSec + 1e-9);
-        if (d != _day) { _day = d; DayStarted?.Invoke(d); }
+        var w = World;
+        // What the game can see change across the step, kept only when the step turns out slow (SlowStepMs).
+        long searches = w.FieldSearches;
+        int houses = w.Houses.Length, version = w.Version;
+        var rv = w.River;
+        bool flooded = rv != null && rv.Flooded, frozen = rv != null && rv.Frozen, raining = w.RainOn && w.Weather.Raining;
+        double decayAt = Math.Floor(w.Time / w.Params.DecayStepSimSec + 1e-9);
+        long t0 = Stopwatch.GetTimestamp();
+        w.Tick();
+        double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
+        long d = (long)Math.Floor(w.Time / w.Params.DaySimSec + 1e-9);
+        bool dawn = d != _day;
+        _stepInFrame++;
+        if (ms > SlowStepMs)
+        {
+            SlowSteps++;
+            LastSlowStep = new StepNote
+            {
+                Tick = w.Ticks, Day = d + 1, Ms = ms, StepInFrame = _stepInFrame, Searches = w.FieldSearches - searches,
+                NewHouses = w.Houses.Length - houses, Dawn = dawn, Edited = w.Version != version,
+                Decay = Math.Floor(w.Time / w.Params.DecayStepSimSec + 1e-9) != decayAt,
+                FloodChanged = rv != null && rv.Flooded != flooded, FrozenChanged = rv != null && rv.Frozen != frozen,
+                RainChanged = w.RainOn && w.Weather.Raining != raining,
+            };
+        }
+        if (dawn) { _day = d; DayStarted?.Invoke(d); }
+    }
+
+    /// <summary>A single step over this many milliseconds is recorded in <see cref="LastSlowStep"/> (the perf scene prints it).</summary>
+    public const double SlowStepMs = 20.0;
+    /// <summary>Steps over <see cref="SlowStepMs"/> so far, and the last of them with what the game knows ran in it.</summary>
+    public int SlowSteps { get; private set; }
+    public StepNote LastSlowStep { get; private set; }
+    private int _stepInFrame;
+
+    /// <summary>One simulation step as the game saw it: its tick and day, its time, and what changed across it.</summary>
+    public struct StepNote
+    {
+        public long Tick, Day, Searches;
+        public double Ms;
+        public int StepInFrame, NewHouses;
+        public bool Dawn, Edited, Decay, FloodChanged, FrozenChanged, RainChanged;
+    }
+
+    /// <summary>What ran in a step, in words (builds a string: only for a slow step's report).</summary>
+    public static string Describe(in StepNote s)
+    {
+        var parts = new List<string>();
+        if (s.Searches > 0) parts.Add($"field refresh ({s.Searches} route searches)");
+        if (s.NewHouses > 0) parts.Add(s.NewHouses == 1 ? "a house arrived" : $"{s.NewHouses} houses arrived");
+        if (s.Dawn) parts.Add("a new day began");
+        if (s.Decay) parts.Add("the wear decay step");
+        if (s.FloodChanged) parts.Add("a flood began or ended");
+        if (s.FrozenChanged) parts.Add("the river froze or thawed");
+        if (s.RainChanged) parts.Add("rain began or stopped");
+        if (s.Edited) parts.Add("an edit");
+        return parts.Count == 0 ? "nothing the game can see (walkers and boats only)" : string.Join(", ", parts);
     }
 
     private double _acc;
@@ -122,6 +176,9 @@ public partial class SimDriver : Node
         _acc = 0;
         Alpha = 1f;
         BudgetHits = 0;
+        // The lever's tick belongs to the old world: a new one counts its ticks from 0 again, so a stale value could make a
+        // keeper's raise at that tick read as the player's.
+        LastLeverTick = -1;
         _seenVersion = World.Version;
         _grownSeen = World.Grown.Length;
         _day = (long)Math.Floor(World.Time / World.Params.DaySimSec + 1e-9);
@@ -130,6 +187,7 @@ public partial class SimDriver : Node
 
     public override void _Process(double delta)
     {
+        _stepInFrame = 0;
         TicksThisFrame = 0;
         SimMsThisFrame = 0;
         if (!Paused && !Held)

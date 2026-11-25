@@ -81,10 +81,17 @@ public partial class Screenshot
         GD.Print($"SCREENSHOT river-keeper-locked: '{_main.Ui.Badges.UnlockText(draw.Id)}'");
         Check(await Snap("river-keeper-locked", true), "river-keeper-locked");
         var x = Find(draw.Id)!;
+        // Restated 25 Nov 2026 (fix round, item 6): a hand raise counts toward the keeper only when it lets a waiting barge
+        // through, so each raise here waits for a barge below the bridge (one sent up the river when none is there) and
+        // stays up until the count moves.
         for (int k = 0; k < rules.KeeperUnlockRaises; k++)
         {
+            if (x.BoatsWaiting == 0) w.SpawnBoat(BoatKind.Barge);
+            for (int i = 0; i < 4000 && x.BoatsWaiting == 0; i++) sim.StepTicks(1);
+            Need(x.BoatsWaiting > 0, $"raise {k + 1}: no barge came to wait below the drawbridge");
             sim.SetBridge(draw.Id, true);
-            for (int i = 0; i < 40 && x.State != BridgeState.Raised; i++) sim.StepTicks(1);
+            for (int i = 0; i < 400 && x.HandRaises <= k; i++) sim.StepTicks(1);
+            Need(x.HandRaises == k + 1, $"raise {k + 1}: the waiting barge's passing did not count");
             sim.SetBridge(draw.Id, false);
             for (int i = 0; i < 200 && x.State != BridgeState.Closed; i++) sim.StepTicks(1);
             if (k == rules.KeeperUnlockRaises - 2) await Frames(2); // the badge sees the count before the last raise

@@ -5,11 +5,13 @@ namespace TideToll.Sim.Tests;
 
 /// <summary>
 /// Tick budget (port plan, section 6), Release only: after 600 warm-up ticks, 600 timed ticks at 500 walkers
-/// must average under 5 ms with a 99th percentile under 25 ms (field rebuilds), and allocate nothing.
+/// must average under 5 ms with a 99th percentile under 25 ms (field rebuilds), and allocate nothing. Each tick is timed in
+/// the thread's CPU time (TickBench, fix round before the playtest), so other jobs on the machine do not count.
 /// Generous on purpose: other jobs share the machine. Run with ./check --bench or
 /// dotnet test -c Release --filter Category=Perf.
 /// </summary>
 [Trait("Category", "Perf")]
+[Collection(TimingCollection.Name)]
 public class PerfTests
 {
     private readonly ITestOutputHelper _out;

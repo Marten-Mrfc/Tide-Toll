@@ -114,13 +114,18 @@ public class RiverWalkerTests
             for (int t = 0; t < 100; t++) w.Tick();
         }
         Assert.True(maxQueue >= 2, $"queue never formed ({maxQueue})");
-        // The learned wait reflects the raises: once a raise's queue has gone over it is above 0.5 s every time. (Restated in
-        // river pass 3: this was the learned wait at the very end, 100 ticks after the last queue cleared. The learned wait
-        // is a moving average over the last walkers served, and once the bridge is down those are walkers who queued a tick
-        // or two for the bridge's capacity, so its value then depended on how many of those there happened to be. With
-        // walkers no longer let onto the deck free past the gate (step 1) more of them queue briefly, and on the round-2
-        // trail model it ended at 0.28 s although every raise's queue had taught it a wait of seconds.)
-        Assert.True(learned.Min() > 0.5, $"learned wait after each raise {string.Join(", ", learned.Select(v => v.ToString("F2")))}; at the end {x.AvgWait:F2}, served {x.WalkersServed}, mean {w.River!.Stats.MeanWalkerWait}, worst {w.River.Stats.WalkerWaitMax}");
+        // The learned wait reflects the raises. On the Default and Toy trail models: the learned wait at the very end, 100
+        // ticks after the last queue cleared, is above 0.5 s (the original assertion; the reviewer found it still holds on
+        // both, fix round before the playtest, 25 Nov 2026).
+        // On the round-2 (Legacy) trail model only, restated in river pass 3: once a raise's queue has gone over it is above
+        // 0.5 s every time. The learned wait is a moving average over the last walkers served, and once the bridge is down
+        // those are walkers who queued a tick or two for the bridge's capacity, so its value at the end depended on how many
+        // of those there happened to be. With walkers no longer let onto the deck free past the gate (step 1) more of them
+        // queue briefly, and on the round-2 trail model it ended at 0.28 s although every raise's queue had taught it a
+        // wait of seconds.
+        string waits = $"learned wait after each raise {string.Join(", ", learned.Select(v => v.ToString("F2")))}; at the end {x.AvgWait:F2}, served {x.WalkersServed}, mean {w.River!.Stats.MeanWalkerWait}, worst {w.River.Stats.WalkerWaitMax}";
+        if (RiverTestRules.Trail == SimParams.Legacy) Assert.True(learned.Min() > 0.5, waits);
+        else Assert.True(x.AvgWait > 0.5, waits);
         // 1 s up, 8 s held, 1 s down at most, then the queue's turn at the bridge's capacity.
         double drain = 2 * maxQueue / (w.River!.Rules.DrawbridgeWalkersPerDay / w.Params.DaySimSec);
         Assert.True(w.River!.Stats.WalkerWaitMax <= 10.2 + drain, $"worst wait {w.River.Stats.WalkerWaitMax}");

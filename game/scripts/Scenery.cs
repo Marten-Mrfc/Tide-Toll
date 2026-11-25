@@ -315,7 +315,9 @@ public partial class Scenery : Node3D
     private void OnEdited(int version)
     {
         var w = _sim.World;
-        var list = new List<Transform3D>(_reedList.Count);
+        // One list kept for this (every edit, and every house the town grows, comes here): no new list each time.
+        var list = _reedScratch;
+        list.Clear();
         foreach (var (xf, row) in _reedList)
             if (!NearBridge(w, row, 1)) list.Add(xf);
         Fill(_reeds, list);
@@ -324,6 +326,8 @@ public partial class Scenery : Node3D
         // them. The node stays (placed from the seed) for a later chapter that wants it.
         _boat.Visible = false;
     }
+
+    private readonly List<Transform3D> _reedScratch = new();
 
     private static bool NearBridge(World w, int row, int rows)
     {

@@ -101,6 +101,12 @@ public partial class ChapterTest : Node
         await TestInput.Frames(this, 2);
         var at = TestInput.Centre(mark);
         TestInput.Motion(at);
+        // The old town as the turn starts: it must stand still under the leaf until the new book replaces it (no tick,
+        // no house, no footstep), not run on for the cover's 0.42 s.
+        var oldWorld = sim.World;
+        var oldAudio = _main.Audio;
+        long ticks0 = oldWorld.Ticks;
+        int grown0 = oldWorld.Grown.Length, steps0 = oldAudio.Steps;
         TestInput.Button(at, MouseButton.Left, true);
         TestInput.Button(at, MouseButton.Left, false);
         await TestInput.Frames(this, 2);
@@ -109,8 +115,20 @@ public partial class ChapterTest : Node
         TestInput.Key(Key.F);
         TestInput.Key(Key.Key1);
         float most = 0;
-        int frames = 0;
-        while (_main.Turn.Busy && frames < 400) { most = Math.Max(most, _main.Turn.Cover); await TestInput.Frames(this, 1); frames++; }
+        int frames = 0, coverFrames = 0;
+        while (_main.Turn.Busy && frames < 400)
+        {
+            if (_main.Sim == sim)
+            {
+                coverFrames++;
+                Check(oldWorld.Ticks == ticks0, $"the old town ticked under the turning leaf ({oldWorld.Ticks - ticks0} ticks, cover {_main.Turn.Cover:F2})");
+                Check(oldWorld.Grown.Length == grown0 && oldAudio.Steps == steps0, "the old town grew a house or sounded footsteps under the leaf");
+            }
+            most = Math.Max(most, _main.Turn.Cover);
+            await TestInput.Frames(this, 1);
+            frames++;
+        }
+        Check(coverFrames >= 5, $"the cover lasted only {coverFrames} frames: the old town's hold was not watched");
         Check(!_main.Turn.Busy, "the page turn never ended");
         Check(most >= 0.999f, $"the leaf never covered the book ({most:F2})");
         Check(_main.Turn.Turns == 1, "page turns not counted");
@@ -122,19 +140,28 @@ public partial class ChapterTest : Node
         Check(_main.Tools.Tool == Tool.None, "a key pressed during the turn picked up a tool");
         Check(_main.ChapterBuilds == 2, $"book built {_main.ChapterBuilds} times");
         Check(_main.Ui.Chapter.GetNodeOrNull("Column/Coin/Value") is Label { } coin, "no coin entry");
-        _notes.Add($"turn-frames={frames}");
+        _notes.Add($"turn-frames={frames} held-under-cover={coverFrames}");
     }
 
     private async Task ResetAndNewMap()
     {
         var sim = _main.Sim;
         sim.StepTicks(200);
+        // A hand on a lever (refused here: no drawbridge yet) still stamps the tick; a new world must forget it, or a
+        // keeper's raise at that tick number in the new town would read as the player's.
+        sim.SetBridge(0, true);
+        Check(sim.LastLeverTick == sim.World.Ticks && sim.LastLeverTick > 0, $"the lever's tick was not stamped ({sim.LastLeverTick})");
         TestInput.Key(Key.R);
         await TestInput.Frames(this, 2);
         Check(_main.Chapter == 2 && _main.Sim.World.River != null && _main.Sim.World.Ticks < 10, "reset left the chapter or did not start over");
+        Check(_main.Sim.LastLeverTick == -1, $"Reset kept the old world's lever tick {_main.Sim.LastLeverTick}");
+        _main.Sim.StepTicks(50);
+        _main.Sim.SetBridge(0, true);
         TestInput.Key(Key.N);
         await TestInput.Frames(this, 2);
         Check(_main.Chapter == 2 && _main.Sim.World.River != null, "new map left Chapter II");
+        Check(_main.Sim.LastLeverTick == -1, $"New map kept the old world's lever tick {_main.Sim.LastLeverTick}");
+        _main.Sim.SetBridge(0, true); // stamped again, for the chapter switch below
         Check(_main.Sim.Seed == SimDriver.NextSeed(1), $"new map seed {_main.Sim.Seed}");
         _notes.Add($"newseed={_main.Sim.Seed}");
     }
@@ -149,6 +176,7 @@ public partial class ChapterTest : Node
         while (_main.Turn.Busy && frames < 400) { await TestInput.Frames(this, 1); frames++; }
         CheckChapter(1);
         Check(_main.Sim.Seed == seed && _main.Sim.World.Ticks < 20, "Chapter I did not start fresh from the current seed");
+        Check(_main.Sim.LastLeverTick == -1, $"the chapter switch kept the old world's lever tick {_main.Sim.LastLeverTick}");
         _main.Sim.Reset();
         CheckChapter(1);
         _notes.Add("back=I");

@@ -13,7 +13,10 @@ namespace TideToll.Game.Tests;
 ///   "newest on day N", the walker count follows and every walker out is drawn;
 /// - a forced shower (World.StartRain): the rain layer shows over the map page, the ground wets, trails turn to mud
 ///   where the library says, the weather line reads "Rain, day N", then "Mud until day N", and the mud dries to "Dry";
-///   footsteps follow the wet ground.
+///   footsteps follow the wet ground;
+/// - the growth room used up (a small reserve: HamletTarget 12, so room for 5 grown houses, the walker count lowered by
+///   hand after each): the page says so once under Houses ("no room for more families") the moment World.GrowthRoomFull
+///   turns true, and not before.
 /// Prints HAMLET PASS or HAMLET FAIL and quits with 0 or 1.
 /// </summary>
 public partial class HamletTest : Node
@@ -38,6 +41,7 @@ public partial class HamletTest : Node
             Check(_main.Chapter == 1 && _main.Sim.World.GrowthOn && _main.Sim.World.RainOn, "not Chapter I with growth and rain");
             await HouseArrives();
             await Shower();
+            await RoomFull();
             GD.Print("HAMLET PASS " + string.Join(" ", _notes));
             GetTree().Quit(0);
         }
@@ -85,6 +89,54 @@ public partial class HamletTest : Node
         _main.Walkers.Sync();
         Check(_main.Walkers.Drawn == w.WalkersOut(), $"drew {_main.Walkers.Drawn} of {w.WalkersOut()} walkers out");
         _notes.Add($"house@tick{ticks}(day {g.Day}) walkers={w.WalkerCount}");
+    }
+
+    private async Task Seconds(double s)
+    {
+        ulong until = Time.GetTicksMsec() + (ulong)(s * 1000);
+        while (Time.GetTicksMsec() < until) await TestInput.Frames(this, 1);
+    }
+
+    /// <summary>A town that has used the room kept for its houses says so once, under Houses, instead of going quiet.</summary>
+    private async Task RoomFull()
+    {
+        var sim = _main.Sim;
+        sim.SetPaused(true);
+        // A small reserve: World pre-sizes room for min(HamletTarget, MaxWalkers) / HouseholdSize + 1 grown houses.
+        sim.Params = _main.Params with { HamletTarget = 12 };
+        sim.Reset();
+        var w = sim.World;
+        int room = sim.Params.MaxGrownHouses;
+        Check(w.GrowthOn && w.GrowthRoomLeft == room && room <= 6, $"test setup: room for {w.GrowthRoomLeft} houses");
+        sim.StepTicks(3 * _main.Params.TicksPerDay); // trails worn at the full walker count first (no growth above the target)
+        var note = _main.Ui.Chapter.GetNode<Label>("Column/HousesNote");
+        int ticks = 0, said = 0;
+        bool wasSaid = false;
+        while (!w.GrowthRoomFull && ticks < 40 * _main.Params.TicksPerDay)
+        {
+            sim.SetWalkers(0); // lowered by hand, the only way the room fills
+            sim.StepTicks(20);
+            ticks += 20;
+            if (ticks % 200 == 0)
+            {
+                await Seconds(0.6); // the page refreshes about twice a second
+                Check(w.GrowthRoomFull || !note.Text.Contains(ChapterPage.RoomFullText), $"the page says the room is full with {w.GrowthRoomLeft} left: '{note.Text}'");
+            }
+        }
+        Check(w.GrowthRoomFull, $"the growth room never filled ({w.Grown.Length} of {room} grown in {ticks} ticks)");
+        for (int i = 0; i < 4; i++)
+        {
+            sim.StepTicks(50);
+            await Seconds(0.6);
+            bool shown = note.Text.Contains(ChapterPage.RoomFullText);
+            if (shown && !wasSaid) said++;
+            wasSaid = shown;
+            Check(shown, $"after the room filled the houses note says '{note.Text}'");
+            int at = note.Text.IndexOf(ChapterPage.RoomFullText, StringComparison.Ordinal);
+            Check(note.Text.IndexOf(ChapterPage.RoomFullText, at + 1, StringComparison.Ordinal) < 0, $"said twice: '{note.Text}'");
+        }
+        Check(said == 1, $"the full room was announced {said} times");
+        _notes.Add($"room-full after {w.Grown.Length} houses: '{note.Text}'");
     }
 
     private async Task Shower()

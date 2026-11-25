@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace TideToll.Sim.Testing;
 
-/// <summary>Tick timing: warm up, then time each tick and count bytes allocated on this thread.</summary>
+/// <summary>Tick timing: warm up, then time each tick (thread CPU time, CpuClock) and count bytes allocated on this thread.</summary>
 public static class TickBench
 {
     public readonly record struct Result(int Walkers, int Ticks, double MeanMs, double P99Ms, double MaxMs, long AllocatedBytes, bool River = false, bool Weather = false, bool Toy = false);
@@ -40,9 +40,10 @@ public static class TickBench
         for (int i = 0; i < ticks; i++)
         {
             if (draw >= 0 && i % 200 == 0) w.SetBridge(draw, true);
-            long t0 = Stopwatch.GetTimestamp();
+            // Thread CPU time (fix round before the playtest, 25 Nov 2026; was wall time): a shared machine's other jobs do not count.
+            double t0 = CpuClock.NowMs();
             w.Tick();
-            ms[i] = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
+            ms[i] = CpuClock.NowMs() - t0;
         }
         long alloc = GC.GetAllocatedBytesForCurrentThread() - a0;
         double sum = 0;
@@ -52,7 +53,7 @@ public static class TickBench
     }
 
     public static string Line(Result r) =>
-        $"BENCH {r.Walkers} walkers{(r.Weather ? " + river rules, flood and ice" : r.River ? " + river rules" : r.Toy ? ", toy trail model (SimParams.Toy)" : "")}: {r.MeanMs:F3} ms per tick mean, p99 {r.P99Ms:F2} ms, max {r.MaxMs:F2} ms over {r.Ticks} ticks; {r.AllocatedBytes} bytes allocated";
+        $"BENCH {r.Walkers} walkers{(r.Weather ? " + river rules, flood and ice" : r.River ? " + river rules" : r.Toy ? ", toy trail model (SimParams.Toy)" : "")}: {r.MeanMs:F3} ms per tick mean, p99 {r.P99Ms:F2} ms, max {r.MaxMs:F2} ms over {r.Ticks} ticks ({(CpuClock.IsCpuTime ? "thread CPU time" : "wall time")}); {r.AllocatedBytes} bytes allocated";
 
 #if DEBUG
     public static readonly bool IsRelease = false;

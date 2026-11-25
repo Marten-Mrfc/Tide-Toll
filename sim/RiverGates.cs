@@ -59,6 +59,25 @@ public sealed partial class World
         return false;
     }
 
+    /// <summary>
+    /// Hook of Evict: a walker on a drawbridge span that is going up is set down at the end of the bank it came from (it
+    /// has not crossed, so no crossing is counted and none is skipped). False when it is not on a span or its bank is unknown.
+    /// </summary>
+    private bool SetDownOffSpan(ref Walker w)
+    {
+        int id = _crossAt[w.Cell];
+        if (id < 0 || _bridgeAt[w.Cell] < 0 || w.Side == 0) return false;
+        var x = CrossingById(id);
+        if (x == null || x.Type != CrossingType.Drawbridge) return false;
+        int end = w.Side < 0 ? x.WestEnd : x.EastEnd;
+        if (end < 0 || IsBlocked(end)) return false;
+        _here[w.Cell]--; _here[end]++;
+        w.Cell = end; w.HasAim = false;
+        w.X = w.Px = end % _n + 0.5; w.Y = w.Py = end / _n + 0.5;
+        RiverPlaced(ref w);
+        return true;
+    }
+
     private bool BoatPassing(Crossing x)
     {
         for (int i = 0; i < _boatCount; i++) if (_boats[i].Through == x.Id) return true;
@@ -71,12 +90,40 @@ public sealed partial class World
         x.State = BridgeState.Raising;
         x.StateT = p * _river!.RaiseSec;
         x.KeeperT = -1;
+        x.HandRaiseLive = false; // a hand raise marks itself after this (MarkHandRaise)
         Emit(RiverEventKind.BridgeRaising, -1, x.Id, 0);
+    }
+
+    /// <summary>
+    /// A hand raise of x has just begun: marks the masted boats waiting below it now. The raise counts toward the keeper
+    /// (CountHandRaise) when one of them passes before the leaf starts down; with none waiting it is a raise that does not count.
+    /// </summary>
+    private void MarkHandRaise(Crossing x)
+    {
+        var r = _river!;
+        x.HandRaiseLive = false;
+        for (int i = 0; i < _boatCount; i++)
+        {
+            ref Boat b = ref _boats[i];
+            if (b.HandWaitAt == x.Id) b.HandWaitAt = -1;
+            if (b.State != BoatState.Waiting || b.WaitingAt != x.Id || b.Mast <= r.DrawbridgeClosedClearance) continue;
+            b.HandWaitAt = x.Id;
+            x.HandRaiseLive = true;
+        }
+    }
+
+    /// <summary>A hand raise of x let a waiting boat through: one more for the town's count (once per raise).</summary>
+    private void CountHandRaise(Crossing x)
+    {
+        x.HandRaiseLive = false;
+        _keeperTally.HandRaises++;
+        if (_keeperTally.HandRaises == _river!.KeeperUnlockRaises) Emit(RiverEventKind.KeeperUnlocked, -1, x.Id, _keeperTally.HandRaises);
     }
 
     private void StartLower(Crossing x)
     {
         double p = x.State == BridgeState.Raising ? x.Progress : 1;
+        x.HandRaiseLive = false; // the raise is over: a boat that passes later does not count it
         x.State = BridgeState.Lowering;
         x.StateT = (1 - p) * _river!.LowerSec;
         Emit(RiverEventKind.BridgeLowering, -1, x.Id, 0);

@@ -18,7 +18,8 @@ namespace TideToll.Game.Tests;
 ///   to that dawn gives the reference);
 /// - the Ford tag never lies over a boat at the play view (it hides while one passes);
 /// - the keeper unlocked by use (default KeeperUnlockRaises): the badge says the raises still to go, the keeper button is
-///   locked with that reason and K is refused in words; ten raises by hand (L) count down; the unlock writes a margin
+///   locked with that reason and K is refused in words; a raise with no boat waiting counts for nothing and says so on
+///   the badge and the status line; ten raises by hand (L), each for a barge waiting below, count down; the unlock writes a margin
 ///   note, floats a note, rings the bell and makes the button glow; then the badge's button hires the keeper;
 /// - barges held below a footbridge: queued boats are never drawn over one another, and boats turning back together
 ///   leave one "Turned back ×N" float and one chronicle line with a count.
@@ -72,6 +73,8 @@ public partial class RiverRulesTest : Node
 
     private World W => _main.Sim.World;
     private RiverView R => W.River!;
+    /// <summary>A carried sack's size across at the play view (1280 x 720), so wet against dry reads at the default zoom.</summary>
+    private const float MinSackPx = 5f;
 
     /// <summary>What the opening purse can buy, said at once; the band and the ford's cost marked from the first frame.</summary>
     private async Task Purse()
@@ -128,6 +131,24 @@ public partial class RiverRulesTest : Node
         await WaitFor(() => _main.Ui.Chapter.FordText.Contains($"{(int)Math.Floor(st.WetValueLost + 1e-9)}c in all"), 3);
         string ford = _main.Ui.Chapter.FordText;
         Check(ford.Contains($"{(int)Math.Floor(st.WetValueLost + 1e-9)}c in all"), $"the ledger's ford line '{ford}' does not say {st.WetValueLost:0.##}c lost in all");
+        // Wet against dry must read at the default (play) view: a sack drawn at least MinSackPx across, larger there than up
+        // close (they grow with the zoom as the villagers do), wet ones in their own colour (cargo.gdshader).
+        _main.Rig.FramePlay(instant: true);
+        await TestInput.Frames(this, 2);
+        float playPx = _main.Walkers.SackPx, playScale = _main.Walkers.SackDrawScale;
+        Check(playPx >= MinSackPx, $"a sack is {playPx:F1} px across at the play view (at least {MinSackPx} wanted)");
+        _main.Rig.LookAt(new Vector3(W.RiverX[W.Map.FordY] * 2f, 0, W.Map.FordY * 2f), 40f);
+        await TestInput.Frames(this, 2);
+        float closePx = _main.Walkers.SackPx;
+        Check(_main.Walkers.SackDrawScale < playScale && Math.Abs(_main.Walkers.SackDrawScale - WalkerLayer.SackScale) < 0.2f,
+            $"sacks do not grow toward the overview only (scale {_main.Walkers.SackDrawScale:F2} close, {playScale:F2} at the play view)");
+        _main.Rig.FramePlay(instant: true);
+        _notes.Add($"sack={playPx:F1}px@play,{closePx:F1}px@40m");
+        // Who crossed today says one thing: each crossing's count (the ford's waders too), never "waited" mixed with "waded".
+        Check(_main.Ui.Chapter.GetNodeOrNull("Column/Waitedtocross") == null, "the old 'Waited to cross' row is still on the page");
+        string crossed = _main.Ui.Chapter.GetNode<Label>("Column/Crossedtoday/Value").Text;
+        Check((crossed.StartsWith("ford ") || crossed == "nobody has crossed yet") && !crossed.Contains("waded"), $"the crossings line reads '{crossed}'");
+        _notes.Add($"crossed='{crossed}'");
         _notes.Add($"wet={st.GrainDeliveredWet}/{st.GrainDelivered} lost={st.WetValueLost:0.#}c sacks={maxSacks} wetSacks={maxWet} ford='{ford}'");
     }
 
@@ -243,12 +264,36 @@ public partial class RiverRulesTest : Node
         Check(!x.Keeper && R.Money == money, "a keeper was hired before the unlock");
         Check(_main.Tools.LastMessage.Contains("raise it by hand"), $"K before the unlock says '{_main.Tools.LastMessage}'");
         int unlockNotes = 0, cues = _main.Audio.UnlockCues;
+        // Restated 25 Nov 2026 (fix round, item 6): the library now counts a hand raise toward the keeper only when it lets
+        // a waiting masted boat through (the count belongs to the town). Ten bare raises by L no longer earn a keeper, so
+        // each counted raise here has a barge waiting below the bridge first; and one raise with nothing waiting is
+        // checked to count for nothing and to say so quietly on the badge and the status line.
+        Check(x.BoatsWaiting == 0, "test setup: a boat already waits below the new drawbridge");
+        int quiet = badges.NoCountNotes;
+        TestInput.Key(Godot.Key.L); // raise with no boat waiting
+        await TestInput.Frames(this, 2);
+        Check(x.State == BridgeState.Raising, $"the bare raise did not happen ({x.State}, '{_main.Tools.LastMessage}')");
+        Check(badges.NoCountNotes == quiet + 1 && badges.UnlockText(id).Replace("\n", " ") == BridgeBadges.NoCountText,
+            $"a raise with no boat waiting is not noted on the badge: '{badges.UnlockText(id)}'");
+        Check(_main.Tools.LastMessage.Contains(BridgeBadges.NoCountText), $"the status line does not say the raise does not count: '{_main.Tools.LastMessage}'");
+        await StepUntil(() => x.State == BridgeState.Raised, 60, "the bare raise never rose");
+        TestInput.Key(Godot.Key.L);
+        await TestInput.Frames(this, 1);
+        await StepUntil(() => x.State == BridgeState.Closed, 160, "the bare raise never came down");
+        Check(x.HandRaises == 0 && x.RaisesToKeeper == need, $"a raise with no boat waiting counted ({x.HandRaises})");
+        await WaitFor(() => badges.UnlockText(id) == BridgeBadges.RaiseText(need), BridgeBadges.NoCountSec + 2);
+        Check(badges.UnlockText(id) == BridgeBadges.RaiseText(need), $"the quiet note never gave way to the count: '{badges.UnlockText(id)}'");
         for (int k = 1; k <= need; k++)
         {
+            // A barge waiting below the bridge (one sent up the river when none is there yet).
+            if (x.BoatsWaiting == 0) W.SpawnBoat(BoatKind.Barge);
+            await StepFast(() => x.BoatsWaiting > 0, 4000, $"raise {k}: no barge came to wait below the bridge");
+            int notes = badges.NoCountNotes;
             TestInput.Key(Godot.Key.L); // raise
             await TestInput.Frames(this, 1);
             Check(x.State == BridgeState.Raising, $"raise {k}: L did not raise the bridge ({x.State}, '{_main.Tools.LastMessage}')");
-            await StepUntil(() => x.State == BridgeState.Raised, 60, $"raise {k}: the bridge never rose");
+            Check(badges.NoCountNotes == notes && !_main.Tools.LastMessage.Contains(BridgeBadges.NoCountText), $"raise {k}: a raise for a waiting barge was called one that does not count");
+            await StepUntil(() => x.HandRaises == k, 400, $"raise {k}: the waiting barge's passing did not count (count {x.HandRaises})");
             TestInput.Key(Godot.Key.L); // lower
             await TestInput.Frames(this, 1);
             await StepUntil(() => x.State == BridgeState.Closed, 160, $"raise {k}: the bridge never came down");
@@ -354,6 +399,13 @@ public partial class RiverRulesTest : Node
     private async Task StepUntil(Func<bool> done, int max, string what)
     {
         for (int i = 0; i < max && !done(); i++) { _main.Sim.StepTicks(1); await TestInput.Frames(this, 1); }
+        Check(done(), what);
+    }
+
+    /// <summary>Like StepUntil, several ticks a frame (a barge sailing up the river).</summary>
+    private async Task StepFast(Func<bool> done, int maxTicks, string what)
+    {
+        for (int i = 0; i < maxTicks && !done(); i += 4) { _main.Sim.StepTicks(4); await TestInput.Frames(this, 1); }
         Check(done(), what);
     }
 

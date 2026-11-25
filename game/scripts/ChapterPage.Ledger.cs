@@ -7,7 +7,7 @@ namespace TideToll.Game;
 /// The chapter page's river part (river rules on): "The ledger" with the coin glyph, the purse, income today,
 /// reputation with what it means in words, boats served and turned back today, the river's state in words (open water,
 /// "Spring flood, day N" with the ford closed, mud on the banks, frozen), today's grain (brought to the landing and
-/// dropped on the way), how many walkers had to wait at each crossing today out of those who crossed there, and the
+/// dropped on the way), how many walkers crossed at each crossing today and how many of them had to wait, and the
 /// chronicle: the latest four events as margin notes in a small serif hand, the newest darkest. Values change only when
 /// they do; today's counts are the simulation's running totals less a snapshot taken at the day's start.
 /// </summary>
@@ -46,7 +46,9 @@ public partial class ChapterPage
         _river = Entry(col, "The river", out _, false);
         _grain = Entry(col, "Grain today", out _, false);
         _ford = Entry(col, "The ford", out _, false);
-        _waited = Entry(col, "Waited to cross", out _, false);
+        // Who crossed where today: one line, one thing (each crossing's count, the walkers who had to wait there in
+        // brackets; the ford's waders are simply its count: nobody waits at a ford).
+        _waited = Entry(col, "Crossed today", out _, false);
         var chron = new VBoxContainer { Name = "Chronicle", MouseFilter = MouseFilterEnum.Ignore };
         chron.AddThemeConstantOverride("separation", UiKit.Px(_s, 1));
         for (int i = 0; i < _notes.Length; i++)
@@ -95,7 +97,6 @@ public partial class ChapterPage
         }
     }
 
-    /// <summary>The river's state, today's grain and the walkers who waited at each crossing today (in words).</summary>
     /// <summary>
     /// Snapshots the running totals when a new day starts (called every frame, so the snapshot is at most a frame late;
     /// cheap and allocation-free); also when a new world's totals fall below the snapshot.
@@ -164,7 +165,7 @@ public partial class ChapterPage
                 : wet == 0 ? $"no wet grain today · {wetAll}c lost to wet grain in all"
                 : $"{wet} {(wet == 1 ? "sack" : "sacks")} came wet today, {wetToday}c less · {wetAll}c in all";
         }
-        // Per crossing: walkers who waited today out of those who crossed there today. Built only when a count moved.
+        // Per crossing: walkers who crossed there today, with how many of them had to wait. Built only when a count moved.
         bool changed = xs.Count != _shownCount;
         for (int i = 0; i < xs.Count && i < Slots && !changed; i++)
         {
@@ -180,9 +181,8 @@ public partial class ChapterPage
             _shownCrossed[i] = c; _shownWaited[i] = w; _shownType[i] = (int)xs[i].Type;
             if (c == 0) continue; // a crossing nobody used today says nothing
             if (_sb.Length > 0) _sb.Append(" · ");
-            _sb.Append(World.CrossingName(xs[i].Type)).Append(' ');
-            if (xs[i].Type == CrossingType.Ford) _sb.Append(c).Append(" waded"); // nobody waits at a ford
-            else _sb.Append(w).Append(" of ").Append(c);
+            _sb.Append(World.CrossingName(xs[i].Type)).Append(' ').Append(c);
+            if (xs[i].Type != CrossingType.Ford) _sb.Append(" (").Append(w).Append(" waited)"); // nobody waits at a ford
         }
         _waited.Text = _sb.Length == 0 ? "nobody has crossed yet" : _sb.ToString();
     }

@@ -15,6 +15,8 @@ namespace TideToll.Tools;
 ///   ticks [--seed 1] [--walkers 200] [--days 20] [--preset default|toy|river] [--repeat 1] [--top 12]
 ///                                                               every tick of a long run timed: mean, p99, p99.9, max and the
 ///                                                               worst ticks with what ran in them (route searches, decay, a new house)
+///         [--hunt [--towns 10] [--over 15]]                     --hunt: towns seed.. one after another (500 walkers, 60 days
+///                                                               unless given), every step over --over ms printed with what ran
 ///   gate  [--quick] [--threads 3] [--golden path] [--legacy]   the toy's gate tables, gate checks and the comparison with the toy
 ///                                                               (SimParams.Toy against toy-golden-v2.json; --legacy: round 2)
 ///   checks                                                      the round-2 toy's reroute, bridge, robustness, determinism and preview
@@ -101,6 +103,18 @@ public static class Program
     {
         int seed = Int(o, "seed", 1), walkers = Int(o, "walkers", 200), days = Int(o, "days", 20), top = Int(o, "top", 12), repeat = Int(o, "repeat", 1);
         string preset = o.TryGetValue("preset", out var pr) ? pr : "default";
+        if (o.ContainsKey("hunt"))
+        {
+            // The rare slow step: many towns, one after another, every step over --over ms printed with what ran in it.
+            var opt = new SlowStepHunt.Options
+            {
+                Preset = preset, Walkers = Int(o, "walkers", 500), Days = Int(o, "days", 60), FirstSeed = seed,
+                Towns = Int(o, "towns", 10), OverMs = Dbl(o, "over", 15),
+            };
+            var rep = SlowStepHunt.Run(opt, Console.Out);
+            Console.WriteLine(SlowStepHunt.Summary(rep));
+            return 0;
+        }
         for (int rep = 0; rep < repeat; rep++)
         {
             var r = TickProfile.Run(seed, walkers, days, preset);

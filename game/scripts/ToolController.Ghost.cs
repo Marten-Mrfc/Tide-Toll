@@ -40,7 +40,15 @@ public partial class ToolController
             : _ok.Count == 0 ? "Fences can't stand on water, doors or buildings." : Hints[1]);
     }
 
+    /// <summary>The hover ghost and hint; hints said here wait while a build's success holds the status line.</summary>
     private void Hover(Vector2 pos, bool force = false)
+    {
+        _hinting = true;
+        try { HoverGhost(pos, force); }
+        finally { _hinting = false; }
+    }
+
+    private void HoverGhost(Vector2 pos, bool force)
     {
         bool over = PointerOverUi;
         if (Tool == Tool.None || over || !_main.Rig.PickLocal(pos, out var l))

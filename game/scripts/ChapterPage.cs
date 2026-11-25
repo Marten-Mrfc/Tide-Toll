@@ -41,7 +41,7 @@ public partial class ChapterPage : PanelContainer
             $"gets wet and sells for {wet}, and a villager with a sack wades slowly. A footbridge (B, {r.FootbridgePrice:0}c) " +
             $"is the quickest way over, but masted barges cannot pass under it. A ferry (Y, {r.FerryPrice:0}c) lets every boat " +
             $"by, but walkers wait for the raft, {r.FerryCapacity} at a time. A drawbridge (D, {r.DrawbridgePrice:0}c) carries " +
-            "walkers while it is down and must be raised for barges (click it, or L); raise it by hand " + raises +
+            "walkers while it is down and must be raised for barges (click it, or L); raise it by hand for a waiting barge " + raises +
             $" and a keeper (K, {r.KeeperPrice:0}c) will do it for you. Fences (F), gates (T), gravel (G) and erase (E) " +
             $"cost nothing. The purse starts at {r.StartMoney:0}c. With the flow preview on (P), a tool shows the routes " +
             "that would change: dashed is now, solid is after.";
@@ -56,6 +56,9 @@ public partial class ChapterPage : PanelContainer
     private Label _trunk = null!, _trunkNote = null!, _status = null!, _preview = null!;
     private Label? _houses, _housesNote, _weather;
     private int _lastHouses = -1, _lastNewest = -2, _lastWeather = -1, _lastWeatherDay = -1;
+    private bool _lastFull;
+    /// <summary>Said under Houses once the town has no room left for new families (World.GrowthRoomFull).</summary>
+    public const string RoomFullText = "no room for more families";
     private Control _title = null!, _howTo = null!, _ground = null!, _heat = null!, _legendHead = null!, _legend = null!;
     private BandGauge _gauge = null!;
     private VBoxContainer _col = null!;
@@ -359,11 +362,15 @@ public partial class ChapterPage : PanelContainer
         int houses = w.Houses.Length;
         var g = w.Grown;
         int newest = !w.GrowthOn ? -1 : g.Length > 0 ? g[g.Length - 1].Day : 0;
-        if (houses != _lastHouses || newest != _lastNewest)
+        // The room the world keeps for grown houses is used up (World.GrowthRoomFull): say so once, under Houses, rather
+        // than let new families stop coming without a word.
+        bool full = w.GrowthRoomFull;
+        if (houses != _lastHouses || newest != _lastNewest || full != _lastFull)
         {
-            _lastHouses = houses; _lastNewest = newest;
+            _lastHouses = houses; _lastNewest = newest; _lastFull = full;
             _houses.Text = houses.ToString();
-            _housesNote!.Text = newest < 0 ? "no growth on this map" : newest == 0 ? "none new yet" : $"newest on day {newest}";
+            string note = newest < 0 ? "no growth on this map" : newest == 0 ? "none new yet" : $"newest on day {newest}";
+            _housesNote!.Text = full ? note + " · " + RoomFullText : note;
         }
         var wx = w.Weather;
         double day = w.Params.DaySimSec;

@@ -48,6 +48,9 @@ public partial class PageTurn : CanvasLayer
         _t = 0;
         _switched = false;
         _main.Tools.SetTool(Tool.None);
+        // The old town is held from the first frame of the turn: under the leaf it must not tick on (a house growing,
+        // boats moving, their sounds) while the page covers it; the new town is held again once it is built.
+        _main.Sim.Held = true;
         _leaf.Heading1 = "Chapter " + Main.ChapterNumerals[chapter];
         _leaf.Heading2 = Main.ChapterNames[chapter];
         _leaf.Visible = true;

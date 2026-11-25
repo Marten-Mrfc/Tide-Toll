@@ -154,7 +154,7 @@ public partial class RiverFeed : Node
             {
                 var r = _main.Sim.World.River;
                 double price = r != null ? r.Rules.KeeperPrice : 0;
-                Write($"After {e.Value:0} raises by hand, a keeper will take the drawbridge on: hire one for {Coin(price)} (K)");
+                Write($"After {e.Value:0} raises for waiting barges, a keeper will take the drawbridge on: hire one for {Coin(price)} (K)");
                 break;
             }
             case RiverEventKind.KeeperHired:

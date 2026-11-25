@@ -131,7 +131,7 @@ public sealed partial class World
         int west = cells[0] - 1, east = cells[^1] + 1;
         int bridgeId = -1;
         if (t != CrossingType.Ferry) bridgeId = AddBridgeFromScratch(row).Id;
-        var cr = new Crossing(_nextCrossingId++, t, row, cells, west, east, bridgeId, r, _p.MaxWalkers);
+        var cr = new Crossing(_nextCrossingId++, t, row, cells, west, east, bridgeId, r, _p.MaxWalkers, _keeperTally);
         _crossings.Add(cr);
         foreach (int c in cells) _crossAt[c] = (short)cr.Id;
         Spend(r.Price(t));
@@ -156,9 +156,9 @@ public sealed partial class World
             if (x.State == BridgeState.Closed || x.State == BridgeState.Lowering)
             {
                 StartRaise(x);
-                // Raising by hand teaches the town the boats: after KeeperUnlockRaises of them a keeper will take the bridge on.
-                x.HandRaises++;
-                if (x.HandRaises == _river.KeeperUnlockRaises) Emit(RiverEventKind.KeeperUnlocked, -1, x.Id, x.HandRaises);
+                // Raising by hand teaches the town the boats: a raise counts (CountHandRaise, when a boat passes) only if a
+                // masted boat was waiting below the bridge now and passes during this raise.
+                MarkHandRaise(x);
             }
         }
         else

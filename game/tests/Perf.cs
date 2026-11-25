@@ -55,6 +55,12 @@ public partial class Perf : Node
     private long _alloc0;
     private int _gc0;
     private bool _failed;
+    // Why the test failed, one word per gate ("worst-frame", "mean", "alloc", ...): tools/check.sh re-runs the test once,
+    // and says so, when the only reason is the worst-frame gate.
+    private readonly System.Collections.Generic.List<string> _reasons = new();
+    private void Fail(string reason) { _failed = true; if (!_reasons.Contains(reason)) _reasons.Add(reason); }
+    private int _slowSeen;
+    private SimDriver? _slowSim;
 
     private partial class Marker : Node
     {
@@ -72,6 +78,7 @@ public partial class Perf : Node
     private void Crash(Exception e)
     {
         GD.PrintErr($"PERF FAIL: exception {e}");
+        GD.Print("PERF FAIL REASONS: exception");
         GD.Print("PERF FAIL");
         _run = Runs.Length;
         GetTree().Quit(1);
@@ -223,6 +230,7 @@ public partial class Perf : Node
         // Processed last: everything the game did this frame lies between the marker's stamp and now.
         if (_run >= Runs.Length) return;
         _delta = delta;
+        SlowStep();
         if (_frame >= 0 && _frame < _frames)
         {
             _ms[_frame] = (Stopwatch.GetTimestamp() - _first.Stamp) * 1000.0 / Stopwatch.Frequency;
@@ -262,9 +270,29 @@ public partial class Perf : Node
         Next();
         if (_run >= Runs.Length)
         {
+            if (_failed) GD.Print("PERF FAIL REASONS: " + string.Join(" ", _reasons));
             GD.Print(_failed ? "PERF FAIL" : "PERF PASS");
             GetTree().Quit(_failed ? 1 : 0);
         }
+    }
+
+    /// <summary>
+    /// A single simulation step over SimDriver.SlowStepMs: prints the tick, the day and what the game knows ran in it (route
+    /// searches of a field refresh, the decay step, a house arriving, a dawn, an edit, a flood or freeze starting or
+    /// ending, rain starting or stopping) and the flow preview's slice in the same frame, so a slow frame names its cause.
+    /// </summary>
+    private void SlowStep()
+    {
+        var sim = _main.Sim;
+        if (!ReferenceEquals(sim, _slowSim)) { _slowSim = sim; _slowSeen = 0; } // a new chapter's driver counts from 0
+        if (sim.SlowSteps == _slowSeen) return;
+        int n = sim.SlowSteps - _slowSeen;
+        _slowSeen = sim.SlowSteps;
+        var st = sim.LastSlowStep;
+        var (chapter, speed, _, preview, weather) = Runs[_run];
+        string run = $"{(chapter == 1 ? "I " : "")}{speed}x{(preview ? "+preview" : weather != ' ' ? "+" + weather : "")}{(_frame < 0 ? " warm-up" : "")}";
+        GD.Print($"PERF slow step: tick {st.Tick} (day {st.Day}) took {st.Ms:F1} ms (over {SimDriver.SlowStepMs} ms; step {st.StepInFrame}{(st.StepInFrame > sim.TicksThisFrame ? " of a fast-forward" : $" of {sim.TicksThisFrame} this frame")}, " +
+                 $"{n} slow this frame), run {run}: {SimDriver.Describe(st)}; this frame: sim {sim.SimMsThisFrame:F1} ms, preview slice {_main.Tools.Previewer.LastFrameMs:F2} ms");
     }
 
     private void Report(long bytes, int gcs)
@@ -278,7 +306,8 @@ public partial class Perf : Node
         double perFrame = bytes / (double)_frames;
         var s = _main.Sim;
         bool ok = mean <= budget && (preview || perFrame <= AllocBudget);
-        _failed |= !ok;
+        if (mean > budget) Fail("mean");
+        if (!preview && perFrame > AllocBudget) Fail("alloc");
         string what = (chapter == 1 ? "I " : "") + (preview ? $"{speed}x+preview" : weather == 'f' ? $"{speed}x+flood" : weather == 'i' ? $"{speed}x+ice"
             : weather == 'r' ? $"{speed}x+rain" : weather == 'g' ? $"{speed}x+growth" : $"{speed}x");
         int walkers = _main.Sim.World.WalkerCount;
@@ -298,9 +327,10 @@ public partial class Perf : Node
                      $"{perPreview / 1024:F1} KB allocated per finished preview (gate {PreviewAllocBudget / 1024:F0} KB) {(allocOk ? "ok" : "OVER")}: " +
                      $"predictor {pred / 1024:F1} KB, route mesh {route / 1024:F1} KB per build (peak {t.Routes.PeakVertices} vertices of {RouteLayer.ReserveVertices} reserved), the rest ghost, requests and readout");
             ok &= worstOk && allocOk;
-            if (done < 3) { ok = false; GD.Print("PERF preview did not run"); }
+            if (!worstOk) Fail("worst-frame");
+            if (!allocOk) Fail("preview-alloc");
+            if (done < 3) { ok = false; Fail("preview-none"); GD.Print("PERF preview did not run"); }
         }
-        _failed |= !ok;
         GD.Print($"PERF {walkers} walkers {what}: cpu ms/frame mean {mean:F3} p95 {p95:F3} worst {worst:F3} (budget mean {budget}; of which sim {_simMs / _frames:F3}) | " +
                  $"alloc {perFrame:F1} B/frame, gen0 GCs {gcs} | sim {s.MsPerTick:F3} ms/tick, budget hits {s.BudgetHits}, " +
                  $"walkers drawn {_main.Walkers.Drawn}, wear uploads {_main.Ground.Uploads}, frame delta {_delta * 1000:F2} ms | {(ok ? "ok" : "OVER BUDGET")}");
@@ -309,8 +339,8 @@ public partial class Perf : Node
             var w = _main.Sim.World;
             GD.Print($"PERF hamlet {what}: houses built in the measure {w.Grown.Length - _houses0} (drawn {_main.Town.Grown}, rising now {_main.Town.Rising}, marks {_main.Ui.Houses.Showing}), " +
                      $"rain {_main.Ui.Rain.Level:F2}, wet {_main.Ground.Wet:F2}, mud cells {w.MudCells}, mud uploads {_main.Ground.MudUploads}, wet steps {_main.Audio.MudSteps}, rain bed {_main.Audio.RainDb:F0} dB");
-            if (weather == 'g' && w.Grown.Length - _houses0 < 1) { _failed = true; GD.Print("PERF growth run built no house"); }
-            if (weather == 'r' && (_main.Ui.Rain.Level <= 0 || w.MudCells == 0)) { _failed = true; GD.Print("PERF rain run had no rain or mud"); }
+            if (weather == 'g' && w.Grown.Length - _houses0 < 1) { Fail("growth"); GD.Print("PERF growth run built no house"); }
+            if (weather == 'r' && (_main.Ui.Rain.Level <= 0 || w.MudCells == 0)) { Fail("rain"); GD.Print("PERF rain run had no rain or mud"); }
         }
         if (_main.Sim.World.River is { } r)
             GD.Print($"PERF river {what}: boats drawn {_main.Boats.Drawn}, rings {_main.Boats.Rings}, crossings drawn {_main.Crossings.Count}, " +

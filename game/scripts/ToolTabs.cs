@@ -84,7 +84,7 @@ public partial class ToolTabs : VBoxContainer
             Ferry = Priced("Ferry", "tool-ferry", "Ferry", "Y", river.FerryPrice,
                 $"Ferry (Y): a raft on a rope. Every boat passes; walkers wait for the raft, {river.FerryCapacity} at a time. {river.FerryUpkeep + river.FerryWage:0}c a season for the ferryman and upkeep.");
             Drawbridge = Priced("Drawbridge", "tool-drawbridge", "Drawbridge", "D", river.DrawbridgePrice,
-                $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges; after {river.KeeperUnlockRaises} raises by hand a keeper ({river.KeeperPrice:0}c, K) will do it for you. {river.DrawbridgeUpkeep:0}c a season.");
+                $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges; after {river.KeeperUnlockRaises} raises by hand for a waiting barge a keeper ({river.KeeperPrice:0}c, K) will do it for you. {river.DrawbridgeUpkeep:0}c a season.");
             Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, gates, gravel, bridges and ferries to remove them. Taking down a crossing costs half its price.", true);
         }
         Gap(10);

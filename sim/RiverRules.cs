@@ -207,6 +207,8 @@ public struct Boat
     /// <summary>Crossing id it has been let through (a raised drawbridge), -1 none.</summary>
     internal int Through;
     public int Berth;
+    /// <summary>Drawbridge id whose current hand raise began while this boat waited below it (-1 none): its passing counts that raise.</summary>
+    internal int HandWaitAt;
 }
 
 public enum RiverEventKind : byte

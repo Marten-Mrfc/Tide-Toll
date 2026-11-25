@@ -13,6 +13,16 @@ public sealed class LongRunsCollection
 }
 
 /// <summary>
+/// Tests that assert a time: they run alone, after the parallel tests, so the other test threads of this process (their
+/// garbage collections, their share of the cores and caches) do not count against the code being timed.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class TimingCollection
+{
+    public const string Name = "Timing, alone";
+}
+
+/// <summary>
 /// The river rules are off by default and must stay invisible when off. The round-2 hashes were recorded from the code
 /// before the river rules existed (commit 0424d6c, 200 walkers, 20 days): the round-2 model (SimParams.Legacy) must keep
 /// producing exactly them. The finished toy's hashes (toy-golden-v2.json `baselines`, recorded by running the toy, never

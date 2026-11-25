@@ -42,6 +42,17 @@ public partial class WalkerLayer : MultiMeshInstance3D
     public const float SackY = 2.42f;
     /// <summary>Carried sacks are drawn this much larger than the cargo model.</summary>
     public const float SackScale = 1.3f;
+    /// <summary>
+    /// And up to this much larger again as the view zooms out, in step with the villagers (WalkerScale 1 to 1.8), so wet
+    /// against dry reads at the play view, where a sack at SackScale alone is only 2 to 3 pixels.
+    /// </summary>
+    public const float SackOverviewScale = 2.0f;
+    private float _sackExtent = 1f;
+    /// <summary>A carried sack's drawn size across, in screen pixels, at the current zoom (tests).</summary>
+    public float SackPx => _sackExtent * SackScale * SackGrow * WalkerScale / Math.Max(1e-4f, _metresPerPx);
+    /// <summary>A carried sack's scale over the cargo model now: SackScale, grown toward the overview (tests).</summary>
+    public float SackDrawScale => SackScale * SackGrow;
+    private float SackGrow => Mathf.Lerp(1f, SackOverviewScale, Mathf.Clamp((WalkerScale - 1f) / 0.8f, 0f, 1f));
     /// <summary>Sacks drawn in the last sync, and how many of them wet (tests).</summary>
     public int SacksDrawn { get; private set; }
     public int WetSacksDrawn { get; private set; }
@@ -101,6 +112,8 @@ public partial class WalkerLayer : MultiMeshInstance3D
         // The grain sack model (villager-cargo-grain.glb) with the cargo shaders: dry, or wet from the ford.
         var sackSrc = ModelLib.Mesh("villager-cargo-grain");
         var sack = (ArrayMesh)sackSrc.Duplicate();
+        var box = sack.GetAabb();
+        _sackExtent = Math.Max(box.Size.X, box.Size.Z);
         _sackMat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/cargo.gdshader") };
         _sackMat.SetShaderParameter("atlas", ((StandardMaterial3D)sackSrc.SurfaceGetMaterial(0)).AlbedoTexture);
         _sackHull = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/cargo_hull.gdshader") };
@@ -138,6 +151,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
         float cell = (float)world.Params.CellMeters;
         float alpha = _sim.Alpha;
         float s = WalkerScale;
+        float sackScale = SackScale * SackGrow;
         bool river = world.River != null;
         int n = 0, ns = 0, wet = 0;
         for (int i = 0; i < ws.Length && n < Capacity; i++)
@@ -185,7 +199,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
                 int q = ns * Stride;
                 Array.Copy(_buf, o, _sackBuf, q, Stride);
                 // A little larger than the model, so a sack reads from the play view (about 7 px a villager there).
-                for (int e = 0; e < 11; e++) if (e != 3 && e != 7) _sackBuf[q + e] *= SackScale;
+                for (int e = 0; e < 11; e++) if (e != 3 && e != 7) _sackBuf[q + e] *= sackScale;
                 _sackBuf[q + 7] = y + SackY * s;
                 _sackBuf[q + 15] = k.CargoWet ? 1f : 0f;
                 if (k.CargoWet) wet++;

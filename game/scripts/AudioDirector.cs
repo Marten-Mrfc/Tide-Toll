@@ -168,7 +168,7 @@ public partial class AudioDirector : Node2D
         RiverPending();
         _riverAcc += delta;
         if (_riverAcc >= 0.25) { _riverAcc = 0; River(sim.World); RainBed(sim.World); }
-        if (sim.Paused) return;
+        if (sim.Paused || sim.Held) return; // held (a page turning): no footsteps from a town that stands still
         _beatAcc += delta;
         if (_beatAcc < BeatSec) return;
         _beatAcc -= BeatSec;

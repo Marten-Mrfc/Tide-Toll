@@ -105,13 +105,15 @@ public partial class GroundMarks : MeshInstance3D
     }
 
     // One quad covering the mark plus room for its soft edge or line; UV is the point relative to the centre.
+    // Shared, so a rebuild (once per grown house, over every building) allocates no arrays per quad.
+    private static readonly Vector2[] Corners = { new(-1, -1), new(1, -1), new(1, 1), new(-1, 1) };
+    private static readonly int[] Tri = { 0, 1, 2, 0, 2, 3 };
+
     private static void Quad(SurfaceTool st, Vector2 c, Vector2 half, Vector2 cover, Color colour, Color info, float y)
     {
-        Vector2[] corners = { new(-1, -1), new(1, -1), new(1, 1), new(-1, 1) };
-        int[] tri = { 0, 1, 2, 0, 2, 3 };
-        foreach (int k in tri)
+        foreach (int k in Tri)
         {
-            var p = corners[k] * cover;
+            var p = Corners[k] * cover;
             st.SetColor(colour);
             st.SetUV(p);
             st.SetUV2(half);

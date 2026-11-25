@@ -11,6 +11,13 @@ namespace TideToll.Sim.Tests;
 /// </summary>
 public class RiverRules3Tests
 {
+    /// <summary>
+    /// The keeper's unlock as this test states it (fix list 4d): ten counted raises, whatever RiverRules.Default says, with
+    /// the boat schedule off so that the only boats are the ones the test sends.
+    /// </summary>
+    private static readonly RiverRules TenToKeeper = Rich with { KeeperUnlockRaises = 10 };
+
+    /// <summary>A hand raise with no boat on the river: the leaf goes up, waits, and comes down again.</summary>
     private static void RaiseByHand(World w, Crossing x)
     {
         Assert.True(w.SetBridge(x.Id, true).Ok);
@@ -18,12 +25,29 @@ public class RiverRules3Tests
         Assert.Equal(BridgeState.Closed, x.State);
     }
 
-    [Fact]
-    public void TheKeeperIsHiredOnlyAfterTheBridgeHasBeenRaisedByHandOftenEnough()
+    /// <summary>Sends a barge, waits until it is held below the closed drawbridge x, raises x by hand and runs until the barge is through and the leaf down.</summary>
+    private static void RaiseForABarge(World w, Crossing x)
     {
-        var w = Make(1, 0, Rich);
+        int id = w.SpawnBoat(BoatKind.Barge).Id;
+        for (int t = 0; t < 3000 && !(BoatById(w, id).State == BoatState.Waiting && BoatById(w, id).WaitingAt == x.Id); t++) w.Tick();
+        Assert.Equal(x.Id, BoatById(w, id).WaitingAt);
+        Assert.Equal(BridgeState.Closed, x.State);
+        int passed = x.BoatsPassed;
+        Assert.True(w.SetBridge(x.Id, true).Ok);
+        for (int t = 0; t < 600 && (x.BoatsPassed == passed || x.State != BridgeState.Closed); t++) w.Tick();
+        Assert.Equal(passed + 1, x.BoatsPassed);
+        Assert.Equal(BridgeState.Closed, x.State);
+    }
+
+    [Fact]
+    public void TheKeeperIsHiredOnlyAfterTheTownHasLetEnoughWaitingBoatsThroughByHand()
+    {
+        // Restated in the fix round before the playtest (25 Nov 2026), the lead's decision: a hand raise counts toward the
+        // keeper only when it lets a masted boat that was waiting below the bridge when the raise began through it, and the
+        // count belongs to the town, not to one bridge. Before, every raise of a closed or lowering leaf counted, so ten
+        // clicks with no boat unlocked the keeper in 24 seconds, and a second or rebuilt drawbridge started again from zero.
+        var w = Make(1, 0, TenToKeeper);
         var r = w.River!;
-        Assert.Equal(10, r.Rules.KeeperUnlockRaises);
         var x = Build(w, CrossingType.Drawbridge);
         Assert.Equal(0, x.HandRaises);
         Assert.Equal(10, x.RaisesToKeeper);
@@ -31,43 +55,75 @@ public class RiverRules3Tests
         var no = w.HireKeeper(x.Id);
         Assert.False(no.Ok);
         Assert.Equal("No keeper will take this bridge on yet: raise it by hand ten times more first (zero of ten raises done)", no.Reason);
+        // Ten raises with no boat (and a second press while one is going up) still work as raises, but leave ten to go.
+        for (int i = 0; i < 10; i++)
+        {
+            RaiseByHand(w, x);
+            if (i == 0)
+            {
+                Assert.True(w.SetBridge(x.Id, true).Ok);
+                Assert.True(w.SetBridge(x.Id, true).Ok);
+                for (int t = 0; t < 400 && x.State != BridgeState.Closed; t++) w.Tick();
+            }
+        }
+        Assert.Equal(0, x.HandRaises);
+        Assert.Equal(10, x.RaisesToKeeper);
+        // A raise that lets a waiting barge through counts one.
+        RaiseForABarge(w, x);
+        Assert.Equal(1, x.HandRaises);
+        Assert.Equal(9, x.RaisesToKeeper);
         double money = r.Money;
-        for (int i = 0; i < 3; i++) RaiseByHand(w, x);
-        // A second press while it is already going up is not a raise.
-        Assert.True(w.SetBridge(x.Id, true).Ok);
-        Assert.True(w.SetBridge(x.Id, true).Ok);
-        for (int t = 0; t < 400 && x.State != BridgeState.Closed; t++) w.Tick();
-        Assert.Equal(4, x.HandRaises);
-        Assert.Equal(6, x.RaisesToKeeper);
-        Assert.Equal("No keeper will take this bridge on yet: raise it by hand six times more first (four of ten raises done)", w.HireKeeper(x.Id).Reason);
+        Assert.Equal("No keeper will take this bridge on yet: raise it by hand nine times more first (one of ten raises done)", w.HireKeeper(x.Id).Reason);
         Assert.Equal(money, r.Money); // a refused hire costs nothing
+        // A raise begun with nothing waiting does not count, even if a barge sails through while it is up.
+        int late = w.SpawnBoat(BoatKind.Barge).Id;
+        while (BoatById(w, late).Y - (x.Row + 0.5) > 8) w.Tick();
+        Assert.Equal(BoatState.Sailing, BoatById(w, late).State);
+        int passed = x.BoatsPassed;
+        Assert.True(w.SetBridge(x.Id, true).Ok);
+        for (int t = 0; t < 600 && (x.BoatsPassed == passed || x.State != BridgeState.Closed); t++) w.Tick();
+        Assert.Equal(passed + 1, x.BoatsPassed);
+        Assert.Equal(1, x.HandRaises);
+        // Erase and rebuild: the new drawbridge starts from the town's count.
+        Assert.Equal(1, w.Erase(x.Cells.ToArray()));
+        var z = Build(w, CrossingType.Drawbridge);
+        Assert.NotEqual(x.Id, z.Id);
+        Assert.Equal(1, z.HandRaises);
+        Assert.Equal(9, z.RaisesToKeeper);
+        // So does a second drawbridge (taken down again so that the barges below meet only z).
+        var y = Build(w, CrossingType.Drawbridge, 12);
+        Assert.Equal(1, y.HandRaises);
+        Assert.Equal(9, y.RaisesToKeeper);
+        Assert.False(w.HireKeeper(y.Id).Ok);
+        Assert.Equal(1, w.Erase(y.Cells.ToArray()));
         Drain(w);
-        while (x.RaisesToKeeper > 1) RaiseByHand(w, x);
-        Assert.Equal("No keeper will take this bridge on yet: raise it by hand once more first (nine of ten raises done)", w.HireKeeper(x.Id).Reason);
+        while (z.RaisesToKeeper > 1) RaiseForABarge(w, z);
+        Assert.Equal("No keeper will take this bridge on yet: raise it by hand once more first (nine of ten raises done)", w.HireKeeper(z.Id).Reason);
         Assert.DoesNotContain(Drain(w), e => e.Kind == RiverEventKind.KeeperUnlocked);
-        RaiseByHand(w, x);
+        RaiseForABarge(w, z);
         var unlocked = Drain(w).Where(e => e.Kind == RiverEventKind.KeeperUnlocked).ToList();
         Assert.Single(unlocked);
-        Assert.Equal(x.Id, unlocked[0].Crossing);
-        Assert.True(x.KeeperUnlocked);
-        Assert.Equal(0, x.RaisesToKeeper);
-        RaiseByHand(w, x); // raising on after the unlock: no second event
+        Assert.Equal(z.Id, unlocked[0].Crossing);
+        Assert.True(z.KeeperUnlocked);
+        Assert.Equal(0, z.RaisesToKeeper);
+        RaiseForABarge(w, z); // raising on after the unlock: no second event
         Assert.DoesNotContain(Drain(w), e => e.Kind == RiverEventKind.KeeperUnlocked);
-        Assert.True(w.HireKeeper(x.Id).Ok);
-        Assert.True(x.Keeper);
+        Assert.True(w.HireKeeper(z.Id).Ok);
+        Assert.True(z.Keeper);
         // The keeper's own raises are not hand raises.
-        int hand = x.HandRaises;
+        int hand = z.HandRaises;
         int barge = w.SpawnBoat(BoatKind.Barge).Id;
         bool raised = false;
-        for (int t = 0; t < 600 && Exists(w, barge); t++) { w.Tick(); raised |= x.State == BridgeState.Raised; }
+        for (int t = 0; t < 600 && Exists(w, barge); t++) { w.Tick(); raised |= z.State == BridgeState.Raised; }
         Assert.True(raised, "the keeper never raised the bridge");
-        Assert.Equal(hand, x.HandRaises);
-        // Each drawbridge learns its own boats: a second one starts locked.
-        var y = Build(w, CrossingType.Drawbridge, 12);
-        Assert.Equal(10, y.RaisesToKeeper);
-        Assert.False(w.HireKeeper(y.Id).Ok);
+        Assert.Equal(hand, z.HandRaises);
+        // A drawbridge built after the unlock can have its keeper at once: the town knows the boats.
+        var v = Build(w, CrossingType.Drawbridge, 12);
+        Assert.True(v.KeeperUnlocked);
+        Assert.True(w.HireKeeper(v.Id).Ok);
         // Other crossings have nothing to unlock.
         Assert.Equal(0, r.Crossings[0].RaisesToKeeper);
+        Assert.Equal(0, r.Crossings[0].HandRaises);
         Assert.False(r.Crossings[0].KeeperUnlocked);
     }
 

@@ -110,7 +110,14 @@ public sealed partial class World
         w.HasAim = false;
         w.X = w.Px = w.Cell % _n + 0.5;
         w.Y = w.Py = w.Cell / _n + 0.5;
-        if (_river != null) { w.Waited = false; RiverPlaced(ref w); }
+        if (_river != null)
+        {
+            // A pass from a bridge queue is for this trip only: sent home before stepping on the deck, it is spent.
+            w.Pass = false;
+            w.HoldAt = 0;
+            w.Waited = false;
+            RiverPlaced(ref w);
+        }
     }
 
     private bool ComputeAim(ref Walker w)

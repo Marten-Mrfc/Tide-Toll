@@ -26,8 +26,8 @@ public partial class BridgeBadges : Control
         public float XW, XE, Z;            // the bridge's span and row, map-local metres
         public BridgeState Shown = (BridgeState)255;
         public int ShownBoats = -1, ShownW = -1, ShownE = -1, ShownCoin = int.MinValue, ShownToGo = -1;
-        public double UnlockedAt = -1e9;
-        public bool ShownKeeper, ShownSelected, Compact;
+        public double UnlockedAt = -1e9, NoCountAt = -1e9;
+        public bool ShownKeeper, ShownSelected, Compact, ShownNoCount;
         public Control Counts = null!, Buttons = null!;
     }
 
@@ -55,6 +55,7 @@ public partial class BridgeBadges : Control
         _cardSelected.SetBorderWidthAll(Mathf.Max(2, UiKit.Px(s, 3)));
         main.Sim.Edited += OnEdited;
         main.Tools.SelectionChanged += OnSelection;
+        main.Tools.Lever += OnLever;
         Rebuild();
     }
 
@@ -63,7 +64,33 @@ public partial class BridgeBadges : Control
         if (_main == null) return;
         _main.Sim.Edited -= OnEdited;
         _main.Tools.SelectionChanged -= OnSelection;
+        _main.Tools.Lever -= OnLever;
     }
+
+    /// <summary>
+    /// A raise by hand while no boat waits below the bridge earns nothing toward the keeper (only a raise that lets a
+    /// waiting barge through counts, and the library keeps that count): the badge says so quietly for a few seconds.
+    /// </summary>
+    private void OnLever(int id, bool raise)
+    {
+        if (!raise || _main.Sim.World.River is not { } r) return;
+        var xs = r.Crossings;
+        for (int i = 0; i < xs.Count; i++)
+        {
+            var x = xs[i];
+            if (x.Id != id) continue;
+            if (x.Keeper || x.RaisesToKeeper == 0 || x.BoatsWaiting > 0) return;
+            foreach (var b in _badges) if (b.Id == id) b.NoCountAt = _now;
+            NoCountNotes++;
+            return;
+        }
+    }
+
+    /// <summary>The quiet note for a raise that did not count toward the keeper, and how long it stays on the badge.</summary>
+    public const string NoCountText = "No boat was waiting: this raise does not count";
+    public const double NoCountSec = 4.0;
+    /// <summary>Raises that did not count, noted on a badge (tests).</summary>
+    public int NoCountNotes { get; private set; }
 
     private void OnEdited(int v) => Rebuild();
     private void OnSelection() => Refresh(false); // restyles the frame at once (Refresh compares with what is shown)
@@ -172,8 +199,12 @@ public partial class BridgeBadges : Control
     public const double UnlockGlowSec = 4.0;
     private double _now;
 
-    /// <summary>"Raise by hand 3 more times to earn a keeper" (1: "once more").</summary>
-    public static string RaiseText(int toGo) => toGo == 1 ? "Raise by hand once more to earn a keeper" : $"Raise by hand {toGo} more times to earn a keeper";
+    /// <summary>
+    /// What counts toward a keeper, plainly, with the count still to go read from the library (Crossing.RaisesToKeeper):
+    /// "Raise the bridge for a waiting barge 3 more times to earn a keeper" (1: "once more"), on two lines.
+    /// </summary>
+    public static string RaiseText(int toGo) => toGo == 1 ? "Raise the bridge for a waiting barge\nonce more to earn a keeper"
+        : $"Raise the bridge for a waiting barge\n{toGo} more times to earn a keeper";
 
     /// <summary>A badge's unlock line (tests): "" once a keeper can be hired.</summary>
     public string UnlockText(int id) { foreach (var b in _badges) if (b.Id == id) return b.Unlock.Text; return ""; }
@@ -254,8 +285,10 @@ public partial class BridgeBadges : Control
                 b.Walkers.Text = $" · walkers W {x.QueueWest}, E {x.QueueEast}";
             }
             int toGo = x.RaisesToKeeper;
-            if (force || x.Keeper != b.ShownKeeper || coin != b.ShownCoin || toGo != b.ShownToGo)
+            bool noCount = _now - b.NoCountAt < NoCountSec && toGo > 0 && !x.Keeper;
+            if (force || x.Keeper != b.ShownKeeper || coin != b.ShownCoin || toGo != b.ShownToGo || noCount != b.ShownNoCount)
             {
+                b.ShownNoCount = noCount;
                 if (b.ShownToGo > 0 && toGo == 0) b.UnlockedAt = _now; // the moment it is earned: the button glows a while
                 b.ShownKeeper = x.Keeper; b.ShownCoin = coin; b.ShownToGo = toGo;
                 double price = r.Rules.KeeperPrice;
@@ -264,11 +297,12 @@ public partial class BridgeBadges : Control
                 b.Keeper.Text = x.Keeper ? "Keeper on duty" : locked ? $"Keeper {price:0}c · {toGo} to go"
                     : coin >= price ? $"Keeper {price:0}c  K" : $"Keeper {price:0}c · {Math.Ceiling(price - r.Money):0}c to save";
                 b.Keeper.TooltipText = x.Keeper ? "A keeper raises the bridge for each barge and lowers it once it is through."
-                    : locked ? $"No keeper will take this bridge on yet: {RaiseText(toGo)} ({x.HandRaises} of {r.Rules.KeeperUnlockRaises} done). Then a keeper costs {price:0}c and {r.Rules.KeeperWage:0}c a season."
+                    : locked ? $"No keeper will take this bridge on yet: {RaiseText(toGo).Replace('\n', ' ')} ({x.HandRaises} of {r.Rules.KeeperUnlockRaises} done; a raise with no boat waiting does not count). Then a keeper costs {price:0}c and {r.Rules.KeeperWage:0}c a season."
                     : $"Hire a keeper ({price:0}c, then {r.Rules.KeeperWage:0}c a season): raises the bridge for each barge and lowers it once it is through." +
                       (coin >= price ? "" : $" You have {coin}c.");
                 b.Keeper.Modulate = x.Keeper || (!locked && coin >= price) ? Colors.White : new Color(1, 1, 1, 0.6f);
-                b.Unlock.Text = locked ? RaiseText(toGo) : "";
+                b.Unlock.Text = !locked ? "" : noCount ? NoCountText.Replace(": ", ":\n") : RaiseText(toGo);
+                b.Unlock.AddThemeColorOverride("font_color", noCount ? UiKit.FadedInk : UiKit.Ink);
                 b.Unlock.Visible = locked && !b.Compact;
                 b.Card.ResetSize();
             }

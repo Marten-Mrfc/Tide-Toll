@@ -132,6 +132,23 @@ public partial class RiverTest : Node
         Check(_main.Crossings.NodeFor(x.Id) != null, $"{tool}: not drawn");
         Check(_main.Audio.Places == places + 1, $"{tool}: no place sound cue");
         if (type == CrossingType.Drawbridge) Check(_main.Ui.Badges.Count == 1, "no badge for the drawbridge");
+        // The success stays on the status line for a moment, though the spot under the pointer is now refused (the new
+        // crossing is there); only then does the hover hint come back.
+        string built = _main.Tools.LastMessage;
+        Check(built.StartsWith("Built a "), $"{tool}: the status line does not say it was built: '{built}'");
+        for (int k = 1; k <= 3; k++)
+        {
+            TestInput.Motion(at + new Vector2(0, k * 9));
+            await TestInput.Frames(this, 2);
+            Check(_main.Tools.LastMessage == built, $"{tool}: the success gave way at once to '{_main.Tools.LastMessage}'");
+        }
+        Check(_main.Tools.HoldingSuccess, $"{tool}: the success is not held");
+        ulong until = Time.GetTicksMsec() + (ulong)((ToolController.SuccessHoldSec + 1.5) * 1000);
+        while (_main.Tools.HoldingSuccess && Time.GetTicksMsec() < until) await TestInput.Frames(this, 1);
+        await TestInput.Frames(this, 2);
+        Check(!_main.Tools.HoldingSuccess && _main.Tools.LastMessage != built && _main.Tools.LastMessage.Length > 0,
+            $"{tool}: after the hold the status line still says '{_main.Tools.LastMessage}'");
+        _notes.Add($"then='{_main.Tools.LastMessage.Split(':')[0]}'");
         TestInput.Key(Godot.Key.Escape);
         await TestInput.Frames(this, 1);
         _notes.Add($"{type}@{row}");

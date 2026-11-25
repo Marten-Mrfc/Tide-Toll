@@ -74,7 +74,17 @@ public class PreviewSlicingTests
             Assert.Equal((wear, rng), (Fnv(w.Wear), w.RngState));
         }
     }
+}
 
+/// <summary>
+/// The time of one bounded preview slice. Thread CPU time (CpuClock), so other processes on a shared machine do not count;
+/// and it runs alone, after the parallel tests (fix round before the playtest, 25 Nov 2026: it failed once while other
+/// jobs ran): a collection the other test threads of this process share would make it pay for their garbage collections
+/// and their cache traffic on its own CPU clock. The 2 ms budget is unchanged.
+/// </summary>
+[Collection(TimingCollection.Name)]
+public class PreviewSliceTimingTests
+{
     [Fact]
     public void ASliceOfAThousandUnitsIsShort()
     {

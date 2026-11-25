@@ -42,11 +42,23 @@ public static class RiverGateChecks
         // (a) The low footbridge gives the fastest walker trips and clearly the worst trade.
         var trip = players200.ToDictionary(p => p, p => Med(p, r => r.MeanTrip));
         var fastest = trip.OrderBy(kv => kv.Value).First();
-        log.Check(fastest.Key == S3, $"(a) footbridge gives the fastest walker trips (median mean trip: S3 {trip.GetValueOrDefault(S3):F2} s; fastest {fastest.Key.Key} {fastest.Value:F2} s)");
+        // Restated by the lead (fix round before the playtest, 25 Nov 2026): the footbridge must give the fastest trips of the
+        // crossings a player would buy for walking (ford only, ferry, footbridge, and the drawbridge strategies that raise it).
+        // The never-raised drawbridge (S4) is only a footbridge at four times the price, and on the reviewer's seeds it came
+        // 0.19 s faster by chance; it is printed beside the check as report only, with its time.
+        var walkingTrips = trip.Where(kv => kv.Key != S4).OrderBy(kv => kv.Value).ToList();
+        bool walkFound = walkingTrips.Count > 0;
+        var fastestWalk = walkFound ? walkingTrips[0] : default;
+        log.Check(walkFound && fastestWalk.Key == S3,
+            $"(a) footbridge gives the fastest walker trips of the crossings bought for walking (median mean trip: S3 {trip.GetValueOrDefault(S3):F2} s; fastest {(walkFound ? fastestWalk.Key.Key : "none")} {fastestWalk.Value:F2} s)");
+        log.Log($"  report only  (a) the never-raised drawbridge: median mean trip {(trip.TryGetValue(S4, out double s4Trip) ? $"{s4Trip:F2} s" : "not run")}");
         var trade = players200.ToDictionary(p => p, p => Med(p, r => r.TradeIncome));
-        var nextTrade = trade.Where(kv => kv.Key != S3 && kv.Key != S4).OrderBy(kv => kv.Value).FirstOrDefault();
-        log.Check(nextTrade.Key != default && trade.GetValueOrDefault(S3) <= 0.8 * nextTrade.Value,
-            $"(a) footbridge has clearly the worst trade: at most 80% of every other player's but the never-raised drawbridge (S3 {trade.GetValueOrDefault(S3):F0}c, next lowest {nextTrade.Key.Key} {nextTrade.Value:F0}c; S4 {trade.GetValueOrDefault(S4):F0}c)");
+        // A found flag, not a comparison with default: RiverPlayer is a record struct and the ford-only player equals default.
+        var otherTrade = trade.Where(kv => kv.Key != S3 && kv.Key != S4).OrderBy(kv => kv.Value).ToList();
+        bool tradeFound = otherTrade.Count > 0;
+        var nextTrade = tradeFound ? otherTrade[0] : default;
+        log.Check(tradeFound && trade.GetValueOrDefault(S3) <= 0.8 * nextTrade.Value,
+            $"(a) footbridge has clearly the worst trade: at most 80% of every other player's but the never-raised drawbridge (S3 {trade.GetValueOrDefault(S3):F0}c, next lowest {(tradeFound ? nextTrade.Key.Key : "none")} {nextTrade.Value:F0}c; S4 {trade.GetValueOrDefault(S4):F0}c)");
 
         // (b) The free ford costs trade: at 200 walkers the ford-only town ends with clearly less money than the best purchase
         // in most towns (the lead's aim: 15% less at the median), and it is the richest strategy in at most a quarter of towns.

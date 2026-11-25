@@ -42,9 +42,14 @@ public sealed class Crossing
     /// <summary>Drawbridge leaf from 0 (down) to 1 (up); ferry position from 0 (west stage) to 1 (east stage).</summary>
     public double Progress { get; internal set; }
     public bool Keeper { get; internal set; }
-    /// <summary>Drawbridge: times the player has raised it by hand (a raise the keeper makes does not count).</summary>
-    public int HandRaises { get; internal set; }
-    /// <summary>Drawbridge: hand raises still to go before a keeper can be hired (RiverRules.KeeperUnlockRaises); 0 when unlocked, and for other types.</summary>
+    /// <summary>
+    /// Drawbridge: the town's count of hand raises that let a waiting masted boat through (a boat was waiting below the
+    /// bridge when the raise began and passed during it). The count belongs to the town, not to this bridge: every
+    /// drawbridge, a rebuilt one included, reports the same number. A raise with nothing waiting, or the keeper's, does
+    /// not count. 0 for other types.
+    /// </summary>
+    public int HandRaises => Type == CrossingType.Drawbridge ? _tally.HandRaises : 0;
+    /// <summary>Drawbridge: counted hand raises still to go before a keeper can be hired (RiverRules.KeeperUnlockRaises); 0 when unlocked, and for other types.</summary>
     public int RaisesToKeeper => Type == CrossingType.Drawbridge ? Math.Max(0, _rules.KeeperUnlockRaises - HandRaises) : 0;
     /// <summary>Drawbridge: a keeper can be hired for it (it has been raised by hand often enough).</summary>
     public bool KeeperUnlocked => Type == CrossingType.Drawbridge && RaisesToKeeper == 0;
@@ -69,6 +74,7 @@ public sealed class Crossing
 
     private readonly int[] _cells;
     private readonly RiverRules _rules;
+    private readonly KeeperTally _tally;
 
     // Ferry and queue state (internal to the simulation).
     internal readonly int[] PassengerIdx, PassengerTicket;
@@ -82,10 +88,11 @@ public sealed class Crossing
     internal double NextPass;
     internal int PassedThisRaise;
     internal double KeeperT = -1;
+    internal bool HandRaiseLive;     // the current raise is a hand raise that began with a masted boat waiting below and has not yet counted
 
-    internal Crossing(int id, CrossingType type, int row, int[] cells, int westEnd, int eastEnd, int bridgeId, RiverRules rules, int maxWalkers)
+    internal Crossing(int id, CrossingType type, int row, int[] cells, int westEnd, int eastEnd, int bridgeId, RiverRules rules, int maxWalkers, KeeperTally tally)
     {
-        Id = id; Type = type; Row = row; _cells = cells; WestEnd = westEnd; EastEnd = eastEnd; BridgeId = bridgeId; _rules = rules;
+        Id = id; Type = type; Row = row; _cells = cells; WestEnd = westEnd; EastEnd = eastEnd; BridgeId = bridgeId; _rules = rules; _tally = tally;
         if (type != CrossingType.Ford)
         {
             West = new WalkerQueue(maxWalkers * 2 + 8);
@@ -100,6 +107,12 @@ public sealed class Crossing
         else { PassengerIdx = PassengerTicket = Array.Empty<int>(); }
         Tokens = 1;
     }
+}
+
+/// <summary>The town's hand raises that let a waiting boat through (RiverRules.KeeperUnlockRaises): shared by all its drawbridges.</summary>
+internal sealed class KeeperTally
+{
+    public int HandRaises;
 }
 
 /// <summary>First come, first served queue of (walker index, ticket); stale entries are skipped when they reach the head.</summary>

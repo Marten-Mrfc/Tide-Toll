@@ -142,6 +142,10 @@ public partial class ToolsTest : Node
         TestInput.Button(at, MouseButton.Left, false);
         await TestInput.Frames(this, 2);
         Check(W.Bridges.Count == 1 && W.Bridges[0].Cells.Count == cells.Count && W.Bridges[0].Cells[0] == cells[0], "footbridge not built where shown");
+        // The success holds the status line a moment, though the spot under the pointer now has a bridge on it.
+        TestInput.Motion(at + new Vector2(0, 6));
+        await TestInput.Frames(this, 2);
+        Check(_main.Tools.LastMessage.StartsWith("Footbridge built") && _main.Tools.HoldingSuccess, $"the success gave way at once to '{_main.Tools.LastMessage}'");
         _notes.Add($"bridge={cells.Count}@{row}");
     }
 

@@ -141,9 +141,11 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   all boats raised; raise 1.0 s, one boat per 1.5 s, lower 1.0 s). A raised bridge lowers itself once the boats
   within 4 rows below are through, or after 8 s with no boat. The keeper (120c, 5c a season) raises 1 s after a
   masted boat is within 6 rows and lowers once it is through. **The keeper is unlocked by use** (third pass, decision C):
-  it can be hired for a drawbridge only once the player has raised that bridge by hand `KeeperUnlockRaises` (10, the lead's start) times
-  (`Crossing.HandRaises`, `RaisesToKeeper`, `KeeperUnlocked`; a press while it is already going up, and the keeper's
-  own raises, do not count). Until then `HireKeeper` is refused in words, e.g. "No keeper will take this bridge on yet:
+  it can be hired only once the town has let `KeeperUnlockRaises` (10, the lead's start) waiting boats through by hand
+  (fix round before the playtest: a hand raise counts only when a masted boat was waiting below that bridge when the raise
+  began and passes during it; a raise with nothing waiting still works but does not count). The count belongs to the
+  town, not the bridge: a rebuilt or a second drawbridge starts from it (`Crossing.HandRaises`, `RaisesToKeeper`,
+  `KeeperUnlocked` report the town's count; a press while it is already going up, and the keeper's own raises, do not count). Until then `HireKeeper` is refused in words, e.g. "No keeper will take this bridge on yet:
   raise it by hand six times more first (four of ten raises done)"; the `KeeperUnlocked` event names the bridge when
   it unlocks.
 - **Capacity** (doc, crossing table "Walker capacity per day"): every crossing but the ford has a first come, first
@@ -158,7 +160,7 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   boarding, so a full ferry carries 5 per 1.0 + 0.75 s leg, about 21 each way a day (the doc says about 30; tuned down so the ferry's capacity bites at 200 walkers). The ford
   has no limit, only its slow speed (`SimParams.FordSpeedMul` 0.4, doc "walker speed 0.4") and cost (x3). A walker
   who waited delivers its grain later (boats leave after their mooring window, so late grain goes to the market at
-  35% of the boat price, or unsold); one who gives up after 40 s drops it (`RiverStats.GrainLost`).
+  35% of the boat price, or unsold); one who gives up after 40 s drops it, and so does one cut off from the landing who carries it home (`RiverStats.GrainLost`).
   Counted: `Crossing.WalkersCrossed` and `WalkersWaited` (walkers who reached the other bank by it, and how many waited
   at a gate since their last crossing), `RiverStats.Crossings`, `CrossingsWaited`, `IceCrossings`, `GrainDelivered`.
 - **Spring high water** (doc, "Spring high water", "Seasons and weather"; `SpringFlood`, on): on the first day of each
@@ -452,6 +454,16 @@ Before is the round's starting tree (12b250b) with the same profiler. A tick wit
 (0.3 to 0.5 ms without). The game's 27.8 ms tick is not reproduced headless; every tick above about 8 ms here moves
 between repeats (other agents share the 4 cores), and the first tick of a run is the code's first compile.
 `./check --bench` after: 500 walkers 1.216 ms mean, p99 4.95 (A9: 1.602, p99 6.03), river 1.158 / 4.21, 0 bytes.
+
+**The rare slow step** (fix round before the playtest, 25 Nov 2026): `ticks --hunt [--preset river|default] [--towns 10]
+[--days 60] [--over 15]` runs towns one after another on one thread and prints every step over the limit with its wall
+time, its thread CPU time and what ran in it (route searches, decay, a new house, rain, flood, ice, day and season
+boundaries, river events, garbage collections, methods the JIT compiled, the first of each kind). 180,000 steps at 500
+walkers (river and Default, seeds 1 to 10, 60 days each; load average 6 to 8 on the 4 shared cores) gave 20 steps over
+15 ms, all in wall time (15.1 to 30.5 ms) and none in CPU time (at most 4.1 ms; worst step of the whole hunt 11.4 ms, the
+process's first tick): 17 were a field refresh (two route searches, about 3 ms of work) and 3 were ordinary 0.5 ms steps,
+with no garbage collection, no flood or ice change and no season boundary among them. The slow step is the thread
+waiting for a core, not work in the simulation, so there is nothing in the simulation to fix without changing results.
 
 **The lead's decisions B, C and D** (rules above): wet grain at the ford (`WetGrainValueShare` 0.5, `LoadedWadeSpeedMul`
 0.7, both new and chosen); the keeper unlocked by `KeeperUnlockRaises` (10, new) hand raises of that drawbridge; the

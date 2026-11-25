@@ -80,7 +80,7 @@ public partial class ToolController
         var res = Sim.PlaceCrossing(t, (int)MathF.Floor(x), (int)MathF.Floor(y));
         if (res.Ok)
         {
-            Say(res.Reason + (t == CrossingType.Drawbridge ? ". Click it (no tool in hand) or press L to raise it for a barge." : "."));
+            SayBuilt(res.Reason + (t == CrossingType.Drawbridge ? ". Click it (no tool in hand) or press L to raise it for a barge." : "."));
             Placed?.Invoke(true);
         }
         else { Say(res.Reason + "."); Refused?.Invoke(); }
@@ -165,9 +165,13 @@ public partial class ToolController
         Crossing? x = Find(id);
         if (x == null) { Say("Build a drawbridge first: the Drawbridge bookmark, then click on the river."); Refused?.Invoke(); return false; }
         bool raise = x.State is BridgeState.Closed or BridgeState.Lowering;
+        // Only a raise that lets a waiting barge through counts toward the keeper (the library counts it): a raise with
+        // no boat waiting says so.
+        bool noCount = raise && !x.Keeper && x.RaisesToKeeper > 0 && x.BoatsWaiting == 0;
         var res = Sim.SetBridge(id, raise);
         if (!res.Ok) { Say(res.Reason + "."); Refused?.Invoke(); return false; }
-        Say(raise ? "Raising the drawbridge: barges may pass, walkers wait at the barriers." : "Lowering the drawbridge: walkers may cross again.");
+        Say(raise ? "Raising the drawbridge: barges may pass, walkers wait at the barriers." + (noCount ? " " + BridgeBadges.NoCountText + " toward a keeper." : "")
+            : "Lowering the drawbridge: walkers may cross again.");
         Lever?.Invoke(id, raise);
         return true;
     }

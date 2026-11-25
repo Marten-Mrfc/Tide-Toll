@@ -22,6 +22,7 @@ public sealed partial class World
     private int _evHead, _evCount;
     private RiverStats? _rs;
     private RiverView? _riverView;
+    private readonly KeeperTally _keeperTally = new();
 
     /// <summary>The river: boats, crossings, money and reputation. Null when the river rules are off.</summary>
     public RiverView? River => _riverView;
@@ -66,7 +67,7 @@ public sealed partial class World
         // The ford: the water cells of its centre row; it never blocks a boat and never queues.
         var cells = new List<int>();
         for (int x = 0; x < _n; x++) { int c = _map.FordY * _n + x; if (_map.Ford[c] != 0) cells.Add(c); }
-        _crossings.Add(new Crossing(_nextCrossingId++, CrossingType.Ford, _map.FordY, cells.ToArray(), -1, -1, -1, r, _p.MaxWalkers));
+        _crossings.Add(new Crossing(_nextCrossingId++, CrossingType.Ford, _map.FordY, cells.ToArray(), -1, -1, -1, r, _p.MaxWalkers, _keeperTally));
         // First arrivals: within one gap of the start.
         for (int k = 0; k < 2; k++) _nextArrival[k] = ArrivalGap((BoatKind)k) * _riverRng.NextDouble();
         InitSeasons(seed);

@@ -29,7 +29,7 @@ public sealed partial class World
         _boats[_boatCount++] = new Boat
         {
             Id = _nextBoatId, Kind = kind, State = BoatState.Sailing, Mast = (byte)r.Mast(kind), Y = y, PrevY = y, Dir = -1,
-            Capacity = r.Capacity(kind), PatienceLeft = r.PatienceSec, WaitingAt = -1, Through = -1, Berth = -1,
+            Capacity = r.Capacity(kind), PatienceLeft = r.PatienceSec, WaitingAt = -1, Through = -1, Berth = -1, HandWaitAt = -1,
         };
         _rs!.ArrivedK[(int)kind]++;
         Emit(RiverEventKind.BoatArrived, _nextBoatId, -1, (int)kind);
@@ -52,6 +52,7 @@ public sealed partial class World
                     x.NextPass = _time + r.PerBoatSec;
                     x.PassedThisRaise++;
                     x.BoatsPassed++;
+                    if (x.HandRaiseLive && b.HandWaitAt == x.Id) CountHandRaise(x);
                     Emit(RiverEventKind.BoatPassed, b.Id, x.Id, 0);
                     return false;
                 }
@@ -235,7 +236,7 @@ public sealed partial class World
         return true;
     }
 
-    /// <summary>Hook of Arrive: trip time, and grain sold at the landing (dropped if the walker gave up and went home).</summary>
+    /// <summary>Hook of Arrive: trip time, and grain sold at the landing (dropped, and counted in GrainLost, if the walker gave up and went home).</summary>
     private void RiverArrive(ref Walker w)
     {
         var rs = _rs!;
@@ -243,6 +244,7 @@ public sealed partial class World
         rs.TripTimeSum += _time - w.TripT0;
         if (w.Cargo == 0) return;
         if (w.Target == _landingB && w.State == WalkState.Out) SellGrain(w.CargoWet);
+        else rs.GrainLost += w.Cargo; // cut off from the landing, it gave up and carried the grain home: lost, and counted
         w.Cargo = 0;
         w.CargoWet = false;
     }

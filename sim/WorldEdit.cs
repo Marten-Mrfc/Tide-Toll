@@ -38,6 +38,7 @@ public sealed partial class World
 
     private void Evict(ref Walker w)
     {
+        if (_river != null && SetDownOffSpan(ref w)) return;
         // Nearest free cell within 6 rings, preferring the one closest to the walker's goal.
         int n = _n, cx = w.Cell % n, cy = w.Cell / n;
         float[] f = _fields[w.Target];

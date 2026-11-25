@@ -120,6 +120,8 @@ public sealed partial class World
 
     /// <summary>Sets a cell's wear, as the toy's own checks do (tests only).</summary>
     internal void SetWearForTests(int c, float w) => _wear[c] = w;
+    /// <summary>Tests only: sends walker i home at once, as a stuck or walled-in walker is.</summary>
+    internal void SendHomeForTests(int i) => SendHome(ref _walkers[i]);
 
     // Internal access for the flow preview (same assembly), which must never write to these.
     internal float[] FieldArray(int t) => _fields[t];

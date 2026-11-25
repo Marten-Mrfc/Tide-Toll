@@ -118,6 +118,7 @@ public partial class ToolController : Node
 
     public void SetTool(Tool t)
     {
+        EndHold();
         CancelGesture();
         Tool = t;
         // Deferred: changing the cursor makes Input inject a motion event, which would cut short the event being
@@ -135,10 +136,35 @@ public partial class ToolController : Node
 
     public void Say(string msg)
     {
+        // A build's success holds the status line for a moment: hover hints wait (the latest is said when it ends).
+        if (_hinting && Clock.Elapsed.TotalSeconds < _holdUntil) { _heldHint = msg; return; }
         if (msg == LastMessage) return;
         LastMessage = msg;
         Message?.Invoke(msg);
     }
+
+    /// <summary>Seconds a build's success stays on the status line before the hover hints under the pointer come back.</summary>
+    public const double SuccessHoldSec = 2.5;
+    private double _holdUntil = -1;
+    private string? _heldHint;
+    private bool _hinting;
+
+    /// <summary>Whether a build's success is holding the status line now (tests).</summary>
+    public bool HoldingSuccess => Clock.Elapsed.TotalSeconds < _holdUntil;
+
+    /// <summary>
+    /// Says a successful build and keeps it on the status line for <see cref="SuccessHoldSec"/>: right after a ferry or
+    /// bridge is built the spot under the pointer is refused ("Too close to the ferry"), which would at once read like a
+    /// failure. A new tool or a new press ends the hold.
+    /// </summary>
+    private void SayBuilt(string msg)
+    {
+        Say(msg);
+        _holdUntil = Clock.Elapsed.TotalSeconds + SuccessHoldSec;
+        _heldHint = null;
+    }
+
+    private void EndHold() { _holdUntil = -1; _heldHint = null; }
 
     public bool PreviewEnabled
     {
@@ -206,6 +232,7 @@ public partial class ToolController : Node
     private bool Down(Vector2 pos)
     {
         if (!_main.Rig.PickCell(pos, out int cx, out int cy)) return false;
+        EndHold();
         if (PathsDown(pos, cx, cy)) return true;
         switch (Tool)
         {
@@ -261,7 +288,7 @@ public partial class ToolController : Node
             if (same)
             {
                 var b = Sim.PlaceBridge((int)(l.X / CellM), (int)(l.Z / CellM));
-                Say(b != null ? $"Footbridge built ({b.Cells.Count} cells)." : "No room for a footbridge there.");
+                if (b != null) SayBuilt($"Footbridge built ({b.Cells.Count} cells)."); else Say("No room for a footbridge there.");
                 if (b != null) Placed?.Invoke(true); else Refused?.Invoke();
             }
             else Say("Footbridge cancelled.");
@@ -309,6 +336,13 @@ public partial class ToolController : Node
 
     public override void _Process(double delta)
     {
+        // A build's success has been read: back to the hint for the spot under the pointer.
+        if (_holdUntil >= 0 && Clock.Elapsed.TotalSeconds >= _holdUntil)
+        {
+            string? hint = _heldHint;
+            EndHold();
+            if (hint != null) Say(hint);
+        }
         // The pointer can come to rest over a control without a new motion event reaching the map.
         if (PointerKnown && !Gesturing)
         {
