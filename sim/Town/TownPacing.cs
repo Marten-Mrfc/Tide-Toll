@@ -35,6 +35,9 @@ public sealed class PacingResult
     public double LongestMapGap, LongestMapGapAt;
     public int RequestsAsked, RequestsMet;
     public double CoinAt20 = -1;
+    // ---- Rules v2.2 ----
+    /// <summary>Longest time in seconds without a purchase after minute 2 and before the charter (the saver's own check).</summary>
+    public double LongestPurchaseGap, LongestPurchaseGapAt;
 }
 
 /// <summary>Plays a bot on a seed and measures the pacing (used by the 'town' tool and the pacing tests).</summary>
@@ -53,6 +56,7 @@ public static class TownPacing
         long ticks = (long)minutes * 60 * TownRules.TickHz;
         double spellStart = -1;
         int perMinute = 0;
+        double lastBuy = 120;
         for (long k = 0; k < ticks; k++)
         {
             t.Step();
@@ -87,8 +91,20 @@ public static class TownPacing
                     spellStart = -1;
                 }
             }
-            if (bot.Act(t)) perMinute++;
-            if (t.HasCharter && res.Charter < 0) res.Charter = t.Time;
+            if (bot.Act(t))
+            {
+                perMinute++;
+                if (res.Charter < 0 && t.Time > 120)
+                {
+                    if (t.Time - lastBuy > res.LongestPurchaseGap) { res.LongestPurchaseGap = t.Time - lastBuy; res.LongestPurchaseGapAt = lastBuy; }
+                    lastBuy = t.Time;
+                }
+            }
+            if (t.HasCharter && res.Charter < 0)
+            {
+                res.Charter = t.Time;
+                if (t.Time - lastBuy > res.LongestPurchaseGap) { res.LongestPurchaseGap = t.Time - lastBuy; res.LongestPurchaseGapAt = lastBuy; }
+            }
             if (t.Tick % (60 * TownRules.TickHz) == 0)
             {
                 int m = (int)(t.Tick / (60 * TownRules.TickHz));
@@ -128,8 +144,17 @@ public static class TownPacing
             string n = $"seed {r.Seed} {TownBot.Name(r.Bot)}";
             if (r.FirstCoin < 0 || r.FirstCoin > TownTargets.FirstCoinBy) m.Add($"{n}: first coin {r.FirstCoin:F1} s > {TownTargets.FirstCoinBy} s");
             if (r.FirstPurchase < 0 || r.FirstPurchase > TownTargets.FirstPurchaseBy) m.Add($"{n}: first purchase {r.FirstPurchase:F1} s > {TownTargets.FirstPurchaseBy} s");
-            if (r.WorstEarlyMinute >= 0 && r.MinEarlyPerMinute < TownTargets.EarlyPurchasesPerMinute) m.Add($"{n}: {r.MinEarlyPerMinute} purchases in minute {r.WorstEarlyMinute} < {TownTargets.EarlyPurchasesPerMinute}");
-            if (r.WorstLateMinute >= 0 && r.MinLatePerMinute < TownTargets.LatePurchasesPerMinute) m.Add($"{n}: {r.MinLatePerMinute} purchases in minute {r.WorstLateMinute} < {TownTargets.LatePurchasesPerMinute}");
+            // Rules v2.2, the lead's decision: the purchases-per-minute floor is a target of the design brief for its three
+            // players (cheapest, best payback, random), who buy as soon as they can, so it measures whether there is something
+            // to buy. The saver waits on purpose, so the floor measures nothing for it; it has its own checks instead (every
+            // kind, Load step and building before the charter, charter in AgeMin..AgeMax, and never more than
+            // SaverMaxPurchaseGap seconds without a purchase after minute 2).
+            if (r.Bot == BotKind.Saver)
+            {
+                if (r.LongestPurchaseGap > TownTargets.SaverMaxPurchaseGap) m.Add($"{n}: {r.LongestPurchaseGap:F0} s without a purchase (from minute {r.LongestPurchaseGapAt / 60:F1}) > {TownTargets.SaverMaxPurchaseGap} s");
+            }
+            else if (r.WorstEarlyMinute >= 0 && r.MinEarlyPerMinute < TownTargets.EarlyPurchasesPerMinute) m.Add($"{n}: {r.MinEarlyPerMinute} purchases in minute {r.WorstEarlyMinute} < {TownTargets.EarlyPurchasesPerMinute}");
+            if (r.Bot != BotKind.Saver && r.WorstLateMinute >= 0 && r.MinLatePerMinute < TownTargets.LatePurchasesPerMinute) m.Add($"{n}: {r.MinLatePerMinute} purchases in minute {r.WorstLateMinute} < {TownTargets.LatePurchasesPerMinute}");
             if (r.LongestNothingAffordable > TownTargets.MaxNothingAffordable) m.Add($"{n}: nothing affordable for {r.LongestNothingAffordable:F0} s > {TownTargets.MaxNothingAffordable} s");
             if (r.Charter < 0) m.Add($"{n}: no charter");
             else
@@ -159,11 +184,48 @@ public static class TownPacing
         return m;
     }
 
-    /// <summary>Bell worth: coin earned in 20 minutes with the bell rung whenever ready over the same bot never ringing it, minus 1.</summary>
-    public static double BellWorth(int seed, BotKind kind, TownPlan? plan = null)
+    /// <summary>
+    /// Rules v2.2 (the lead's decision): the bell's worth is measured on frozen towns, because two full runs with and without
+    /// the bell buy different things and that noise swamps the bell. The payback bot plays the seed; its town is saved at
+    /// each of TownTargets.BellAtMinutes; each save is loaded twice and runs TownTargets.BellFrozenMinutes with no purchases,
+    /// once ringing the bell whenever it is ready and once never. Returns, per save, coin earned from deliveries with the bell
+    /// over without it, minus 1.
+    /// </summary>
+    public static double[] BellWorth(int seed, TownPlan? plan = null)
     {
-        var a = Run(seed, kind, 20, stopAtCharter: false, plan: plan);
-        var b = Run(seed, kind, 20, stopAtCharter: false, plan: plan, noBell: true);
-        return a.CoinAt20 / b.CoinAt20 - 1;
+        plan ??= TownPlanner.Build(seed);
+        var t = new Town(plan);
+        var bot = new TownBot(BotKind.Payback, seed);
+        var events = new List<TownEvent>();
+        var at = TownTargets.BellAtMinutes;
+        var w = new double[at.Length];
+        long last = (long)at[^1] * 60 * TownRules.TickHz;
+        int next = 0;
+        for (long k = 0; k < last && next < at.Length; k++)
+        {
+            t.Step(); t.DrainEvents(events); bot.Act(t);
+            if (t.Tick == (long)at[next] * 60 * TownRules.TickHz)
+            {
+                string save = TownSave.Save(t);
+                w[next] = Frozen(save, plan, true) / Frozen(save, plan, false) - 1;
+                next++;
+            }
+        }
+        return w;
+    }
+
+    /// <summary>Coin earned from deliveries in TownTargets.BellFrozenMinutes from a save, buying nothing.</summary>
+    private static double Frozen(string save, TownPlan plan, bool bell)
+    {
+        var t = TownSave.Load(save, plan);
+        var events = new List<TownEvent>();
+        double start = t.CoinEarned;
+        long ticks = (long)(TownTargets.BellFrozenMinutes * 60 * TownRules.TickHz);
+        for (long k = 0; k < ticks; k++)
+        {
+            t.Step(); t.DrainEvents(events);
+            if (bell && t.Tick % TownBot.ThinkTicks == 0 && t.BellReady) t.RingBell();
+        }
+        return t.CoinEarned - start;
     }
 }

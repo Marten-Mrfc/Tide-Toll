@@ -1,22 +1,40 @@
-# Town pacing (first age, rules v2.1)
+# Town pacing (first age, rules v2.2)
 
-Generated on 25 November 2026 (rules v2.1, `docs/plans/town-rules21-progress.md`) with the numbers in `sim/Town/TownRules.cs`:
-`town --seeds 1-10 --misses --averages`, `town --extras --seed 1` and `town --seed 1 --markdown`. Targets are `TownTargets` in the same file; `sim.tests/Town/TownPacingTests.cs` checks them on seeds 1 to 10 with all four bots.
+Generated on 25 November 2026 (rules v2.2, `docs/plans/town-rules22-progress.md`) with the numbers in `sim/Town/TownRules.cs`:
+`town --seeds 1-10 --misses --averages`. Targets are `TownTargets` in the same file; `sim.tests/Town/TownPacingTests.cs` checks them on seeds 1 to 10 with all four bots. The per-seed tables further down (seed 1, every bot) are from rules v2.1 and were not regenerated.
 
-How the bots play: they think every 0.5 game seconds, buy at most one thing per think, ring the bell whenever it is ready, and stop buying at the charter. Cheapest first buys the cheapest affordable item; best payback first buys the item with the best estimated extra coin per minute per coin, saving for it only when it is under 20 s of income away; random affordable buys a random affordable item; the saver picks the best payback among everything on sale, affordable or not, and waits for it when it is under 40 s of income away. "Nothing affordable" counts every moment no shop item could be bought. "Something new on the map" is a level gift, a building opened, a road paved or a cottage extended.
+How the bots play: they think every 0.5 game seconds, buy at most one thing per think, ring the bell whenever it is ready, and stop buying at the charter. Cheapest first buys the cheapest affordable item; best payback first buys the item with the best estimated extra coin per minute per coin, saving for it only when it is under 20 s of income away; random affordable buys a random affordable item; the saver picks the best payback among everything on sale, affordable or not, and waits for it when it is under 40 s of income away.
 
-What changed in v2.1: steps of Pace, Tools, the value tracks, the bell track and extensions unlock with town levels (tables `PaceAt` and so on); Pace 25 steps, Tools 18, Value 14 per good, with lower price growth; requests adapt to the player; roads are smoothed curves (shorter, so the town is faster; `BaseSpeed` 1.6 compensates); bell and requests targets are averages over seeds 1 to 10 (the lead's decision).
+## The lead's decisions in v2.2
 
-## Targets not met (honest)
+1. The purchases-per-minute floor (4 a minute in minutes 1 to 10, 2 after) holds for cheapest, payback and random on every seed. The saver waits on purpose, so it is out of that check; its own checks: every kind, every Load step and every building before the charter, charter in 25 to 40 minutes, and never more than 90 s without a purchase after minute 2.
+2. The bell is measured on frozen towns: the payback town at minutes 10 and 20 (through the save), 5 minutes with no purchases, bell rung whenever ready against never, delivery coin compared. Average over the 20 comparisons 10 to 25 percent, each 5 to 35.
+3. Requests start easy (`RequestEaseIn` 0.4, 0.6, 0.8 for the first three) and adapt; share met by cheapest and payback 50 to 80 percent on average, each run 30 to 95.
+4. The saver reaches the charter at 25 minutes or later on every seed.
 
-- **Purchases keep coming**: 12 misses on 40 runs. 10 are early dips (2 or 3 purchases in one of minutes 6 to 8, target 4), 8 of them the saver, which saves through those minutes by design; 2 are late single minutes with 1 purchase (random bot, minutes 24 and 25 on seeds 3 and 4; saver minute 19 on seed 9).
-- **Age 25 to 40 for every bot**: the saver finishes at 24.2 to 24.9 minutes on seeds 1, 4, 7 and 8 (up to 0.8 minutes short). All other 36 runs are inside (25.1 to 33.5).
-- **Bell, single-run sanity band 5 to 35 percent**: averages over seeds 1 to 10 are cheapest +10.6, payback +14.9, saver +25.1 (0.1 over 25). Single runs outside 5 to 35: payback seed 2 (-2.6) and seed 3 (+36.1), saver seed 1 (+48.3). The comparison with and without the bell lets the bots' purchases diverge, which is most of this noise.
-- **Requests, single-run band 30 to 95 percent**: payback seed 2 met 3 of 13. Averages: cheapest 51 percent, payback 54 percent (band 50 to 80).
+## Result (seeds 1 to 10): all targets met
 
-Met: first coin and first purchase; never more than 60 s with nothing affordable (longest 50 s); no track above 40 percent; the saver and payback buy every kind, all three Load steps and all four buildings; something new on the map at least every 3.5 minutes; never paving 46 to 64 percent slower on seed 1.
+charter minute ; longest nothing-affordable spell (s) ; requests met
 
-## Seeds 1 to 10
+    seed | cheapest first | best payback first | random affordable | saver
+       1 | 30.4 ; 36 ; req 9/13 | 27.0 ; 38 ; req 9/11 | 31.1 ; 44 ; req 8/13 | 27.1 ; 22 ; req 7/11
+       2 | 32.0 ; 36 ; req 6/14 | 29.6 ; 40 ; req 6/12 | 32.4 ; 46 ; req 6/14 | 27.0 ; 27 ; req 6/11
+       3 | 30.5 ; 39 ; req 7/13 | 28.5 ; 42 ; req 6/12 | 31.1 ; 48 ; req 7/13 | 26.5 ; 23 ; req 6/10
+       4 | 31.4 ; 48 ; req 7/12 | 27.2 ; 36 ; req 9/11 | 30.7 ; 40 ; req 7/12 | 25.3 ; 16 ; req 9/10
+       5 | 30.2 ; 35 ; req 8/11 | 26.5 ; 34 ; req 9/10 | 29.4 ; 34 ; req 9/11 | 26.2 ; 20 ; req 8/10
+       6 | 31.5 ; 34 ; req 8/13 | 28.6 ; 40 ; req 7/12 | 31.5 ; 35 ; req 8/13 | 25.7 ; 16 ; req 8/11
+       7 | 30.6 ; 34 ; req 9/13 | 27.0 ; 46 ; req 9/12 | 30.9 ; 34 ; req 10/13 | 26.1 ; 22 ; req 7/12
+       8 | 29.4 ; 42 ; req 8/12 | 26.2 ; 42 ; req 10/11 | 29.4 ; 47 ; req 9/12 | 25.1 ; 17 ; req 8/10
+       9 | 31.5 ; 34 ; req 7/13 | 28.4 ; 48 ; req 7/12 | 30.8 ; 45 ; req 6/13 | 26.4 ; 24 ; req 8/11
+      10 | 31.4 ; 31 ; req 10/13 | 28.2 ; 45 ; req 7/12 | 32.7 ; 40 ; req 9/14 | 26.4 ; 22 ; req 7/11
+    bell (frozen payback towns at minutes 10,20): average +14.6 % (comparisons 9.1 to 20.2), per seed 13.1/17.4 10.3/18.4 11.9/19.0 9.8/15.6 11.8/16.6 9.1/16.2 11.8/16.9 12.0/19.9 11.1/20.2 11.3/20.1
+    cheapest first: requests met 63 % on average (runs 43 to 77)
+    best payback first: requests met 69 % on average (runs 50 to 91)
+    misses: 0 (purchases 0, nothing affordable 0, age 0, map 0)
+
+Seeds 11 to 20 (no test, for information): one miss, the saver on seed 18 reaches the charter at 24.8 minutes. The saver's margin on seeds 1 to 10 is thin (25.1 minutes on seed 8).
+
+## Seeds 1 to 10 (rules v2.1, for comparison)
 
 `town --seeds 1-10 --misses --averages`: charter minute ; longest nothing-affordable spell (s) ; requests met.
 

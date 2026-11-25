@@ -85,9 +85,12 @@ public sealed partial class Town
         double secs = TownRules.RequestSeconds[(h >> 8) % (uint)TownRules.RequestSeconds.Length];
         double rate = Math.Max(30, CoinPerMinute) / 60;
         double unit = UnitValue(g);
-        double amount = TownRules.RequestShare * S.ReqScale * rate * secs / unit;
+        // Rules v2.2: requests start easy and grow; the first few are scaled down (RequestEaseIn) on top of the adaptation.
+        var ease = TownRules.RequestEaseIn;
+        double scale = S.ReqScale * ease[Math.Min(S.ReqCount, ease.Length - 1)];
+        double amount = TownRules.RequestShare * scale * rate * secs / unit;
         amount = Math.Min(amount, TownRules.RequestCapacityShare * Capacity(g) * secs);
-        int amt = Math.Max(Math.Min(TownRules.RequestMinAmount, (int)Math.Ceiling(TownRules.RequestMinAmount * S.ReqScale)), (int)Math.Round(amount));
+        int amt = Math.Max(Math.Min(TownRules.RequestMinAmount, (int)Math.Ceiling(TownRules.RequestMinAmount * scale)), (int)Math.Round(amount));
         S.ReqActive = true; S.ReqGood = g; S.ReqWho = (int)g - 1; S.ReqAmount = amt; S.ReqDelivered = 0;
         S.ReqStart = Time; S.ReqEnds = Time + secs;
         S.ReqRewardCoin = Math.Ceiling(amt * unit * TownRules.RequestReward);

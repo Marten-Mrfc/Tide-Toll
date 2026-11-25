@@ -33,6 +33,8 @@ public static class TownCommand
         if (which is "all" or "random") bots.Add(BotKind.Random);
         if (which is "all" or "saver") bots.Add(BotKind.Saver);
         if (o.ContainsKey("extras")) return Extras(seed);
+        if (o.ContainsKey("choices")) { int rc = 0; foreach (var k in bots) rc |= Choices(seed, k); return rc; }
+        if (o.TryGetValue("buys", out var bw)) return Buys(seed, bots[^1], bw);
         if (o.TryGetValue("shopat", out var sa)) return ShopAt(seed, double.Parse(sa, Inv));
         if (o.TryGetValue("seeds", out var range) && o.ContainsKey("misses"))
         {
@@ -40,6 +42,7 @@ public static class TownCommand
             var p = range.Split('-');
             int a = int.Parse(p[0], Inv), z = p.Length > 1 ? int.Parse(p[1], Inv) : a;
             var all = new List<string>[z - a + 1];
+            var seedRuns = new List<PacingResult>[z - a + 1];
             var rows = new string[z - a + 1];
             System.Threading.Tasks.Parallel.For(a, z + 1, sd =>
             {
@@ -47,18 +50,25 @@ public static class TownCommand
                 var res = new List<PacingResult>();
                 var row = new StringBuilder($"{sd,4}");
                 foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}"); }
+                seedRuns[sd - a] = res;
                 all[sd - a] = TownPacing.Misses(res); rows[sd - a] = row.ToString();
             });
             foreach (var r in rows) Console.WriteLine(r);
             var flat = new List<string>(); foreach (var l in all) flat.AddRange(l);
             foreach (var x in flat) Console.WriteLine("  MISSED " + x);
             if (o.ContainsKey("averages"))
-                foreach (var k in bots)
+            {
+                // Rules v2.2: the bell on frozen payback towns (minutes 10 and 20), see TownPacing.BellWorth.
+                var w = new double[z - a + 1][];
+                System.Threading.Tasks.Parallel.For(a, z + 1, sd => w[sd - a] = TownPacing.BellWorth(sd));
+                var flatW = w.SelectMany(x => x).ToArray();
+                Console.WriteLine($"bell (frozen payback towns at minutes {string.Join(",", TownTargets.BellAtMinutes)}): average +{flatW.Average() * 100:F1} % (comparisons {flatW.Min() * 100:F1} to {flatW.Max() * 100:F1}), per seed " + string.Join(" ", w.Select(x => string.Join("/", x.Select(v => (v * 100).ToString("F1", Inv))))));
+                foreach (var k in new[] { BotKind.Cheapest, BotKind.Payback })
                 {
-                    var w = new double[z - a + 1];
-                    if (k != BotKind.Random) System.Threading.Tasks.Parallel.For(a, z + 1, sd => w[sd - a] = TownPacing.BellWorth(sd, k));
-                    Console.WriteLine($"{TownBot.Name(k)}: bell average +{w.Average() * 100:F1} % (runs {w.Min() * 100:F1} to {w.Max() * 100:F1}), per seed " + string.Join(" ", Array.ConvertAll(w, x => (x * 100).ToString("F1", Inv))));
+                    var sh = seedRuns.SelectMany(x => x).Where(r => r.Bot == k).Select(r => r.RequestsAsked == 0 ? 0 : (double)r.RequestsMet / r.RequestsAsked).ToArray();
+                    if (sh.Length > 0) Console.WriteLine($"{TownBot.Name(k)}: requests met {sh.Average() * 100:F0} % on average (runs {sh.Min() * 100:F0} to {sh.Max() * 100:F0})");
                 }
+            }
             Console.WriteLine($"misses: {flat.Count} (purchases {flat.FindAll(x => x.Contains("purchases in minute")).Count}, nothing affordable {flat.FindAll(x => x.Contains("nothing affordable")).Count}, age {flat.FindAll(x => x.Contains("charter")).Count}, map {flat.FindAll(x => x.Contains("on the map")).Count})");
             return flat.Count == 0 ? 0 : 1;
         }
@@ -152,15 +162,63 @@ public static class TownCommand
         return 0;
     }
 
+    /// <summary>--buys A-B: every purchase of one bot (the last --bot) between minutes A and B, with coin and income (tuning).</summary>
+    private static int Buys(int seed, BotKind kind, string range)
+    {
+        var p = range.Split('-');
+        double a = double.Parse(p[0], Inv) * 60, z = double.Parse(p[1], Inv) * 60;
+        var t = new Town(seed); var bot = new TownBot(kind, seed); var ev = new List<TownEvent>();
+        while (t.Time < z)
+        {
+            t.Step(); bot.Act(t); t.DrainEvents(ev);
+            foreach (var e in ev)
+                if (e.Time >= a && e.Kind is TownEventKind.Purchase or TownEventKind.LevelReached or TownEventKind.RequestMet or TownEventKind.RequestAsked)
+                    Console.WriteLine($"{e.Time / 60:F2} {e.Kind} {(e.Kind == TownEventKind.Purchase ? e.Item.ToString() : "")} {e.Coin:F0} L{e.Level} | coin {t.Coin:F0} rate {t.CoinPerMinute:F0}");
+        }
+        return 0;
+    }
+
+    /// <summary>--choices: per ten-minute window, how often two or more kinds were affordable at once (sampled every 5 s), crowding and queues (tuning, round 2).</summary>
+    private static int Choices(int seed, BotKind kind)
+    {
+        var t = new Town(seed); var bot = new TownBot(kind, seed); var items = new List<ShopItem>();
+        var samples = new int[4]; var two = new int[4]; var three = new int[4]; var crowd = new int[4]; var queue = new int[4]; var secs = new int[4]; var kinds = new double[4];
+        var seen = new bool[16];
+        while (!t.HasCharter && t.Time < 3600)
+        {
+            t.Step();
+            bool sample = t.Tick % TownRules.TickHz == 0;
+            if (!sample) { bot.Act(t); continue; }
+            int w = Math.Min(3, (int)(t.Time / 600)); secs[w]++;
+            bool c = false, q = false;
+            for (int r = 0; r < t.RoadCount; r++) if (t.RoadOpen(r) && t.RoadInfo(r).Crowding > 1) c = true;
+            for (int i = 0; i < t.WorkplaceCount; i++) if (t.Workplace(i).QueueLength > 0) q = true;
+            if (c) crowd[w]++; if (q) queue[w]++;
+            if ((int)t.Time % 5 == 0)
+            {
+                // kinds open for sale (no lock or room reason) that cost no more than the coin in hand plus 30 s of income (what a person weighs)
+                t.ShopItems(items); Array.Clear(seen);
+                int n = 0; double reach = t.Coin + t.CoinPerMinute * 0.5;
+                foreach (var it in items) if (it.Price > 0 && it.Price <= reach && (it.Affordable || it.Reason.StartsWith("Not enough")) && !seen[(int)it.Kind]) { seen[(int)it.Kind] = true; n++; }
+                samples[w]++; kinds[w] += n; if (n >= 2) two[w]++; if (n >= 3) three[w]++;
+            }
+            bot.Act(t);
+        }
+        for (int w = 0; w < 4; w++)
+            if (secs[w] > 0) Console.WriteLine($"seed {seed} {TownBot.Name(kind)} min {w * 10}-{w * 10 + 10}: kinds affordable {kinds[w] / Math.Max(1, samples[w]):F2}, 2+ kinds {100.0 * two[w] / Math.Max(1, samples[w]):F0} %, 3+ kinds {100.0 * three[w] / Math.Max(1, samples[w]):F0} %, crowded {100.0 * crowd[w] / secs[w]:F1} %, queue {100.0 * queue[w] / secs[w]:F0} %");
+        return 0;
+    }
+
     /// <summary>--extras: bell worth, paving worth and requests met per bot on one seed.</summary>
     private static int Extras(int seed)
     {
+        var bw = TownPacing.BellWorth(seed);
+        Console.WriteLine($"seed {seed} bell on frozen payback towns: " + string.Join(", ", bw.Select((v, i) => $"minute {TownTargets.BellAtMinutes[i]} +{v * 100:F1} %")));
         foreach (BotKind k in Enum.GetValues<BotKind>())
         {
             var a = TownPacing.Run(seed, k, TownTargets.RunMinutes);
             var np = TownPacing.Run(seed, k, TownTargets.RunMinutes, noPave: true);
-            double bell = TownPacing.BellWorth(seed, k);
-            Console.WriteLine($"seed {seed} {TownBot.Name(k)}: charter {Min(a.Charter)}, never paving {Min(np.Charter)} ({(np.Charter < 0 ? double.NaN : np.Charter / a.Charter - 1) * 100:F0} % slower), bell +{bell * 100:F1} %, requests met {a.RequestsMet}/{a.RequestsAsked}");
+            Console.WriteLine($"seed {seed} {TownBot.Name(k)}: charter {Min(a.Charter)}, never paving {Min(np.Charter)} ({(np.Charter < 0 ? double.NaN : np.Charter / a.Charter - 1) * 100:F0} % slower), requests met {a.RequestsMet}/{a.RequestsAsked}, longest without a purchase {a.LongestPurchaseGap:F0} s");
         }
         return 0;
     }

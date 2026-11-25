@@ -46,9 +46,9 @@ public static class TownRules
     // ---- Shop: price = base * growth ^ level ----
     public static double VillagerBase = 5, VillagerGrowth = 1.3;
     public static double PaceBase = 2, PaceGrowth = 1.36;
-    public static double PaceStep = 0.04;          // rules v2.1: each Pace level adds 4 % walking speed (v2: 5 %) (factor = 1 + step * level)
+    public static double PaceStep = 0.03;          // rules v2.2: each Pace level adds 3 % walking speed (v2.1: 4 %, v2: 5 %) (factor = 1 + step * level)
     public static int PaceMax = 25;                // rules v2.1: Pace is finished after 25 levels (v2: 20)
-    public static readonly double[] LoadPrices = { 300, 1600, 4000 };
+    public static readonly double[] LoadPrices = { 250, 1600, 4000 };   // rules v2.2: Basket 250 (was 300), so the payback bot's wait for it no longer empties minutes 8 to 9
     public static readonly string[] LoadNames = { "Basket", "Yoke", "Handcart" };
     public static readonly int[] LoadLevels = { 3, 7, 11 };   // town level that unlocks each Load step
     public static double GravelPerCell = 2.0;
@@ -72,11 +72,11 @@ public static class TownRules
     public static double ValueStep = 0.04;
     // Extending a cottage: each cottage twice, each extension houses one more villager.
     public static int ExtendMax = 2, ExtendFromLevel = 5;
-    public static double ExtendBase = 60, ExtendGrowth = 1.33;
+    public static double ExtendBase = 40, ExtendGrowth = 1.33;   // rules v2.2: base 40 (was 60): more cheap steps at levels 5 to 7
     // The bell track: each level adds BellTrackHurry seconds of hurry and takes BellTrackRest seconds off the rest.
     public static double BellTrackBase = 60, BellTrackGrowth = 2.6;
     public static int BellTrackMax = 5;
-    public static double BellTrackHurry = 0.6, BellTrackRest = 2;
+    public static double BellTrackHurry = 0.4, BellTrackRest = 1;   // rules v2.2: was 0.6 and 2, so the base bell carries more of its worth
 
     // ---- Rules v2.1: steps on sale by town level (index 0 = level 1; the number of steps of the track that can have been
     // bought by then). Few steps early, more at later levels, the last ones near the end of the age, so no track is bought
@@ -96,7 +96,7 @@ public static class TownRules
     public static readonly double[] RequestSeconds = { 60, 90, 120 };
     public static double RequestShare = 1.15;       // amount = this share of the coin the town earns in the time, in units of the good
     public static double RequestBonus = 1.5;        // the asked good pays this much more while the request runs
-    public static double RequestReward = 0.6;       // reward coin = amount * unit value * this; renown = the reward coin
+    public static double RequestReward = 0.4;       // reward coin = amount * unit value * this; renown = the reward coin (rules v2.2: was 0.6; more requests are met now)
     public static int RequestMinAmount = 6;
     public static double RequestCapacityShare = 0.95; // and at most this share of what its workplaces could turn out
     // Rules v2.1: requests adapt to the player. Each request met multiplies the next amount by RequestGrowMet, each missed
@@ -104,15 +104,23 @@ public static class TownRules
     // of them (0.65 with 1.10 and 0.84). Saved with the town (TownState.ReqScale).
     public static double RequestGrowMet = 1.10, RequestShrinkMissed = 0.84;
     public static double RequestScaleMin = 0.3, RequestScaleMax = 2.5;
+    // Rules v2.2, the lead's decision: requests start easy and grow. The first requests of a town are small enough that
+    // almost any player meets them (amount times RequestEaseIn[request number], the last value from then on), and the
+    // adaptation takes it from there.
+    public static readonly double[] RequestEaseIn = { 0.4, 0.6, 0.8, 1.0 };
 
     // ---- Renown and levels ----
     public static double RenownPerCoin = 1.0;        // renown of a purchase = price * this (at least 1)
     /// <summary>Renown needed to reach level i+1 (index 0 is level 1, always 0). Sixteen levels (rules v2); the last grants the charter.</summary>
-    public static readonly double[] LevelRenown = { 0, 20, 100, 300, 700, 1300, 2200, 3500, 5500, 9000, 13500, 20000, 29000, 42000, 59000, 84000 };
+    // Rules v2.2: the last two levels need more (62000 and 102000, were 59000 and 84000), so the saver reaches the charter after
+    // 25 minutes on every seed (the lead's decision); more than about 104000 empties the shop before the charter.
+    public static readonly double[] LevelRenown = { 0, 20, 100, 300, 700, 1300, 2200, 3500, 5500, 9000, 13500, 20000, 29000, 42000, 66000, 102000 };
 
     // ---- The bell ----
-    public static double BellHurry = 1.17;           // speed factor while ringing
-    public static double BellDuration = 6;
+    // Rules v2.2: a stronger, longer ring (were 1.17 and 6 s). Measured on frozen towns (TownPacing.BellWorth) the old bell was
+    // worth about 6 %; this one about 15 % on average over seeds 1 to 10.
+    public static double BellHurry = 1.4;            // speed factor while ringing
+    public static double BellDuration = 8;
     public static double BellRest = 40;
 
     // ---- Perks: every PerkEvery levels of a track ----
@@ -144,10 +152,22 @@ public static class TownTargets
     // Rules v2.1, the lead's decision: a run has only about a dozen requests and one bell comparison, so these two targets are
     // noisy for a single run. They are measured on the AVERAGE over seeds SeedFrom..SeedTo (per bot), and each single run only
     // has to stay inside a wide sanity band. Every other target stays per run.
-    public const double BellMin = 0.10, BellMax = 0.25; // bell rung whenever ready: extra coin in 20 minutes (average over the seeds)
+    public const double BellMin = 0.10, BellMax = 0.25; // bell rung whenever ready: extra delivery coin (average; rules v2.2: over the frozen-town comparisons below)
     public const double BellRunMin = 0.05, BellRunMax = 0.35; // sanity band for any single run
     public const double NoPaveSlower = 0.15;         // a bot that never paves is at least this much slower to the charter
+    // Rules v2.2, the lead's decision: requests start easy and grow (TownRules.RequestEaseIn), the adaptation takes it from
+    // there; aim for the middle of this band (about two thirds), not the floor.
     public const double RequestsMetMin = 0.5, RequestsMetMax = 0.8; // share met by a normal bot that rings the bell (average over the seeds)
     public const double RequestsRunMin = 0.3, RequestsRunMax = 0.95; // sanity band for any single run
     public const int SeedFrom = 1, SeedTo = 10;
+    // ---- Rules v2.2, the lead's decisions ----
+    // The saver is out of the purchases-per-minute floor (it waits on purpose, so the floor measures nothing for it). Its own
+    // check: after minute 2 it never goes longer than this without a purchase (and, as before, it buys every kind, every Load
+    // step and every building before the charter and reaches the charter in AgeMinMinutes..AgeMaxMinutes).
+    public const double SaverMaxPurchaseGap = 90;
+    // The bell is measured on frozen towns (TownPacing.BellWorth): the payback bot's town at these minutes, run this long with
+    // no purchases, with and without the bell. BellMin..BellMax is the average over all comparisons on seeds SeedFrom..SeedTo,
+    // BellRunMin..BellRunMax holds for every single comparison. Two free runs buy different things and that noise swamped the bell.
+    public static readonly int[] BellAtMinutes = { 10, 20 };
+    public const double BellFrozenMinutes = 5;
 }

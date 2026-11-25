@@ -33,7 +33,12 @@ public class TownPacingTests
     }
 
     [Fact] public void FirstCoinAndFirstPurchaseComeEarly() => NoMiss(s => s.Contains("first coin") || s.Contains("first purchase"));
+    // Rules v2.2 (the lead's decision): the purchases-per-minute floor holds for the brief's three players (cheapest, payback,
+    // random) on every seed; TownPacing.Misses no longer checks it for the saver, which waits on purpose. The saver has its own
+    // checks: SaverNeverWaitsLong below, the charter window (EveryBotFinishesTheAgeInTime) and every kind, Load step and
+    // building (SaverAndPaybackBuyEveryKindLoadStepAndBuilding).
     [Fact] public void PurchasesKeepComing() => NoMiss(s => s.Contains("purchases in minute"));
+    [Fact] public void SaverNeverWaitsLong() => NoMiss(s => s.Contains("without a purchase"));
     [Fact] public void NeverLongWithNothingAffordable() => NoMiss(s => s.Contains("nothing affordable"));
     [Fact] public void EveryBotFinishesTheAgeInTime() => NoMiss(s => s.Contains("charter at") || s.Contains("no charter") || s.Contains("spread"));
     [Fact] public void NoTrackDominates() => NoMiss(s => s.Contains("% of purchases"));
@@ -43,21 +48,24 @@ public class TownPacingTests
     [Fact]
     public void TheBellIsWorthTenToTwentyFivePercent()
     {
-        // Rules v2.1 (the lead's decision): the average over seeds SeedFrom..SeedTo per bot must be in BellMin..BellMax,
-        // every single run in the sanity band BellRunMin..BellRunMax. Was: seed 1 only, each bot in BellMin..BellMax.
-        // The random bot is left out: with and without the bell its random picks diverge, so the comparison measures chance.
-        var bad = new List<string>();
+        // Rules v2.2 (the lead's decision): measured on frozen towns (TownPacing.BellWorth): the payback bot's town at minutes
+        // 10 and 20 of seeds SeedFrom..SeedTo, run 5 minutes with no purchases with and without the bell. Two free runs bought
+        // different things and that noise swamped the bell. The average over all comparisons must be in BellMin..BellMax and
+        // every single comparison in BellRunMin..BellRunMax. Was (v2.1): free 20-minute runs per bot, averaged over the seeds.
         int n = TownTargets.SeedTo - TownTargets.SeedFrom + 1;
-        foreach (var b in Bots)
-        {
-            if (b == BotKind.Random) continue;
-            var w = new double[n];
-            Parallel.For(0, n, i => w[i] = TownPacing.BellWorth(TownTargets.SeedFrom + i, b));
-            for (int i = 0; i < n; i++)
-                if (w[i] < TownTargets.BellRunMin || w[i] > TownTargets.BellRunMax) bad.Add($"seed {TownTargets.SeedFrom + i} {TownBot.Name(b)}: bell +{w[i] * 100:F1} % outside the single-run band");
-            double avg = w.Average();
-            if (avg < TownTargets.BellMin || avg > TownTargets.BellMax) bad.Add($"{TownBot.Name(b)}: bell +{avg * 100:F1} % on average over seeds {TownTargets.SeedFrom}-{TownTargets.SeedTo}");
-        }
+        var w = new double[n][];
+        Parallel.For(0, n, i => w[i] = TownPacing.BellWorth(TownTargets.SeedFrom + i));
+        var bad = new List<string>();
+        var all = new List<double>();
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < w[i].Length; j++)
+            {
+                all.Add(w[i][j]);
+                if (w[i][j] < TownTargets.BellRunMin || w[i][j] > TownTargets.BellRunMax) bad.Add($"seed {TownTargets.SeedFrom + i} minute {TownTargets.BellAtMinutes[j]}: bell +{w[i][j] * 100:F1} % outside {TownTargets.BellRunMin * 100:F0}-{TownTargets.BellRunMax * 100:F0}");
+            }
+        Assert.Equal(n * TownTargets.BellAtMinutes.Length, all.Count);
+        double avg = all.Average();
+        if (avg < TownTargets.BellMin || avg > TownTargets.BellMax) bad.Add($"bell +{avg * 100:F1} % on average over {all.Count} comparisons, outside {TownTargets.BellMin * 100:F0}-{TownTargets.BellMax * 100:F0}");
         Assert.True(bad.Count == 0, string.Join("\n", bad));
     }
 
