@@ -111,6 +111,11 @@ jobs:
           The exe is not signed, so Windows SmartScreen may say "Windows protected your PC".
           Choose "More info", then "Run anyway".
 
+          The game is a book with two chapters and opens on the first. Chapter I, "The Hamlet":
+          villagers wear their own paths; steer them with fences, gates, gravel and a footbridge.
+          Chapter II, "The River": boats, coins, a ferry and a drawbridge. Turn the page with the
+          red ribbon above the tool tabs, or the C key. Every tab shows its key.
+
           What to check first is listed in docs/setup-windows.md in the repository.
           EOF
 
