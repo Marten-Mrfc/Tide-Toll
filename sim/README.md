@@ -165,6 +165,13 @@ south) once the coin is there; S5 drawbridge raised by hand when a boat has wait
 of boats; S6 drawbridge with a keeper hired as soon as affordable (raised by hand until then). Mean trip time and mean
 wait are measured over the second half of the run, when every strategy has built.
 
+Last sweep (25 November 2026, all `RiverRules` numbers at the spec's starting values, none tuned), medians over seeds
+101 to 120: 8 of 9 trade-off checks pass. The one that fails is "keeper minus manual net money is positive at 200
+walkers" (measured -43c; -37c at 60 walkers): the bot's manual player misses only 10% of boats, so a keeper gains
+about 8c of boat trade over 3 seasons against 30c hire + 15c wages. The keeper's real value is the player's attention,
+which the bot does not model; the human tests decide whether the keeper is bought. Spring flood and winter ice are
+left out until every check is green.
+
 ## Parity with the toy
 
 Tested in `sim.tests` against `sim.tests/golden/toy-golden.json` (made from the toy by `sim.tests/golden/export.mjs`):

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using TideToll.Sim;
 
 namespace TideToll.Game;
 
@@ -20,6 +21,9 @@ public partial class GameUi : CanvasLayer
     /// <summary>The paper tags naming the well, market, field and ford at overview zoom.</summary>
     public MapTags Tags { get; private set; } = null!;
     public ToolTabs Tabs { get; private set; } = null!;
+    /// <summary>A badge by every drawbridge (state, queues, lever, keeper), and the notes that float up from the river.</summary>
+    public BridgeBadges Badges { get; private set; } = null!;
+    public RiverFloats Floats { get; private set; } = null!;
     private PanelContainer _tip = null!, _fpsPlate = null!;
     private Label _tipText = null!, _fps = null!;
     private ToolTabs.PageLip _lip = null!;
@@ -47,6 +51,9 @@ public partial class GameUi : CanvasLayer
         _main.Tools.ToolChanged += Sync;
         _main.Tools.Message += OnMessage;
         _main.Audio.Bell += OnBell;
+        _main.Feed.Chronicle += OnChronicle;
+        _main.Feed.Event += OnRiverEvent;
+        _main.Feed.CycleNote += OnCycleNote;
     }
 
     public override void _ExitTree()
@@ -57,6 +64,9 @@ public partial class GameUi : CanvasLayer
         _main.Tools.ToolChanged -= Sync;
         _main.Tools.Message -= OnMessage;
         _main.Audio.Bell -= OnBell;
+        _main.Feed.Chronicle -= OnChronicle;
+        _main.Feed.Event -= OnRiverEvent;
+        _main.Feed.CycleNote -= OnCycleNote;
     }
 
     private void OnResize() => CallDeferred(MethodName.RebuildIfResized);
@@ -86,12 +96,19 @@ public partial class GameUi : CanvasLayer
         Tags.Build(_main, _s);
         _root.AddChild(Tags);
 
+        Floats = new RiverFloats();
+        Floats.Build(_main, _s);
+        _root.AddChild(Floats);
+        Badges = new BridgeBadges();
+        Badges.Build(_main, _s);
+        _root.AddChild(Badges);
+
         Chapter = new ChapterPage();
-        Chapter.Build(_s);
+        Chapter.Build(_s, _main.Params.River != null);
         _root.AddChild(Chapter);
 
         Tabs = new ToolTabs();
-        Tabs.Build(_s);
+        Tabs.Build(_s, _main.Params.River);
         _root.AddChild(Tabs);
         // Drawn over the tabs: the page's edge lying on top of them, so they read as bookmarks tucked under the page.
         _lip = new ToolTabs.PageLip { Name = "PageLip", Tabs = Tabs, Scale1 = _s };
@@ -126,6 +143,7 @@ public partial class GameUi : CanvasLayer
         _shownPreview = "";
         Chapter.SetStatus(_main.Tools.LastMessage.Length > 0 ? _main.Tools.LastMessage : "Choose a tool from the bookmarks on the right, or press F, B or E.");
         Chapter.SetOverlay(Overlay);
+        Chapter.SetNotes(_main.Feed);
         Sync();
         _since = 1;
     }
@@ -139,6 +157,8 @@ public partial class GameUi : CanvasLayer
         Tabs.Fence.Pressed += () => _main.Tools.ToggleTool(Tool.Fence);
         Tabs.Bridge.Pressed += () => _main.Tools.ToggleTool(Tool.Bridge);
         Tabs.Erase.Pressed += () => _main.Tools.ToggleTool(Tool.Erase);
+        if (Tabs.Ferry != null) Tabs.Ferry.Pressed += () => _main.Tools.ToggleTool(Tool.Ferry);
+        if (Tabs.Drawbridge != null) Tabs.Drawbridge.Pressed += () => _main.Tools.ToggleTool(Tool.Drawbridge);
         Tabs.Preview.Toggled += SetPreview;
         Tabs.Overlay.Toggled += SetOverlay;
         Tabs.Sound.Toggled += SetSound;
@@ -161,6 +181,8 @@ public partial class GameUi : CanvasLayer
         Tabs.Fence.SetPressedNoSignal(t == Tool.Fence);
         Tabs.Bridge.SetPressedNoSignal(t == Tool.Bridge);
         Tabs.Erase.SetPressedNoSignal(t == Tool.Erase);
+        Tabs.Ferry?.SetPressedNoSignal(t == Tool.Ferry);
+        Tabs.Drawbridge?.SetPressedNoSignal(t == Tool.Drawbridge);
         Tabs.Preview.SetPressedNoSignal(_main.Tools.PreviewEnabled);
         Tabs.Overlay.SetPressedNoSignal(Overlay);
         Tabs.ShowSound(_main.Audio.Enabled);
@@ -195,15 +217,21 @@ public partial class GameUi : CanvasLayer
     public void Reset() { _main.Sim.Reset(); _main.Tools.Say("Map reset: day one again, same seed."); }
     public void NewMap() { _main.Sim.NewMap(); _main.Tools.Say($"New map, seed {_main.Sim.Seed}."); }
 
-    private void OnWorldReplaced() { Sync(); Tags.SetWorld(_main.Sim.World); _since = 1; }
+    private void OnWorldReplaced() { Sync(); Tags.SetWorld(_main.Sim.World); Badges.Rebuild(); Floats.Clear(); _since = 1; }
+    private void OnChronicle() => Chapter.SetNotes(_main.Feed);
+    private void OnRiverEvent(RiverEvent e) => Floats.OnEvent(e);
+    private void OnCycleNote(int crossing, string text) => Floats.AtCrossing(crossing, text, false);
     private void OnMessage(string m) => Chapter.SetStatus(m);
     private void OnBell() => Chapter.Bell(_now);
 
     public override void _Input(InputEvent e)
     {
-        if (e is not InputEventKey { Pressed: true, Echo: false } k || k.CtrlPressed || k.AltPressed || k.MetaPressed) return;
+        if (e is not InputEventKey { Pressed: true, Echo: false } k || k.AltPressed || k.MetaPressed) return;
         var sim = _main.Sim;
         var tools = _main.Tools;
+        // The river's keys: L and K for the selected drawbridge, Ctrl+1..9 for drawbridge n.
+        if (tools.RiverKey(k.Keycode, k.CtrlPressed)) { GetViewport().SetInputAsHandled(); return; }
+        if (k.CtrlPressed) return;
         bool handled = true;
         switch (k.Keycode)
         {
@@ -215,6 +243,8 @@ public partial class GameUi : CanvasLayer
             case Key.F: tools.ToggleTool(Tool.Fence); break;
             case Key.B: tools.ToggleTool(Tool.Bridge); break;
             case Key.E: tools.ToggleTool(Tool.Erase); break;
+            case Key.Y when tools.RiverOn: tools.ToggleTool(Tool.Ferry); break;
+            case Key.D when tools.RiverOn: tools.ToggleTool(Tool.Drawbridge); break;
             case Key.Escape:
                 tools.SetTool(Tool.None);
                 _root.GetViewport().GuiReleaseFocus();
@@ -247,6 +277,11 @@ public partial class GameUi : CanvasLayer
         var sim = _main.Sim;
         var w = sim.World;
         Chapter.Refresh(w.Stats(), w.WalkersOut(), sim.Seed, _now);
+        if (w.River is { } river)
+        {
+            Chapter.RefreshRiver(river);
+            Tabs.ShowPrices(river.Money);
+        }
         _fps.Text = $"{Engine.GetFramesPerSecond():0} fps · sim {sim.MsPerTick:0.00} ms/tick · {sim.TicksPerSecond:0} ticks/s";
         PlaceFps(vp);
     }

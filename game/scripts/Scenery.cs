@@ -290,7 +290,8 @@ public partial class Scenery : Node3D
         foreach (var (xf, row) in _reedList)
             if (!NearBridge(w, row, 1)) list.Add(xf);
         Fill(_reeds, list);
-        _boat.Visible = !NearBridge(w, _boatRow, 3);
+        // With the river rules on, real boats sail the river: the moored decoration would read as one of them.
+        _boat.Visible = w.River == null && !NearBridge(w, _boatRow, 3);
     }
 
     private static bool NearBridge(World w, int row, int rows)

@@ -23,6 +23,43 @@ public static class ToolTargets
         return "No footbridge fits here: both ends need open ground on the bank.";
     }
 
+    /// <summary>
+    /// Why a crossing of type t cannot be built for a pointer at (x, y) in cells, in words, or null when it can. Asks the
+    /// simulation, but never so that it logs a "cannot afford" event while the player is only pointing: when the purse
+    /// is short, the spot is checked without the coin and the coin reason is worded here, in the simulation's words.
+    /// </summary>
+    public static string? CrossingReason(World w, CrossingType t, double x, double y)
+    {
+        var r = w.River;
+        if (r == null) return "The river rules are off.";
+        double price = r.Rules.Price(t);
+        if (r.Money >= price - 1e-9)
+        {
+            var res = w.CheckCrossing(t, x, y);
+            return res.Ok ? null : res.Reason + ".";
+        }
+        if (w.CrossingWhatIf(t, x, y) == null) return w.CheckCrossing(t, x, y).Reason + "."; // the spot's reason comes first
+        return $"Not enough coin: the {World.CrossingName(t)} costs {RiverFeed.Coin(price)}, you have {RiverFeed.Coin(r.Money)}.";
+    }
+
+    /// <summary>What erasing these crossing cells costs, in words ("Erase: taking down the ferry costs 20c.").</summary>
+    public static string EraseCost(World w, System.Collections.Generic.List<int> cells)
+    {
+        var r = w.River!;
+        double cost = 0;
+        string what = "";
+        var xs = r.Crossings;
+        for (int i = 0; i < xs.Count; i++)
+        {
+            var x = xs[i];
+            if (x.Type == CrossingType.Ford || x.Cells.Count == 0 || !cells.Contains(x.Cells[0])) continue;
+            cost += r.Rules.EraseCostShare * r.Rules.Price(x.Type);
+            what = what.Length == 0 ? World.CrossingName(x.Type) : "crossings";
+        }
+        if (what.Length == 0) return "Erase: click to remove the bridge.";
+        return $"Erase: taking down the {what} costs {RiverFeed.Coin(cost)} (no refund). Click to remove it.";
+    }
+
     /// <summary>Fence cells in the 3 x 3 round a cell, and every cell of any bridge touched (the toy's brush).</summary>
     public static void EraseTargets(World w, int x, int y, List<int> fenceT, List<int> bridgeT)
     {
@@ -37,6 +74,15 @@ public static class ToolTargets
                 if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
                 int c = yy * n + xx;
                 if (fence[c] != 0) fenceT.Add(c);
+                // A ferry is no bridge: its water cells are found through the river's crossing map.
+                if (w.River != null && bridgeAt[c] < 0 && w.CrossingAt(c) >= 0 && !bridgeT.Contains(c))
+                {
+                    var xs = w.River.Crossings;
+                    int id = w.CrossingAt(c);
+                    for (int i = 0; i < xs.Count; i++)
+                        if (xs[i].Id == id)
+                            foreach (int fc in xs[i].Cells) if (!bridgeT.Contains(fc)) bridgeT.Add(fc);
+                }
                 int b = bridgeAt[c];
                 if (b < 0 || bridgeT.Contains(c)) continue;
                 foreach (var br in w.Bridges)

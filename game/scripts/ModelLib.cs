@@ -15,6 +15,7 @@ public static class ModelLib
 {
     private static readonly Dictionary<string, ArrayMesh> Meshes = new();
     private static readonly Dictionary<string, Texture2D> Textures = new();
+    private static readonly Dictionary<string, Vector3> Origins = new();
 
     public static string Path(string model) => $"res://assets/models/{model}.glb";
 
@@ -33,6 +34,52 @@ public static class ModelLib
         Meshes[model] = mesh;
         return mesh;
     }
+
+    /// <summary>
+    /// One named node of a model (and its children) as a merged mesh in that node's own frame: its translation is
+    /// left out, so the node's origin is the pivot (the river models put hinges and mast steps there). Cached.
+    /// </summary>
+    public static ArrayMesh Part(string model, string node)
+    {
+        string key = model + "/" + node;
+        if (Meshes.TryGetValue(key, out var cached)) return cached;
+        var root = GD.Load<PackedScene>(Path(model)).Instantiate<Node3D>();
+        var n = Find(root, node) ?? throw new System.InvalidOperationException($"{model}.glb has no node '{node}'");
+        var st = new SurfaceTool();
+        StandardMaterial3D? src = null;
+        bool soft = false;
+        // The node itself at the identity: its children keep their offsets from it.
+        Collect(n, Transform3D.Identity * (n is Node3D n3 ? n3.Transform.AffineInverse() : Transform3D.Identity), st, ref src, ref soft);
+        var mesh = st.Commit();
+        mesh.SurfaceSetMaterial(0, Material(src, soft));
+        root.Free();
+        Meshes[key] = mesh;
+        return mesh;
+    }
+
+    /// <summary>Translation of a named node in its model (the pivot the game rotates a part about).</summary>
+    public static Vector3 PartOrigin(string model, string node)
+    {
+        string key = model + "/" + node;
+        if (Origins.TryGetValue(key, out var o)) return o;
+        var root = GD.Load<PackedScene>(Path(model)).Instantiate<Node3D>();
+        var n = Find(root, node) as Node3D;
+        var at = n?.Position ?? Vector3.Zero;
+        root.Free();
+        Origins[key] = at;
+        return at;
+    }
+
+    private static Node? Find(Node n, string name)
+    {
+        if (n.Name == name) return n;
+        foreach (var c in n.GetChildren()) { var f = Find(c, name); if (f != null) return f; }
+        return null;
+    }
+
+    /// <summary>A part of a model as a node with its own mesh, placed at its pivot (see <see cref="Part"/>).</summary>
+    public static MeshInstance3D PartInstance(string model, string node, string name)
+        => new() { Name = name, Mesh = Part(model, node), Position = PartOrigin(model, node) };
 
     /// <summary>Whether the model is drawn with soft ink (its nodes say so in their glTF extras).</summary>
     public static bool IsSoft(string model)

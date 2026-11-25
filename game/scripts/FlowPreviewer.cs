@@ -148,6 +148,7 @@ public sealed class FlowPreviewer
         BuildingKind.Well => "Well",
         BuildingKind.Field => "Field",
         BuildingKind.Market => "Market",
+        BuildingKind.Landing => "Landing",
         _ => "house",
     };
 

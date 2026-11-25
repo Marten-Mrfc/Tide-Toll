@@ -18,6 +18,8 @@ namespace TideToll.Game;
 ///   are 3 dB lower; every hit varies by +-2 dB and +-50 cents and never repeats the last file. Far out, they fade.
 /// - A bell at dawn each in-game day (at most one every 6 real seconds), place / erase knocks for the tools, a muted
 ///   low knock when a tool is refused, and the theme played quietly now and then with long silences between.
+/// - The river (AudioDirector.River.cs): drawbridge winch and creak, boat calls, coins, the ferry's rope, oars and
+///   wakes, and the turn-away knock, from the river feed's events.
 /// Every cue has a visual twin already on screen: walkers, the river, the new fence or bridge, the date on the
 /// chapter page ("Dawn bell"), the ghost and status line. Nothing plays when <see cref="Silent"/> (headless runs and
 /// the dummy audio driver): the scheduling still runs and counts cues, so tests and the perf run exercise it.
@@ -43,7 +45,7 @@ public partial class AudioDirector : Node2D
     private readonly double[] _voiceAt = new double[FootVoices];
     private AudioStreamPlayer2D _riverPlayer = null!;
     private AudioStreamPlayer _themePlayer = null!, _bellPlayer = null!, _toolPlayer = null!;
-    private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1 }; // -1: nothing played yet in that slot
+    private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }; // -1: nothing played yet in that slot
     private readonly Random _rng = new(7);
     private double _now, _beatAcc, _riverAcc, _lastBell = -100, _nextTheme = 30, _lowpass = 1;
     private long _beatIndex;
@@ -80,6 +82,7 @@ public partial class AudioDirector : Node2D
         _main.Tools.Refused += () => Play(_toolPlayer, _place, 5, -12, 0.55f, ref Refusals);
         _main.Sim.TimeChanged += OnTimeChanged;
         _main.Sim.WorldReplaced += OnWorldReplaced;
+        InitRiver();
         if (!Silent) _riverPlayer.Play();
         SetVolume(Volume);
     }
@@ -89,6 +92,7 @@ public partial class AudioDirector : Node2D
         if (_main?.Sim == null) return;
         _main.Sim.TimeChanged -= OnTimeChanged;
         _main.Sim.WorldReplaced -= OnWorldReplaced;
+        ExitRiver();
     }
 
     private void OnWorldReplaced() => _lastDay = -1;
@@ -158,6 +162,7 @@ public partial class AudioDirector : Node2D
         }
         DawnBell(sim.World);
         Theme();
+        RiverPending();
         _riverAcc += delta;
         if (_riverAcc >= 0.25) { _riverAcc = 0; River(sim.World); }
         if (sim.Paused) return;
@@ -166,6 +171,7 @@ public partial class AudioDirector : Node2D
         _beatAcc -= BeatSec;
         if (_beatAcc > BeatSec) _beatAcc = 0; // a long frame: skip, never burst
         _beatIndex++;
+        Oars(sim.World);
         int speed = sim.Speed;
         if (speed >= 8 && (_beatIndex & 1) == 1) return;            // quarter notes at top speed
         if (speed is 2 or 4 && _rng.NextDouble() > (speed == 2 ? 0.75 : 0.55)) return; // thinned by chance

@@ -22,6 +22,8 @@ public partial class SimDriver : Node
     /// <summary>Simulation work allowed per frame, in milliseconds (the toy uses 10).</summary>
     public double TickBudgetMs = 8.0;
 
+    /// <summary>Parameters for every World made here (Main sets them before the driver enters the tree).</summary>
+    public SimParams Params = SimParams.Default;
     public World World { get; private set; } = null!;
     public int Seed { get; private set; } = 1;
     public int WalkerCount { get; private set; }
@@ -56,7 +58,7 @@ public partial class SimDriver : Node
     public override void _EnterTree()
     {
         ProcessPriority = -100;
-        if (World == null) MakeWorld(Seed, SimParams.Default.DefaultWalkers);
+        if (World == null) MakeWorld(Seed, Params.DefaultWalkers);
     }
 
     /// <summary>Starts over with the same seed (or a given one), keeping the walker count, speed and pause.</summary>
@@ -91,7 +93,7 @@ public partial class SimDriver : Node
     private void MakeWorld(int seed, int walkers)
     {
         Seed = seed <= 0 ? 1 : seed;
-        World = new World(Seed, walkers);
+        World = new World(Seed, walkers, Params);
         WalkerCount = World.WalkerCount;
         _acc = 0;
         Alpha = 1f;
@@ -175,6 +177,31 @@ public partial class SimDriver : Node
         var b = World.PlaceBridge(cx + 0.5, cy + 0.5);
         CheckVersion();
         return b;
+    }
+
+    /// <summary>Builds a ferry, drawbridge or footbridge across the river at row cy (river rules). The result says why not.</summary>
+    public RiverResult PlaceCrossing(CrossingType type, int cx, int cy)
+    {
+        var r = World.PlaceCrossing(type, cx + 0.5, cy + 0.5);
+        CheckVersion();
+        return r;
+    }
+
+    /// <summary>Tick of the last hand on a drawbridge's lever (so a raise then is the player's, not the keeper's).</summary>
+    public long LastLeverTick { get; private set; } = -1;
+
+    /// <summary>Raises or lowers a drawbridge by hand.</summary>
+    public RiverResult SetBridge(int id, bool raise)
+    {
+        LastLeverTick = World.Ticks;
+        return World.SetBridge(id, raise);
+    }
+
+    public RiverResult HireKeeper(int id)
+    {
+        var r = World.HireKeeper(id);
+        CheckVersion();
+        return r;
     }
 
     public int Erase(ReadOnlySpan<int> cells)

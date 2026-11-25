@@ -11,7 +11,7 @@ namespace TideToll.Game;
 /// - "Fences": fence cells become straightened runs (FenceLines, as the toy draws them), covered with woven
 ///   wattle pieces stretched to fit each run (and thickened to read from above), and posts at ends and corners. Two MultiMeshes
 ///   ("Fences/Wattle" and "Fences/Posts"), so a long fence costs two draw calls.
-/// - "Bridges": one node per footbridge ("Bridge0", ...) with a landing on each bank cell and a 2 m span on
+/// - "Bridges": one node per footbridge (drawbridges are bridges in the simulation too; CrossingLayer draws them) ("Bridge0", ...) with a landing on each bank cell and a 2 m span on
 ///   every water cell it covers, as the footbridge models are built to be used.
 /// </summary>
 public partial class EditLayer : Node3D
@@ -121,6 +121,7 @@ public partial class EditLayer : Node3D
         int n = w.Grid.Width;
         foreach (var br in w.Bridges)
         {
+            if (IsDrawbridge(w, br.Id)) continue; // CrossingLayer draws those
             var node = new Node3D { Name = $"Bridge{br.Id}" };
             _bridges.AddChild(node);
             int first = int.MaxValue, last = int.MinValue;
@@ -132,6 +133,16 @@ public partial class EditLayer : Node3D
             int i = 0;
             foreach (int c in br.Cells) Piece(node, "footbridge-span", $"Span{i++}", (c % n + 0.5f) * cell, z, MathF.PI / 2f);
         }
+    }
+
+    /// <summary>Whether a bridge belongs to a drawbridge (river rules), which CrossingLayer draws.</summary>
+    public static bool IsDrawbridge(World w, int bridgeId)
+    {
+        var r = w.River;
+        if (r == null) return false;
+        var xs = r.Crossings;
+        for (int i = 0; i < xs.Count; i++) if (xs[i].BridgeId == bridgeId) return xs[i].Type == CrossingType.Drawbridge;
+        return false;
     }
 
     private static void Piece(Node3D parent, string model, string name, float x, float z, float yaw)

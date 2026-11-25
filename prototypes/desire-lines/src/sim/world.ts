@@ -286,6 +286,8 @@ export class World {
    * not starting one it has no time for. Pure: changes nothing.
    */
   nextTickRefreshes(): boolean {
+    // A household arriving searches for a plot and then marks every field for a rebuild.
+    if (this.growthOn && this.time + 1 / PARAMS.tickHz >= this.nextHouseTime) return true;
     for (let t = 0; t < this.urgent.length; t++) if (this.urgent[t]) return true;
     let oldest = 0;
     for (let t = 1; t < this.fields.length; t++) if (this.fieldTime[t] < this.fieldTime[oldest]) oldest = t;

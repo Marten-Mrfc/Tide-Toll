@@ -13,7 +13,13 @@ namespace TideToll.Game;
 /// </summary>
 public partial class Main : Node3D
 {
-    public SimParams Params { get; } = SimParams.Default;
+    /// <summary>
+    /// The simulation's parameters: the defaults with the river rules on (Prototype 1 step 2), unless the command line
+    /// says "-- --no-river" or a test sets <see cref="River"/> to null before the scene enters the tree.
+    /// </summary>
+    public SimParams Params { get; private set; } = SimParams.Default;
+    /// <summary>River rules to play with (tests may change them, e.g. the starting coin, before adding the scene).</summary>
+    public RiverRules? River = RiverRules.Default;
     public SimDriver Sim { get; private set; } = null!;
     public CameraRig Rig { get; private set; } = null!;
     public Node3D MapOrigin { get; private set; } = null!;
@@ -27,6 +33,12 @@ public partial class Main : Node3D
     public ToolController Tools { get; private set; } = null!;
     public AudioDirector Audio { get; private set; } = null!;
     public GameUi Ui { get; private set; } = null!;
+    /// <summary>The river: boats, the landing and the wakes and marks on the water (null pieces when the rules are off).</summary>
+    public RiverLayer Boats { get; private set; } = null!;
+    /// <summary>Ferries, drawbridges and keepers' huts, animated from the simulation's state.</summary>
+    public CrossingLayer Crossings { get; private set; } = null!;
+    /// <summary>River events drained once a frame and handed to the chronicle, the sound and the marks.</summary>
+    public RiverFeed Feed { get; private set; } = null!;
 
     /// <summary>The two pages in world space (x, z rectangles on y = 0), for laying the interface over them.</summary>
     public Rect2 LeftPageRect => new(-(BookBuilder.PageWidth + 1f), -BookBuilder.PageDepth / 2f, BookBuilder.PageWidth, BookBuilder.PageDepth);
@@ -38,12 +50,14 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
+        if (System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--no-river") >= 0) River = null;
+        Params = SimParams.Default with { River = River };
         AddChild(MakeEnvironment());
         AddChild(MakeSun());
         BookBuilder.Build(this, Params);
         MapOrigin = GetNode<Node3D>("Book/RightPage/MapOrigin");
 
-        Sim = new SimDriver { Name = "Sim" };
+        Sim = new SimDriver { Name = "Sim", Params = Params };
         AddChild(Sim);
         Sim.Reset(StartSeed);
         if (StartWalkers >= 0) Sim.SetWalkers(StartWalkers);
@@ -53,7 +67,9 @@ public partial class Main : Node3D
         Town = new TownLayer(); MapOrigin.AddChild(Town); Town.Init(Sim);
         Scenery = new Scenery(); MapOrigin.AddChild(Scenery); Scenery.Init(Sim);
         Edits = new EditLayer(); MapOrigin.AddChild(Edits); Edits.Init(Sim);
-        Walkers = new WalkerLayer(); MapOrigin.AddChild(Walkers); Walkers.Init(Sim);
+        Crossings = new CrossingLayer(); MapOrigin.AddChild(Crossings); Crossings.Init(Sim);
+        Boats = new RiverLayer(); MapOrigin.AddChild(Boats); Boats.Init(Sim);
+        Walkers = new WalkerLayer(); MapOrigin.AddChild(Walkers); Walkers.Init(Sim, Crossings);
 
         Rig = new CameraRig
         {
@@ -67,6 +83,9 @@ public partial class Main : Node3D
         Ink = new InkOutline();
         Ink.Attach(Rig.Camera);
 
+        Feed = new RiverFeed();
+        AddChild(Feed);
+        Feed.Init(this);
         Tools = new ToolController();
         AddChild(Tools);
         Tools.Init(this);
@@ -89,6 +108,7 @@ public partial class Main : Node3D
         // Villagers stay about 7 px wide when zoomed out (the mesh is 1 m wide, already 1.5x life size).
         Walkers.WalkerScale = Mathf.Clamp(7f / pxPerM, 1f, 1.8f);
         Walkers.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
+        Boats.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
         Marks.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
     }
 

@@ -25,6 +25,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
     public int Drawn { get; private set; }
 
     private SimDriver _sim = null!;
+    private CrossingLayer _crossings = null!;
     private float[] _buf = Array.Empty<float>();
     private float[] _yaw = Array.Empty<float>();
     private ShaderMaterial _mat = null!, _hull = null!;
@@ -35,9 +36,10 @@ public partial class WalkerLayer : MultiMeshInstance3D
 
     private static readonly StringName AnimTime = new("anim_time"), HullW = new("hull_w");
 
-    public void Init(SimDriver sim)
+    public void Init(SimDriver sim, CrossingLayer crossings)
     {
         _sim = sim;
+        _crossings = crossings;
         Name = "Walkers";
         Capacity = sim.World.Params.MaxWalkers;
         _buf = new float[Capacity * Stride];
@@ -106,6 +108,7 @@ public partial class WalkerLayer : MultiMeshInstance3D
         float cell = (float)world.Params.CellMeters;
         float alpha = _sim.Alpha;
         float s = WalkerScale;
+        bool river = world.River != null;
         int n = 0;
         for (int i = 0; i < ws.Length && n < Capacity; i++)
         {
@@ -115,9 +118,27 @@ public partial class WalkerLayer : MultiMeshInstance3D
             float x = (float)(k.Px + dx * alpha) * cell, z = (float)(k.Py + dz * alpha) * cell;
             bool moving = dx * dx + dz * dz > 1e-8f;
             if (moving) _yaw[i] = MathF.Atan2(dx, dz); // the model faces +Z at yaw 0
+            // On a footbridge the walker stands on the deck, not in the water under it; a drawbridge deck is higher.
+            float y = bridgeAt[k.Cell] >= 0 ? (river && EditLayer.IsDrawbridge(world, bridgeAt[k.Cell]) ? CrossingLayer.DrawDeck : BridgeDeck) : 0f;
+            if (k.Hold == WalkerHold.Riding && _crossings.RaftAt(k.HoldAt, out var raft))
+            {
+                // Riders stand on the raft as drawn, spread over its deck (it is shorter than the stage-to-stage line).
+                x = raft.X + ((k.Id * 0.618034f) % 1f - 0.5f) * 3.2f;
+                z = raft.Z + ((k.Id * 0.754878f) % 1f - 0.5f) * 1.8f + 0.3f;
+                y = CrossingLayer.RaftDeck;
+                moving = false;
+            }
+            else if (k.Hold == WalkerHold.Waiting)
+            {
+                // A queue at a raised bridge or a ferry stage bunches up: each waiting walker steps a little off its
+                // stopping point, in a loose crowd back from the water, more of them the longer they wait.
+                float jx = (k.Id * 0.618034f) % 1f - 0.5f, jz = (k.Id * 0.754878f) % 1f - 0.5f;
+                float spread = 1.4f + MathF.Min(1.2f, k.WaitT * 0.1f);
+                x += jx * spread * 1.6f;
+                z += jz * spread * 2.2f;
+                moving = false;
+            }
             float c = MathF.Cos(_yaw[i]) * s, sn = MathF.Sin(_yaw[i]) * s;
-            // On a footbridge the walker stands on the deck, not in the water under it.
-            float y = bridgeAt[k.Cell] >= 0 ? BridgeDeck : 0f;
             int o = n * Stride;
             _buf[o + 0] = c;   _buf[o + 1] = 0; _buf[o + 2] = sn;  _buf[o + 3] = x;
             _buf[o + 4] = 0;   _buf[o + 5] = s; _buf[o + 6] = 0;   _buf[o + 7] = y;

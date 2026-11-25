@@ -108,17 +108,19 @@ function plotScore(w: World, x0: number, y0: number, door: number, front: number
  * is reachable now reachable: a flood fill from the first reachable door with
  * and without the plot.
  */
-export function keepsWaysOpen(w: World, p: Plot): boolean {
+export function keepsWaysOpen(w: World, p: Plot, before: Uint8Array = reachable(w, null)): boolean {
   const plot = new Uint8Array(NC);
   for (let y = p.y; y < p.y + 3; y++) for (let x = p.x; x < p.x + 3; x++) plot[idx(x, y)] = 1;
   plot[p.door] = 0;
-  const doors = w.buildings.map(b => b.door);
-  const before = reach(w, null), after = reach(w, plot);
+  const after = reachable(w, plot);
   // The start door is the same both times (the first one reachable before), so compare door by door.
-  for (const d of doors) if (before[d] && !after[d]) return false;
+  for (const b of w.buildings) if (before[b.door] && !after[b.door]) return false;
   return after[p.door] === 1;
+}
 
-  function reach(w: World, extra: Uint8Array | null): Uint8Array {
+/** Open ground reachable from the first open building door (walkers' step rule), with `extra` cells shut. */
+function reachable(w: World, extra: Uint8Array | null): Uint8Array {
+    const doors = w.buildings.map(b => b.door);
     const seen = new Uint8Array(NC);
     const open = (c: number) => !w.blocked(c) && !(extra && extra[c]);
     const start = doors.find(d => open(d));
@@ -138,12 +140,13 @@ export function keepsWaysOpen(w: World, p: Plot): boolean {
       }
     }
     return seen;
-  }
 }
 
 /** The plot the next household takes, or null if none is valid. Checks rule 5 on the best few. */
 export function choosePlot(w: World, tries = 8): Plot | null {
   const all = candidatePlots(w);
-  for (let i = 0; i < all.length && i < tries; i++) if (keepsWaysOpen(w, all[i])) return all[i];
+  if (!all.length) return null;
+  const before = reachable(w, null);
+  for (let i = 0; i < all.length && i < tries; i++) if (keepsWaysOpen(w, all[i], before)) return all[i];
   return null;
 }

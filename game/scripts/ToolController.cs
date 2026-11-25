@@ -7,7 +7,7 @@ using TideToll.Sim;
 
 namespace TideToll.Game;
 
-public enum Tool { None, Fence, Bridge, Erase }
+public enum Tool { None, Fence, Bridge, Erase, Ferry, Drawbridge }
 
 /// <summary>
 /// The three Prototype 1 tools, as the toy's input.ts plays them, on the map page:
@@ -16,6 +16,12 @@ public enum Tool { None, Fence, Bridge, Erase }
 /// - Footbridge: hovering shows the bridge that would be built (or a cross and the reason in words); press and
 ///   release over the same crossing builds it, sliding away cancels.
 /// - Erase: hovering shows the brush and what it would remove; click or drag removes fences and whole bridges.
+/// - Ferry and Drawbridge (river rules; the footbridge goes the same way with them on): hovering the river shows the
+///   crossing's cells, its flow preview (with the boats it would hold) and its price, or a cross and the reason in words
+///   (no room, too close, not enough coin); press and release over the same crossing builds it.
+/// - With no tool in hand, a click on a drawbridge selects it (its badge gets a focus frame); a second click, the
+///   badge's lever or L raises or lowers it by hand; Ctrl+1 to 9 works drawbridge 1 to 9 without selecting it; K hires
+///   the selected bridge's keeper (see ToolController.River.cs).
 /// Escape or a right click (without a drag, which pans) puts the tool down. Tools work while paused.
 /// Pointer presses arrive through _UnhandledInput, after the interface controls, so a press on a tab never reaches
 /// the map; while the pointer is over a control the ghost and preview are hidden; a drag released over a control is
@@ -65,7 +71,9 @@ public partial class ToolController : Node
         "",
         "Fence: drag across the map to draw a fence line. Esc or right-click puts it down.",
         "Footbridge: point at the river to see the bridge, click to build it.",
-        "Erase: click or drag over fences and bridges to remove them.",
+        "Erase: click or drag over fences, bridges and ferries to remove them.",
+        "Ferry: point at the river and click to start a ferry. Walkers queue for the raft; boats always pass.",
+        "Drawbridge: point at the river and click to build one. Raise it for barges with a click on it or L.",
     };
 
     public void Init(Main main)
@@ -94,12 +102,17 @@ public partial class ToolController : Node
     private void OnWorldReplaced()
     {
         Previewer.SetWorld(W);
+        CheckSelection();
         CancelGesture();
         Refresh();
     }
 
     // After any edit the ghost's verdicts (can fence, bridge fits) may have changed.
-    private void OnEdited(int v) { if (_dragStart == null && !_eraseDown) Refresh(); }
+    private void OnEdited(int v)
+    {
+        CheckSelection();
+        if (_dragStart == null && !_eraseDown) Refresh();
+    }
 
     public void SetTool(Tool t)
     {
@@ -143,6 +156,7 @@ public partial class ToolController : Node
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } mb:
                 Move(mb.Position);
                 if (Tool != Tool.None && Down(mb.Position)) GetViewport().SetInputAsHandled();
+                else if (Tool == Tool.None && ClickBridge(mb.Position)) GetViewport().SetInputAsHandled();
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right } rb:
                 if (rb.Pressed) _rightDown = rb.Position;
@@ -192,10 +206,15 @@ public partial class ToolController : Node
                 _dragEnd = (cx, cy);
                 FenceGhost();
                 break;
-            case Tool.Bridge:
+            case Tool.Bridge when !RiverOn:
                 Hover(pos, force: true);
                 _bridgeDownCell = _bridgeCells.Count > 0 ? _bridgeCells[0] : -1;
                 if (_bridgeDownCell < 0) { Say(BridgeReason(cx, cy)); Refused?.Invoke(); }
+                break;
+            case Tool.Bridge or Tool.Ferry or Tool.Drawbridge:
+                Hover(pos, force: true);
+                _bridgeDownCell = _bridgeCells.Count > 0 ? _bridgeCells[0] : -1;
+                if (_bridgeDownCell < 0) { Say(_crossingWhy); Refused?.Invoke(); }
                 break;
             case Tool.Erase:
                 _eraseDown = true;
@@ -221,6 +240,7 @@ public partial class ToolController : Node
             }
             _dragStart = null;
         }
+        else if (RiverOn && CrossingTool(Tool) is { } ct && _bridgeDownCell >= 0) CrossingUp(ct, pos);
         else if (Tool == Tool.Bridge && _bridgeDownCell >= 0)
         {
             int down = _bridgeDownCell;

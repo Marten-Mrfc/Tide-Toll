@@ -27,14 +27,18 @@ public partial class ChapterPage : PanelContainer
     private float _s;
     private Label _day = null!, _walkers = null!, _seed = null!, _detour = null!, _detourNote = null!, _cover = null!, _coverNote = null!;
     private Label _trunk = null!, _trunkNote = null!, _status = null!, _preview = null!;
-    private Control _title = null!, _howTo = null!, _ground = null!, _heat = null!, _legendHead = null!;
+    private Control _title = null!, _howTo = null!, _ground = null!, _heat = null!, _legendHead = null!, _legend = null!;
+    private Control? _ledgerHead, _ledgerBox, _chronicle;
+    private Label _coin = null!, _today = null!, _rep = null!, _repNote = null!, _boats = null!;
+    private readonly Label[] _notes = new Label[RiverFeed.ChronicleLines];
+    private int _lastCoin = int.MinValue, _lastToday = int.MinValue, _lastRep = int.MinValue, _lastServed = -1, _lastTurned = -1, _lastNotes = -1;
     private BandGauge _gauge = null!;
     private VBoxContainer _col = null!;
     private Label _howPara = null!, _keysPara = null!;
     // Parts that fold away, in this order, when the page is too short for everything (1280 x 720 book view):
     // the key reminder (every tab shows its key), then the how-to paragraph (the tabs' tooltips say it too).
     private Control[] _optional = System.Array.Empty<Control>();
-    private readonly float[] _optionalH = new float[4];
+    private readonly float[] _optionalH = new float[8];
     private StyleBox _onPage = null!, _slip = null!;
     private Rect2 _placed;
     private int _lastDay = -1, _lastSeason = -1, _lastYear = -1, _lastOut = -1, _lastWalkers = -1, _lastSeed = -1;
@@ -50,7 +54,7 @@ public partial class ChapterPage : PanelContainer
     /// <summary>Least distance in pixels kept between the page's edge and any line on it (UX: at least 12 px).</summary>
     public const float MinInset = 12f;
 
-    public void Build(float s)
+    public void Build(float s, bool river = false)
     {
         _s = s;
         Name = "Chapter";
@@ -88,6 +92,8 @@ public partial class ChapterPage : PanelContainer
         _walkers = Entry(col, "Walkers", out _, false);
         _seed = Entry(col, "Map", out _, false);
 
+        if (river) BuildLedger(col);
+
         col.AddChild(Heading("Path health"));
         _detour = Entry(col, "Detour ratio", out _detourNote);
         _cover = Entry(col, "Trail coverage", out _coverNote);
@@ -95,12 +101,16 @@ public partial class ChapterPage : PanelContainer
         _gauge = new BandGauge { Name = "TrunkBand", CustomMinimumSize = new Vector2(0, UiKit.Px(s, 14)), Scale1 = s };
         col.AddChild(_gauge);
 
+        var legend = new VBoxContainer { Name = "Legend", MouseFilter = MouseFilterEnum.Ignore };
+        legend.AddThemeConstantOverride("separation", UiKit.Px(s, 3));
+        _legend = legend;
         _legendHead = Heading("The ground");
-        col.AddChild(_legendHead);
+        legend.AddChild(_legendHead);
         _ground = GroundLegend();
-        col.AddChild(_ground);
+        legend.AddChild(_ground);
         _heat = new HeatBar { Name = "HeatLegend", CustomMinimumSize = new Vector2(0, UiKit.Px(s, 34)), Scale1 = s, Visible = false };
-        col.AddChild(_heat);
+        legend.AddChild(_heat);
+        col.AddChild(legend);
 
         col.AddChild(UiKit.Rule(s, 0.35f));
         _status = Para("", 14, UiKit.Serif, UiKit.Ink);
@@ -110,7 +120,9 @@ public partial class ChapterPage : PanelContainer
         _preview.Name = "PreviewLine";
         _preview.Visible = false;
         col.AddChild(_preview);
-        _optional = new Control[] { _keysPara, _howPara };
+        // With the river the page holds more, so the ground legend folds away too (the overlay key W still names it),
+        // and then the older margin notes.
+        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2] } : new Control[] { _keysPara, _howPara };
         Folded = 0;
     }
 
@@ -194,6 +206,82 @@ public partial class ChapterPage : PanelContainer
         p.AddThemeStyleboxOverride("panel", b);
         p.AddChild(c);
         return p;
+    }
+
+    /// <summary>The river ledger (coin, income today, reputation, boats served and turned back today) and the chronicle.</summary>
+    private void BuildLedger(VBoxContainer col)
+    {
+        var head = new HBoxContainer { Name = "LedgerHead", MouseFilter = MouseFilterEnum.Ignore };
+        head.AddThemeConstantOverride("separation", UiKit.Px(_s, 6));
+        head.AddChild(Glyph("ui-coin"));
+        var h = Heading("The ledger");
+        head.AddChild(h);
+        col.AddChild(head);
+        _ledgerHead = head;
+        _coin = Entry(col, "Coin", out _, false);
+        _today = Entry(col, "Income today", out _, false);
+        _rep = Entry(col, "Reputation", out _repNote);
+        _boats = Entry(col, "Boats today", out _, false);
+        var chron = new VBoxContainer { Name = "Chronicle", MouseFilter = MouseFilterEnum.Ignore };
+        chron.AddThemeConstantOverride("separation", UiKit.Px(_s, 1));
+        for (int i = 0; i < _notes.Length; i++)
+        {
+            // Margin notes: the river's latest events in a small serif hand, the newest darkest.
+            var l = Para("", 14, UiKit.Serif, i == 0 ? UiKit.Ink : UiKit.FadedInk.Darkened(0.25f));
+            l.Name = $"Note{i}";
+            l.Visible = false;
+            chron.AddChild(l);
+            _notes[i] = l;
+        }
+        col.AddChild(chron);
+        _chronicle = chron;
+    }
+
+    private TextureRect Glyph(string icon) => new()
+    {
+        Texture = UiKit.Icon(icon, UiKit.Px(_s, 20)), CustomMinimumSize = new Vector2(UiKit.Px(_s, 20), UiKit.Px(_s, 20)),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        MouseFilter = MouseFilterEnum.Ignore, TextureFilter = TextureFilterEnum.LinearWithMipmaps, SizeFlagsVertical = SizeFlags.ShrinkCenter,
+    };
+
+    /// <summary>The ledger's figures, only where a value changed (called about twice a second).</summary>
+    public void RefreshRiver(RiverView r)
+    {
+        if (_ledgerHead == null) return;
+        int coin = (int)System.Math.Floor(r.Money + 1e-9);
+        if (coin != _lastCoin) { _lastCoin = coin; _coin.Text = coin + "c"; }
+        int today = (int)System.Math.Floor(r.IncomeDay + 1e-9);
+        if (today != _lastToday) { _lastToday = today; _today.Text = (today >= 0 ? "+" : "") + today + "c"; }
+        int rep = (int)System.Math.Round(r.Reputation);
+        if (rep != _lastRep)
+        {
+            _lastRep = rep;
+            _rep.Text = rep + " of 100";
+            // In words: boats come more often with a good name (frequency x (0.5 + rep / 100)).
+            double f = 0.5 + rep / 100.0;
+            _repNote.Text = (rep >= 70 ? "well thought of" : rep >= 40 ? "fair" : "boatmen avoid us") + $" · boats come {f:0.0}x as often";
+        }
+        if (r.ServedToday != _lastServed || r.TurnedBackToday != _lastTurned)
+        {
+            _lastServed = r.ServedToday; _lastTurned = r.TurnedBackToday;
+            _boats.Text = $"{r.ServedToday} served · {r.TurnedBackToday} turned back";
+        }
+    }
+
+    /// <summary>The chronicle's margin notes from the river feed (on a new note only).</summary>
+    public void SetNotes(RiverFeed feed)
+    {
+        if (_chronicle == null || feed.NotesWritten == _lastNotes) return;
+        _lastNotes = feed.NotesWritten;
+        for (int i = 0; i < _notes.Length; i++)
+        {
+            string t = feed.Note(i);
+            _notes[i].Text = t;
+            // A folded note stays folded; the others show when they have text.
+            int at = System.Array.IndexOf(_optional, _notes[i]);
+            bool folded = at >= 0 && at < Folded;
+            _notes[i].Visible = t.Length > 0 && !folded;
+        }
     }
 
     // ------------------------------------------------------------------ updates
@@ -280,6 +368,7 @@ public partial class ChapterPage : PanelContainer
             AddThemeStyleboxOverride("panel", slip ? _slip : _onPage);
             _title.Visible = _howTo.Visible = !slip;
             _legendHead.Visible = !slip;
+            if (_chronicle != null) _chronicle.Visible = !slip;
             SetOverlay(_overlay);
             MouseFilter = slip ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
         }
@@ -317,7 +406,8 @@ public partial class ChapterPage : PanelContainer
         else if (Folded > 0 && need + _optionalH[Folded - 1] + UiKit.Px(_s, 6) <= avail)
         {
             Folded--;
-            _optional[Folded].Visible = true;
+            var c = _optional[Folded];
+            c.Visible = c is not Label { Text.Length: 0 }; // an empty margin note stays hidden
         }
     }
 

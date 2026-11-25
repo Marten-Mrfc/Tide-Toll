@@ -11,14 +11,14 @@ namespace TideToll.Game.Tests;
 /// preview.png (a fence being dragged across the busiest trail with the flow preview showing, driven by real mouse
 /// events), each also saved as NAME-WxH.png for the window size, then close.png (a closer look at the hamlet),
 /// field.png, market.png, fence.png and bridge.png (close-ups). With "-- --ui-only" only the four interface views
-/// are taken (the 1920 x 1080 run). The 20 days are fast-forwarded through the driver at 8x rather than waited for, because software
+/// are taken (the 1920 x 1080 run). Both runs end with the river's shots (Screenshot.River.cs); "-- --river-only" takes only those. The 20 days are fast-forwarded through the driver at 8x rather than waited for, because software
 /// rendering here draws only a few frames a second. Fails if an image is blank or if the map view has no
 /// trail-coloured pixels. Must not run with --headless: the dummy renderer draws nothing.
 /// </summary>
 public partial class Screenshot : Node
 {
     private string _dir = "user://";
-    private bool _uiOnly, _groundOnly;
+    private bool _uiOnly, _groundOnly, _riverOnly;
     private string _suffix = "";
     private Main _main = null!;
     private bool _failed;
@@ -30,6 +30,7 @@ public partial class Screenshot : Node
             if (a.StartsWith("--out-dir=")) _dir = a.Substring(10).TrimEnd('/') + "/";
             if (a == "--ui-only") _uiOnly = true;
             if (a == "--ground-only") _groundOnly = true;
+            if (a == "--river-only") _riverOnly = true;
         }
         Input.UseAccumulatedInput = false;
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
@@ -47,6 +48,7 @@ public partial class Screenshot : Node
             _suffix = $"-{vs.X}x{vs.Y}";
             await Frames(4);
             if (_groundOnly) { await GroundShots(); return; }
+            if (_riverOnly) { await RiverShots(); Done(RiverNames); return; }
             _main.Rig.FrameBook(instant: true);
             await Frames(20);
             Check(await Snap("book", true), "book");
@@ -73,7 +75,7 @@ public partial class Screenshot : Node
             Check(await Snap("wear", true), "wear");
             _main.Ui.SetOverlay(false);
             await PreviewShot();
-            if (_uiOnly) { Done("book map wear preview"); return; }
+            if (_uiOnly) { await RiverShots(); Done("book map wear preview " + RiverNames); return; }
 
             // Closer: the hamlet at play zoom (about 90 m of map in view).
             var b = _main.Sim.World.Buildings[_main.Sim.World.Houses[0]];
@@ -112,7 +114,8 @@ public partial class Screenshot : Node
             int hr = Math.Max(6, by - 14);
             await HoverShot(Godot.Key.B, Vector2.Zero, "bridge-hover", new Vector3(w.RiverX[hr] * 2f, 0, hr * 2f), 120f, (int)w.RiverX[hr], hr);
             await HoverShot(Godot.Key.E, Vector2.Zero, "erase-hover", new Vector3(hb.X * 2f + 4, 0, fy * 2f + 4), 90f, hb.X + 2, fy + 1);
-            Done("book map wear preview close field market fence bridge bridge-hover erase-hover");
+            await RiverShots();
+            Done("book map wear preview close field market fence bridge bridge-hover erase-hover " + RiverNames);
         }
         catch (Exception e) { Quit(1, e.ToString()); }
     }
@@ -142,6 +145,8 @@ public partial class Screenshot : Node
         }
         Done("ground-d20-overview ground-d20-close ground-d45-overview ground-d45-close");
     }
+
+    private const string RiverNames = "river-waiting river-raised river-ferry river-blocked river-turnback river-map river-ledger";
 
     private void Done(string names)
     {

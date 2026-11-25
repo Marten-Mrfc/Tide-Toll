@@ -64,6 +64,9 @@ public partial class ToolController
                 Ghost.Cell(cx, cy, ok ? ToolGhost.Ok : ToolGhost.Bad, ok ? ToolGhost.OkColour : ToolGhost.BadColour);
                 Previewer.Clear();
                 break;
+            case Tool.Bridge or Tool.Ferry or Tool.Drawbridge when RiverOn:
+                CrossingHover(CrossingTool(Tool)!.Value, x, y, cx, cy);
+                break;
             case Tool.Bridge:
                 if (W.BridgeCellsAt(x, y, _bridgeCells))
                 {
@@ -83,6 +86,8 @@ public partial class ToolController
                 Ghost.Ring(x, y, 3.2f);
                 foreach (int c in _fenceT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
                 foreach (int c in _bridgeT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
+                if (_bridgeT.Count > 0 && RiverOn) Say(ToolTargets.EraseCost(W, _bridgeT));
+                else if (_fenceT.Count > 0) Say(Hints[3]);
                 if (_fenceT.Count + _bridgeT.Count > 0)
                     Previewer.Request(new WhatIf { Open = _fenceT.ToArray(), CloseBridge = _bridgeT.ToArray() },
                         FlowPreviewer.Key('e', CollectionsMarshal.AsSpan(_fenceT), CollectionsMarshal.AsSpan(_bridgeT)));

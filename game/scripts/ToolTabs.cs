@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using Godot;
+using TideToll.Sim;
 
 namespace TideToll.Game;
 
 /// <summary>
 /// The controls as paper bookmarks sticking out of the map page's outer edge onto the table: time (pause, 1x 2x 4x
-/// 8x), tools (fence, footbridge, erase), views (flow preview, wear overlay), the book (sound with its volume, reset,
+/// 8x), tools (fence, footbridge, and with the river rules ferry and drawbridge with their prices, erase), views (flow preview, wear overlay), the book (sound with its volume, reset,
 /// new map) and the walker count. Each tab has its SVG icon, a label, its key on a small keycap and a tooltip that
 /// says what it does. A tab that is on is pulled further out of the book and drawn with a heavy ink edge, so state
 /// never relies on colour. Built for one interface scale; GameUi rebuilds it when the window size changes.
@@ -13,6 +14,7 @@ namespace TideToll.Game;
 public partial class ToolTabs : VBoxContainer
 {
     public readonly Dictionary<string, Control> Controls = new();
+    public Button? Ferry, Drawbridge;
     public Button Pause = null!, Fence = null!, Bridge = null!, Erase = null!, Preview = null!, Overlay = null!, Sound = null!, Reset = null!, NewMap = null!;
     public readonly Button[] Speed = new Button[4];
     public HSlider Walkers = null!, Volume = null!;
@@ -28,7 +30,11 @@ public partial class ToolTabs : VBoxContainer
 
     public static float WidthFor(float s) => 188f * s;
 
-    public void Build(float s)
+    // Crossing tabs with a price line: the price label, the tooltip without the coin note, and the price.
+    private readonly List<(Button tab, Label price, string tip, double cost)> _priced = new();
+    private int _shownCoin = int.MinValue;
+
+    public void Build(float s, RiverRules? river = null)
     {
         _s = s;
         _icon = UiKit.Px(s, 24);
@@ -56,8 +62,21 @@ public partial class ToolTabs : VBoxContainer
         AddChild(speeds);
         Gap(10);
         Fence = Tab("Fence", "tool-fence", "Fence", "F", "Fence (F): drag across the map to draw a woven fence. Walkers go round it.", true);
-        Bridge = Tab("Footbridge", "tool-footbridge", "Footbridge", "B", "Footbridge (B): point at the river and click to build a bridge across it.", true);
-        Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences and bridges to remove them.", true);
+        if (river == null)
+        {
+            Bridge = Tab("Footbridge", "tool-footbridge", "Footbridge", "B", "Footbridge (B): point at the river and click to build a bridge across it.", true);
+            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences and bridges to remove them.", true);
+        }
+        else
+        {
+            Bridge = Priced("Footbridge", "tool-footbridge", "Footbridge", "B", river.FootbridgePrice,
+                "Footbridge (B): a low bridge across the river. Quickest for walkers, but masted barges cannot pass under it and turn back.");
+            Ferry = Priced("Ferry", "tool-ferry", "Ferry", "Y", river.FerryPrice,
+                $"Ferry (Y): a raft on a rope. Every boat passes; walkers wait for the raft, six at a time. {river.FerryUpkeep + river.FerryWage:0}c a season for the ferryman and upkeep.");
+            Drawbridge = Priced("Drawbridge", "tool-drawbridge", "Drawbridge", "D", river.DrawbridgePrice,
+                $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges, or hire a keeper ({river.KeeperPrice:0}c, K) to do it. {river.DrawbridgeUpkeep:0}c a season.");
+            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, bridges and ferries to remove them. Taking down a crossing costs half its price.", true);
+        }
         Gap(10);
         Preview = Tab("FlowPreview", "ui-flow-preview", "Flow preview", "P", "Flow preview (P): while you use a tool, show the routes that would change. Dashed is now, solid is after.", true);
         Overlay = Tab("WearOverlay", "ui-wear-overlay", "Wear overlay", "W", "Wear overlay (W): lay a heat map of trampling over the page.", true);
@@ -73,9 +92,52 @@ public partial class ToolTabs : VBoxContainer
         Walkers = Slider("Walkers", 50, 500, 10, "How many villagers live here (50 to 500). Drag, or focus and use the arrow keys.", WalkersLabel);
     }
 
+    /// <summary>A tool tab with its price on a second line, greyed with the shortfall when the purse cannot pay it.</summary>
+    private Button Priced(string name, string icon, string text, string key, double cost, string tip)
+    {
+        var b = Tab(name, icon, text, key, tip, true, 48);
+        var label = b.GetNode<Label>("Row/Text");
+        var row = (HBoxContainer)label.GetParent();
+        int at = label.GetIndex();
+        row.RemoveChild(label);
+        var lines = new VBoxContainer { Name = "Lines", MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        lines.AddThemeConstantOverride("separation", 0);
+        lines.AddChild(label);
+        var price = UiKit.Text($"{cost:0}c", _s, 13, UiKit.UiBold);
+        price.Name = "Price";
+        lines.AddChild(price);
+        row.AddChild(lines);
+        row.MoveChild(lines, at);
+        label.Name = "Text";
+        _priced.Add((b, price, tip, cost));
+        return b;
+    }
+
+    /// <summary>Prices in ink when the purse can pay them, greyed with what is missing when not (and the tooltip says so).</summary>
+    public void ShowPrices(double money)
+    {
+        int coin = (int)System.Math.Floor(money + 1e-9);
+        if (coin == _shownCoin) return;
+        _shownCoin = coin;
+        foreach (var (tab, price, tip, cost) in _priced)
+        {
+            bool ok = money >= cost - 1e-9;
+            price.Text = ok ? $"{cost:0}c" : $"{cost:0}c · short {System.Math.Ceiling(cost - money):0}c";
+            price.AddThemeColorOverride("font_color", ok ? UiKit.Ink : UiKit.FadedInk);
+            tab.TooltipText = ok ? tip : $"{tip}\nNot enough coin: it costs {cost:0}c, you have {coin}c.";
+        }
+    }
+
+    /// <summary>Whether a priced tab shows its price as affordable (tests).</summary>
+    public bool PriceAffordable(string name)
+    {
+        foreach (var p in _priced) if (p.tab.Name == name) return !p.price.Text.Contains("short");
+        return false;
+    }
+
     private void Gap(float px) => AddChild(new Control { CustomMinimumSize = new Vector2(0, UiKit.Px(_s, px)), MouseFilter = MouseFilterEnum.Ignore });
 
-    private Button Tab(string name, string icon, string text, string key, string tip, bool toggle)
+    private Button Tab(string name, string icon, string text, string key, string tip, bool toggle, float height = 40)
     {
         var b = new Button { Name = name, ToggleMode = toggle, TooltipText = tip, FocusMode = FocusModeEnum.All, ActionMode = BaseButton.ActionModeEnum.Release };
         var row = new HBoxContainer { Name = "Row", MouseFilter = MouseFilterEnum.Ignore };
@@ -93,7 +155,7 @@ public partial class ToolTabs : VBoxContainer
         label.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(label);
         row.AddChild(Keycap(key));
-        Place(b, row, 40);
+        Place(b, row, height);
         AddChild(b);
         Controls[name] = b;
         return b;
