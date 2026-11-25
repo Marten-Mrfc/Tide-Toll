@@ -112,14 +112,17 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   Counted: `Crossing.WalkersCrossed` and `WalkersWaited` (walkers who reached the other bank by it, and how many waited
   at a gate since their last crossing), `RiverStats.Crossings`, `CrossingsWaited`, `IceCrossings`, `GrainDelivered`.
 - **Spring high water** (doc, "Spring high water", "Seasons and weather"; `SpringFlood`, on): on the first day of each
-  spring (the clock starts on one), with `FloodChance` (0.7, doc Riverbend), the flood band (`RiverView.FloodBand`: land
+  spring but the first (the clock starts on one; the lead's rule: a new town never floods in its first spring, so a new
+  player does not open with the ford closed; `FloodInFirstSpring`, off), with `FloodChance` (0.7, doc Riverbend), the flood band (`RiverView.FloodBand`: land
   within `FloodBandCells` (4, chosen) of the water, fixed for the map) is under water for 1 or 2 days (doc;
   `FloodMinDays`, `FloodMaxDays`). The ford is closed (blocked, infinite cost; walkers on it are set on a bank) and walkers
   wade the band at `FloodWadeSpeedMul` 0.4 and cost x`FloodWadeCostMul` 3 (chosen: like the ford; the band holds every
   bridge end and the landing, so it cannot simply be water), making no wear. Bridges and the ferry still work. Then the
   band is mud for the rest of spring: its trail, track and hollow-way cells cost x1.6, x1.7, x1.8 (doc mud multipliers;
-  `MudTrailMul` and so on), so walkers braid round them; summer dries it. Each building in the band (not the landing)
-  pays `FloodRepairCost` 10c per flood (doc, Costs); generated maps keep buildings out of a 4-cell band.
+  `MudTrailMul` and so on), so walkers braid round them; summer dries it. A flood in spring ends at the latest when summer
+  begins, however many days `StartFlood` asked for, so no mud outlasts spring; a flood started outside spring (an event or
+  a tutorial) keeps its days and leaves no mud. Each building in the band (not the landing) pays `FloodRepairCost` 10c per
+  flood (doc, Costs; see Money for the debt limit); generated maps keep buildings out of a 4-cell band.
 - **Winter ice** (doc, "Winter ice"; `WinterIce`, on): on the second day of each winter, with `IceChance` (0.5, doc
   Hamlet), the river freezes until the first day of spring. Boats stop where they are (patience and mooring clocks
   frozen, the schedule waits), boats buy nothing (grain goes to the market), a raised drawbridge comes down, the
@@ -142,10 +145,13 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   served; riders are drawn moving with the boat (`Hold = Riding`, counted on their boarding cell until they land).
   A walker still on the span when a leaf is fully up is set down on the nearer bank. Erasing a crossing releases
   its queue and lands its riders. A walker that waits 40 s (a safety net) goes home.
-- **Money** starts at 0c (tuned from 120c). Purchases need the full price in hand; upkeep and flood repairs can take the purse into
-  debt (10% interest a season). Each season: hearth tax 1c per house, minus upkeep and wages. Erasing a crossing costs
-  half its price (chosen; the doc's 2x would stop testers trying several crossings) and is refused, with the reason in
-  words, when it would take the purse below `DebtLimit` (-100c).
+- **Money** starts at 0c (tuned from 120c). Each season: hearth tax 1c per house, minus upkeep and wages, and 10% interest
+  on a negative purse. Erasing a crossing costs half its price (chosen; the doc's 2x would stop testers trying several
+  crossings). **The money rule, in one place:** a purchase (a crossing, a keeper) needs the full price in hand and never
+  goes into debt; demolition (erasing a crossing) may take the purse down to `DebtLimit` (-100c) and no further, and is
+  refused, with the reason in words, when it would go below; flood repairs may also take the purse into debt but stop at
+  `DebtLimit` (the rest is let off, and the `FloodRepairs` event carries what was charged); the season's upkeep, wages
+  and interest are charged in full, and are the only thing that can take the purse below the limit.
 - **Tick order**: time and metrics, crowding, field refresh, `RiverStep` (boat spawns, boats, drawbridges and
   keepers, ferries, bridge gates), walkers (they read this tick's gates), decay, then the day and season books with the
   season's river events (flood, mud, ice, thaw).
@@ -198,11 +204,14 @@ Where this differs from the implementation spec (the design doc wins, or a spec 
   for ever; flag E). The bot never builds there.
 - The drawbridge and ferry span the river's water cells at that row (3 to 5 cells), not a fixed 4.
 - Mast lowering (flag on the doc's barges) and loading speed are not modelled: walkers bring one unit at a time.
-- Purchases cannot go into debt; only upkeep and repairs can (the doc allows debt to -100c in Standard mode). Erasing
-  never takes the purse below the debt limit.
+- Purchases cannot go into debt (the doc allows debt to -100c in Standard mode); see the money rule above.
 - The flooded band is waded slowly, not impassable: bridge ends and the landing stand in it.
 - Rain, snow, fog and drought (doc, Weather) are not built; only the spring flood and winter ice are. Fields in the
   band do not yield more (the doc's +25%): fields have no yield yet.
+- The browser toy's rain and mud and its house growth (ported from the toy in steps A6 and A7 of
+  `docs/plans/sync-plan.md`) stay off while the river rules are on (the lead's decision, 25 November 2026): the river
+  has its own flood mud, and its prices assume a village of fixed size. The toy's gravel and gates cost nothing under the
+  river's money rules.
 
 ### The river strategy bot
 

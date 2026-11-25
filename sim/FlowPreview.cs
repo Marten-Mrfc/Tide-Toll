@@ -15,6 +15,14 @@ public readonly struct WhatIf
     public int[]? Bridge { get; init; }
     /// <summary>Footbridge cells that become water again.</summary>
     public int[]? CloseBridge { get; init; }
+    /// <summary>New gravel.</summary>
+    public int[]? Gravel { get; init; }
+    /// <summary>Gravel removed.</summary>
+    public int[]? Ungravel { get; init; }
+    /// <summary>Fence cells that become one gate (two cells: a stair-corner gate, half the delay each).</summary>
+    public int[]? Gate { get; init; }
+    /// <summary>Gates that become plain fence.</summary>
+    public int[]? Ungate { get; init; }
     /// <summary>A river crossing that would be built (river rules only); see <see cref="World.CrossingWhatIf"/>.</summary>
     public CrossingWhatIf? Crossing { get; init; }
 }
@@ -99,6 +107,10 @@ public sealed class FlowPredictor
     private List<(int Dest, int Houses)>? _blockedPairs;
     private double _pendingTime;
     private int[] _block = Array.Empty<int>(), _open = Array.Empty<int>(), _bridge = Array.Empty<int>(), _close = Array.Empty<int>();
+    private int[] _gravel = Array.Empty<int>(), _ungravel = Array.Empty<int>(), _gate = Array.Empty<int>(), _ungate = Array.Empty<int>();
+    /// <summary>Per-cell override flags of the change being applied (the toy's flags), and the cells touched.</summary>
+    private readonly CostOverride[] _flags;
+    private readonly List<int> _touched = new();
     private CrossingWhatIf? _crossing;
 
     public FlowPredictor(World world)
@@ -108,6 +120,7 @@ public sealed class FlowPredictor
         int nc = world.Grid.Count;
         _baseCost = new float[nc];
         _cost = new float[nc];
+        _flags = new CostOverride[nc];
         _heap = new BinaryHeap(nc);
         var b = world.Buildings;
         var dests = new List<int>();
@@ -133,6 +146,10 @@ public sealed class FlowPredictor
         _open = (int[])(change.Open ?? Array.Empty<int>()).Clone();
         _bridge = (int[])(change.Bridge ?? Array.Empty<int>()).Clone();
         _close = (int[])(change.CloseBridge ?? Array.Empty<int>()).Clone();
+        _gravel = (int[])(change.Gravel ?? Array.Empty<int>()).Clone();
+        _ungravel = (int[])(change.Ungravel ?? Array.Empty<int>()).Clone();
+        _gate = (int[])(change.Gate ?? Array.Empty<int>()).Clone();
+        _ungate = (int[])(change.Ungate ?? Array.Empty<int>()).Clone();
         _crossing = change.Crossing is { } cw ? new CrossingWhatIf { Type = cw.Type, Row = cw.Row, Cells = (int[])(cw.Cells ?? Array.Empty<int>()).Clone() } : null;
         _maxPairs = maxPairs;
         Result = null;
@@ -221,10 +238,12 @@ public sealed class FlowPredictor
     private void StartHyp()
     {
         Array.Copy(_baseCost, _cost, _cost.Length);
-        Apply(_open, CostOverride.Open);
-        Apply(_bridge, CostOverride.Bridge);
-        Apply(_close, CostOverride.CloseBridge);
-        Apply(_block, CostOverride.Block);
+        // The changed cells re-costed under all their overrides at once (the toy's flags, in its order of kinds).
+        Flag(_block, CostOverride.Block); Flag(_open, CostOverride.Open); Flag(_bridge, CostOverride.Bridge); Flag(_close, CostOverride.CloseBridge);
+        Flag(_gravel, CostOverride.Gravel); Flag(_ungravel, CostOverride.Ungravel);
+        Flag(_gate, _gate.Length == 2 ? CostOverride.Gate | CostOverride.GatePair : CostOverride.Gate); Flag(_ungate, CostOverride.Ungate);
+        foreach (int c in _touched) { _cost[c] = (float)_w.CellCost(c, _flags[c]); _flags[c] = CostOverride.None; }
+        _touched.Clear();
         if (_crossing is { } cw) foreach (int c in cw.Cells) _cost[c] = (float)_w.WhatIfCrossingCost(cw.Type, cw.Cells.Length, c);
         _di = 0;
         if (_dests.Length > 0)
@@ -244,9 +263,14 @@ public sealed class FlowPredictor
         _blockedPairs = new List<(int Dest, int Houses)>();
     }
 
-    private void Apply(int[] cells, CostOverride ov)
+    private void Flag(int[] cells, CostOverride ov)
     {
-        foreach (int c in cells) _cost[c] = (float)_w.CellCost(c, ov);
+        foreach (int c in cells)
+        {
+            if ((uint)c >= (uint)_flags.Length) continue;
+            if (_flags[c] == CostOverride.None) _touched.Add(c);
+            _flags[c] |= ov;
+        }
     }
 
     /// <summary>Compares the base and what-if routes of one (house, destination) pair, in house then destination order. Returns the work done.</summary>

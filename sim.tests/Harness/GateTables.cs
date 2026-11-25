@@ -7,6 +7,9 @@ using static TideToll.Sim.Testing.ToyHarness;
 
 namespace TideToll.Sim.Testing;
 
+/// <summary>One seed of the finished toy's gate table, exactly as test/g3.ts records it.</summary>
+public sealed record ExactRow(int Seed, int Walkers, double Ft, double Det, double Cov, double Mean, double Min, double Max, double MeanD, int Below, int Width, double[] Trunk, string Fingerprint);
+
 /// <summary>One seed of the gate table (the toy's Row).</summary>
 public sealed record SeedRow(int Seed, int Walkers, double Ft, double Det, double Cov, double Mean, double Min, double Max, double MeanD, int Below, uint WearFnv);
 
@@ -18,9 +21,9 @@ public static class GateTables
 {
     public const int SampleFrom = 20, Days = 45;
 
-    public static SeedRow Row(int seed, int walkers)
+    public static SeedRow Row(int seed, int walkers, SimParams? p = null)
     {
-        var w = new World(seed, walkers);
+        var w = new World(seed, walkers, p);
         var trunk = new List<double>(); var trunkD = new List<double>(); var det = new List<double>(); var cov = new List<double>();
         for (int d = 1; d <= Days; d++)
         {
@@ -72,5 +75,42 @@ public static class GateTables
     {
         log.Check(gate.All(r => r.Min >= 0.3 && r.Max <= 0.7), $"G3: every daily trunk-share sample (days {SampleFrom} to {Days}) within 30%-70% on all {gate.Count} held-out seeds");
         log.Check(gate.All(r => r.Ft >= 0 && r.Ft <= 3 * daySimSec), "a first trail forms within 3 in-game days (45 s at 1x) on every held-out seed");
+    }
+    /// <summary>
+    /// One seed of the finished toy's gate (test/g3.ts seedRow, rain and growth off): every daily sample from day 20,
+    /// the trail width on day 30, and the fingerprint (FNV-1a over the float64 bits of ft, width and all the samples).
+    /// </summary>
+    public static ExactRow Exact(int seed, int walkers, SimParams p)
+    {
+        var w = new World(seed, walkers, p);
+        var trunk = new List<double>(); var trunkD = new List<double>(); var det = new List<double>(); var cov = new List<double>();
+        int width = 0;
+        for (int d = 1; d <= Days; d++)
+        {
+            Run(w, 1);
+            if (d == 30) width = Metrics.TrailWidth(p, w.Wear, w.Land, w.Metrics.Window());
+            if (d >= SampleFrom)
+            {
+                var s = w.Stats();
+                trunk.Add(s.TrunkShare); trunkD.Add(s.TrunkShareD); det.Add(s.DetourRatio); cov.Add(s.TrailCoverage);
+            }
+        }
+        double ft = w.Metrics.FirstTrailTime;
+        var all = new List<double> { ft, width };
+        all.AddRange(trunk); all.AddRange(trunkD); all.AddRange(det); all.AddRange(cov);
+        uint h = Fnv<double>(all.ToArray());
+        return new ExactRow(seed, walkers, ft, Mean(det), Mean(cov), Mean(trunk), trunk.Min(), trunk.Max(), Mean(trunkD),
+            trunk.Count(v => v < 0.3 || v > 0.7), width, trunk.ToArray(), h.ToString("x8"));
+    }
+
+    /// <summary>The toy's exactTable (test/g3.ts): one line a seed, in the toy's own format.</summary>
+    public static string ExactTable(string title, IEnumerable<ExactRow> rowsIn)
+    {
+        var lines = new List<string> { title, "seed | first trail | detour | coverage | trunk mean   min    max  | trunk D | width | fingerprint" };
+        static string P(double v) => (v * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture).PadLeft(5) + "%";
+        foreach (var r in rowsIn.OrderBy(r => r.Seed))
+            lines.Add($"{r.Seed.ToString().PadLeft(4)} | {(r.Ft < 0 ? "   none" : (r.Ft.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " s").PadLeft(8))}  | " +
+                $"{r.Det.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)} | {P(r.Cov)}   | {P(r.Mean)} {P(r.Min)} {P(r.Max)} | {P(r.MeanD)}  | {r.Width}     | {r.Fingerprint}");
+        return string.Join("\n", lines);
     }
 }

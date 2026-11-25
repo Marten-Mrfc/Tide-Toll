@@ -52,6 +52,59 @@ public static class CostField
         }
     }
 
+    /// <summary>
+    /// Cost of walking straight from (x0,y0) to (x1,y1), or +Infinity if the line crosses a blocked cell or cuts a blocked
+    /// corner. With <paramref name="limit"/> it may stop early and return any value above it once the cost is sure to exceed it.
+    /// </summary>
+    public static double LineCost(in Grid grid, float[] cost, double x0, double y0, double x1, double y1, double limit = double.PositiveInfinity)
+    {
+        int n = grid.Width;
+        double len = JsMath.Hypot(x1 - x0, y1 - y0);
+        int steps = Math.Max(1, (int)Math.Ceiling(len / 0.2));
+        double ds = len / steps;
+        int pcx = (int)Math.Floor(x0), pcy = (int)Math.Floor(y0);
+        double sum = 0;
+        for (int i = 1; i <= steps; i++)
+        {
+            double t = (double)i / steps;
+            int cx = (int)Math.Floor(x0 + (x1 - x0) * t), cy = (int)Math.Floor(y0 + (y1 - y0) * t);
+            int c = cy * n + cx;
+            if (cx != pcx || cy != pcy)
+            {
+                if (float.IsPositiveInfinity(cost[c])) return double.PositiveInfinity;
+                if (cx != pcx && cy != pcy && (float.IsPositiveInfinity(cost[pcy * n + cx]) || float.IsPositiveInfinity(cost[cy * n + pcx])))
+                    return double.PositiveInfinity;
+                pcx = cx; pcy = cy;
+            }
+            sum += cost[c] * ds;
+            if (sum > limit) return sum;
+        }
+        return sum;
+    }
+
+    /// <summary>
+    /// Length in cells of the route a plain field descent takes from <paramref name="start"/> to <paramref name="door"/>
+    /// (steepest descent, no taste or noise), or +Infinity if it cannot get there (the toy's routeLength).
+    /// </summary>
+    public static double RouteLength(in Grid grid, float[] field, float[] cost, int start, int door)
+    {
+        int u = start;
+        double len = 0;
+        for (int s = 0; s < 4 * grid.Width && u != door; s++)
+        {
+            int best = -1, bk = 0;
+            float bv = field[u];
+            for (int k = 0; k < 8; k++)
+            {
+                int v = CanStep(grid, u, k, cost);
+                if (v >= 0 && field[v] < bv) { bv = field[v]; best = v; bk = k; }
+            }
+            if (best < 0) return double.PositiveInfinity;
+            len += Grid.DL[bk]; u = best;
+        }
+        return u == door ? len : double.PositiveInfinity;
+    }
+
     /// <summary>The cell reached by stepping from u in direction k, or -1 if bounds, blocking or the corner rule forbid it.</summary>
     public static int CanStep(in Grid grid, int u, int k, float[] cost)
     {

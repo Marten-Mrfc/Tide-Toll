@@ -23,6 +23,17 @@ public sealed partial class World
     public ReadOnlySpan<float> Flow => _flow;
     /// <summary>Routing cost per cell (+Infinity where blocked), as last rebuilt.</summary>
     public ReadOnlySpan<float> Cost => _cost;
+    /// <summary>The frugal walkers' routing cost per cell (empty unless SimParams.UseFrugal).</summary>
+    public ReadOnlySpan<float> CostX => _costX;
+    /// <summary>Gravel per cell (1 where laid).</summary>
+    public ReadOnlySpan<byte> Gravel => _gravel;
+    /// <summary>Gate per cell (1 on a fence cell walkers may pass).</summary>
+    public ReadOnlySpan<byte> Gate => _gate;
+    /// <summary>1 on the two cells of a two-cell (stair-corner) gate.</summary>
+    public ReadOnlySpan<byte> GatePair => _gatePair;
+    /// <summary>The wear and traffic discount lookup tables (for the probes that compare them with the toy's).</summary>
+    public ReadOnlySpan<float> WearLookup => _wearLut;
+    public ReadOnlySpan<float> FlowLookup => _flowLut;
     /// <summary>Moving average of walkers per cell (crowding).</summary>
     public ReadOnlySpan<float> Occupancy => _occ;
     public ReadOnlySpan<byte> Hollow => _hollow;
@@ -51,6 +62,8 @@ public sealed partial class World
     public IReadOnlyList<Bridge> Bridges => _bridges;
     /// <summary>Cost-to-go field towards building t's door.</summary>
     public ReadOnlySpan<float> Field(int t) => _fields[t];
+    /// <summary>Cost-to-go field on the frugal view towards building t's door (empty unless SimParams.UseFrugal).</summary>
+    public ReadOnlySpan<float> FieldX(int t) => _fieldsX[t];
     public Metrics Metrics => _metrics;
 
     public Ground GroundAt(int c) => _p.GroundOf(_wear[c], _hollow[c] == 1);

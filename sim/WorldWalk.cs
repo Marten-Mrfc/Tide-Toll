@@ -28,6 +28,7 @@ public sealed partial class World
             {
                 Id = id, Home = home, State = WalkState.Home, Cell = door, AimX = x, AimY = y, HasAim = false,
                 Timer = timer, Target = home, TripStart = door, TripLen = 0, Stuck = 0, Taste = taste,
+                Explorer = Hash.Hash2(id, 77) < _p.ExplorerShare,
                 X = x, Y = y, Px = x, Py = y,
             };
         }
@@ -68,8 +69,19 @@ public sealed partial class World
         w.TripT0 = _time;
         w.Stuck = 0;
         w.HasAim = false;
+        w.Frugal = w.Explorer || OverDetourCap(w.Cell, target);
         _here[w.Cell]++;
         if (state == WalkState.Out) _tripRate[w.Home * _map.Buildings.Length + target] += 1;
+    }
+
+    /// <summary>Whether a trip from <paramref name="start"/> to building <paramref name="target"/> is long enough a detour to be walked frugally.</summary>
+    internal bool OverDetourCap(int start, int target)
+    {
+        double cap = _p.DetourCap;
+        if (!(cap > 0)) return false;
+        int door = _map.Buildings[target].Door, n = _n;
+        double d = JsMath.Hypot(start % n - door % n, start / n - door / n);
+        return d > 4 && RouteLength(_fields[target], _cost, start, door) > cap * d;
     }
 
     private void Arrive(ref Walker w)
@@ -101,8 +113,9 @@ public sealed partial class World
 
     private bool ComputeAim(ref Walker w)
     {
-        bool ok = ChooseAim(_fields[w.Target], _cost, w.X, w.Y, w.Cell, _map.Buildings[w.Target].Door,
-            w.Taste, true, w.Id, _aimPath, out double ax, out double ay);
+        bool fr = w.Frugal;
+        bool ok = ChooseAim(fr ? _fieldsX[w.Target] : _fields[w.Target], fr ? _costX : _cost, w.X, w.Y, w.Cell, _map.Buildings[w.Target].Door,
+            fr ? 0 : w.Taste, true, w.Id, _aimPath, out double ax, out double ay);
         if (ok) { w.AimX = ax; w.AimY = ay; w.HasAim = true; }
         return ok;
     }
@@ -114,8 +127,9 @@ public sealed partial class World
         else if (_river != null && _frozen && _map.Water[c] != 0) s *= _river.IceSpeedMul;
         else
         {
-            s *= _stateSpeedMul[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
+            s *= _gravel[c] != 0 ? _p.GravelSpeedMul : _stateSpeedMul[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
             if (_map.Ford[c] != 0) s *= _p.FordSpeedMul;
+            if (_gate[c] != 0) s *= _gatePair[c] != 0 ? 1 / (1 + (1 / _p.GateSpeedMul - 1) / 2) : _p.GateSpeedMul;
             if (_river != null && _flooded && _band[c] != 0) s *= _river.FloodWadeSpeedMul;
         }
         double rho = _here[c] / _p.CellAreaM2;
@@ -254,31 +268,10 @@ public sealed partial class World
         return best;
     }
 
-    /// <summary>Cost of walking straight from (x0,y0) to (x1,y1), or +Infinity if the line crosses a blocked cell or cuts a blocked corner.</summary>
-    internal double LineCost(float[] cost, double x0, double y0, double x1, double y1)
-    {
-        int n = _n;
-        double len = JsMath.Hypot(x1 - x0, y1 - y0);
-        int steps = Math.Max(1, (int)Math.Ceiling(len / 0.2));
-        double ds = len / steps;
-        int pcx = (int)Math.Floor(x0), pcy = (int)Math.Floor(y0);
-        double sum = 0;
-        for (int i = 1; i <= steps; i++)
-        {
-            double t = (double)i / steps;
-            int cx = (int)Math.Floor(x0 + (x1 - x0) * t), cy = (int)Math.Floor(y0 + (y1 - y0) * t);
-            int c = cy * n + cx;
-            if (cx != pcx || cy != pcy)
-            {
-                if (float.IsPositiveInfinity(cost[c])) return double.PositiveInfinity;
-                if (cx != pcx && cy != pcy && (float.IsPositiveInfinity(cost[pcy * n + cx]) || float.IsPositiveInfinity(cost[cy * n + pcx])))
-                    return double.PositiveInfinity;
-                pcx = cx; pcy = cy;
-            }
-            sum += cost[c] * ds;
-        }
-        return sum;
-    }
+    internal double LineCost(float[] cost, double x0, double y0, double x1, double y1, double limit = double.PositiveInfinity)
+        => CostField.LineCost(_g, cost, x0, y0, x1, y1, limit);
+
+    internal double RouteLength(float[] field, float[] cost, int start, int door) => CostField.RouteLength(_g, field, cost, start, door);
 
     /// <summary>
     /// Where a walker at (x, y) in <paramref name="cell"/> heads next: it looks Lookahead cells down the
@@ -301,8 +294,9 @@ public sealed partial class World
         for (int j = len - 1; j >= 0; j--)
         {
             double ax = path[j] % n + 0.5, ay = path[j] / n + 0.5;
-            double lc = LineCost(cost, x, y, ax, ay);
-            if (j == 0 || lc <= (fHere - field[path[j]]) * _p.ShortcutSlack)
+            double bound = (fHere - field[path[j]]) * _p.ShortcutSlack;
+            double lc = LineCost(cost, x, y, ax, ay, j == 0 ? double.PositiveInfinity : bound);
+            if (j == 0 || lc <= bound)
             {
                 if (double.IsPositiveInfinity(lc))
                 {

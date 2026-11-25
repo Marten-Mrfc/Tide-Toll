@@ -95,6 +95,8 @@ public sealed record RiverRules
     public bool SpringFlood { get; init; } = true;
     /// <summary>Chance of a flood on the first day of each spring (doc: Riverbend 70%; Delta Islands 90%, Mere 40%).</summary>
     public double FloodChance { get; init; } = 0.7;
+    /// <summary>Whether the first spring of a new town may flood (the lead's rule, 25 Nov 2026: no, so a new player does not open with the ford closed).</summary>
+    public bool FloodInFirstSpring { get; init; } = false;
     /// <summary>The band is under water for 1 or 2 days (doc), drawn evenly.</summary>
     public int FloodMinDays { get; init; } = 1;
     public int FloodMaxDays { get; init; } = 2;

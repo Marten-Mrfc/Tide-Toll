@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 
 namespace TideToll.Sim;
@@ -200,5 +201,51 @@ public sealed class Metrics
             if (best >= enough) return best;
         }
         return best;
+    }
+    /// <summary>
+    /// Median trunk width in cells (the toy's trailWidth, report only; allocates): for the busiest 10% of trail cells (by
+    /// footsteps in <paramref name="steps"/>, ties in cell order), the run of trail cells straight across the trail's local
+    /// direction (the traffic-weighted principal axis of the trail cells within 3 cells).
+    /// </summary>
+    public static int TrailWidth(SimParams p, ReadOnlySpan<float> wear, ReadOnlySpan<byte> walkable, ReadOnlySpan<uint> steps)
+    {
+        int n = p.GridWidth, nc = n * n;
+        double thr = p.ThresholdTrail;
+        var cells = new List<int>();
+        for (int c = 0; c < nc; c++) if (walkable[c] != 0 && wear[c] >= thr) cells.Add(c);
+        // Stable sort by footsteps, descending (JavaScript's sort is stable): insertion order breaks ties.
+        uint[] st = steps.ToArray();
+        int[] order = cells.ToArray();
+        var keys = new long[order.Length];
+        for (int i = 0; i < order.Length; i++) keys[i] = -(long)st[order[i]] * nc + i;
+        Array.Sort(keys, order);
+        int top = (int)Math.Ceiling(order.Length * p.TrunkTopShare);
+        var widths = new List<int>();
+        float[] wr = wear.ToArray();
+        bool Trail(int x, int y) => x >= 0 && y >= 0 && x < n && y < n && wr[y * n + x] >= thr;
+        for (int i = 0; i < top; i++)
+        {
+            int c = order[i], cx = c % n, cy = c / n;
+            double sxx = 0, syy = 0, sxy = 0;
+            for (int y = cy - 3; y <= cy + 3; y++)
+                for (int x = cx - 3; x <= cx + 3; x++)
+                {
+                    if (!Trail(x, y)) continue;
+                    double m = st[y * n + x] + 1.0;
+                    sxx += m * ((double)(x - cx) * (x - cx)); syy += m * ((double)(y - cy) * (y - cy)); sxy += m * (x - cx) * (y - cy);
+                }
+            double ang = 0.5 * Math.Atan2(2 * sxy, sxx - syy); // along the trail
+            double px = -Math.Sin(ang), py = Math.Cos(ang);  // across it
+            int w = 1;
+            for (int s = 1; s >= -1; s -= 2)
+                for (int t = 1; t <= 8; t++)
+                {
+                    if (!Trail((int)JsMath.Round(cx + px * s * t), (int)JsMath.Round(cy + py * s * t))) break;
+                    w++;
+                }
+            widths.Add(w);
+        }
+        widths.Sort();
+        return widths.Count > 0 ? widths[widths.Count >> 1] : 0;
     }
 }

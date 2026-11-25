@@ -30,6 +30,10 @@ public struct Walker
     public double Stuck;
     /// <summary>-TasteNoise..+TasteNoise: how much this walker favours worn ground.</summary>
     public double Taste;
+    /// <summary>Weighs distance more than company, on every trip (Hash2(Id, 77) &lt; SimParams.ExplorerShare; no random draw).</summary>
+    public bool Explorer;
+    /// <summary>This trip is walked on the frugal view (an explorer, or a trip over the detour cap).</summary>
+    public bool Frugal;
     public double X, Y, Px, Py;
     // River rules only (always zero without them).
     /// <summary>Waiting at a crossing or riding the ferry (see <see cref="WalkerHold"/>).</summary>

@@ -4,14 +4,30 @@ using System.Collections.Generic;
 namespace TideToll.Sim;
 
 /// <summary>
-/// Every tunable of the simulation, ported one for one from the toy's params.ts (snapshot a057b50),
-/// with the same names in PascalCase and the same values. A record so tests can change one value with
-/// `with` and leave the defaults alone. The world copies what its hot path needs into fields at
-/// construction, so reading these properties never costs anything per tick.
+/// Every tunable of the simulation, ported one for one from the toy's params.ts, with the same names in PascalCase.
+/// A record so tests can change one value with `with` and leave the defaults alone. The world copies what its hot
+/// path needs into fields at construction, so reading these properties never costs anything per tick.
+/// Two presets: <see cref="Legacy"/>, the round-2 toy (snapshot a057b50; the property initialisers below), and
+/// <see cref="Toy"/>, the finished toy's trail model (rounds 3 to 5). <see cref="Default"/> is Legacy until the
+/// sync plan's step A9 (docs/plans/sync-plan.md) flips it.
 /// </summary>
 public sealed record SimParams
 {
-    public static readonly SimParams Default = new();
+    /// <summary>The round-2 toy (a057b50): no explorers, no detour cap, no bridge flow discount.</summary>
+    public static readonly SimParams Legacy = new();
+
+    /// <summary>
+    /// The finished toy's trail model (params.ts, rounds 3 to 5): wearPerStep 2.2, sideShare 0.4, minSurface 0.45,
+    /// fordCostMul 4, explorers 10%, frugal discount 0.3, detour cap 1.25, bridge flow discount on.
+    /// </summary>
+    public static readonly SimParams Toy = Legacy with
+    {
+        WearPerStep = 2.2, SideShare = 0.4, MinSurface = 0.45, FordCostMul = 4.0,
+        ExplorerShare = 0.1, FrugalDisc = 0.3, DetourCap = 1.25, BridgeFlow = 1,
+    };
+
+    /// <summary>What <c>new World(seed)</c> uses: <see cref="Legacy"/> until step A9.</summary>
+    public static readonly SimParams Default = Legacy;
 
     // Map. One cell is 2 m, so a 128-cell side is 256 m. The map generator is tuned for 128 x 128;
     // the world needs a square grid (GridWidth == GridHeight).
@@ -75,6 +91,25 @@ public sealed record SimParams
     public double FordSpeedMul { get; init; } = 0.4;
     public double BridgeCost { get; init; } = 0.8;
     public double BridgeSpeedMul { get; init; } = 1.2;
+    /// <summary>
+    /// Frugal walkers (toy round 3): a second view of the ground for walkers who weigh distance more than company. Their
+    /// cost is 1 + (surface - 1) x FrugalDisc. A trip is frugal if the walker is an explorer (a fixed share of walkers, by
+    /// Hash2(id, 77)) or if the ordinary route from where it stands is longer than DetourCap x the straight distance (0 off).
+    /// With ExplorerShare and DetourCap both 0 the frugal view is never built.
+    /// </summary>
+    public double ExplorerShare { get; init; } = 0;
+    public double FrugalDisc { get; init; } = 0.3;
+    public double DetourCap { get; init; } = 0;
+    /// <summary>1: a bridge deck is made cheaper by recent traffic like any lane (floored at MinSurface); 0: fixed BridgeCost.</summary>
+    public double BridgeFlow { get; init; } = 0;
+    // Steering tools (toy rounds 3 and 4): gravel and gates in fences.
+    public double GravelCost { get; init; } = 0.6;
+    public double GravelSpeedMul { get; init; } = 1.15;
+    /// <summary>Floor on a busy gravel cell's cost (MinSurface for worn ground); wear under gravel never decays below trail.</summary>
+    public double GravelFloor { get; init; } = 0.45;
+    /// <summary>Added to a gate cell's step cost after crowding (half each on the two cells of a stair-corner gate).</summary>
+    public double GateCost { get; init; } = 1.5;
+    public double GateSpeedMul { get; init; } = 0.4;
     public double FieldRefreshSimSec { get; init; } = 5;
     public int UrgentFieldsPerTick { get; init; } = 1;
 
@@ -102,6 +137,8 @@ public sealed record SimParams
     public int TicksPerDay => (int)(DaySimSec * TickHz);
     public int TicksPerSeason => (int)(SeasonSimSec * TickHz);
     public double SecondsPerTick => 1.0 / TickHz;
+    /// <summary>Whether walkers ever use the frugal view (otherwise its costs and fields are not built).</summary>
+    public bool UseFrugal => ExplorerShare > 0 || DetourCap > 0;
 
     /// <summary>The ground state of a cell with wear w (the toy's groundOf).</summary>
     public Ground GroundOf(double w, bool hollow)

@@ -59,9 +59,12 @@ public sealed partial class World
         if (season == 0 && dayInSeason == 0)
         {
             if (_frozen) Thaw();
-            // Two draws every spring, used or not, so one spring's weather never shifts the next.
+            // Two draws every spring, used or not, so one spring's weather never shifts the next. No flood in the first
+            // spring of a new town (the lead's rule: a new player does not open with the ford closed); later springs
+            // follow FloodChance.
             double roll = _weatherRng.NextDouble(), len = _weatherRng.NextDouble();
-            if (r.SpringFlood && roll < r.FloodChance)
+            bool firstSpring = day < 4L * daysPerSeason;
+            if (r.SpringFlood && (!firstSpring || r.FloodInFirstSpring) && roll < r.FloodChance)
                 StartFlood(r.FloodMinDays + Math.Floor(len * (r.FloodMaxDays - r.FloodMinDays + 1)));
         }
         else if (season == 1 && dayInSeason == 0 && _muddy)
@@ -85,9 +88,15 @@ public sealed partial class World
         if (_urgent != null) GroundChanged();
     }
 
+    private int DaysPerSeason => (int)Math.Round(_p.SeasonSimSec / _p.DaySimSec);
+
+    /// <summary>Season (0 spring .. 3 winter) of the day the clock shows now.</summary>
+    private int SeasonNow => (int)(_ticks / _p.TicksPerDay / DaysPerSeason % 4);
+
     /// <summary>
     /// Puts the flood band under water now for <paramref name="days"/> days (the spring rule calls this; also for tests,
-    /// tutorials and events). Closes the ford, charges repairs for buildings in the band. Draws nothing.
+    /// tutorials and events). Closes the ford, charges repairs for buildings in the band (never below the debt limit).
+    /// A flood in spring ends at the latest when summer begins, so its mud never outlasts spring. Draws nothing.
     /// </summary>
     public RiverResult StartFlood(double days)
     {
@@ -96,17 +105,25 @@ public sealed partial class World
         bool was = _flooded;
         _flooded = true;
         _muddy = false;
-        _floodEndTick = Math.Max(_floodEndTick, _ticks + (long)Math.Round(days * _p.TicksPerDay));
+        long end = _ticks + (long)Math.Round(days * _p.TicksPerDay);
+        if (SeasonNow == 0)
+        {
+            long seasonTicks = (long)DaysPerSeason * _p.TicksPerDay;
+            long summer = (_ticks / seasonTicks + 1) * seasonTicks;
+            end = Math.Min(end, summer);
+        }
+        _floodEndTick = Math.Max(_floodEndTick, end);
         if (!was)
         {
-            Emit(RiverEventKind.FloodRising, -1, -1, days);
+            Emit(RiverEventKind.FloodRising, -1, -1, (double)(_floodEndTick - _ticks) / _p.TicksPerDay);
             Emit(RiverEventKind.FordClosed, -1, 0, 0);
             int hit = 0;
             foreach (var b in _map.Buildings)
                 if (b.Kind != BuildingKind.Landing && InBand(b)) hit++;
-            if (hit > 0)
+            // Repairs, like upkeep, may take the purse into debt, but never below the debt limit: the rest is let off.
+            double cost = Math.Min(hit * r.FloodRepairCost, Math.Max(0, _money - r.DebtLimit));
+            if (cost > 0)
             {
-                double cost = hit * r.FloodRepairCost;
                 _money -= cost;
                 _rs!.Upkeep += cost;
                 Emit(RiverEventKind.FloodRepairs, -1, -1, cost);
@@ -130,7 +147,7 @@ public sealed partial class World
     {
         _flooded = false;
         _floodEndTick = -1;
-        _muddy = true; // for the rest of spring
+        _muddy = SeasonNow == 0; // for the rest of spring (a flood that ends outside spring leaves no mud)
         Emit(RiverEventKind.FloodReceded, -1, -1, 0);
         Emit(RiverEventKind.FordOpen, -1, 0, 0);
         CostsChanged();
@@ -145,7 +162,13 @@ public sealed partial class World
         // The ferry is frozen in: its riders step off on the far stage, its queues walk on the ice.
         foreach (var x in _crossings)
         {
-            if (x.Type == CrossingType.Ferry) { ReleaseAll(x); x.Sailing = false; x.LoadT = -1; }
+            if (x.Type == CrossingType.Ferry)
+            {
+                ReleaseAll(x); // riders of a ferry caught mid-crossing step off on the stage it was sailing to
+                if (x.Sailing) { x.FerrySide = -x.FerryFrom; x.StateT = 0; x.DockT = 0; x.Progress = x.FerrySide < 0 ? 0 : 1; }
+                x.Sailing = false;
+                x.LoadT = -1;
+            }
             // A drawbridge that is up or going up comes down; a boat already let through sails on after the thaw.
             if (x.Type == CrossingType.Drawbridge && (x.State == BridgeState.Raised || x.State == BridgeState.Raising)) StartLower(x);
         }
@@ -184,14 +207,19 @@ public sealed partial class World
         return RiverSpanBlocked(c);
     }
 
-    /// <summary>Routing cost of an ice cell before crowding: the ice-wear discount, like worn ground.</summary>
-    private double IceCost(int c)
+    /// <summary>
+    /// Routing cost of an ice cell before crowding, into _gc0 (ordinary) and _gc1 (frugal): the ice-wear discount, like
+    /// worn ground, and frugal walkers see FrugalDisc of it, as on land.
+    /// </summary>
+    private void IceCosts(int c)
     {
         double f = _flowLut[Math.Min(_flowLut.Length - 1, (int)(_flow[c] * (double)FlowLutSteps))];
         double g = _p.TrailDiscount > 0
             ? _wearLut[Math.Min(_wearLut.Length - 1, (int)(_iceWear[c] * (double)WearLutSteps))]
             : _surfaceCost[(int)_p.GroundOf(_iceWear[c], false)];
-        return Math.Max(_p.MinSurface, f * g) * (1 + _p.StaticNoise * _map.Noise[c]) * _river!.IceCostMul;
+        double s = Math.Max(_p.MinSurface, f * g), tail = (1 + _p.StaticNoise * _map.Noise[c]) * _river!.IceCostMul;
+        _gc0 = s * (1 + _p.StaticNoise * _map.Noise[c]) * _river.IceCostMul;
+        _gc1 = (1 + (s - 1) * _p.FrugalDisc) * tail;
     }
 
     /// <summary>Multiplier on a land cell's cost from the flood band: wading while flooded, mud on worn paths after.</summary>

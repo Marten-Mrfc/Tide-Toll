@@ -22,7 +22,7 @@ public sealed partial class World
     {
         for (int t = 0; t < _urgent.Length; t++) _urgent[t] = true;
         // Rebuild costs now so walkers stop stepping onto new fences this tick.
-        BuildCost(_cost);
+        RebuildCosts();
         // Walkers standing on a cell that just became blocked are moved off it.
         for (int i = 0; i < _walkerCount; i++)
         {
@@ -72,14 +72,83 @@ public sealed partial class World
         return true;
     }
 
-    /// <summary>Places fence cells (cell indices; out-of-range ones are ignored). Returns how many were new.</summary>
+    /// <summary>Places fence cells (cell indices; out-of-range ones are ignored). Returns how many were new. A fence on gravel takes the gravel up (the trail beneath stays).</summary>
     public int PlaceFence(ReadOnlySpan<int> cells)
     {
         int n = 0;
         foreach (int c in cells)
-            if (c >= 0 && c < _nc && _fence[c] == 0 && CanFence(c)) { _fence[c] = 1; n++; }
+            if (c >= 0 && c < _nc && _fence[c] == 0 && CanFence(c)) { _fence[c] = 1; _gravel[c] = 0; n++; }
         if (n > 0) Edited();
         return n;
+    }
+
+    /// <summary>
+    /// Whether gravel may go on cell c: any land cell that is not fenced. With the river rules, not on a crossing's end, a
+    /// ferry stage or the landing (sync plan, Conflict C). Gravel costs nothing, also under the river's money rules.
+    /// </summary>
+    public bool CanGravel(int c)
+    {
+        if (c < 0 || c >= _nc || _land[c] != 1 || _fence[c] != 0) return false;
+        if (_river != null)
+        {
+            if (_crossAt[c] >= 0 || c == LandingCellValue) return false;
+            foreach (var x in _crossings) if (x.WestEnd == c || x.EastEnd == c) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Where a gravel brush at cell c lands: on the trail's centreline if a worn trail is within one cell (the busiest-worn
+    /// cell of the 3 x 3 round it, when that is trail), otherwise on c itself.
+    /// </summary>
+    public int GravelSnap(int c)
+    {
+        int n = _n, x = c % n, y = c / n;
+        double thr = _p.ThresholdTrail;
+        int best = c;
+        double bw = _wear[c];
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (!_g.Inside(x + dx, y + dy)) continue;
+                int v = (y + dy) * n + x + dx;
+                if (_wear[v] > bw + 2 && CanGravel(v)) { bw = _wear[v]; best = v; }
+            }
+        return best != c && bw >= thr ? best : c;
+    }
+
+    /// <summary>Lays gravel on these cells; returns how many were new.</summary>
+    public int PlaceGravel(ReadOnlySpan<int> cells)
+    {
+        int n = 0;
+        foreach (int c in cells) if (CanGravel(c) && _gravel[c] == 0) { _gravel[c] = 1; n++; }
+        if (n > 0) Edited();
+        return n;
+    }
+
+    /// <summary>What the Gate tool does at (x, y) in cell units: the gate cells on the nearest fence within 2 cells, an existing gate (to remove), or why not.</summary>
+    public GateTarget GateTarget(double x, double y) => FenceGates.Target(this, x, y);
+
+    /// <summary>The cells a gate placed at fence cell c takes (one or two), or null if no gate can go there.</summary>
+    public int[]? GateCellsFor(int c) => FenceGates.GateCellsFor(this, c);
+
+    /// <summary>Puts a gate in the fence at cell c (and its stair partner if it needs one); false if it cannot go there. Free, also under the river's money rules.</summary>
+    public bool PlaceGate(int c)
+    {
+        var cells = GateCellsFor(c);
+        if (cells == null) return false;
+        foreach (int g in cells) { _gate[g] = 1; _gatePair[g] = (byte)(cells.Length == 2 ? 1 : 0); }
+        Edited();
+        return true;
+    }
+
+    /// <summary>Turns a gate (both cells of a two-cell gate) back into plain fence.</summary>
+    public bool RemoveGate(int c)
+    {
+        if (c < 0 || c >= _nc || _gate[c] == 0) return false;
+        foreach (int g in _gatePair[c] != 0 ? FenceGates.GateGroup(this, c) : new[] { c }) { _gate[g] = 0; _gatePair[g] = 0; }
+        Edited();
+        return true;
     }
 
     /// <summary>
@@ -149,7 +218,7 @@ public sealed partial class World
     }
 
     /// <summary>
-    /// Removes fences and whole bridges touching these cells. Returns how many things were removed. With the river rules a
+    /// Removes fences (with their gates), gravel and whole bridges touching these cells. Returns how many things were removed. With the river rules a
     /// crossing whose erase cost would take the purse below the debt limit stays (reason in LastRiverRefusal).
     /// </summary>
     public int Erase(ReadOnlySpan<int> cells)
@@ -159,7 +228,13 @@ public sealed partial class World
         foreach (int c in cells)
         {
             if (c < 0 || c >= _nc) continue;
-            if (_fence[c] != 0) { _fence[c] = 0; n++; }
+            if (_fence[c] != 0)
+            {
+                // Half of a two-cell gate: its partner stays a gate on its own.
+                if (_gatePair[c] != 0) foreach (int g in FenceGates.GateGroup(this, c)) _gatePair[g] = 0;
+                _fence[c] = 0; _gate[c] = 0; n++;
+            }
+            if (_gravel[c] != 0) { _gravel[c] = 0; n++; }
             if (_river != null) n += RiverEraseAt(c);
             int b = _bridgeAt[c];
             if (b >= 0)

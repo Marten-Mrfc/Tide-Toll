@@ -3,14 +3,11 @@ using System.Collections.Generic;
 
 namespace TideToll.Sim;
 
-/// <summary>Per-cell override of a cell's state, for what-if costs (the toy's Ov).</summary>
-public enum CostOverride : byte { None, Block, Open, Bridge, CloseBridge }
-
 /// <summary>
 /// The simulation (the toy's world.ts): wear grid, tools, cost-to-go fields and walkers. Engine-free,
 /// seeded and deterministic: a seed plus the same commands at the same ticks always gives the same run.
-/// Nothing in <see cref="Tick"/> allocates. This file holds the state, costs, field refresh and tick;
-/// WorldWalk.cs the walkers, WorldEdit.cs the tools, WorldViews.cs the read-only API.
+/// Nothing in <see cref="Tick"/> allocates. This file holds the state, field refresh and tick; WorldGround.cs the
+/// cell costs, WorldWalk.cs the walkers, WorldEdit.cs the tools, WorldViews.cs the read-only API.
 /// </summary>
 public sealed partial class World
 {
@@ -27,12 +24,14 @@ public sealed partial class World
     private double _time;
     private long _ticks;
     private int _version;
-    private readonly float[] _wear, _hollowHold, _cost, _occ, _flow, _tripRate;
-    private readonly byte[] _hollow, _fence, _land;
+    private readonly float[] _wear, _hollowHold, _cost, _costX, _occ, _flow, _tripRate;
+    private readonly byte[] _hollow, _fence, _land, _gravel, _gate, _gatePair;
+    /// <summary>Whether walkers ever use the frugal view (SimParams.UseFrugal): otherwise costX and fieldsX are empty.</summary>
+    private readonly bool _useFrugal;
     private readonly short[] _bridgeAt;
     private readonly ushort[] _here;
     private readonly List<Bridge> _bridges = new();
-    private readonly float[][] _fields;
+    private readonly float[][] _fields, _fieldsX;
     private readonly double[] _fieldTime;
     private readonly bool[] _urgent;
     private readonly Walker[] _walkers;
@@ -70,9 +69,12 @@ public sealed partial class World
             foreach (var x in b) if ((int)x.Kind == k) ids.Add(x.Id);
             _byKind[k] = ids.ToArray();
         }
+        _useFrugal = _p.UseFrugal;
         _wear = new float[_nc]; _hollowHold = new float[_nc]; _cost = new float[_nc];
+        _costX = _useFrugal ? new float[_nc] : Array.Empty<float>();
         _occ = new float[_nc]; _flow = new float[_nc];
         _hollow = new byte[_nc]; _fence = new byte[_nc]; _land = new byte[_nc];
+        _gravel = new byte[_nc]; _gate = new byte[_nc]; _gatePair = new byte[_nc];
         _bridgeAt = new short[_nc];
         Array.Fill(_bridgeAt, (short)-1);
         _here = new ushort[_nc];
@@ -89,77 +91,26 @@ public sealed partial class World
         for (int i = 0; i < _nc; i++) _land[i] = (byte)(_map.Water[i] == 0 && _map.Footprint[i] == 0 ? 1 : 0);
         if (_river != null) InitRiver(seed);
         _fields = new float[b.Length][];
+        _fieldsX = new float[b.Length][];
         _fieldTime = new double[b.Length];
         _urgent = new bool[b.Length];
-        for (int t = 0; t < b.Length; t++) { _fields[t] = new float[_nc]; _fieldTime[t] = -1e9; _urgent[t] = true; }
-        BuildCost(_cost);
+        for (int t = 0; t < b.Length; t++)
+        {
+            _fields[t] = new float[_nc];
+            _fieldsX[t] = _useFrugal ? new float[_nc] : Array.Empty<float>();
+            _fieldTime[t] = -1e9; _urgent[t] = true;
+        }
+        RebuildCosts();
         for (int t = 0; t < _fields.Length; t++) RefreshField(t);
         SetWalkerCount(walkers ?? _p.DefaultWalkers);
     }
 
-    // ---------------------------------------------------------------- cost
-
-    /// <summary>Whether walkers may not stand on cell c: fence, footprint, or water that is neither ford nor bridge.</summary>
-    public bool IsBlocked(int c)
-    {
-        if (_fence[c] != 0 || _map.Footprint[c] != 0) return true;
-        if (_river != null) return RiverBlocked(c); // also the ice, the ford in a flood and a raised span
-        return _map.Water[c] == 1 && _map.Ford[c] == 0 && _bridgeAt[c] < 0;
-    }
-
-    /// <summary>Routing cost multiplier of a cell's ground: worn and busy ground is cheaper.</summary>
-    internal double Surf(int c)
-    {
-        double f = _flowLut[Math.Min(_flowLut.Length - 1, (int)(_flow[c] * (double)FlowLutSteps))];
-        double g = _p.TrailDiscount > 0
-            ? _wearLut[Math.Min(_wearLut.Length - 1, (int)(_wear[c] * (double)WearLutSteps))]
-            : _surfaceCost[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
-        return Math.Max(_p.MinSurface, f * g);
-    }
-
-    /// <summary>Step cost of cell c (+Infinity where blocked); <paramref name="ov"/> overrides its state for a what-if.</summary>
-    public double CellCost(int c, CostOverride ov = CostOverride.None)
-    {
-        var m = _map;
-        if (ov == CostOverride.Block || m.Footprint[c] != 0 || (_fence[c] != 0 && ov != CostOverride.Open)) return double.PositiveInfinity;
-        if (_river != null)
-        {
-            // Ferry water and drawbridge spans: their cost includes the expected and learned wait.
-            double rc = RiverCellCost(c, ov);
-            if (!double.IsNaN(rc)) return rc;
-        }
-        bool bridge = ov == CostOverride.Bridge || (_bridgeAt[c] >= 0 && ov != CostOverride.CloseBridge);
-        bool ice = _river != null && _frozen && m.Water[c] != 0 && !bridge;
-        if (m.Water[c] != 0 && m.Ford[c] == 0 && !bridge && !ice) return double.PositiveInfinity;
-        double k;
-        if (bridge) k = _p.BridgeCost;
-        else if (ice) k = IceCost(c);
-        else
-        {
-            // The ford never wears and is not made easier by traffic: only land is discounted.
-            k = (m.Water[c] != 0 ? 1 : Surf(c)) * (1 + _p.StaticNoise * m.Noise[c]);
-            if (m.Crop[c] != 0) k += _p.CropPenalty;
-            if (m.Ford[c] != 0) k *= _p.FordCostMul;
-            else if (_river != null) k *= BandCostMul(c); // the flood band: wading, then mud
-        }
-        double rho = _occ[c] / _p.CellAreaM2;
-        if (rho > 0.05)
-        {
-            double v = Math.Max(1 / _p.CrowdMaxCostMul, 1 - Math.Exp(-_p.WeidmannGamma * (1 / rho - 1 / _p.WeidmannRhoMax)));
-            k *= 1 + _p.CrowdStrength * (1 / Math.Min(1, v) - 1);
-        }
-        return k;
-    }
-
-    /// <summary>Per-cell step cost for routing, written into <paramref name="output"/> as float (the toy's Float32Array).</summary>
-    public void BuildCost(float[] output)
-    {
-        for (int c = 0; c < _nc; c++) output[c] = (float)CellCost(c);
-    }
+    // ---------------------------------------------------------------- fields
 
     private void RefreshField(int t)
     {
         CostField.Dijkstra(_g, _map.Buildings[t].Door, _cost, _fields[t], _heap);
+        if (_useFrugal) CostField.Dijkstra(_g, _map.Buildings[t].Door, _costX, _fieldsX[t], _heap);
         _fieldTime[t] = _time;
         _urgent[t] = false;
     }
@@ -173,7 +124,7 @@ public sealed partial class World
             for (int t = 0; t < _fields.Length && budget > 0; t++)
                 if (_urgent[t] && (_map.Buildings[t].Kind == BuildingKind.House) == (pass == 1))
                 {
-                    if (!rebuilt) { BuildCost(_cost); rebuilt = true; }
+                    if (!rebuilt) { RebuildCosts(); rebuilt = true; }
                     RefreshField(t);
                     budget--;
                 }
@@ -181,7 +132,7 @@ public sealed partial class World
         // Otherwise rebuild at most the one stalest field, once it is due.
         int oldest = 0;
         for (int t = 1; t < _fields.Length; t++) if (_fieldTime[t] < _fieldTime[oldest]) oldest = t;
-        if (_time - _fieldTime[oldest] >= _p.FieldRefreshSimSec) { BuildCost(_cost); RefreshField(oldest); }
+        if (_time - _fieldTime[oldest] >= _p.FieldRefreshSimSec) { RebuildCosts(); RefreshField(oldest); }
     }
 
     // ---------------------------------------------------------------- tick
@@ -236,6 +187,8 @@ public sealed partial class World
             if (hollow[i] != 0 && w < t50) hollow[i] = 0;
             double f = hollow[i] != 0 ? fHol : w < t25 ? fLow : w < t50 ? fMid : fHigh;
             double nw = w * f;
+            // Gravel stops a trail regrowing: wear under it never decays below trail.
+            if (_gravel[i] != 0 && w >= t25 && nw < t25) nw = t25;
             wear[i] = nw < 0.01 ? 0 : (float)nw;
         }
     }

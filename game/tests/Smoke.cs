@@ -28,6 +28,9 @@ public partial class Smoke : Node
             // Headless windows are 64 x 64; picking and framing are checked at the game's real window shape.
             GetWindow().Size = new Vector2I(1280, 720);
             _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
+            // A purse from the rules for the test footbridge (and its erase), so a retuned starting purse never breaks it.
+            var rules = _main.River ?? RiverRules.Default;
+            _main.River = rules with { StartMoney = rules.FootbridgePrice };
             AddChild(_main);
         }
         catch (Exception e) { Fail("main scene did not load: " + e.Message); }

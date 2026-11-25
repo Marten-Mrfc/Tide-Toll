@@ -23,10 +23,10 @@ public sealed partial class World
     /// <summary>Hook of CellCost for cells with a crossing: NaN when the cell is not special.</summary>
     private double RiverCellCost(int c, CostOverride ov)
     {
-        if (_flooded && _map.Ford[c] != 0 && ov != CostOverride.Bridge && !_frozen) return double.PositiveInfinity; // closed in the flood
+        if (_flooded && _map.Ford[c] != 0 && (ov & CostOverride.Bridge) == 0 && !_frozen) return double.PositiveInfinity; // closed in the flood
         if (_frozen && _bridgeAt[c] < 0) return double.NaN; // ice, ferry water included
         int id = _crossAt[c];
-        if (id < 0 || ov == CostOverride.Block || ov == CostOverride.CloseBridge || ov == CostOverride.Bridge) return double.NaN;
+        if (id < 0 || (ov & (CostOverride.Block | CostOverride.CloseBridge | CostOverride.Bridge)) != 0) return double.NaN;
         var x = CrossingById(id);
         if (x == null) return double.NaN;
         if (x.Type == CrossingType.Ferry) return FerryCellCost(x);

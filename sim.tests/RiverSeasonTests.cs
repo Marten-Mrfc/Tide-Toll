@@ -27,7 +27,9 @@ public class RiverSeasonTests
         int floods = 0, one = 0, two = 0, seeds = 120;
         for (int seed = 1; seed <= seeds; seed++)
         {
-            var w = Make(seed, 0, NoSchedule); // the clock starts on the first day of spring
+            // The clock starts on the first day of spring. A new town never floods in its first spring (RiverRuleFixTests);
+            // the chance is measured there here, with that rule switched off, instead of ticking a year on 120 seeds.
+            var w = Make(seed, 0, NoSchedule with { FloodInFirstSpring = true });
             if (!w.River!.Flooded) { Assert.False(Drain(w).Any(e => e.Kind == RiverEventKind.FloodRising)); continue; }
             floods++;
             var ev = Drain(w);

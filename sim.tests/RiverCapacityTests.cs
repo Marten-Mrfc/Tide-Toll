@@ -58,7 +58,9 @@ public class RiverCapacityTests
     {
         // Walkers who never learn the ferry's wait keep coming however long the queue: the ferry runs full.
         int seed = Enumerable.Range(1, 30).OrderByDescending(s => { var m = Make(s, 0, Rich); return Math.Abs(m.Map.FordY - m.River!.LandingRow); }).First();
-        var w = Make(seed, 500, Rich with { HaulGoods = true, WaitAlpha = 0 });
+        // The ferry numbers this test checks against the doc's "about 30 each way a day" are stated here (6 aboard,
+        // 0.5 s to turn round, 1.0 s across), not taken from the tuned defaults.
+        var w = Make(seed, 500, Rich with { HaulGoods = true, WaitAlpha = 0, FerryCapacity = 6, FerryTurnSec = 0.5, FerryCrossSec = 1.0 });
         var x = Build(w, CrossingType.Ferry);
         var r = w.River!.Rules;
         ToyHarness.Run(w, 1);

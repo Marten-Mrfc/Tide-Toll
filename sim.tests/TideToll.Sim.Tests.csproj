@@ -21,6 +21,7 @@
   <ItemGroup>
     <!-- Toy golden data (written by golden/export.mjs) and its generator. -->
     <None Include="golden\toy-golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="golden\toy-golden-v2.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

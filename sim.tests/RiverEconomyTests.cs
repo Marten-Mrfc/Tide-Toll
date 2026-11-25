@@ -1,5 +1,6 @@
 using TideToll.Sim.Testing;
 using static TideToll.Sim.Tests.RiverBoatTests;
+using static TideToll.Sim.Tests.RiverTestRules;
 
 namespace TideToll.Sim.Tests;
 
@@ -23,7 +24,7 @@ public class RiverEconomyTests
     [Fact]
     public void PricesAndRefusalsInWords()
     {
-        var w = Make(1, 0);
+        var w = Make(1, 0, Priced);
         var r = w.River!;
         Assert.Equal(120, r.Money);
         var no = PlaceAtFirstRow(w, CrossingType.Drawbridge);
@@ -71,7 +72,7 @@ public class RiverEconomyTests
     [Fact]
     public void SeasonBooksTaxHousesAndChargeUpkeepAndWages()
     {
-        var w = Make(1, 0, NoSchedule with { StartMoney = 1000 });
+        var w = Make(1, 0, Priced with { StartMoney = 1000 });
         var r = w.River!;
         PlaceAtFirstRow(w, CrossingType.Ferry);          // 40c, 2c upkeep + 3c ferryman a season
         var d = PlaceAtFirstRow(w, CrossingType.Drawbridge, 9); // 240c, 4c upkeep
@@ -96,7 +97,7 @@ public class RiverEconomyTests
     [Fact]
     public void DebtGrowsByTenPercentASeason()
     {
-        var w = Make(1, 0, NoSchedule with { StartMoney = 40, HearthTax = 0 });
+        var w = Make(1, 0, Priced with { StartMoney = 40, HearthTax = 0 });
         Assert.True(PlaceAtFirstRow(w, CrossingType.Ferry).Ok); // 0c left, 5c a season
         ToyHarness.Run(w, 4);
         Assert.Equal(-5, w.River!.Money, 9);
@@ -108,7 +109,7 @@ public class RiverEconomyTests
     public void ErasingIsRefusedWhenItWouldTakeThePurseBelowTheDebtLimit()
     {
         // 240c for the drawbridge leaves 0c; upkeep then takes the purse into debt.
-        var w = Make(1, 0, NoSchedule with { StartMoney = 240, HearthTax = 0, DrawbridgeUpkeep = 50 });
+        var w = Make(1, 0, Priced with { StartMoney = 240, HearthTax = 0, DrawbridgeUpkeep = 50 });
         var r = w.River!;
         var d = PlaceAtFirstRow(w, CrossingType.Drawbridge);
         Assert.True(d.Ok, d.Reason);
@@ -125,7 +126,7 @@ public class RiverEconomyTests
         Assert.Contains(r.Crossings, c => c.Id == d.Id);
         Assert.Equal(2, Drain(w).Count(e => e.Kind == RiverEventKind.CannotAfford)); // CheckErase, then Erase once for all its cells
         // A ferry erase that fits within the limit goes through: 20c takes -50c to -70c.
-        var w2 = Make(1, 0, NoSchedule with { StartMoney = 40, HearthTax = 0, FerryUpkeep = 50 });
+        var w2 = Make(1, 0, Priced with { StartMoney = 40, HearthTax = 0, FerryUpkeep = 50 });
         var f = PlaceAtFirstRow(w2, CrossingType.Ferry);
         Assert.True(f.Ok, f.Reason);
         ToyHarness.Run(w2, 4);
@@ -137,7 +138,7 @@ public class RiverEconomyTests
     [Fact]
     public void PurchasesNeverGoIntoDebt()
     {
-        var w = Make(1, 0, NoSchedule with { StartMoney = 40, HearthTax = 0 });
+        var w = Make(1, 0, Priced with { StartMoney = 40, HearthTax = 0 });
         Assert.True(PlaceAtFirstRow(w, CrossingType.Ferry).Ok);
         ToyHarness.Run(w, 4); // -5c
         var no = PlaceAtFirstRow(w, CrossingType.Footbridge, 9);

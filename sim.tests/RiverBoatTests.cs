@@ -72,7 +72,7 @@ public class RiverBoatTests
     [Fact]
     public void FootbridgeHoldsBargesUntilTheirPatienceRunsOutAndLetsRowboatsThrough()
     {
-        var w = Make();
+        var w = Make(rules: NoSchedule with { StartMoney = NoSchedule.FootbridgePrice }); // a purse for the footbridge
         var r = w.River!;
         var fb = Build(w, CrossingType.Footbridge);
         Assert.Equal(1, fb.Clearance);
@@ -107,7 +107,7 @@ public class RiverBoatTests
     [Fact]
     public void FordAndFerryNeverBlockABoat()
     {
-        var w = Make();
+        var w = Make(rules: NoSchedule with { StartMoney = NoSchedule.FerryPrice }); // a purse for the ferry
         Build(w, CrossingType.Ferry);
         int barge = w.SpawnBoat(BoatKind.Barge).Id;
         while (BoatById(w, barge).State != BoatState.Mooring)
@@ -149,8 +149,10 @@ public class RiverBoatTests
         Assert.Equal(0.5, rules.ArrivalsPerDay(BoatKind.Barge, 0, 15), 9);    // x0.5 at 0
         Assert.Equal(1.5, rules.ArrivalsPerDay(BoatKind.Barge, 100, 15), 9);  // x1.5 at 100
         // On a live river: a footbridge drives reputation down and fewer boats come than on a free river.
-        var free = Make(3, 0, RiverRules.Default with { HaulGoods = false });
-        var blocked = Make(3, 0, RiverRules.Default with { HaulGoods = false });
+        // The same purse on both rivers (enough for the footbridge): money plays no part in the boats' schedule.
+        var live = RiverRules.Default with { HaulGoods = false, StartMoney = RiverRules.Default.FootbridgePrice };
+        var free = Make(3, 0, live);
+        var blocked = Make(3, 0, live);
         Build(blocked, CrossingType.Footbridge);
         ToyHarness.Run(free, 40);
         ToyHarness.Run(blocked, 40);
@@ -170,19 +172,20 @@ public class RiverBoatTests
         Assert.True(r.LandingBuilding >= 0);
         Assert.Equal(BuildingKind.Landing, w.Buildings[r.LandingBuilding].Kind);
         Assert.Equal(r.LandingCell, w.Buildings[r.LandingBuilding].Door);
-        // Four days with no boat: the market buys at 70% of 2c, at most one unit per house per day.
+        // Four days with no boat: the market buys at MarketShare (70%) of the grain price, at most one unit per house per day.
         ToyHarness.Run(w, 4);
         var s = r.Stats;
         Assert.True(s.GrainToMarket > 0);
         Assert.Equal(0, s.GrainToBoats);
-        Assert.Equal(s.GrainToMarket * 1.4, s.MarketIncome, 6);
+        var rules = r.Rules;
+        Assert.Equal(s.GrainToMarket * rules.MarketShare * rules.GrainPrice, s.MarketIncome, 6);
         Assert.True(s.GrainToMarket <= 4 * w.Houses.Length, $"{s.GrainToMarket} sold to the market");
         // With a smaller market the rest goes unsold.
         var small = Make(2, 200, NoSchedule with { HaulGoods = true, MarketUnitsPerHouseDay = 0.25 });
         ToyHarness.Run(small, 4);
         Assert.True(small.River!.Stats.GrainToMarket <= Math.Ceiling(0.25 * w.Houses.Length) * 4);
         Assert.True(small.River.Stats.GrainUnsold > 0);
-        // A barge moors: it buys at 4c, and the coin is booked when it leaves.
+        // A barge moors: it buys at BoatValueMul x the grain price, and the coin is booked when it leaves.
         int barge = w.SpawnBoat(BoatKind.Barge).Id;
         while (BoatById(w, barge).State != BoatState.Mooring) w.Tick();
         double before = r.Money;
@@ -195,7 +198,7 @@ public class RiverBoatTests
         }
         var bb = BoatById(w, barge);
         Assert.True(bb.Cargo > 0 && bb.Cargo <= 40);
-        Assert.Equal(bb.Cargo * 4.0, bb.Earned, 9);
+        Assert.Equal(bb.Cargo * rules.GrainPrice * rules.BoatValueMul, bb.Earned, 9);
         Assert.Equal(bb.Cargo, s.GrainToBoats - boatGrain0);
         Assert.Contains(Drain(w), e => e.Kind == RiverEventKind.BoatSold && e.Boat == barge && Math.Abs(e.Value - bb.Earned) < 1e-9);
         Assert.True(r.Money - before >= bb.Earned - 1e-9);
