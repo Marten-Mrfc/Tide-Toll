@@ -203,8 +203,9 @@ public class TownRulesTests
         {
             if (!t.RoadOpen(r)) continue;
             var rd = t.Plan.Roads[r];
-            for (int s = 0; s + 1 < rd.Xs.Length; s++)
-                if (SegDist(x, y, rd.Xs[s] + 0.5, rd.Ys[s] + 0.5, rd.Xs[s + 1] + 0.5, rd.Ys[s + 1] + 0.5) < 1e-6) return true;
+            // Rules v2.1: the road walked and drawn is the smoothed curve (Px, Py), not the grid route (Xs, Ys).
+            for (int s = 0; s + 1 < rd.Px.Length; s++)
+                if (SegDist(x, y, rd.Px[s] + 0.5, rd.Py[s] + 0.5, rd.Px[s + 1] + 0.5, rd.Py[s + 1] + 0.5) < 1e-6) return true;
         }
         // At a node with no open road yet (never expected after level 1).
         return false;

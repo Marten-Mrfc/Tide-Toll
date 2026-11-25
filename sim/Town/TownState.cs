@@ -105,5 +105,6 @@ public sealed class TownState
     public double ReqStart, ReqEnds, ReqRewardCoin;
     public double ReqNextAt = -1;
     public int ReqCount, ReqMet, ReqMissed;
+    public double ReqScale = 1;                          // rules v2.1: adapts to the player (met: bigger; missed: smaller)
     public double RequestCoin;                           // coin paid as request rewards (not in CoinEarned)
 }

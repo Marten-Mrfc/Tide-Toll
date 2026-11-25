@@ -1,45 +1,66 @@
-# Town pacing (first age, rules v2)
+# Town pacing (first age, rules v2.1)
 
-Generated on 25 November 2026 (rules v2, `docs/plans/town-rules2-progress.md`) with the numbers in `sim/Town/TownRules.cs`:
-`town --seeds 1-10`, `town --extras --seed 1` and `town --seed 1 --markdown`. Targets are `TownTargets` in the same file; `sim.tests/Town/TownPacingTests.cs` checks them on seeds 1 to 10 with all four bots.
+Generated on 25 November 2026 (rules v2.1, `docs/plans/town-rules21-progress.md`) with the numbers in `sim/Town/TownRules.cs`:
+`town --seeds 1-10 --misses --averages`, `town --extras --seed 1` and `town --seed 1 --markdown`. Targets are `TownTargets` in the same file; `sim.tests/Town/TownPacingTests.cs` checks them on seeds 1 to 10 with all four bots.
 
-How the bots play: they think every 0.5 game seconds, buy at most one thing per think, ring the bell whenever it is ready, and stop buying at the charter. Cheapest first buys the cheapest affordable item; best payback first buys the item with the best estimated extra coin per minute per coin, saving for it only when it is under 20 s of income away; random affordable buys a random affordable item (its own seeded stream); the saver (new) picks the best payback among everything unlocked, affordable or not, and waits for it when it is under 40 s of income away, else buys the best affordable meanwhile. "Nothing affordable" counts every moment no shop item could be bought. "Something new on the map" is a level gift, a building opened, a road paved or a cottage extended.
+How the bots play: they think every 0.5 game seconds, buy at most one thing per think, ring the bell whenever it is ready, and stop buying at the charter. Cheapest first buys the cheapest affordable item; best payback first buys the item with the best estimated extra coin per minute per coin, saving for it only when it is under 20 s of income away; random affordable buys a random affordable item; the saver picks the best payback among everything on sale, affordable or not, and waits for it when it is under 40 s of income away. "Nothing affordable" counts every moment no shop item could be bought. "Something new on the map" is a level gift, a building opened, a road paved or a cottage extended.
+
+What changed in v2.1: steps of Pace, Tools, the value tracks, the bell track and extensions unlock with town levels (tables `PaceAt` and so on); Pace 25 steps, Tools 18, Value 14 per good, with lower price growth; requests adapt to the player; roads are smoothed curves (shorter, so the town is faster; `BaseSpeed` 1.6 compensates); bell and requests targets are averages over seeds 1 to 10 (the lead's decision).
 
 ## Targets not met (honest)
 
-- **Purchases keep coming**: 39 misses on seeds 1 to 10. Late in the age (minutes 16 to 30) every bot has single minutes with 1 purchase (target 2): by then Pace, Tools and the value tracks are finished and what is left (villagers, extensions, Handcart, the mill, the last paves) costs one to two minutes of income. Early, the saver (and on a few seeds the payback and random bots) has a minute 5 to 8 with 2 or 3 purchases (target 4).
-- **Age 25 to 40 for every bot**: the saver finishes at 24.3 (seed 4) and 24.7 (seed 10) minutes; all other 38 runs are inside (24.3 to 32.7 overall; spread 1.3 at most, target 2).
-- **Nothing affordable over 60 s**: once, seed 2 payback, 64 s.
-- **Something new on the map every 3.5 min**: 4 misses: the saver on seeds 1, 9 and 10 (3.6 to 3.7 minutes) and the payback bot on seed 1 (3.5 rounded, just over), once each around minute 18 to 22 (the gap before level 13, the mill).
-- **Bell 10 to 25 percent** (seed 1, coin earned in 20 minutes, ringing whenever ready against never): cheapest +10.9, payback +15.5, saver +29.5 (over by 4.5 points). The random bot (+27.1) is not part of the test: its random picks diverge with and without the bell.
-- **Requests met by a normal bot, half to four fifths**: the cheapest and payback bots miss the band on 6 of 20 runs (4 of 13 to 11 of 11).
+- **Purchases keep coming**: 12 misses on 40 runs. 10 are early dips (2 or 3 purchases in one of minutes 6 to 8, target 4), 8 of them the saver, which saves through those minutes by design; 2 are late single minutes with 1 purchase (random bot, minutes 24 and 25 on seeds 3 and 4; saver minute 19 on seed 9).
+- **Age 25 to 40 for every bot**: the saver finishes at 24.2 to 24.9 minutes on seeds 1, 4, 7 and 8 (up to 0.8 minutes short). All other 36 runs are inside (25.1 to 33.5).
+- **Bell, single-run sanity band 5 to 35 percent**: averages over seeds 1 to 10 are cheapest +10.6, payback +14.9, saver +25.1 (0.1 over 25). Single runs outside 5 to 35: payback seed 2 (-2.6) and seed 3 (+36.1), saver seed 1 (+48.3). The comparison with and without the bell lets the bots' purchases diverge, which is most of this noise.
+- **Requests, single-run band 30 to 95 percent**: payback seed 2 met 3 of 13. Averages: cheapest 51 percent, payback 54 percent (band 50 to 80).
 
-Met: first coin 14.9 s, first purchase 15 to 28.5 s; no track above 40 percent of any bot's purchases (largest: Villager and Value about 19 percent); the saver and payback bots buy every kind, every Load step and all four buildings before the charter (seed 1 to 10); never paving makes the charter 57 to 74 percent later on seed 1 (target at least 15).
+Met: first coin and first purchase; never more than 60 s with nothing affordable (longest 50 s); no track above 40 percent; the saver and payback buy every kind, all three Load steps and all four buildings; something new on the map at least every 3.5 minutes; never paving 46 to 64 percent slower on seed 1.
 
 ## Seeds 1 to 10
 
-`town --seeds 1-10`: charter minute ; longest spell with nothing affordable (s).
+`town --seeds 1-10 --misses --averages`: charter minute ; longest nothing-affordable spell (s) ; requests met.
 
-    seed | cheapest first | best payback first | random affordable | saver | (charter minute; longest nothing-affordable s)
-       1 | 32.1 ; 55 | 27.9 ; 48 | 29.8 ; 58 | 26.0 ; 27
-       2 | 32.6 ; 50 | 29.5 ; 64 | 32.1 ; 49 | 27.2 ; 26
-       3 | 30.7 ; 48 | 27.8 ; 56 | 30.7 ; 48 | 25.4 ; 24
-       4 | 32.3 ; 56 | 26.3 ; 30 | 32.0 ; 54 | 24.3 ; 22
-       5 | 29.9 ; 45 | 27.1 ; 40 | 29.4 ; 46 | 26.5 ; 26
-       6 | 31.8 ; 47 | 30.1 ; 54 | 32.7 ; 54 | 26.1 ; 24
-       7 | 30.3 ; 46 | 26.4 ; 52 | 29.9 ; 50 | 26.4 ; 30
-       8 | 30.9 ; 54 | 27.1 ; 32 | 30.7 ; 50 | 25.0 ; 22
-       9 | 31.2 ; 50 | 28.9 ; 53 | 31.5 ; 44 | 26.2 ; 26
-      10 | 31.6 ; 50 | 27.2 ; 54 | 31.3 ; 44 | 24.7 ; 23
+    seed | cheapest first | best payback first | random affordable | saver
+       1 | 31.4 ; 38 ; req 7/13 | 27.4 ; 26 ; req 6/11 | 31.3 ; 43 ; req 7/13 | 24.9 ; 17 ; req 5/10
+       2 | 32.9 ; 38 ; req 6/14 | 30.0 ; 50 ; req 3/13 | 33.5 ; 37 ; req 6/14 | 27.1 ; 18 ; req 4/11
+       3 | 30.6 ; 26 ; req 7/12 | 26.3 ; 20 ; req 5/10 | 30.6 ; 36 ; req 7/12 | 25.3 ; 16 ; req 5/9
+       4 | 32.8 ; 37 ; req 6/13 | 26.5 ; 18 ; req 7/10 | 32.9 ; 39 ; req 6/13 | 24.6 ; 16 ; req 7/9
+       5 | 31.1 ; 28 ; req 6/12 | 26.2 ; 22 ; req 6/10 | 28.9 ; 29 ; req 7/11 | 25.4 ; 19 ; req 6/10
+       6 | 32.0 ; 42 ; req 7/14 | 26.6 ; 21 ; req 6/11 | 31.9 ; 44 ; req 7/13 | 26.0 ; 21 ; req 6/11
+       7 | 30.4 ; 35 ; req 7/13 | 27.1 ; 24 ; req 6/12 | 30.1 ; 32 ; req 8/12 | 24.2 ; 16 ; req 7/10
+       8 | 30.7 ; 33 ; req 9/13 | 26.5 ; 22 ; req 8/11 | 30.1 ; 34 ; req 9/13 | 24.4 ; 18 ; req 6/10
+       9 | 31.7 ; 33 ; req 6/13 | 26.4 ; 20 ; req 6/11 | 31.6 ; 42 ; req 6/13 | 25.7 ; 18 ; req 6/11
+      10 | 32.9 ; 43 ; req 6/14 | 27.1 ; 22 ; req 6/11 | 30.8 ; 36 ; req 6/13 | 25.1 ; 16 ; req 5/10
+
+Misses as printed:
+
+    MISSED seed 1 saver: 3 purchases in minute 6 < 4
+    MISSED seed 1 saver: charter at 24.9 min, outside 25-40
+    MISSED seed 2 saver: 3 purchases in minute 8 < 4
+    MISSED seed 4 saver: 3 purchases in minute 6 < 4
+    MISSED seed 4 saver: charter at 24.6 min, outside 25-40
+    MISSED seed 6 best payback first: 3 purchases in minute 7 < 4
+    MISSED seed 6 saver: 3 purchases in minute 6 < 4
+    MISSED seed 7 saver: 2 purchases in minute 7 < 4
+    MISSED seed 7 saver: charter at 24.2 min, outside 25-40
+    MISSED seed 8 saver: 3 purchases in minute 8 < 4
+    MISSED seed 8 saver: charter at 24.4 min, outside 25-40
+    MISSED seed 9 saver: 3 purchases in minute 6 < 4
+    MISSED seed 9 saver: 1 purchases in minute 19 < 2
+    MISSED seed 10 saver: 2 purchases in minute 6 < 4
+    cheapest first: bell average +10.6 % (runs 6.7 to 16.8), per seed 8.3 11.7 13.2 7.8 11.6 9.3 6.7 9.9 16.8 10.6
+    best payback first: bell average +14.9 % (runs -2.6 to 36.1), per seed 17.3 -2.6 36.1 11.7 10.6 14.1 14.2 8.0 23.0 16.9
+    saver: bell average +25.1 % (runs 12.9 to 48.3), per seed 48.3 16.8 25.9 12.9 29.2 22.3 30.0 21.2 22.7 21.6
+    misses: 16 (purchases 12, nothing affordable 0, age 4, map 0)
 
 ## Bell, paving and requests (seed 1)
 
 `town --extras --seed 1`:
 
-    seed 1 cheapest first: charter 32.1, never paving 50.2 (57 % slower), bell +10.9 %, requests met 7/14
-    seed 1 best payback first: charter 27.9, never paving 48.5 (74 % slower), bell +15.5 %, requests met 6/12
-    seed 1 random affordable: charter 29.8, never paving 50.0 (68 % slower), bell +27.1 %, requests met 9/13
-    seed 1 saver: charter 26.0, never paving 44.4 (71 % slower), bell +29.5 %, requests met 6/11
+    seed 1 cheapest first: charter 31.4, never paving 47.4 (51 % slower), bell +8.3 %, requests met 7/13
+    seed 1 best payback first: charter 27.4, never paving 42.4 (55 % slower), bell +17.3 %, requests met 6/11
+    seed 1 random affordable: charter 31.3, never paving 45.8 (46 % slower), bell +11.4 %, requests met 7/13
+    seed 1 saver: charter 24.9, never paving 41.0 (64 % slower), bell +48.3 %, requests met 5/10
 
 ## Seed 1, every bot
 
@@ -47,177 +68,172 @@ Met: first coin 14.9 s, first purchase 15 to 28.5 s; no track above 40 percent o
 
 | minute | coin | coin/min | purchases | level | villagers |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 2 | 16 | 4 | 1 | 2 |
-| 2 | 2 | 74 | 7 | 2 | 4 |
-| 3 | 4 | 151 | 6 | 3 | 4 |
-| 4 | 39 | 238 | 7 | 4 | 6 |
-| 5 | 70 | 261 | 4 | 4 | 6 |
-| 6 | 102 | 384 | 6 | 5 | 8 |
-| 7 | 9 | 427 | 6 | 6 | 9 |
-| 8 | 60 | 704 | 5 | 7 | 10 |
-| 9 | 92 | 819 | 6 | 7 | 12 |
-| 10 | 53 | 1023 | 5 | 8 | 15 |
-| 11 | 204 | 1214 | 9 | 9 | 15 |
-| 12 | 334 | 1500 | 6 | 9 | 15 |
-| 13 | 318 | 1865 | 5 | 9 | 16 |
-| 14 | 214 | 1859 | 4 | 10 | 17 |
-| 15 | 344 | 1995 | 3 | 10 | 18 |
-| 16 | 509 | 1941 | 3 | 11 | 19 |
-| 17 | 672 | 2067 | 2 | 11 | 19 |
-| 18 | 434 | 2358 | 3 | 11 | 20 |
-| 19 | 1312 | 2590 | 3 | 12 | 20 |
-| 20 | 586 | 3397 | 3 | 12 | 20 |
-| 21 | 267 | 3229 | 3 | 12 | 21 |
-| 22 | 1788 | 3405 | 1 | 13 | 21 |
-| 23 | 1650 | 4872 | 3 | 13 | 22 |
-| 24 | 793 | 4539 | 2 | 13 | 23 |
-| 25 | 2431 | 5333 | 2 | 14 | 23 |
-| 26 | 315 | 4511 | 5 | 14 | 23 |
-| 27 | 2306 | 6661 | 6 | 14 | 23 |
-| 28 | 2163 | 5846 | 2 | 15 | 23 |
-| 29 | 900 | 5563 | 2 | 15 | 23 |
-| 30 | 3765 | 6365 | 1 | 15 | 24 |
-| 31 | 4919 | 5900 | 1 | 15 | 25 |
-| 32 | 6020 | 7072 | 1 | 15 | 25 |
-| 33 | 9580 | 10070 | 1 | 16 | 26 |
+| 1 | 3 | 16 | 4 | 1 | 2 |
+| 2 | 9 | 45 | 5 | 2 | 4 |
+| 3 | 17 | 89 | 5 | 3 | 4 |
+| 4 | 2 | 174 | 6 | 4 | 4 |
+| 5 | 18 | 230 | 8 | 4 | 6 |
+| 6 | 10 | 218 | 4 | 5 | 6 |
+| 7 | 21 | 282 | 5 | 5 | 7 |
+| 8 | 68 | 332 | 4 | 6 | 8 |
+| 9 | 24 | 522 | 9 | 7 | 10 |
+| 10 | 43 | 575 | 6 | 7 | 12 |
+| 11 | 68 | 793 | 5 | 8 | 13 |
+| 12 | 51 | 878 | 6 | 8 | 15 |
+| 13 | 190 | 871 | 5 | 8 | 16 |
+| 14 | 156 | 1466 | 7 | 9 | 16 |
+| 15 | 361 | 1529 | 8 | 10 | 17 |
+| 16 | 8 | 1966 | 6 | 10 | 18 |
+| 17 | 448 | 1786 | 4 | 11 | 19 |
+| 18 | 65 | 2040 | 4 | 11 | 21 |
+| 19 | 643 | 2060 | 2 | 11 | 21 |
+| 20 | 144 | 2404 | 5 | 12 | 22 |
+| 21 | 65 | 2268 | 4 | 12 | 22 |
+| 22 | 894 | 2661 | 3 | 12 | 23 |
+| 23 | 186 | 3455 | 4 | 13 | 23 |
+| 24 | 586 | 3302 | 3 | 13 | 23 |
+| 25 | 275 | 4524 | 3 | 13 | 24 |
+| 26 | 349 | 4231 | 11 | 14 | 24 |
+| 27 | 1258 | 5426 | 3 | 14 | 24 |
+| 28 | 445 | 5825 | 6 | 15 | 24 |
+| 29 | 114 | 5843 | 3 | 15 | 25 |
+| 30 | 1202 | 5575 | 2 | 15 | 25 |
+| 31 | 172 | 6382 | 3 | 15 | 26 |
+| 32 | 3326 | 5851 | 1 | 16 | 26 |
 
-- first coin 14.9 s, first purchase 15.0 s, purchases 127
-- longest spell with nothing affordable 55.0 s (from 1816 s)
-- fewest purchases in a minute: 4 in minutes 1-10 (minute 1), 1 after (minute 22)
-- level reached (minute): L2 1.0 L3 2.2 L4 3.5 L5 5.0 L6 6.6 L7 7.9 L8 9.6 L9 10.6 L10 13.1 L11 15.4 L12 18.4 L13 21.5 L14 24.4 L15 27.7 L16 32.1
-- charter at minute 32.1
-- purchases by kind before the charter: Villager 24, Pace 20, Load 3, Pave 22, Building 4, Tools 10, Value 24, Extend 14, BellTrack 5
-- longest gap with nothing new on the map after minute 2: 2.9 min (from minute 21.5); requests met 7 of 14
+- first coin 16.1 s, first purchase 16.5 s, purchases 154
+- longest spell with nothing affordable 37.5 s (from 1456 s)
+- fewest purchases in a minute: 4 in minutes 1-10 (minute 1), 2 after (minute 19)
+- level reached (minute): L2 1.4 L3 2.7 L4 4.0 L5 5.8 L6 7.8 L7 9.0 L8 10.8 L9 13.1 L10 14.6 L11 16.6 L12 19.6 L13 22.2 L14 25.0 L15 27.4 L16 31.4
+- charter at minute 31.4
+- purchases by kind before the charter: Villager 25, Pace 24, Load 2, Pave 24, Building 4, Tools 16, Value 40, Extend 14, BellTrack 4
+- longest gap with nothing new on the map after minute 2: 3.1 min (from minute 27.4); requests met 7 of 13
 
 ### Seed 1, bot: best payback first
 
 | minute | coin | coin/min | purchases | level | villagers |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 10 | 24 | 4 | 1 | 2 |
-| 2 | 18 | 72 | 6 | 2 | 4 |
-| 3 | 32 | 177 | 7 | 3 | 4 |
-| 4 | 121 | 272 | 9 | 5 | 6 |
-| 5 | 21 | 255 | 5 | 5 | 7 |
-| 6 | 86 | 450 | 6 | 6 | 8 |
-| 7 | 42 | 507 | 4 | 6 | 9 |
-| 8 | 136 | 1283 | 12 | 8 | 15 |
-| 9 | 251 | 1301 | 7 | 8 | 15 |
-| 10 | 153 | 1828 | 10 | 9 | 16 |
-| 11 | 87 | 1789 | 6 | 10 | 16 |
-| 12 | 358 | 2423 | 5 | 10 | 17 |
-| 13 | 244 | 2878 | 6 | 11 | 18 |
-| 14 | 738 | 2671 | 3 | 11 | 19 |
-| 15 | 829 | 2823 | 3 | 11 | 19 |
-| 16 | 370 | 3008 | 3 | 12 | 20 |
-| 17 | 1081 | 4423 | 3 | 12 | 20 |
-| 18 | 2707 | 4396 | 3 | 13 | 21 |
-| 19 | 539 | 4277 | 8 | 13 | 21 |
-| 20 | 649 | 5249 | 3 | 13 | 21 |
-| 21 | 1970 | 5249 | 2 | 14 | 22 |
-| 22 | 101 | 5793 | 3 | 14 | 23 |
-| 23 | 2812 | 5153 | 1 | 14 | 23 |
-| 24 | 155 | 6213 | 3 | 14 | 23 |
-| 25 | 3312 | 6150 | 1 | 14 | 23 |
-| 26 | 3429 | 7080 | 2 | 15 | 23 |
-| 27 | 4096 | 7921 | 2 | 15 | 24 |
-| 28 | 1381 | 8830 | 2 | 16 | 26 |
+| 1 | 6 | 24 | 5 | 1 | 2 |
+| 2 | 8 | 54 | 5 | 2 | 4 |
+| 3 | 8 | 110 | 6 | 3 | 4 |
+| 4 | 15 | 177 | 6 | 4 | 6 |
+| 5 | 15 | 233 | 9 | 5 | 6 |
+| 6 | 11 | 248 | 5 | 5 | 7 |
+| 7 | 30 | 355 | 5 | 6 | 8 |
+| 8 | 43 | 413 | 5 | 6 | 9 |
+| 9 | 26 | 609 | 5 | 7 | 11 |
+| 10 | 118 | 982 | 8 | 7 | 13 |
+| 11 | 153 | 1446 | 9 | 8 | 15 |
+| 12 | 152 | 1438 | 11 | 9 | 16 |
+| 13 | 4 | 1583 | 8 | 10 | 17 |
+| 14 | 23 | 1874 | 5 | 10 | 17 |
+| 15 | 99 | 1870 | 6 | 11 | 19 |
+| 16 | 520 | 2559 | 4 | 11 | 20 |
+| 17 | 156 | 3194 | 5 | 12 | 21 |
+| 18 | 1000 | 3971 | 4 | 12 | 22 |
+| 19 | 247 | 4119 | 5 | 13 | 23 |
+| 20 | 531 | 4061 | 8 | 13 | 23 |
+| 21 | 759 | 4784 | 4 | 13 | 23 |
+| 22 | 823 | 4391 | 5 | 14 | 24 |
+| 23 | 1351 | 4825 | 3 | 14 | 24 |
+| 24 | 1289 | 5056 | 3 | 14 | 24 |
+| 25 | 913 | 5632 | 2 | 15 | 25 |
+| 26 | 435 | 6698 | 3 | 15 | 27 |
+| 27 | 153 | 8531 | 5 | 15 | 27 |
+| 28 | 6919 | 8580 | 2 | 16 | 27 |
 
-- first coin 14.9 s, first purchase 28.5 s, purchases 129
-- longest spell with nothing affordable 47.5 s (from 1626 s)
-- fewest purchases in a minute: 4 in minutes 1-10 (minute 1), 1 after (minute 23)
-- level reached (minute): L2 1.1 L3 2.0 L4 3.2 L5 4.0 L6 5.6 L7 7.2 L8 8.0 L9 9.1 L10 10.5 L11 12.5 L12 15.6 L13 17.4 L14 20.6 L15 25.0 L16 27.9
-- charter at minute 27.9
-- purchases by kind before the charter: Villager 24, Pace 20, Load 3, Pave 24, Building 4, Tools 10, Value 24, Extend 14, BellTrack 5
-- longest gap with nothing new on the map after minute 2: 3.5 min (from minute 21.5); requests met 6 of 12
+- first coin 16.1 s, first purchase 30.5 s, purchases 151
+- longest spell with nothing affordable 26.5 s (from 1449 s)
+- fewest purchases in a minute: 5 in minutes 1-10 (minute 1), 2 after (minute 25)
+- level reached (minute): L2 1.2 L3 2.5 L4 3.8 L5 4.6 L6 6.6 L7 8.9 L8 10.0 L9 11.3 L10 13.0 L11 14.3 L12 16.4 L13 18.6 L14 21.2 L15 24.9 L16 27.4
+- charter at minute 27.4
+- purchases by kind before the charter: Villager 26, Pace 24, Load 3, Pave 22, Building 4, Tools 15, Value 38, Extend 13, BellTrack 5
+- longest gap with nothing new on the map after minute 2: 2.5 min (from minute 21.2); requests met 6 of 11
 
 ### Seed 1, bot: random affordable
 
 | minute | coin | coin/min | purchases | level | villagers |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 3 | 24 | 5 | 2 | 2 |
-| 2 | 11 | 78 | 6 | 2 | 4 |
-| 3 | 7 | 176 | 7 | 3 | 4 |
-| 4 | 41 | 269 | 7 | 4 | 6 |
-| 5 | 42 | 282 | 7 | 5 | 7 |
-| 6 | 7 | 443 | 7 | 6 | 9 |
-| 7 | 109 | 570 | 4 | 6 | 10 |
-| 8 | 92 | 874 | 7 | 7 | 12 |
-| 9 | 208 | 954 | 6 | 8 | 15 |
-| 10 | 47 | 1143 | 7 | 9 | 15 |
-| 11 | 47 | 1701 | 9 | 9 | 16 |
-| 12 | 445 | 1630 | 3 | 10 | 16 |
-| 13 | 329 | 2126 | 5 | 10 | 18 |
-| 14 | 195 | 2110 | 6 | 11 | 18 |
-| 15 | 322 | 2468 | 3 | 11 | 19 |
-| 16 | 557 | 3031 | 3 | 12 | 19 |
-| 17 | 256 | 2782 | 3 | 12 | 20 |
-| 18 | 609 | 3395 | 3 | 12 | 20 |
-| 19 | 391 | 3009 | 2 | 13 | 21 |
-| 20 | 309 | 3766 | 2 | 13 | 21 |
-| 21 | 1785 | 4846 | 2 | 13 | 22 |
-| 22 | 1636 | 4594 | 2 | 13 | 23 |
-| 23 | 1543 | 5455 | 2 | 14 | 23 |
-| 24 | 1709 | 4710 | 2 | 14 | 23 |
-| 25 | 1040 | 5680 | 8 | 14 | 23 |
-| 26 | 2504 | 5347 | 2 | 14 | 23 |
-| 27 | 1997 | 7187 | 3 | 15 | 23 |
-| 28 | 4643 | 6159 | 1 | 15 | 24 |
-| 29 | 5992 | 6152 | 1 | 15 | 25 |
-| 30 | 1915 | 8523 | 2 | 16 | 26 |
+| 1 | 6 | 24 | 5 | 1 | 2 |
+| 2 | 16 | 54 | 5 | 2 | 4 |
+| 3 | 23 | 97 | 5 | 3 | 4 |
+| 4 | 0 | 174 | 7 | 4 | 6 |
+| 5 | 39 | 233 | 9 | 5 | 7 |
+| 6 | 4 | 266 | 5 | 5 | 7 |
+| 7 | 32 | 371 | 5 | 6 | 8 |
+| 8 | 108 | 421 | 5 | 6 | 9 |
+| 9 | 70 | 633 | 8 | 7 | 12 |
+| 10 | 109 | 678 | 4 | 7 | 12 |
+| 11 | 150 | 897 | 6 | 8 | 15 |
+| 12 | 41 | 877 | 7 | 8 | 16 |
+| 13 | 65 | 1127 | 5 | 9 | 16 |
+| 14 | 236 | 1654 | 9 | 9 | 16 |
+| 15 | 227 | 1603 | 5 | 10 | 17 |
+| 16 | 116 | 2029 | 6 | 11 | 19 |
+| 17 | 492 | 1811 | 3 | 11 | 20 |
+| 18 | 698 | 2288 | 3 | 11 | 21 |
+| 19 | 27 | 2021 | 4 | 12 | 22 |
+| 20 | 629 | 2429 | 4 | 12 | 22 |
+| 21 | 886 | 2480 | 3 | 12 | 23 |
+| 22 | 722 | 2752 | 4 | 13 | 23 |
+| 23 | 71 | 3503 | 4 | 13 | 23 |
+| 24 | 1442 | 3603 | 2 | 13 | 24 |
+| 25 | 22 | 4237 | 9 | 14 | 24 |
+| 26 | 1327 | 4794 | 4 | 14 | 24 |
+| 27 | 953 | 5994 | 4 | 14 | 24 |
+| 28 | 1130 | 5621 | 5 | 15 | 25 |
+| 29 | 1306 | 5893 | 3 | 15 | 25 |
+| 30 | 2253 | 5348 | 2 | 15 | 25 |
+| 31 | 652 | 5722 | 3 | 15 | 26 |
+| 32 | 4114 | 6110 | 1 | 16 | 26 |
 
-- first coin 14.9 s, first purchase 15.0 s, purchases 127
-- longest spell with nothing affordable 57.5 s (from 1683 s)
-- fewest purchases in a minute: 4 in minutes 1-10 (minute 7), 1 after (minute 28)
-- level reached (minute): L2 0.9 L3 2.0 L4 3.2 L5 4.2 L6 5.5 L7 7.1 L8 8.5 L9 9.8 L10 11.5 L11 13.7 L12 15.8 L13 18.9 L14 22.3 L15 26.1 L16 29.8
-- charter at minute 29.8
-- purchases by kind before the charter: Villager 24, Pace 20, Load 3, Pave 22, Building 4, Tools 10, Value 24, Extend 14, BellTrack 5
-- longest gap with nothing new on the map after minute 2: 2.8 min (from minute 19.4); requests met 9 of 13
+- first coin 16.1 s, first purchase 16.5 s, purchases 154
+- longest spell with nothing affordable 43.0 s (from 1418 s)
+- fewest purchases in a minute: 4 in minutes 1-10 (minute 10), 2 after (minute 24)
+- level reached (minute): L2 1.2 L3 2.6 L4 3.9 L5 4.9 L6 6.7 L7 8.5 L8 10.3 L9 12.6 L10 14.0 L11 15.9 L12 18.8 L13 21.4 L14 24.4 L15 27.2 L16 31.3
+- charter at minute 31.3
+- purchases by kind before the charter: Villager 25, Pace 24, Load 2, Pave 24, Building 4, Tools 16, Value 40, Extend 14, BellTrack 4
+- longest gap with nothing new on the map after minute 2: 3.2 min (from minute 27.2); requests met 7 of 13
 
 ### Seed 1, bot: saver
 
 | minute | coin | coin/min | purchases | level | villagers |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 10 | 24 | 4 | 1 | 2 |
-| 2 | 18 | 72 | 6 | 2 | 4 |
-| 3 | 32 | 177 | 7 | 3 | 4 |
-| 4 | 181 | 272 | 8 | 4 | 6 |
-| 5 | 13 | 282 | 2 | 5 | 6 |
-| 6 | 156 | 687 | 11 | 6 | 10 |
-| 7 | 49 | 920 | 11 | 7 | 13 |
-| 8 | 259 | 1522 | 7 | 8 | 15 |
-| 9 | 20 | 1502 | 9 | 9 | 15 |
-| 10 | 22 | 1678 | 7 | 9 | 16 |
-| 11 | 1270 | 2033 | 5 | 10 | 16 |
-| 12 | 322 | 2529 | 4 | 11 | 17 |
-| 13 | 242 | 3807 | 6 | 11 | 20 |
-| 14 | 3374 | 4049 | 5 | 12 | 20 |
-| 15 | 1115 | 3672 | 1 | 12 | 20 |
-| 16 | 284 | 5287 | 5 | 13 | 21 |
-| 17 | 1878 | 5397 | 6 | 13 | 21 |
-| 18 | 1231 | 5937 | 5 | 13 | 22 |
-| 19 | 834 | 5978 | 2 | 14 | 24 |
-| 20 | 3398 | 6193 | 2 | 14 | 24 |
-| 21 | 1584 | 6631 | 3 | 14 | 25 |
-| 22 | 1445 | 6813 | 3 | 15 | 25 |
-| 23 | 3379 | 6815 | 2 | 15 | 25 |
-| 24 | 907 | 7424 | 2 | 15 | 26 |
-| 25 | 713 | 8187 | 3 | 15 | 26 |
-| 26 | 215 | 8436 | 1 | 16 | 27 |
+| 1 | 6 | 24 | 5 | 1 | 2 |
+| 2 | 8 | 54 | 5 | 2 | 4 |
+| 3 | 8 | 110 | 6 | 3 | 4 |
+| 4 | 15 | 177 | 6 | 4 | 6 |
+| 5 | 229 | 231 | 5 | 4 | 6 |
+| 6 | 14 | 295 | 3 | 5 | 6 |
+| 7 | 4 | 521 | 9 | 6 | 10 |
+| 8 | 3 | 816 | 11 | 7 | 13 |
+| 9 | 342 | 1307 | 13 | 8 | 15 |
+| 10 | 99 | 1275 | 9 | 9 | 16 |
+| 11 | 1026 | 1686 | 7 | 9 | 16 |
+| 12 | 1579 | 1667 | 4 | 10 | 16 |
+| 13 | 366 | 2543 | 8 | 10 | 18 |
+| 14 | 467 | 3586 | 9 | 11 | 20 |
+| 15 | 438 | 3627 | 6 | 12 | 21 |
+| 16 | 771 | 3938 | 5 | 12 | 22 |
+| 17 | 3650 | 4052 | 2 | 12 | 22 |
+| 18 | 272 | 5047 | 4 | 13 | 23 |
+| 19 | 991 | 4976 | 9 | 14 | 24 |
+| 20 | 611 | 5799 | 4 | 14 | 26 |
+| 21 | 497 | 5931 | 4 | 14 | 26 |
+| 22 | 593 | 6220 | 5 | 15 | 26 |
+| 23 | 119 | 6597 | 4 | 15 | 27 |
+| 24 | 1160 | 7022 | 4 | 15 | 27 |
+| 25 | 610 | 7797 | 3 | 16 | 28 |
 
-- first coin 14.9 s, first purchase 28.5 s, purchases 127
-- longest spell with nothing affordable 27.0 s (from 1496 s)
-- fewest purchases in a minute: 2 in minutes 1-10 (minute 5), 1 after (minute 15)
-- level reached (minute): L2 1.1 L3 2.0 L4 3.2 L5 4.5 L6 5.4 L7 6.1 L8 7.3 L9 8.4 L10 10.2 L11 11.9 L12 13.8 L13 15.3 L14 18.2 L15 21.8 L16 26.0
-- charter at minute 26.0
-- purchases by kind before the charter: Villager 25, Pace 20, Load 3, Pave 22, Building 4, Tools 10, Value 24, Extend 13, BellTrack 5
-- longest gap with nothing new on the map after minute 2: 3.6 min (from minute 18.2); requests met 6 of 11
+- first coin 16.1 s, first purchase 30.5 s, purchases 150
+- longest spell with nothing affordable 17.0 s (from 1395 s)
+- fewest purchases in a minute: 3 in minutes 1-10 (minute 6), 2 after (minute 17)
+- level reached (minute): L2 1.2 L3 2.5 L4 3.8 L5 5.3 L6 6.5 L7 7.7 L8 8.8 L9 9.5 L10 11.5 L11 13.0 L12 14.9 L13 17.1 L14 18.5 L15 21.4 L16 24.9
+- charter at minute 24.9
+- purchases by kind before the charter: Villager 26, Pace 24, Load 3, Pave 22, Building 4, Tools 14, Value 37, Extend 14, BellTrack 5
+- longest gap with nothing new on the map after minute 2: 2.6 min (from minute 18.9); requests met 5 of 10
 
 ### Targets
 
-- seed 1 cheapest first: 1 purchases in minute 22 < 2
-- seed 1 best payback first: 1 purchases in minute 23 < 2
-- seed 1 random affordable: 1 purchases in minute 28 < 2
-- seed 1 saver: 2 purchases in minute 5 < 4
-- seed 1 saver: 1 purchases in minute 15 < 2
-- seed 1 best payback first: nothing new on the map for 3.5 min (from minute 21.5) > 3.5
-- seed 1 saver: nothing new on the map for 3.6 min (from minute 18.2) > 3.5
+- seed 1 saver: 3 purchases in minute 6 < 4
+- seed 1 saver: charter at 24.9 min, outside 25-40

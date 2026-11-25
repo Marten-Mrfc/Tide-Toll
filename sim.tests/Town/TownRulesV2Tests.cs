@@ -22,18 +22,23 @@ public class TownRulesV2Tests
     }
 
     [Fact]
-    public void PaceHasTwentyClearStepsAndThenSaysSo()
+    public void PaceHasClearStepsUpToItsMaxAndThenSaysSo()
     {
         var t = new T(1); Rich(t);
-        double prev = T.PaceFactorAt(0);
-        for (int i = 0; i < TownRules.PaceMax; i++)
+        // Rules v2.1: only TownRules.PaceAt[0] steps are on sale at level 1; the next says when it unlocks.
+        for (int i = 0; i < TownRules.PaceAt[0]; i++) Assert.True(t.BuyPace());
+        Assert.False(t.BuyPace());
+        Assert.StartsWith("Unlocks at level ", t.PaceLockReason);
+        ToLevel(t, TownRules.LevelRenown.Length);
+        double prev = T.PaceFactorAt(t.PaceLevel);
+        while (t.PaceLevel < TownRules.PaceMax)
         {
             Assert.True(t.BuyPace());
             double f = T.PaceFactorAt(t.PaceLevel);
             Assert.Equal(TownRules.PaceStep, f - prev, 9);
             prev = f;
         }
-        Assert.Equal(20, t.PaceLevel);
+        Assert.Equal(TownRules.PaceMax, t.PaceLevel); // rules v2.1: 25 steps (was the literal 20)
         Assert.False(t.BuyPace());
         var items = new List<ShopItem>(); t.ShopItems(items);
         var pace = items.First(x => x.Kind == ShopItemKind.Pace);
@@ -65,7 +70,7 @@ public class TownRulesV2Tests
         int c1 = t.Villager(0).Home;
         Assert.False(t.CanExtend(c1, out string why));
         Assert.Equal("Unlocks at level " + TownRules.ExtendFromLevel, why);
-        ToLevel(t, TownRules.ExtendFromLevel);
+        ToLevel(t, TownRules.LevelRenown.Length); // rules v2.1: enough extensions on sale for this test
         int h = t.Housing;
         var ev = new List<TownEvent>(); t.DrainEvents(ev);
         int s = t.SuggestedExtend();
@@ -111,12 +116,107 @@ public class TownRulesV2Tests
         double f = t.ToolsFactor;
         Assert.True(t.BuyTools());
         Assert.True(t.ToolsFactor > f);
+        // Rules v2.1: steps unlock with town levels; the rest of both tracks at the last level.
+        while (t.BuyTools()) { }
+        Assert.StartsWith("Unlocks at level ", t.ToolsLockReason);
+        ToLevel(t, TownRules.LevelRenown.Length);
         double d = t.BellDuration, r = t.BellRest;
         Assert.True(t.BuyBellTrack());
         Assert.True(t.BellDuration > d && t.BellRest < r);
-        for (int i = 1; i < TownRules.BellTrackMax; i++) Assert.True(t.BuyBellTrack());
+        for (int i = t.BellTrackLevel; i < TownRules.BellTrackMax; i++) Assert.True(t.BuyBellTrack());
         Assert.False(t.BuyBellTrack());
         Assert.Equal("The bell is at its best", t.BellTrackLockReason);
+        while (t.BuyTools()) { }
+        Assert.Equal(TownRules.ToolsMax, t.ToolsLevel);
+        Assert.Equal("Best tools reached", t.ToolsLockReason);
+    }
+
+    [Fact]
+    public void EveryLevelUpPutsNewStepsOnSaleAndNoTableRunsBackwards()
+    {
+        // Rules v2.1: steps unlock with town levels; each level from 2 to 15 adds at least one step to some track.
+        var tables = new[] { TownRules.PaceAt, TownRules.ToolsAt, TownRules.ValueAt, TownRules.FlourValueAt, TownRules.BellTrackAt, TownRules.ExtendAt };
+        int last = TownRules.LevelRenown.Length;
+        foreach (var tb in tables)
+        {
+            Assert.Equal(last, tb.Length);
+            for (int i = 1; i < tb.Length; i++) Assert.True(tb[i] >= tb[i - 1]);
+        }
+        Assert.Equal(TownRules.PaceMax, TownRules.PaceAt[last - 2]);
+        Assert.Equal(TownRules.ToolsMax, TownRules.ToolsAt[last - 2]);
+        Assert.Equal(TownRules.ValueMax, TownRules.ValueAt[last - 2]);
+        Assert.Equal(TownRules.ValueMax, TownRules.FlourValueAt[last - 2]);
+        Assert.Equal(TownRules.BellTrackMax, TownRules.BellTrackAt[last - 2]);
+        for (int lv = 2; lv < last; lv++)
+            Assert.True(tables.Any(tb => tb[lv - 1] > tb[lv - 2]), $"level {lv} puts no new step on sale");
+        // The shop says when a locked step comes.
+        var t = new T(1); Rich(t);
+        while (t.BuyValue(Good.Water)) { }   // the renown of these purchases may raise the level on the way
+        int bought = t.ValueLevel(Good.Water);
+        Assert.Equal(TownRules.ValueAt[t.Level - 1], bought);
+        int next = Array.FindIndex(TownRules.ValueAt, v => v > bought) + 1;
+        Assert.True(next > t.Level);
+        var items = new List<ShopItem>(); t.ShopItems(items);
+        var w = items.First(x => x.Kind == ShopItemKind.Value && x.Index == (int)Good.Water);
+        Assert.False(w.Affordable);
+        Assert.Equal("Unlocks at level " + next, w.Reason);
+    }
+
+    [Fact]
+    public void RequestsAdaptToThePlayerAndTheAdaptationIsSaved()
+    {
+        var t = new T(1);
+        Assert.Equal(1, t.RequestScale);
+        // Miss every request: the scale shrinks to its floor.
+        t.S.ReqNextAt = 0; t.S.Level = 3;
+        double lastScale = 1; int misses = 0;
+        var ev = new List<TownEvent>();
+        for (int i = 0; i < 20000 && misses < 30; i++)
+        {
+            t.Step(); t.DrainEvents(ev);
+            foreach (var e in ev) if (e.Kind == TownEventKind.RequestMissed) { misses++; Assert.True(t.RequestScale < lastScale || t.RequestScale == TownRules.RequestScaleMin); lastScale = t.RequestScale; }
+            if (t.RequestActive && t.Request.Delivered > 0) { t.S.ReqDelivered = 0; }
+        }
+        Assert.True(misses >= 8);
+        Assert.Equal(TownRules.RequestScaleMin, t.RequestScale, 9);
+        // Saved and loaded with the town.
+        var u = TownSave.Load(TownSave.Save(t), t.Plan);
+        Assert.Equal(t.RequestScale, u.RequestScale);
+        // Meeting a request makes the next one bigger.
+        t.S.ReqScale = 1;
+        while (!t.RequestActive) t.Step();
+        t.S.ReqDelivered = t.S.ReqAmount - 1;
+        double before = t.RequestScale;
+        var g = t.S.ReqGood;
+        for (int i = 0; i < 3000 && t.RequestsMet == 0; i++) t.Step();
+        Assert.Equal(1, t.RequestsMet);
+        Assert.Equal(before * TownRules.RequestGrowMet, t.RequestScale, 9);
+    }
+
+    [Fact]
+    public void RoadsAreSmoothCurvesFromDoorToDoor()
+    {
+        // Rules v2.1: each road is a gentle curve (Px, Py) that starts and ends exactly at its nodes.
+        double worst = 0; int sharp = 0, joints = 0;
+        for (int seed = 1; seed <= 20; seed++)
+        {
+            var p = TownPlanner.Build(seed);
+            foreach (var r in p.Roads)
+            {
+                Assert.Equal(p.Nodes[r.A].X, r.Px[0], 9); Assert.Equal(p.Nodes[r.A].Y, r.Py[0], 9);
+                Assert.Equal(p.Nodes[r.B].X, r.Px[^1], 9); Assert.Equal(p.Nodes[r.B].Y, r.Py[^1], 9);
+                Assert.Equal(r.Length, r.PCum[^1], 9);
+                Assert.Equal(r.Length, r.Cum[^1], 9);
+                for (int i = 1; i + 1 < r.Px.Length; i++)
+                {
+                    double a1 = Math.Atan2(r.Py[i] - r.Py[i - 1], r.Px[i] - r.Px[i - 1]), a2 = Math.Atan2(r.Py[i + 1] - r.Py[i], r.Px[i + 1] - r.Px[i]);
+                    double d = Math.Abs(Math.IEEERemainder(a2 - a1, 2 * Math.PI)) * 180 / Math.PI;
+                    joints++; worst = Math.Max(worst, d);
+                    if (d > 30) sharp++;
+                }
+            }
+        }
+        Assert.True(sharp <= joints / 200, $"{sharp} of {joints} joints turn more than 30 degrees (worst {worst:F0})");
     }
 
     [Fact]

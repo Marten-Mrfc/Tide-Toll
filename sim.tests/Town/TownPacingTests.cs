@@ -43,13 +43,20 @@ public class TownPacingTests
     [Fact]
     public void TheBellIsWorthTenToTwentyFivePercent()
     {
-        var bad = new List<string>();
+        // Rules v2.1 (the lead's decision): the average over seeds SeedFrom..SeedTo per bot must be in BellMin..BellMax,
+        // every single run in the sanity band BellRunMin..BellRunMax. Was: seed 1 only, each bot in BellMin..BellMax.
         // The random bot is left out: with and without the bell its random picks diverge, so the comparison measures chance.
+        var bad = new List<string>();
+        int n = TownTargets.SeedTo - TownTargets.SeedFrom + 1;
         foreach (var b in Bots)
         {
             if (b == BotKind.Random) continue;
-            double w = TownPacing.BellWorth(1, b);
-            if (w < TownTargets.BellMin || w > TownTargets.BellMax) bad.Add($"seed 1 {TownBot.Name(b)}: bell +{w * 100:F1} %");
+            var w = new double[n];
+            Parallel.For(0, n, i => w[i] = TownPacing.BellWorth(TownTargets.SeedFrom + i, b));
+            for (int i = 0; i < n; i++)
+                if (w[i] < TownTargets.BellRunMin || w[i] > TownTargets.BellRunMax) bad.Add($"seed {TownTargets.SeedFrom + i} {TownBot.Name(b)}: bell +{w[i] * 100:F1} % outside the single-run band");
+            double avg = w.Average();
+            if (avg < TownTargets.BellMin || avg > TownTargets.BellMax) bad.Add($"{TownBot.Name(b)}: bell +{avg * 100:F1} % on average over seeds {TownTargets.SeedFrom}-{TownTargets.SeedTo}");
         }
         Assert.True(bad.Count == 0, string.Join("\n", bad));
     }
@@ -71,14 +78,23 @@ public class TownPacingTests
     [Fact]
     public void ANormalBotMeetsHalfToFourFifthsOfTheRequests()
     {
+        // Rules v2.1 (the lead's decision): the average share over seeds SeedFrom..SeedTo per bot must be in
+        // RequestsMetMin..Max, every single run in the sanity band RequestsRunMin..Max. Was: every run in RequestsMetMin..Max.
         var bad = new List<string>();
-        foreach (var rs in Runs.Value)
-            foreach (var r in rs)
-            {
-                if (r.Bot != BotKind.Cheapest && r.Bot != BotKind.Payback) continue;
-                double share = r.RequestsAsked == 0 ? 0 : (double)r.RequestsMet / r.RequestsAsked;
-                if (share < TownTargets.RequestsMetMin || share > TownTargets.RequestsMetMax) bad.Add($"seed {r.Seed} {TownBot.Name(r.Bot)}: met {r.RequestsMet} of {r.RequestsAsked}");
-            }
+        foreach (var b in new[] { BotKind.Cheapest, BotKind.Payback })
+        {
+            var shares = new List<double>();
+            foreach (var rs in Runs.Value)
+                foreach (var r in rs)
+                {
+                    if (r.Bot != b) continue;
+                    double share = r.RequestsAsked == 0 ? 0 : (double)r.RequestsMet / r.RequestsAsked;
+                    shares.Add(share);
+                    if (share < TownTargets.RequestsRunMin || share > TownTargets.RequestsRunMax) bad.Add($"seed {r.Seed} {TownBot.Name(r.Bot)}: met {r.RequestsMet} of {r.RequestsAsked}, outside the single-run band");
+                }
+            double avg = shares.Average();
+            if (avg < TownTargets.RequestsMetMin || avg > TownTargets.RequestsMetMax) bad.Add($"{TownBot.Name(b)}: met {avg * 100:F0} % on average over seeds {TownTargets.SeedFrom}-{TownTargets.SeedTo}");
+        }
         Assert.True(bad.Count == 0, string.Join("\n", bad));
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using TideToll.Sim.Town;
 
@@ -33,8 +34,37 @@ public static class TownCommand
         if (which is "all" or "saver") bots.Add(BotKind.Saver);
         if (o.ContainsKey("extras")) return Extras(seed);
         if (o.TryGetValue("shopat", out var sa)) return ShopAt(seed, double.Parse(sa, Inv));
-        if (o.TryGetValue("seeds", out var range))
+        if (o.TryGetValue("seeds", out var range) && o.ContainsKey("misses"))
         {
+            // v2.1 tuning: every bot on every seed of the range (in parallel), then every miss with a count per kind.
+            var p = range.Split('-');
+            int a = int.Parse(p[0], Inv), z = p.Length > 1 ? int.Parse(p[1], Inv) : a;
+            var all = new List<string>[z - a + 1];
+            var rows = new string[z - a + 1];
+            System.Threading.Tasks.Parallel.For(a, z + 1, sd =>
+            {
+                var plan = TownPlanner.Build(sd);
+                var res = new List<PacingResult>();
+                var row = new StringBuilder($"{sd,4}");
+                foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}"); }
+                all[sd - a] = TownPacing.Misses(res); rows[sd - a] = row.ToString();
+            });
+            foreach (var r in rows) Console.WriteLine(r);
+            var flat = new List<string>(); foreach (var l in all) flat.AddRange(l);
+            foreach (var x in flat) Console.WriteLine("  MISSED " + x);
+            if (o.ContainsKey("averages"))
+                foreach (var k in bots)
+                {
+                    var w = new double[z - a + 1];
+                    if (k != BotKind.Random) System.Threading.Tasks.Parallel.For(a, z + 1, sd => w[sd - a] = TownPacing.BellWorth(sd, k));
+                    Console.WriteLine($"{TownBot.Name(k)}: bell average +{w.Average() * 100:F1} % (runs {w.Min() * 100:F1} to {w.Max() * 100:F1}), per seed " + string.Join(" ", Array.ConvertAll(w, x => (x * 100).ToString("F1", Inv))));
+                }
+            Console.WriteLine($"misses: {flat.Count} (purchases {flat.FindAll(x => x.Contains("purchases in minute")).Count}, nothing affordable {flat.FindAll(x => x.Contains("nothing affordable")).Count}, age {flat.FindAll(x => x.Contains("charter")).Count}, map {flat.FindAll(x => x.Contains("on the map")).Count})");
+            return flat.Count == 0 ? 0 : 1;
+        }
+        if (o.TryGetValue("seeds", out var range2))
+        {
+            range = range2;
             var p = range.Split('-');
             int a = int.Parse(p[0], Inv), z = p.Length > 1 ? int.Parse(p[1], Inv) : a;
             bool okAll = true;
@@ -75,6 +105,12 @@ public static class TownCommand
                 var arr = (double[])f.GetValue(null)!;
                 var vals = p[1].Split(',');
                 for (int i = 0; i < arr.Length && i < vals.Length; i++) arr[i] = double.Parse(vals[i], Inv);
+            }
+            else if (f.FieldType == typeof(int[]))
+            {
+                var arr = (int[])f.GetValue(null)!;
+                var vals = p[1].Split(',');
+                for (int i = 0; i < arr.Length && i < vals.Length; i++) arr[i] = int.Parse(vals[i], Inv);
             }
             else if (f.FieldType == typeof(int)) f.SetValue(null, int.Parse(p[1], Inv));
             else f.SetValue(null, double.Parse(p[1], Inv));

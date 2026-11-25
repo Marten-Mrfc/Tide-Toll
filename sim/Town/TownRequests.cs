@@ -13,6 +13,8 @@ public sealed partial class Town
     public int RequestsMet => S.ReqMet;
     public int RequestsMissed => S.ReqMissed;
     public int RequestsAsked => S.ReqCount;
+    /// <summary>Rules v2.1: how the request amounts have adapted to this player (1 at the start; above 1 after many met).</summary>
+    public double RequestScale => S.ReqScale;
 
     /// <summary>The current request (Active false when none runs).</summary>
     public RequestView Request => new()
@@ -66,6 +68,7 @@ public sealed partial class Town
             {
                 S.ReqActive = false;
                 S.ReqMissed++;
+                S.ReqScale = Math.Max(TownRules.RequestScaleMin, S.ReqScale * TownRules.RequestShrinkMissed);
                 S.ReqNextAt = Time + TownRules.RequestGapAfterMiss;
                 Emit(new TownEvent { Kind = TownEventKind.RequestMissed, Good = S.ReqGood, Amount = S.ReqAmount, Level = S.ReqDelivered, Index = S.ReqWho });
             }
@@ -82,9 +85,9 @@ public sealed partial class Town
         double secs = TownRules.RequestSeconds[(h >> 8) % (uint)TownRules.RequestSeconds.Length];
         double rate = Math.Max(30, CoinPerMinute) / 60;
         double unit = UnitValue(g);
-        double amount = TownRules.RequestShare * rate * secs / unit;
+        double amount = TownRules.RequestShare * S.ReqScale * rate * secs / unit;
         amount = Math.Min(amount, TownRules.RequestCapacityShare * Capacity(g) * secs);
-        int amt = Math.Max(TownRules.RequestMinAmount, (int)Math.Round(amount));
+        int amt = Math.Max(Math.Min(TownRules.RequestMinAmount, (int)Math.Ceiling(TownRules.RequestMinAmount * S.ReqScale)), (int)Math.Round(amount));
         S.ReqActive = true; S.ReqGood = g; S.ReqWho = (int)g - 1; S.ReqAmount = amt; S.ReqDelivered = 0;
         S.ReqStart = Time; S.ReqEnds = Time + secs;
         S.ReqRewardCoin = Math.Ceiling(amt * unit * TownRules.RequestReward);
@@ -98,6 +101,7 @@ public sealed partial class Town
         if (S.ReqDelivered < S.ReqAmount) return;
         S.ReqActive = false;
         S.ReqMet++;
+        S.ReqScale = Math.Min(TownRules.RequestScaleMax, S.ReqScale * TownRules.RequestGrowMet);
         S.ReqNextAt = Time + TownRules.RequestGap;
         double coin = S.ReqRewardCoin, renown = RenownFor(coin);
         S.Coin += coin;

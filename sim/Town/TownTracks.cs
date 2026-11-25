@@ -21,9 +21,27 @@ public sealed partial class Town
     public double ExtendPrice => TownRules.ExtendBase * Math.Pow(TownRules.ExtendGrowth, S.ExtensionsBought);
     public double BellTrackPrice => TownRules.BellTrackBase * Math.Pow(TownRules.BellTrackGrowth, S.BellTrackLevel);
 
+    /// <summary>Rules v2.1: how many steps of a track are on sale at the current town level (table indexed by level - 1).</summary>
+    internal int OnSale(int[] table) => table[Math.Min(S.Level, table.Length) - 1];
+
+    /// <summary>Rules v2.1: "" when step bought+1 of a track is on sale now, else "Unlocks at level N".</summary>
+    internal string StepLock(int[] table, int bought)
+    {
+        if (OnSale(table) > bought) return "";
+        for (int i = 0; i < table.Length; i++) if (table[i] > bought) return "Unlocks at level " + (i + 1);
+        return "Unlocks at a later level";
+    }
+
     /// <summary>"" when Tools can be bought now (ignoring coin), else why not.</summary>
     public string ToolsLockReason => S.ToolsLevel >= TownRules.ToolsMax ? "Best tools reached"
-        : S.Level < TownRules.ToolsFromLevel ? "Unlocks at level " + TownRules.ToolsFromLevel : "";
+        : S.Level < TownRules.ToolsFromLevel ? "Unlocks at level " + TownRules.ToolsFromLevel : StepLock(TownRules.ToolsAt, S.ToolsLevel);
+
+    /// <summary>Rules v2.1: "" when Pace can be bought now (ignoring coin), else why not.</summary>
+    public string PaceLockReason => S.PaceLevel >= TownRules.PaceMax ? "Fastest pace reached" : StepLock(TownRules.PaceAt, S.PaceLevel);
+
+    /// <summary>Rules v2.1: "" when another cottage extension is on sale at this town level (ignoring coin and room), else why not.</summary>
+    public string ExtendLockReason => S.Level < TownRules.ExtendFromLevel ? "Unlocks at level " + TownRules.ExtendFromLevel
+        : StepLock(TownRules.ExtendAt, S.ExtensionsBought);
 
     /// <summary>Whether the value track of a good is shown: Water always, Grain once the first field is given, Flour once the mill works.</summary>
     public bool ValueTrackShown(Good g)
@@ -40,10 +58,11 @@ public sealed partial class Town
 
     public string ValueLockReason(Good g) => g is < Good.Water or > Good.Flour ? "No such good"
         : !ValueTrackShown(g) ? (g == Good.Grain ? "Comes with the first field" : "Comes with the mill")
-        : S.ValueLevel[(int)g] >= TownRules.ValueMax ? "Best price reached" : "";
+        : S.ValueLevel[(int)g] >= TownRules.ValueMax ? "Best price reached"
+        : StepLock(g == Good.Flour ? TownRules.FlourValueAt : TownRules.ValueAt, S.ValueLevel[(int)g]);
 
     public string BellTrackLockReason => !S.BellUnlocked ? "Comes with the bell"
-        : S.BellTrackLevel >= TownRules.BellTrackMax ? "The bell is at its best" : "";
+        : S.BellTrackLevel >= TownRules.BellTrackMax ? "The bell is at its best" : StepLock(TownRules.BellTrackAt, S.BellTrackLevel);
 
     /// <summary>Whether a cottage can be extended now (ignoring coin), with the reason in words if not.</summary>
     public bool CanExtend(int plot, out string reason)
@@ -53,6 +72,8 @@ public sealed partial class Town
         if (!S.PlotGiven[plot]) { reason = "No such cottage yet"; return false; }
         if (S.Level < TownRules.ExtendFromLevel) { reason = "Unlocks at level " + TownRules.ExtendFromLevel; return false; }
         if (S.Extensions[plot] >= TownRules.ExtendMax) { reason = "Already extended twice"; return false; }
+        string lk = ExtendLockReason;
+        if (lk.Length > 0) { reason = lk; return false; }
         return true;
     }
 
@@ -75,7 +96,9 @@ public sealed partial class Town
         for (int g = 1; g <= 3; g++)
             if (ValueTrackShown((Good)g)) into.Add(Item(ShopItemKind.Value, g, GoodNames[g] + " price", S.ValueLevel[g], ValuePrice((Good)g), ValueLockReason((Good)g)));
         int c = SuggestedExtend();
-        if (c >= 0) into.Add(Item(ShopItemKind.Extend, c, "Extend a cottage", S.ExtensionsBought, ExtendPrice, ""));
+        string elk = ExtendLockReason;
+        if (c < 0 && elk.Length > 0 && S.Level >= TownRules.ExtendFromLevel) into.Add(Item(ShopItemKind.Extend, -1, "Extend a cottage", S.ExtensionsBought, ExtendPrice, elk));
+        else if (c >= 0) into.Add(Item(ShopItemKind.Extend, c, "Extend a cottage", S.ExtensionsBought, ExtendPrice, ""));
         else into.Add(Item(ShopItemKind.Extend, -1, "Extend a cottage", S.ExtensionsBought, ExtendPrice,
             S.Level < TownRules.ExtendFromLevel ? "Unlocks at level " + TownRules.ExtendFromLevel : "Every cottage is extended"));
         if (S.BellUnlocked) into.Add(Item(ShopItemKind.BellTrack, -1, "Louder bell", S.BellTrackLevel, BellTrackPrice, BellTrackLockReason));

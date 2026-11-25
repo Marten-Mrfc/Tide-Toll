@@ -76,7 +76,7 @@ public sealed partial class Town
         into.Clear();
         string room = HousingRoom > 0 ? "" : "No room: wait for a cottage";
         into.Add(Item(ShopItemKind.Villager, -1, "Villager", S.VillagersBought, VillagerPrice, room));
-        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= TownRules.PaceMax ? 0 : PacePrice, S.PaceLevel >= TownRules.PaceMax ? "Fastest pace reached" : ""));
+        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= TownRules.PaceMax ? 0 : PacePrice, PaceLockReason));
         if (S.LoadLevel < TownRules.LoadPrices.Length)
             into.Add(Item(ShopItemKind.Load, -1, TownRules.LoadNames[S.LoadLevel], S.LoadLevel, LoadPrice, LoadLockReason));
         int pr = SuggestedPave();
@@ -130,7 +130,7 @@ public sealed partial class Town
     public bool BuyPace()
     {
         double p = PacePrice;
-        if (S.PaceLevel >= TownRules.PaceMax || !Pay(p)) return false;
+        if (PaceLockReason.Length > 0 || !Pay(p)) return false;
         S.PaceLevel++;
         Bought(ShopItemKind.Pace, -1, p, S.PaceLevel);
         return true;

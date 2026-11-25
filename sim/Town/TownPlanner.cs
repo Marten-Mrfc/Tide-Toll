@@ -147,10 +147,13 @@ public static class TownPlanner
         foreach (var (lv, a, b) in TemplateRoads)
         {
             var na = nodes[plots[names[a]].Node]; var nb = nodes[plots[names[b]].Node];
+            int crossingsBefore = plan.RoadCrossings;
             var pts = router.Route(na.X, na.Y, nb.X, nb.Y, avoidRoads: true);
             if (pts == null) { pts = router.Route(na.X, na.Y, nb.X, nb.Y, avoidRoads: false); plan.RoadCrossings++; }
             if (pts == null) throw new InvalidOperationException($"town plan: no way for road {a}-{b} on seed {seed}");
-            var r = MakeRoad(roads.Count, na.Id, nb.Id, lv, pts);
+            bool avoid = plan.RoadCrossings == crossingsBefore;
+            router.Smooth(pts, avoid, out var cx, out var cy);
+            var r = MakeRoad(roads.Count, na.Id, nb.Id, lv, pts, cx, cy);
             roads.Add(r);
             router.Mark(r);
         }
@@ -226,24 +229,48 @@ public static class TownPlanner
         return true;
     }
 
-    private static Road MakeRoad(int id, int a, int b, int level, List<(int X, int Y)> pts)
+    private static Road MakeRoad(int id, int a, int b, int level, List<(int X, int Y)> pts, double[] cx, double[] cy)
     {
         var r = new Road { Id = id, A = a, B = b, Level = level, Xs = new int[pts.Count], Ys = new int[pts.Count], Cum = new double[pts.Count] };
+        r.Px = cx; r.Py = cy; r.PCum = new double[cx.Length];
+        for (int i = 1; i < cx.Length; i++) r.PCum[i] = r.PCum[i - 1] + Math.Sqrt((cx[i] - cx[i - 1]) * (cx[i] - cx[i - 1]) + (cy[i] - cy[i - 1]) * (cy[i] - cy[i - 1]));
+        r.Length = r.PCum[^1];
         for (int i = 0; i < pts.Count; i++)
         {
             r.Xs[i] = pts[i].X; r.Ys[i] = pts[i].Y;
             if (i > 0) r.Cum[i] = r.Cum[i - 1] + Math.Sqrt((double)(pts[i].X - pts[i - 1].X) * (pts[i].X - pts[i - 1].X) + (double)(pts[i].Y - pts[i - 1].Y) * (pts[i].Y - pts[i - 1].Y));
         }
-        r.Length = r.Cum[^1];
+        // Rules v2.1: Cum stays one entry per grid point, scaled so that Cum[^1] = Length (the curve's length).
+        double gl = r.Cum[^1];
+        if (gl > 0) for (int i = 0; i < r.Cum.Length; i++) r.Cum[i] *= r.Length / gl;
         return r;
     }
 
-    /// <summary>All grid cells a road covers (4-connected line per segment), for checks and for painting.</summary>
+    /// <summary>All grid cells a road covers (4-connected, along the drawn curve since rules v2.1), for checks and for painting.</summary>
     public static List<int> RoadCells(Road r, int size)
     {
         var cells = new List<int>();
-        var g = new Grid(size, size);
-        for (int i = 0; i + 1 < r.Xs.Length; i++) g.Line4(r.Xs[i], r.Ys[i], r.Xs[i + 1], r.Ys[i + 1], cells);
+        if (r.Px.Length < 2)
+        {
+            var g = new Grid(size, size);
+            for (int i = 0; i + 1 < r.Xs.Length; i++) g.Line4(r.Xs[i], r.Ys[i], r.Xs[i + 1], r.Ys[i + 1], cells);
+            return cells;
+        }
+        int ox = (int)Math.Floor(r.Px[0] + 0.5), oy = (int)Math.Floor(r.Py[0] + 0.5);
+        cells.Add(oy * size + ox);
+        for (int i = 0; i + 1 < r.Px.Length; i++)
+        {
+            double ax = r.Px[i], ay = r.Py[i], bx = r.Px[i + 1], by = r.Py[i + 1];
+            int k = Math.Max(1, (int)Math.Ceiling(Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) * 10));
+            for (int j = 1; j <= k; j++)
+            {
+                int cx = (int)Math.Floor(ax + (bx - ax) * j / k + 0.5), cy = (int)Math.Floor(ay + (by - ay) * j / k + 0.5);
+                if (cx == ox && cy == oy) continue;
+                if (cx != ox && cy != oy) cells.Add(oy * size + cx);
+                cells.Add(cy * size + cx);
+                ox = cx; oy = cy;
+            }
+        }
         return cells;
     }
 }
