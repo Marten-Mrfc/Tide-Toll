@@ -5,9 +5,11 @@ import { N, idx } from "../sim/grid";
 import { Renderer } from "./render";
 import { readPalette, onThemeChange } from "./palette";
 import { Input, Tool } from "./input";
-import { updateHud, setPreviewLine } from "./hud";
+import { updateHud, setPreviewLine, updateVillage } from "./hud";
 import { FlowPreviewer } from "./previewer";
-import { describePreview, WhatIf } from "../sim/preview";
+import { WhatIf } from "../sim/preview";
+import { Sound } from "./sound";
+import { readout } from "./readout";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const MAX_TICKS_PER_FRAME = 8; // beyond this a slow frame drops sim time instead of stalling
@@ -38,6 +40,12 @@ const say = (msg: string) => { status.textContent = msg; status.title = msg; };
 const previewer = new FlowPreviewer(world);
 const input = new Input(canvas, () => world, renderer, previewer, say);
 const tip = $("preview-tip");
+const sound = new Sound($<HTMLButtonElement>("btn-sound"), $<HTMLInputElement>("volume"), $("sound-note"));
+// Each tool action has a mark on the map (its visual twin) and, with sound on, a cue.
+input.onCue = (cue, x, y) => {
+  renderer.fx.pulse(cue === "place" ? 0 : cue === "erase" ? 1 : 2, x, y, performance.now());
+  sound.cue(cue);
+};
 const kindName = (b: number) => ({ well: "Well", field: "Field", market: "Market", house: "house" })[world.buildings[b].kind];
 
 // ------------------------------------------------------------------ layout
@@ -60,6 +68,8 @@ const pauseBtn = $<HTMLButtonElement>("btn-pause");
 // A fixed label with aria-pressed: pressed means paused.
 function setPaused(p: boolean) {
   paused = p;
+  renderer.paused = p;
+  sound.setPaused(p);
   pauseBtn.setAttribute("aria-pressed", String(p));
 }
 pauseBtn.addEventListener("click", () => setPaused(!paused));
@@ -73,9 +83,17 @@ for (const s of SPEEDS) $(`speed-${s}`).addEventListener("click", () => setSpeed
 const walkersInput = $<HTMLInputElement>("walkers"), walkersOut = $("walkers-out");
 function setWalkers(n: number) {
   walkerCount = Math.max(PARAMS.minWalkers, Math.min(PARAMS.maxWalkers, Math.round(n)));
-  walkersInput.value = String(walkerCount);
-  walkersOut.textContent = String(walkerCount);
   world.setWalkerCount(walkerCount);
+  showPopulation();
+}
+/** The slider and its readout follow the population, which house growth raises after the start. */
+let shownPopulation = -1;
+function showPopulation() {
+  const n = world.walkers.length;
+  if (n === shownPopulation) return;
+  shownPopulation = n;
+  walkersInput.value = String(n);
+  walkersOut.textContent = String(n);
 }
 walkersInput.addEventListener("input", () => setWalkers(Number(walkersInput.value)));
 
@@ -127,6 +145,9 @@ function reset(newSeed = seed) {
   renderer.setWorld(world);
   previewer.setWorld(world);
   input.setTool(input.tool);
+  sound.reset();
+  shownPopulation = -1;
+  showPopulation();
   acc = 0;
   updateHud(world.stats(), fps, tickMs, seed, 0);
 }
@@ -146,6 +167,7 @@ window.addEventListener("keydown", e => {
   else if (k === "p") setPreview(!previewer.enabled);
   else if (k === "r") reset();
   else if (k === "n") $("btn-newmap").click();
+  else if (k === "m") sound.toggle();
 });
 
 // ------------------------------------------------------------------ loop
@@ -160,16 +182,43 @@ let tipText = "";
  */
 function showTip() {
   const p = renderer.flow;
-  const text = p ? describePreview(p, kindName) : "";
+  const text = p ? readout(p, kindName, renderer.ghost?.kind ?? "") : "";
   const at = input.pointer;
   if (text !== tipText) { tipText = text; tip.textContent = text; setPreviewLine(text ? `${text}.` : ""); }
   tip.hidden = !text || !at || input.touch;
-  if (!tip.hidden && at) {
-    const x = Math.min(at[0] + 16, canvas.clientWidth - tip.offsetWidth - 4);
-    const above = at[1] > canvas.clientHeight / 2;
-    const y = above ? at[1] - tip.offsetHeight - 14 : at[1] + 18;
-    tip.style.transform = `translate(${Math.max(4, x) + canvas.offsetLeft}px, ${Math.max(4, y) + canvas.offsetTop}px)`;
+  if (!tip.hidden && at && p) {
+    const [x, y] = placeTip(at, tip.offsetWidth, tip.offsetHeight, p);
+    tip.style.transform = `translate(${x + canvas.offsetLeft}px, ${y + canvas.offsetTop}px)`;
   }
+}
+/**
+ * Where the floating readout goes: of eight spots round the pointer, the one
+ * that covers the fewest points of the ghost routes (and stays on the map);
+ * ties keep the last spot, so the box does not jump about.
+ */
+let tipSpot = 0;
+const TIP_SPOTS: [number, number][] = [[16, 18], [16, -14], [-16, 18], [-16, -14], [16, 50], [16, -46], [-16, 50], [-16, -46]];
+function placeTip(at: [number, number], tw: number, th: number, p: NonNullable<typeof renderer.flow>): [number, number] {
+  const k = canvas.clientWidth / N, W = canvas.clientWidth, H = canvas.clientHeight;
+  let best = tipSpot, bv = Infinity;
+  for (let i = 0; i < TIP_SPOTS.length; i++) {
+    const [ox, oy] = TIP_SPOTS[i];
+    const x0 = ox >= 0 ? at[0] + ox : at[0] + ox - tw, y0 = oy >= 0 ? at[1] + oy : at[1] + oy - th;
+    let v = x0 < 4 || y0 < 4 || x0 + tw > W - 4 || y0 + th > H - 4 ? 1000 : 0;
+    const pad = 6;
+    for (const c of p.changes)
+      for (const pts of [c.newPts, c.oldPts])
+        for (let j = 0; j < pts.length; j += 2) {
+          const px = pts[j] * k, py = pts[j + 1] * k;
+          if (px > x0 - pad && px < x0 + tw + pad && py > y0 - pad && py < y0 + th + pad) v++;
+        }
+    if (i === tipSpot) v -= 0.5;
+    if (v < bv) { bv = v; best = i; }
+  }
+  tipSpot = best;
+  const [ox, oy] = TIP_SPOTS[best];
+  const x = ox >= 0 ? at[0] + ox : at[0] + ox - tw, y = oy >= 0 ? at[1] + oy : at[1] + oy - th;
+  return [Math.max(4, Math.min(W - tw - 4, x)), Math.max(4, Math.min(H - th - 4, y))];
 }
 // Frame recorder for the perf test: every frame's interval and in-page work time.
 let rec: { intervals: number[]; works: number[]; sim0: number; t0: number; worstTick: number; budgetHits: number } | null = null;
@@ -209,11 +258,14 @@ function frame(now: number) {
   renderer.flow = previewer.enabled ? previewer.current : null;
   showTip();
   renderer.draw(paused ? 1 : Math.min(1, acc), now);
+  sound.update(now, world);
   if (now - hudAt > 500) {
     hudAt = now;
     const recent = intervals.slice(-60);
     fps = recent.length ? 1000 / (recent.reduce((a, b) => a + b, 0) / recent.length) : 60;
     updateHud(world.stats(), fps, tickMs, seed, world.walkersOut());
+    updateVillage(world);
+    showPopulation();
   }
   const work = performance.now() - t0;
   works.push(work);
@@ -286,6 +338,8 @@ const api = {
     return { growthOn: world.growthOn, grown: world.grown.map(h => ({ ...h })), population: world.walkers.length, target: PARAMS.hamletTarget, nextHouseTime: world.nextHouseTime };
   },
   removeGate: (x: number, y: number) => world.removeGate(idx(x, y)),
+  /** Sound state: whether it is on, whether an AudioContext exists, and what the engine scheduled. */
+  sound: () => sound.state(),
   erase: (cells: CellList) => world.erase(toCells(cells)),
   /** Client coordinates of a cell centre, for tests that drive the pointer. */
   cellToClient(x: number, y: number) {
@@ -305,7 +359,7 @@ const api = {
     for (const k of ["block", "open", "bridge", "closeBridge", "gravel", "ungravel", "gate", "ungate"] as const) if (change[k]) c[k] = toCells(change[k]!);
     const p = world.previewFlows(c);
     return { changes: p.changes.map(x => ({ home: x.home, dest: x.dest, rate: x.rate, reachable: x.reachable, costRatio: x.costRatio, points: x.newPts.length / 2 })),
-      reroutedPerDay: p.reroutedPerDay, text: describePreview(p, kindName) };
+      reroutedPerDay: p.reroutedPerDay, text: readout(p, kindName, change.bridge ? "bridge" : "") };
   },
 };
 (window as unknown as { __tt: typeof api }).__tt = api;

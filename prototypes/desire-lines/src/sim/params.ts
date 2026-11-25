@@ -123,7 +123,7 @@ export const PARAMS = {
   // trunk share left the gate's band on 2 to 30 of the 60 seeds.
   mudCostMul: [1, 1, 1.6, 1.7, 1.8] as const, // by ground state; grass and trampled never get muddy
   mudReplace: 0,
-  mudSpeedMul: 0.8, // walking speed on mud at full wetness (not in the spec)
+  mudSpeedMul: 0.7, // walking speed on mud at full wetness (not in the spec; round 4 tuning: 0.8 barely showed, 0.6 left 3.2 points of gate room)
 
   // House growth (round 4; spec "Where houses appear", "Growth rate and density",
   // "Frontage"). A Hamlet cottage (3 x 3 with its garden, 3 villagers) appears

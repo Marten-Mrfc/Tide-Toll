@@ -3,8 +3,9 @@
 //   smoothing, plus the worn-ground layer (ground.ts), rebuilt a few times a second.
 // - Static layer: river, buildings, labels, gravel, fences, gates and bridges
 //   as vector ink (ink.ts), redrawn only when the map, size or theme changes.
-// - Every frame: walkers (interpolated between ticks), the tool ghost and the
-//   flow preview.
+// - Every frame: walkers (interpolated between ticks), rain, new houses being
+//   raised and their marks, the short marks of the player's actions, the tool
+//   ghost and the flow preview (effects.ts).
 import { World } from "../sim/world";
 import { N, NC } from "../sim/grid";
 import { hash2 } from "../sim/rng";
@@ -12,13 +13,14 @@ import { followField } from "../sim/path";
 import { FlowPreview, RouteChange } from "../sim/preview";
 import { Palette } from "./palette";
 import { WearLayer, mix } from "./ground";
-import { Pen, drawFence, drawGate, drawGravel, drawBridge } from "./ink";
+import { Pen, GateMark, drawFence, drawGate, drawGravel, drawBridge, gateMark } from "./ink";
+import { Effects } from "./effects";
 
 export type ToolGhost =
   | { kind: "fence"; cells: number[]; ok: boolean[] }
   | { kind: "gravel"; cells: number[]; ok: boolean }
   | { kind: "bridge"; cells: number[] | null; x: number; y: number }
-  | { kind: "gate"; cell: number; remove: boolean; x: number; y: number }
+  | { kind: "gate"; cells: number[]; remove: boolean; x: number; y: number }
   | { kind: "erase"; x: number; y: number; fence: number[]; bridge: number[]; gravel: number[] }
   | null;
 
@@ -47,16 +49,21 @@ export class Renderer {
   private offY = new Float32Array(1024);
   /** Which points of each shown route are shared with the other route (computed once per preview). */
   private shared = new WeakMap<RouteChange, { old: Uint8Array; now: Uint8Array }>();
+  /** Rain, new houses and action marks, drawn every frame. */
+  readonly fx: Effects;
+  /** Whether the game is paused (rain stops falling on screen). */
+  paused = false;
 
   constructor(public canvas: HTMLCanvasElement, public world: World, public pal: Palette) {
     this.ctx = canvas.getContext("2d")!;
     this.base.width = this.base.height = N;
     for (let i = 0; i < 1024; i++) { this.offX[i] = (hash2(i, 11) - 0.5) * 0.5; this.offY[i] = (hash2(i, 23) - 0.5) * 0.5; }
+    this.fx = new Effects();
     this.setPalette(pal);
   }
 
-  setWorld(w: World) { this.world = w; this.flow = null; this.ghost = null; this.invalidate(); }
-  setPalette(p: Palette) { this.pal = p; this.ground.setPalette(p); this.ground.setHeat(p.heat); this.invalidate(); }
+  setWorld(w: World) { this.world = w; this.flow = null; this.ghost = null; this.fx.reset(); this.invalidate(); }
+  setPalette(p: Palette) { this.pal = p; this.ground.setPalette(p); this.ground.setHeat(p.heat); this.fx.setPalette(p); this.invalidate(); }
   invalidate() { this.layerKey = ""; this.baseKey = ""; this.groundAt = -1e9; }
 
   resize(cssSize: number) {
@@ -72,7 +79,7 @@ export class Renderer {
   /** Device pixels per cell. */
   get scale() { return this.canvas.width / N; }
 
-  private get pen(): Pen { return { s: this.scale, dpr: this.dpr, halo: this.pal.css["label-halo"], ink: this.pal.css.ink }; }
+  get pen(): Pen { return { s: this.scale, dpr: this.dpr, halo: this.pal.css["label-halo"], ink: this.pal.css.ink }; }
 
   // ------------------------------------------------------------ ground
 
@@ -141,21 +148,58 @@ export class Renderer {
     g.stroke(river);
 
     const pen = this.pen;
-    drawGravel(g, pen, cellsOf(w.gravel), p.gravel, 0.35);
+    drawGravel(g, pen, cellsOf(w.gravel), p["gravel-wash"], p.gravel, p["gravel-rim"]);
     for (const b of w.bridges) drawBridge(g, pen, b.cells, p.bridge, false);
-    for (const b of m.buildings) this.drawBuilding(g, b);
-    drawFence(g, pen, cellsOf(w.fence), p.fence, w.gate);
-    for (const c of cellsOf(w.gate)) drawGate(g, pen, c, this.passesNorthSouth(c), p.gate);
+    // Houses still being raised are drawn by the effects layer until they stand.
+    const hidden = this.fx.raising(w);
+    for (const b of m.buildings) if (!hidden.has(b.id)) this.drawBuilding(g, b, this.fx.isGrown(w, b.id));
+    drawFence(g, pen, cellsOf(w.fence), p.fence, this.gateMarks(), p.gate);
     this.drawLabels(g);
   }
 
-  /** Whether a gate (or would-be gate) at cell c lets walkers through north-south, so the fence runs east-west. */
-  private passesNorthSouth(c: number): boolean {
-    const w = this.world, open = (v: number) => v >= 0 && v < NC && !w.map.footprint[v] && !(w.fence[v] && !w.gate[v]) && !(w.map.water[v] && !w.map.ford[v] && w.bridgeAt[v] < 0);
-    return open(c - N) && open(c + N);
+  /** Every gate as one mark: a gate cell with its 4-adjacent gate cell (a stair corner's pair). */
+  private gateMarks(): GateMark[] {
+    const w = this.world, done = new Uint8Array(NC), out: GateMark[] = [];
+    for (let c = 0; c < NC; c++) {
+      if (!w.gate[c] || done[c]) continue;
+      const cells = [c];
+      done[c] = 1;
+      for (const v of [c + 1, c + N]) if (v < NC && w.gate[v] && !done[v] && (v !== c + 1 || (c % N) < N - 1)) { cells.push(v); done[v] = 1; }
+      out.push(gateMark(cells, w.fence));
+    }
+    return out;
   }
 
-  private drawBuilding(g: CanvasRenderingContext2D, b: World["buildings"][number]) {
+  /** A building; a grown cottage stands in its garden. `rise` (0..1) draws it part raised (clipped from the ground up). */
+  drawBuilding(g: CanvasRenderingContext2D, b: World["buildings"][number], grown = false, rise = 1) {
+    if (grown) {
+      const s = this.scale, p = this.pal.css, d = this.dpr;
+      g.save();
+      g.fillStyle = p.garden;
+      g.strokeStyle = p.outline;
+      g.globalAlpha = Math.min(1, rise * 2);
+      g.lineWidth = Math.max(1 * d, s * 0.1);
+      g.setLineDash([s * 0.25, s * 0.2]);
+      g.fillRect((b.x + 0.06) * s, (b.y + 0.06) * s, (b.w - 0.12) * s, (b.h - 0.12) * s);
+      g.strokeRect((b.x + 0.06) * s, (b.y + 0.06) * s, (b.w - 0.12) * s, (b.h - 0.12) * s);
+      g.restore();
+      // The cottage is a little smaller than the plot, set back from the door.
+      const dx = (b.door % N) - (b.x + 1), dy = ((b.door / N) | 0) - (b.y + 1);
+      const k = 0.68, cx = b.x + 1.5 - dx * 0.35, cy = b.y + 1.5 - dy * 0.35;
+      g.save();
+      if (rise < 1) {
+        g.beginPath();
+        g.rect((cx - 1.6) * s, (cy + 1.1 - 2.4 * rise) * s, 3.2 * s, 2.4 * rise * s);
+        g.clip();
+      }
+      this.drawBuilding(g, { ...b, x: cx - 1.5 * k, y: cy - 1.5 * k, w: 3 * k, h: 3 * k }, false);
+      g.restore();
+      return;
+    }
+    this.drawBuildingShape(g, b);
+  }
+
+  private drawBuildingShape(g: CanvasRenderingContext2D, b: World["buildings"][number]) {
     const s = this.scale, p = this.pal.css, d = this.dpr;
     const x = b.x * s, y = b.y * s, bw = b.w * s, bh = b.h * s;
     g.strokeStyle = b.kind === "field" ? p.ink : p.outline;
@@ -255,7 +299,7 @@ export class Renderer {
     const ctx = this.ctx, w = this.world, s = this.scale, p = this.pal.css;
     const W = this.canvas.width;
     let dirty = false;
-    const bkey = `${w.seed}`;
+    const bkey = `${w.seed}|${w.buildings.length}`;
     if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; dirty = true; }
     if (now - this.groundAt >= GROUND_MS || this.groundVersion !== w.version) {
       this.ground.build(w, this.overlay);
@@ -263,7 +307,7 @@ export class Renderer {
       this.groundVersion = w.version;
       dirty = true;
     }
-    const key = `${W}|${w.version}|${w.seed}`;
+    const key = `${W}|${w.version}|${w.seed}|${this.fx.standing(w, now)}`;
     if (key !== this.layerKey) { this.buildLayer(); this.layerKey = key; dirty = true; }
     if (dirty) {
       const bg = this.bg;
@@ -273,6 +317,16 @@ export class Renderer {
       g.imageSmoothingQuality = "low"; // the wear layer is already interpolated; "high" costs ~8 ms a refresh
       g.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
       g.drawImage(this.ground.canvas, 0, 0, this.ground.canvas.width, this.ground.canvas.height, 0, 0, W, W);
+      // Wet ground is darker: grass and earth are multiplied by a cool grey as the ground wets.
+      const wet = w.rainOn ? w.weather.wetness : 0;
+      if (wet > 0.01 && !this.overlay) {
+        g.globalCompositeOperation = "multiply";
+        g.globalAlpha = 0.4 * wet;
+        g.fillStyle = p.wet;
+        g.fillRect(0, 0, W, W);
+        g.globalAlpha = 1;
+        g.globalCompositeOperation = "source-over";
+      }
       if (this.overlay) {
         g.globalAlpha = 0.6;
         g.fillStyle = p.paper;
@@ -302,6 +356,7 @@ export class Renderer {
     ctx.fillStyle = p.walker;
     ctx.fill(dots);
 
+    this.fx.draw(ctx, this, now);
     if (this.flow) this.drawFlowPreview(ctx, this.flow);
     this.drawGhost();
   }
@@ -313,19 +368,20 @@ export class Renderer {
       drawFence(ctx, pen, gh.cells.filter((_, i) => gh.ok[i]), p.ghost);
       drawFence(ctx, pen, gh.cells.filter((_, i) => !gh.ok[i]), p.invalid);
     } else if (gh.kind === "gravel") {
-      drawGravel(ctx, pen, gh.cells, gh.ok ? p.ghost : p.invalid, 0.3);
+      drawGravel(ctx, pen, gh.cells, gh.ok ? p.ghost : p.invalid, p["gravel-wash"], p["gravel-rim"], 0.75);
     } else if (gh.kind === "bridge") {
       if (gh.cells) drawBridge(ctx, pen, gh.cells, p.ghost, true);
       else this.cross(gh.x, gh.y, 0.9);
     } else if (gh.kind === "gate") {
-      if (gh.cell < 0) this.cross(gh.x, gh.y, 0.9);
+      if (!gh.cells.length) this.cross(gh.x, gh.y, 0.9);
       else {
-        drawGate(ctx, pen, gh.cell, this.passesNorthSouth(gh.cell), gh.remove ? p.invalid : p.ghost);
-        if (gh.remove) this.cross((gh.cell % N) + 0.5, ((gh.cell / N) | 0) + 0.5, 0.6);
+        const m = gateMark(gh.cells, this.world.fence);
+        drawGate(ctx, pen, m, gh.remove ? p.invalid : p.ghost);
+        if (gh.remove) this.cross(m.x, m.y, 0.6);
       }
     } else {
       // Erase: everything that would go, in the warning colour, and the reach of the eraser.
-      drawGravel(ctx, pen, gh.gravel, p.invalid, 0.3);
+      drawGravel(ctx, pen, gh.gravel, p.invalid, p["gravel-wash"], p.invalid, 0.8);
       if (gh.bridge.length) drawBridge(ctx, pen, gh.bridge, p.invalid, true);
       drawFence(ctx, pen, gh.fence, p.invalid);
       ctx.strokeStyle = p.invalid;
@@ -336,7 +392,7 @@ export class Renderer {
     }
   }
 
-  private cross(x: number, y: number, size: number) {
+  cross(x: number, y: number, size: number) {
     const ctx = this.ctx, s = this.scale;
     ctx.strokeStyle = this.pal.css.invalid;
     ctx.lineWidth = Math.max(2 * this.dpr, s * 0.25);

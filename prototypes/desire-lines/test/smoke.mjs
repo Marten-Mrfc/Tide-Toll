@@ -1,18 +1,24 @@
 // npm run smoke: the built page loads with no console errors, the map is not
 // blank, every control works, the page contract holds, the layout fits at
-// 400 px wide in both themes, and the tools work by touch at 400 x 800 (the map
-// never moves, and a tap lands on the cell under the finger). Screenshots go
-// to test-results/.
+// 400 px wide in both themes, the tools work by touch at 400 x 800 and 360 x 740
+// (the map never moves, a tap lands on the cell under the finger, and a second
+// finger does not disturb a drag or a press), sound stays off with no
+// AudioContext until the Sound button is pressed and then runs a minute at 8x
+// within its voice budget, and rain, mud and new houses are drawn. The page is
+// loaded inside the same document skeleton the Artifact host gives it
+// (host.mjs), so mobile emulation lays it out at the phone's real width.
+// Screenshots go to test-results/.
 import { createRequire } from "node:module";
 import { readFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 
+import { hostedUrl, builtFile } from "./host.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
-const file = join(here, "..", "dist", "index.html");
-const url = pathToFileURL(file).href;
+const file = builtFile;
+const url = hostedUrl();
 const shots = join(here, "..", "test-results");
 mkdirSync(shots, { recursive: true });
 
@@ -292,8 +298,6 @@ console.log("\nPHONE (400x800, touch)");
 {
   const ctx = await browser.newContext({ viewport: { width: 400, height: 800 }, deviceScaleFactor: 1, colorScheme: "light", hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
-  // A bare file has no viewport meta; the artifact host adds one.
-  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => { const m = document.createElement("meta"); m.name = "viewport"; m.content = "width=device-width, initial-scale=1"; document.head.appendChild(m); }));
   const errors = [];
   page.on("pageerror", e => errors.push(String(e)));
   await page.goto(url);
@@ -303,6 +307,8 @@ console.log("\nPHONE (400x800, touch)");
   await page.evaluate(() => __tt.setSpeed(1));
   const cdp = await ctx.newCDPSession(page);
   const touch = (type, p) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+  // Several fingers: touchStart and touchEnd list the points that start or end; touchMove lists the points down.
+  const touch2 = (type, pts) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pts });
   const hold = async (p, ms = 250) => { await touch("touchStart", p); await page.waitForTimeout(ms); await touch("touchEnd"); await frames(page); };
   const drag = async (a, b, steps = 10, ms = 40) => {
     await touch("touchStart", a);
@@ -314,10 +320,11 @@ console.log("\nPHONE (400x800, touch)");
   const box0 = await rect();
   const first = await page.evaluate(() => {
     const r = document.getElementById("map").getBoundingClientRect(), small = [];
-    for (const el of document.querySelectorAll("header button, header input")) { const b = el.getBoundingClientRect(); if (b.height < 40) small.push(`${el.id} ${Math.round(b.height)}px`); }
+    for (const el of document.querySelectorAll("header button, header input")) { const b = el.getBoundingClientRect(); if (b.height && (b.height < 40 || (el.tagName === "BUTTON" && b.width < 40))) small.push(`${el.id} ${Math.round(b.width)}x${Math.round(b.height)}px`); }
     return { bottom: r.bottom, h: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, small };
   });
-  check(first.small.length === 0, `buttons and the slider are at least 40 px high${first.small.length ? ": " + first.small.join(", ") : ""}`);
+  check(first.iw === 400, `the page is laid out at the phone's width (innerWidth ${first.iw})`);
+  check(first.small.length === 0, `buttons are at least 40 x 40 px and the slider 40 px high${first.small.length ? ": " + first.small.join(", ") : ""}`);
   check(first.bottom <= first.h && first.sw <= first.iw, `the tools and the whole map are on the first screen, no sideways scroll (map bottom ${Math.round(first.bottom)} of ${first.h})`);
 
   // A row of 21 open cells for the fence, away from the river.
@@ -344,12 +351,74 @@ console.log("\nPHONE (400x800, touch)");
   const fenced = await page.evaluate(([x, y]) => { const w = __tt.world, out = []; for (let c = 0; c < 128 * 128; c++) if (w.fence[c]) out.push([c % 128, (c / 128) | 0]); return out; }, [row.x, row.y]);
   check(fenced.length === 21 && fenced.every(([x, y]) => y === row.y && x >= row.x && x <= row.x + 20), `a touch drag fences exactly the cells under the finger (${fenced.length} cells, rows ${[...new Set(fenced.map(c => c[1]))].join(" ")})`);
 
+  // A second finger during a fence drag, a gravel stroke and a footbridge press is ignored.
+  const fid = { a: 1, b: 2 };
+  const pt = (p, id) => ({ x: p.x, y: p.y, id });
+  const twoFinger = async (from, to, other, steps = 8) => {
+    await touch2("touchStart", [pt(from, fid.a)]);
+    for (let i = 1; i <= steps; i++) {
+      const p = { x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps };
+      if (i === 3) await touch2("touchStart", [pt(other, fid.b)]);
+      if (i === 4 || i === 5) await touch2("touchMove", [pt(p, fid.a), pt({ x: other.x + 30 * (i - 3), y: other.y - 20 * (i - 3) }, fid.b)]);
+      else await touch2("touchMove", [pt(p, fid.a)]);
+      if (i === 6) await touch2("touchEnd", [pt({ x: other.x + 60, y: other.y - 40 }, fid.b)]);
+      await page.waitForTimeout(30);
+    }
+    await touch2("touchEnd", [pt(to, fid.a)]); await frames(page);
+  };
+  const row2 = await page.evaluate(([x0, y0]) => {
+    const w = __tt.world, N = 128;
+    for (let y = y0 + 8; y < 124; y++) for (let x = 8; x < 100; x++) {
+      let ok = true;
+      for (let k = 0; k <= 12 && ok; k++) for (let d = -2; d <= 2 && ok; d++) ok = w.canFence((y + d) * N + x + k) && w.canGravel((y + d) * N + x + k) && w.wear[(y + d) * N + x + k] < 20 && Math.abs(x + k - w.map.riverX[y]) > 6;
+      if (ok) return { x, y };
+    }
+    return null;
+  }, [row.y, row.x]);
+  {
+    const f0 = (await stats()).fences;
+    await page.evaluate(() => __tt.setTool("fence"));
+    await twoFinger(await at(row2.x, row2.y), await at(row2.x + 12, row2.y), await at(row2.x + 4, row2.y - 14));
+    const cells = await page.evaluate(() => { const w = __tt.world, out = []; for (let c = 0; c < 128 * 128; c++) if (w.fence[c]) out.push([c % 128, (c / 128) | 0]); return out; });
+    const mine = cells.filter(([x, y]) => y === row2.y);
+    check((await stats()).fences === f0 + 13 && mine.length === 13, `a second finger during a fence drag changes nothing: 13 cells on the dragged row (${(await stats()).fences - f0} placed)`);
+    await page.evaluate(c => __tt.erase(c), mine);
+  }
+  {
+    const g0 = (await stats()).gravel;
+    await page.evaluate(() => __tt.setTool("gravel"));
+    await twoFinger(await at(row2.x, row2.y + 2), await at(row2.x + 8, row2.y + 2), await at(row2.x + 4, row2.y - 14));
+    const g = await page.evaluate(([y]) => { const w = __tt.world, out = []; for (let c = 0; c < 128 * 128; c++) if (w.gravel[c]) out.push((c / 128) | 0); return out; }, [row2.y]);
+    const placed = (await stats()).gravel - g0;
+    check(placed >= 7 && placed <= 9 && g.filter(y => Math.abs(y - (row2.y + 2)) > 1).length === g0, `a second finger during a gravel stroke changes nothing (${placed} cells, all on the stroke)`);
+  }
+  {
+    await page.evaluate(() => __tt.setTool("bridge"));
+    const rv = await page.evaluate(() => {
+      const m = __tt.world.map;
+      for (let y = 118; y > 10; y--) if (Math.abs(y - m.fordY) > 10 && __tt.world.bridgeCellsAt(m.riverX[y], y)) return { x: Math.floor(m.riverX[y]), y };
+      return null;
+    });
+    const p = await at(rv.x, rv.y), b0 = (await stats()).bridges;
+    await touch2("touchStart", [pt(p, fid.a)]);
+    await page.waitForTimeout(100);
+    await touch2("touchStart", [pt({ x: p.x - 80, y: p.y + 60 }, fid.b)]);
+    await touch2("touchMove", [pt(p, fid.a), pt({ x: p.x - 60, y: p.y + 90 }, fid.b)]);
+    await touch2("touchEnd", [pt({ x: p.x - 60, y: p.y + 90 }, fid.b)]);
+    await page.waitForTimeout(100);
+    const mid = (await stats()).bridges;
+    await touch2("touchEnd", [pt(p, fid.a)]); await frames(page);
+    check(mid === b0 && (await stats()).bridges === b0 + 1, `a second finger during a footbridge press neither builds nor cancels it (${mid - b0} while held, ${(await stats()).bridges - b0} after release)`);
+    await page.evaluate(([x, y]) => __tt.erase([[x, y]]), [rv.x, rv.y]);
+  }
+
   // A quick tap fences the tapped cell.
   const tapCell = { x: row.x + 10, y: row.y - 6 };
   await page.evaluate(() => __tt.setTool("fence"));
   const okTap = await page.evaluate(([x, y]) => __tt.world.canFence(y * 128 + x), [tapCell.x, tapCell.y]);
   await page.touchscreen.tap((await at(tapCell.x, tapCell.y)).x, (await at(tapCell.x, tapCell.y)).y); await frames(page);
   check(okTap && await page.evaluate(([x, y]) => __tt.world.fence[y * 128 + x] === 1, [tapCell.x, tapCell.y]) && (await stats()).fences === 22, "a tapped cell is the fenced cell");
+  check((await page.textContent("#status")) === "Fence placed (1 cell).", `one cell is "1 cell" ("${await page.textContent("#status")}")`);
 
   // Gate: a held press on the fence, released in place.
   await page.click("#tool-gate");
@@ -392,6 +461,156 @@ console.log("\nPHONE (400x800, touch)");
   await page.screenshot({ path: join(shots, "phone-400-touch.png") });
   check(errors.length === 0, `phone: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
   await ctx.close();
+}
+
+// ---------------------------------------------------------------- phone, 360 px
+console.log("\nPHONE (360x740, touch, dark)");
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, colorScheme: "dark", hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  await page.waitForTimeout(800);
+  const m = await page.evaluate(() => {
+    const r = document.getElementById("map").getBoundingClientRect(), small = [], tiny = [];
+    for (const el of document.querySelectorAll("header button, header input")) { const b = el.getBoundingClientRect(); if (b.height && (b.height < 40 || (el.tagName === "BUTTON" && b.width < 40))) small.push(`${el.id} ${Math.round(b.width)}x${Math.round(b.height)}`); }
+    for (const el of document.querySelectorAll("button, dd, dt, .statusbar span, label")) if (el.getClientRects().length && parseFloat(getComputedStyle(el).fontSize) < 12) tiny.push(el.id || el.tagName);
+    const tools = document.getElementById("tool-erase").getBoundingClientRect();
+    return { iw: innerWidth, ih: innerHeight, sw: document.documentElement.scrollWidth, top: r.top, bottom: r.bottom, left: r.left, right: r.right, tools: tools.bottom, small, tiny };
+  });
+  check(m.iw === 360, `the page is laid out at 360 px (innerWidth ${m.iw})`);
+  check(m.small.length === 0, `360 px: buttons at least 40 x 40 px${m.small.length ? ": " + m.small.join(", ") : ""}`);
+  check(m.sw <= m.iw && m.left >= 16 && m.right <= m.iw - 16 + 0.5, `360 px: no sideways scroll, 16 px gutters (map ${m.left.toFixed(0)} to ${m.right.toFixed(0)} of ${m.iw})`);
+  check(m.tools < m.top && m.bottom <= m.ih, `360 px: the tools and the whole map are on the first screen (map bottom ${Math.round(m.bottom)} of ${m.ih})`);
+  check(m.tiny.length === 0, `360 px: no text under 12 px${m.tiny.length ? ": " + m.tiny.join(", ") : ""}`);
+  await page.screenshot({ path: join(shots, "phone-360-dark.png") });
+  check(errors.length === 0, `360 px: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await ctx.close();
+}
+
+// ---------------------------------------------------------------- sound
+console.log("\nSOUND (1280x860)");
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, colorScheme: "light" });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  page.on("console", m => { if (m.type() === "error" || m.type() === "warning") errors.push(`${m.type()}: ${m.text()}`); });
+  // Count every AudioContext made, and the event being handled when it was made.
+  await page.addInitScript(() => {
+    window.__ac = [];
+    for (const name of ["AudioContext", "webkitAudioContext"]) {
+      const C = window[name];
+      if (!C) continue;
+      window[name] = class extends C { constructor(...a) { super(...a); window.__ac.push({ during: window.event ? window.event.type : "none", state: this.state }); } };
+    }
+  });
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  await page.evaluate(() => { __tt.setSpeed(8); });
+  await page.waitForTimeout(3000);
+  const off = await page.evaluate(() => ({ made: window.__ac.length, s: __tt.sound(), slider: !document.getElementById("volume").closest("[hidden]") }));
+  check(off.made === 0 && !off.s.created && off.s.work === 0 && !off.slider, `with sound off there is no AudioContext and no audio work (${off.made} contexts, ${off.s.work} working frames, volume slider ${off.slider ? "shown" : "hidden"})`);
+  const btn = await page.locator("#btn-sound").boundingBox();
+  await page.mouse.click(btn.x + btn.width / 2, btn.y + btn.height / 2);
+  const on = await page.evaluate(() => ({ ac: window.__ac.slice(), s: __tt.sound(), pressed: document.getElementById("btn-sound").getAttribute("aria-pressed"), slider: !document.getElementById("volume").closest("[hidden]") }));
+  check(on.ac.length === 1 && on.ac[0].during === "click" && on.s.on && on.pressed === "true" && on.slider, `pressing Sound makes one AudioContext inside the click (${on.ac.map(a => a.during + "/" + a.state).join(", ")}), and the volume slider appears`);
+  await page.waitForTimeout(400);
+  check((await page.evaluate(() => __tt.sound().ctxState)) === "running", "the context is running");
+  // A minute at 8x with tools used and a shower.
+  await page.evaluate(() => { __tt.reset(1); __tt.setSpeed(8); __tt.play(); });
+  await page.waitForTimeout(20000);
+  await page.evaluate(() => __tt.startRain(2));
+  await page.keyboard.press("f");
+  const spot = await page.evaluate(() => {
+    const w = __tt.world;
+    for (let y = 100; y > 20; y--) for (let x = 10; x < 60; x++) { let ok = true; for (let k = 0; k < 6 && ok; k++) ok = w.canFence(y * 128 + x + k) && !w.fence[y * 128 + x + k]; if (ok) return { x, y }; }
+    return null;
+  });
+  const a = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [spot.x, spot.y]), b = await page.evaluate(([x, y]) => __tt.cellToClient(x, y), [spot.x + 5, spot.y]);
+  await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(b.x, b.y, { steps: 5 }); await page.mouse.up();
+  await page.keyboard.press("e");
+  await page.mouse.click(a.x, a.y);
+  await page.keyboard.press("t");
+  await page.mouse.click(10 + (await page.locator("#map").boundingBox()).x, 10 + (await page.locator("#map").boundingBox()).y);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(6000);
+  await page.screenshot({ path: join(shots, "sound-on-rain-1280.png") });
+  await page.waitForTimeout(34000);
+  const run = await page.evaluate(() => ({ s: __tt.sound(), wx: __tt.weather(), day: Math.floor(__tt.world.time / 15) }));
+  const st = run.s.stats;
+  console.log(`  sound after a minute at 8x: ${st.beats} beats, ${st.steps} steps (at most ${st.maxBeatSteps} a beat), ${st.cues} other cues (${st.bells} bells, ${st.themeNotes} theme notes), at most ${st.maxAlive} voices at once, ${st.dropped} dropped; day ${run.day}`);
+  check(st.beats >= 50 && st.steps > 100 && st.cues > 5 && st.bells >= 3 && st.themeNotes > 0, "footsteps, tool cues, bells and the theme were scheduled");
+  check(st.maxBeatSteps <= 8 && st.maxAlive <= 34, `the voice budget held (at most ${st.maxBeatSteps} step voices a beat, limit 8; ${st.maxAlive} voices at once, limit 34)`);
+  await page.click("#btn-pause");
+  await page.waitForTimeout(500);
+  const paused = await page.evaluate(() => __tt.sound());
+  check(paused.muted && paused.ctxState === "suspended", `sound pauses with the game (context ${paused.ctxState})`);
+  await page.click("#btn-pause");
+  await page.waitForTimeout(300);
+  check((await page.evaluate(() => __tt.sound().ctxState)) === "running", "and resumes with it");
+  await page.keyboard.press("m");
+  await page.waitForTimeout(400);
+  const muted = await page.evaluate(() => __tt.sound());
+  check(!muted.on && muted.ctxState === "suspended", "key M turns sound off");
+  await page.reload();
+  await page.waitForFunction(() => window.__tt);
+  await page.waitForTimeout(1000);
+  const again = await page.evaluate(() => ({ made: window.__ac.length, s: __tt.sound() }));
+  check(again.made === 0 && !again.s.on, "after a reload sound is off again, with no AudioContext");
+  check(errors.length === 0, `sound: no console errors or warnings${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await page.close();
+}
+
+// ---------------------------------------------------------------- rain, mud and new houses on screen
+console.log("\nRAIN, MUD AND NEW HOUSES (1280x860, both themes)");
+for (const scheme of ["light", "dark"]) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, colorScheme: scheme });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  // Grow a town (ticks run directly, as playing would), then rain.
+  const r = await page.evaluate(() => {
+    __tt.reset(1); __tt.pause();
+    const w = __tt.world;
+    while (w.grown.length < 3) w.tick();
+    const mapPix = () => { const c = document.getElementById("map"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; return d; };
+    return { houses: w.grown.length, day: w.grown[w.grown.length - 1].day, before: Array.from(mapPix().subarray(0, 4)) };
+  });
+  await page.waitForTimeout(400);
+  const houseText = await page.textContent("#hud-houses");
+  check(houseText.includes(`Houses: ${r.houses + (await page.evaluate(() => __tt.world.houses.length - __tt.world.grown.length))}`), `${scheme}: the village panel lists the houses ("${houseText}")`);
+  // The newest house is being raised or marked: pixels round it change over the next second.
+  const ring = await page.evaluate(async () => {
+    const w = __tt.world, h = w.grown[w.grown.length - 1], c = document.getElementById("map"), k = c.width / 128;
+    const grab = () => Array.from(c.getContext("2d").getImageData(Math.max(0, (h.x - 6) * k), Math.max(0, (h.y - 6) * k), 15 * k, 15 * k).data);
+    const a = grab(); await new Promise(r => setTimeout(r, 700)); const b = grab();
+    let diff = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 30) diff++;
+    return diff;
+  });
+  check(ring > 20, `${scheme}: a new house has a raising moment and a mark that moves (${ring} pixels changed near it while paused)`);
+  // Every 257th pixel's red + green + blue, before and during the rain.
+  const sample = () => page.evaluate(() => { const c = document.getElementById("map"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, out = []; for (let i = 0; i < d.length; i += 4 * 257) out.push(d[i] + d[i + 1] + d[i + 2]); return out; });
+  await page.evaluate(() => __tt.stopRain(true)); // the grown town may be in a shower already
+  await page.waitForTimeout(400);
+  const dry = await sample();
+  await page.evaluate(() => { __tt.play(); __tt.setSpeed(1); __tt.startRain(1); });
+  await page.waitForTimeout(3500);
+  const wet = await page.evaluate(() => ({ w: __tt.weather(), text: document.getElementById("hud-weather").textContent }));
+  const wetPx = await sample();
+  let darker = 0;
+  const n = dry.length;
+  for (let i = 0; i < n; i++) if (wetPx[i] < dry[i] - 6) darker++;
+  check(wet.w.raining && wet.text.startsWith("Rain, day") && darker > n * 0.3, `${scheme}: rain shows: "${wet.text}", ${wet.w.mudCells} mud cells, ground darker on ${Math.round((100 * darker) / n)}% of samples`);
+  await page.screenshot({ path: join(shots, `rain-1280-${scheme}.png`) });
+  await page.evaluate(() => __tt.setOverlay(true));
+  await page.waitForTimeout(400);
+  check(await page.isVisible("#legend-heat"), `${scheme}: the wear overlay still works in rain`);
+  await page.screenshot({ path: join(shots, `rain-overlay-1280-${scheme}.png`) });
+  check(errors.length === 0, `${scheme}: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await page.close();
 }
 
 // The data-theme override must also switch the palette.

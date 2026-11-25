@@ -99,7 +99,7 @@ export class WearLayer {
           // so the grass still shows through a little; hollow ways are more solid.
           let al = 0.5 * smooth((v - 2) / 14) + 0.26 * smooth((v - 14) / 18) + 0.08 * smooth((v - 40) / 40) + 0.1 * smooth((v - 100) / 12) + 0.06 * tr;
           const mu = (m / (MUD_LEVELS - 1)) * smooth((v - 18) / 12);
-          if (mu > 0) { c = mix(c, p.mud, 0.85 * mu); al = Math.max(al, al + 0.12 * mu); }
+          if (mu > 0) { c = mix(c, p.mud, 0.85 * mu); al = al + 0.2 * mu; }
           al = Math.min(1, al);
           this.lut[(m * TRUNK_LEVELS + t) * 256 + i] = pack(c, al);
         }
@@ -155,7 +155,7 @@ export class WearLayer {
         const mo = mot[o + x];
         if (ml >= 3 && mo > 252 && v > 30) { u32[o + x] = glint; continue; } // a puddle glint on churned mud
         // Mud is churned: deeper mottling.
-        const alpha = ml > 0 ? (((col >>> 24) * (mo - (ml * (255 - mo)) / 2)) >> 8) : (((col >>> 24) * mo) >> 8);
+        const alpha = ml > 0 ? (((col >>> 24) * (mo - (ml * (255 - mo)) / 5)) >> 8) : (((col >>> 24) * mo) >> 8);
         u32[o + x] = ((alpha < 0 ? 0 : alpha) << 24 | (col & 0xffffff)) >>> 0;
       }
     }

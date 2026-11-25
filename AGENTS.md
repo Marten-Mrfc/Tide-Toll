@@ -59,12 +59,7 @@ Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, 
 
 ## Interrupted work (temporary note from the lead, 25 November 2026)
 
-The container restarted twice tonight (about 00:20 and 01:08 UTC) and stopped the agents that were working. If your task covers one of these folders, an earlier agent with the same task was interrupted near the end of its work, and that work is in the working tree and in the snapshot commits. Check each item of your task against what is there, keep what is good, finish or redo the rest, and run the checks again. Do not start again from nothing.
-
-- `sim/`, `sim.tests/` and `tools/TideToll.Tools/`: the river rules were written and all 78 fast tests passed; the agent was running `./check` and `./check --bench` and writing the README section when it stopped. See `git diff 9ead7ed -- sim sim.tests tools/TideToll.Tools`.
-- `prototypes/desire-lines/` (round 4, the rules): gate and gravel fixes, rain and mud and house growth were written in `src/sim` with tests in `test/rules.test.ts`, and the round 3 gate tables were saved to `test/g3-baseline.txt`; the agent was updating the README and adding a smoke check when it stopped. See `git diff 08fbde8 -- prototypes/desire-lines`.
-- `game/` and `tools/`: the polish pass is finished and passed `./check`.
-- `assets/`: the river asset set is finished.
+The container restarted twice tonight (about 00:20 and 01:08 UTC) and may do so again. If you find work in the tree that matches your task but that you did not write, an earlier agent with the same task was interrupted: check each item of your task against what is there, keep what is good, finish or redo the rest, and run the checks again. Do not start again from nothing. Compare with the last commit that names a finished round (`git log --oneline`) to see what is new.
 
 ## Git
 

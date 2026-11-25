@@ -44,7 +44,7 @@ export function fenceLines(cells: number[], skip?: Uint8Array): number[][] {
       seen.add(edge(cur, nx));
       prev = cur; cur = nx;
     }
-    lines.push(simplify(chain.flatMap(c => [(c % N) + 0.5, ((c / N) | 0) + 0.5]), 0.75));
+    lines.push(simplify(unstair(chain.flatMap(c => [(c % N) + 0.5, ((c / N) | 0) + 0.5])), 0.6));
   };
   for (const pass of [0, 1])
     for (const c of set) {
@@ -56,10 +56,42 @@ export function fenceLines(cells: number[], skip?: Uint8Array): number[][] {
   return lines;
 }
 
+/**
+ * Irons out a staircase: two passes of a 3-point moving average (the ends
+ * stay), so the steps of a diagonal fence fall onto one straight line before
+ * simplifying. A real corner moves inward by a third of a cell at most.
+ */
+function unstair(pts: number[]): number[] {
+  const n = pts.length / 2;
+  if (n < 3) return pts;
+  // Real corners (a turn of more than about 50 degrees in a coarse simplification) stay where they are.
+  const keep = simplifyKeep(pts, 1.2), anchor = new Uint8Array(n);
+  anchor[0] = anchor[n - 1] = 1;
+  for (let j = 1; j + 1 < keep.length; j++) {
+    const [p, q, r] = [keep[j - 1], keep[j], keep[j + 1]];
+    const ax = pts[2 * q] - pts[2 * p], ay = pts[2 * q + 1] - pts[2 * p + 1], bx = pts[2 * r] - pts[2 * q], by = pts[2 * r + 1] - pts[2 * q + 1];
+    if ((ax * bx + ay * by) / ((Math.hypot(ax, ay) * Math.hypot(bx, by)) || 1) < 0.64) anchor[q] = 1;
+  }
+  let a = pts.slice(), b = pts.slice();
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 1; i < n - 1; i++)
+      for (let k = 0; k < 2; k++) b[2 * i + k] = anchor[i] ? a[2 * i + k] : (a[2 * i - 2 + k] + a[2 * i + k] + a[2 * i + 2 + k]) / 3;
+    [a, b] = [b, a];
+  }
+  return a;
+}
+
 /** Douglas-Peucker on a flat x,y list. */
 function simplify(pts: number[], tol: number): number[] {
+  const out: number[] = [];
+  for (const i of simplifyKeep(pts, tol)) out.push(pts[2 * i], pts[2 * i + 1]);
+  return out;
+}
+
+/** The indices Douglas-Peucker keeps, in order. */
+function simplifyKeep(pts: number[], tol: number): number[] {
   const n = pts.length / 2;
-  if (n <= 2) return pts;
+  if (n <= 2) return n === 2 ? [0, 1] : n === 1 ? [0] : [];
   const keep = new Uint8Array(n);
   keep[0] = keep[n - 1] = 1;
   const stack: [number, number][] = [[0, n - 1]];
@@ -75,7 +107,7 @@ function simplify(pts: number[], tol: number): number[] {
     if (worst >= 0) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
   }
   const out: number[] = [];
-  for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[2 * i], pts[2 * i + 1]);
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(i);
   return out;
 }
 
@@ -104,7 +136,8 @@ export function gateMark(cells: number[], fence: Uint8Array): GateMark {
   const ang = n > 1 ? 0.5 * Math.atan2(2 * sxy, sxx - syy) : 0;
   const ux = Math.cos(ang), uy = Math.sin(ang);
   // The opening spans the gate's cells along the fence: a cell on a straight fence, about 1.4 on a stair corner.
-  const half = cells.length > 1 ? 0.72 : Math.max(0.5, 0.5 / Math.max(Math.abs(ux), Math.abs(uy)));
+  // Drawn a little wider than the cells, so the leaf and its two posts read at map scale.
+  const half = cells.length > 1 ? 1.05 : 0.9;
   return { cells, x, y, ux, uy, half };
 }
 
@@ -120,15 +153,23 @@ function cutForGates(ln: number[], gates: GateMark[]): { pts: number[]; a: boole
   const L = acc[n - 1], cuts: [number, number][] = [];
   for (const g of gates) {
     // Nearest point of the polyline to the gate's centre.
-    let best = Infinity, at = 0;
+    let best = Infinity, at = 0, px = g.x, py = g.y, dx = g.ux, dy = g.uy;
     for (let i = 0; i + 1 < n; i++) {
       const ax = ln[2 * i], ay = ln[2 * i + 1], bx = ln[2 * i + 2], by = ln[2 * i + 3];
       const l2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1e-9;
       const t = Math.max(0, Math.min(1, ((g.x - ax) * (bx - ax) + (g.y - ay) * (by - ay)) / l2));
       const d = Math.hypot(ax + (bx - ax) * t - g.x, ay + (by - ay) * t - g.y);
-      if (d < best) { best = d; at = acc[i] + t * (acc[i + 1] - acc[i]); }
+      if (d < best) {
+        best = d; at = acc[i] + t * (acc[i + 1] - acc[i]);
+        px = ax + (bx - ax) * t; py = ay + (by - ay) * t;
+        const l = Math.sqrt(l2); dx = (bx - ax) / l; dy = (by - ay) / l;
+      }
     }
-    if (n > 1 && best < 0.9) cuts.push([at - g.half, at + g.half]);
+    if (n > 1 && best < 0.9) {
+      cuts.push([at - g.half, at + g.half]);
+      // The gate sits on the rail: its posts are the rail's cut ends.
+      g.x = px; g.y = py; g.ux = dx; g.uy = dy;
+    }
   }
   if (!cuts.length) return [{ pts: ln, a: false, b: false }];
   cuts.sort((p, q) => p[0] - q[0]);
@@ -233,7 +274,7 @@ export function drawGate(g: CanvasRenderingContext2D, pen: Pen, m: GateMark, col
   leaf.moveTo(ax + px, ay + py); leaf.lineTo(ax + lx + px, ay + ly + py);
   leaf.lineTo(ax + lx - px, ay + ly - py); leaf.lineTo(ax - px, ay - py); leaf.closePath();
   leaf.moveTo(ax - px, ay - py); leaf.lineTo(ax + lx + px, ay + ly + py); // the brace
-  const post = Math.max(4.5 * d, s * 0.7);
+  const post = Math.max(4 * d, s * 0.58);
   g.save();
   g.lineCap = "round"; g.lineJoin = "round";
   g.strokeStyle = pen.halo;

@@ -1,4 +1,5 @@
-import { Stats, SEASONS } from "../sim/world";
+import { Stats, SEASONS, World } from "../sim/world";
+import { PARAMS } from "../sim/params";
 
 const $ = (id: string) => document.getElementById(id)!;
 const pct = (v: number) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "-");
@@ -30,4 +31,36 @@ export function setPreviewLine(text: string) {
   const el = $("preview-line");
   el.textContent = text;
   el.title = text;
+}
+
+let lastDay = -1;
+/**
+ * The village panel's weather and houses, and the dawn mark: when a new day
+ * begins the day line flashes (the visual twin of the dawn bell).
+ */
+export function updateVillage(w: World) {
+  const day = Math.floor(w.time / PARAMS.daySimSec) + 1;
+  if (lastDay > 0 && day > lastDay) {
+    const el = $("hud-time");
+    el.classList.remove("dawn");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("dawn");
+  }
+  lastDay = day;
+  const wx = w.weather, el = $("hud-weather");
+  let text = "Dry";
+  if (!w.rainOn) text = "Off (no rain on this map)";
+  else if (wx.raining) text = `Rain, day ${Math.floor(wx.rainStart / PARAMS.daySimSec) + 1}`;
+  else if (wx.wetness > 0) text = `Mud until day ${Math.floor(wx.mudUntil / PARAMS.daySimSec) + 1}`;
+  if (el.textContent !== text) el.textContent = text;
+  el.classList.toggle("wet", w.rainOn && (wx.raining || wx.wetness > 0));
+  const g = w.grown, last = g.length ? g[g.length - 1] : null;
+  const houses = `Houses: ${w.houses.length}`, note = !w.growthOn ? "no growth on this map" : last ? `newest on day ${last.day}` : "none new yet";
+  const hEl = $("hud-houses");
+  if (hEl.firstChild?.textContent !== houses || hEl.lastChild?.textContent !== note) {
+    hEl.textContent = houses;
+    const small = document.createElement("small");
+    small.textContent = note;
+    hEl.appendChild(small);
+  }
 }

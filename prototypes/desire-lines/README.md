@@ -12,9 +12,11 @@ The page is one self-contained file, `dist/index.html`. It has no runtime librar
 npm install          # typescript and esbuild only
 npm run build        # writes dist/index.html; open it in a browser
 npm run check        # typecheck + build + headless simulation tests (about 9 minutes on 4 cores)
-npm run perf         # Playwright: frame times at 500 and 200 walkers, 1x and 8x; a 4x CPU-throttled run; preview while dragging
-npm run smoke        # Playwright: page contract, every control and tool (a gate on a diagonal fence too), the flow preview, rain and growth through the debug API, 400 px layout in both themes, touch at 400 x 800
+npm run perf         # Playwright: frame times at 500 and 200 walkers, 1x and 8x; 200 walkers at 8x in rain with sound on; a 4x CPU-throttled run; preview while dragging
+npm run smoke        # Playwright: page contract, every control and tool (a gate on a diagonal fence too), the flow preview, rain and growth, 400 px layout in both themes, touch at 400 x 800 and 360 x 740 (a second finger too), sound (off until pressed, then a minute at 8x), rain, mud and new houses on screen
 ```
+
+The perf and smoke scripts load the page the way the Artifact host serves it: `test/host.mjs` wraps `dist/index.html` in a document skeleton (doctype, charset, a `width=device-width` viewport meta, body) and writes `test-results/host.html`. The published page itself never carries those tags. Without the viewport meta, Playwright's mobile emulation lays the page out 980 px wide; the phone runs now assert `innerWidth` is 400 and 360.
 
 `npm test -- --quick` runs the gate on 4 fresh seeds (401 to 404) and skips the other sets and the report tables. The full run uses worker threads. Playwright is not a dependency: the perf and smoke scripts use the copy installed globally in the build container.
 
@@ -26,27 +28,50 @@ Add `#seed=42` to the page URL to open a given map.
 | --- | --- | --- |
 | Pause | Space | Stops and starts the simulation clock (the button stays "Pause" and shows pressed while paused) |
 | Speed 1x 2x 4x 8x | 1 2 3 4 | At 1x one in-game day is 15 s and a season is 60 s |
-| Walkers | | 50 to 500 villagers (default 200) |
+| Walkers | | 50 to 500 villagers (default 200). The slider and its number follow the population, which new houses raise (by 3 a cottage, up to 248 from 200); moving it sets the population at once, and Reset starts again from the number you set |
 | Fence | F | Drag to draw a fence line; it is placed on release. Walkers cannot cross it |
 | Gravel | G | Drag to brush a strip of gravel; it is laid on release, and snaps onto a worn trail's centre line when one is within a cell. Gravel costs walkers 0.6 of grass (busy gravel gets cheaper still, down to the same 0.45 floor as a trunk), never grows back below trail and never turns to mud, so a trail up to about 5 cells away moves onto it and stays. A fence laid over gravel takes the gravel up. When a strip changes no route and no trail is within 6 cells of it, the readout says "Too far from any route to change anything" |
 | Gate | T | Click (or tap) a fence to put a gate in it: walkers pass at a cost of 1.5 grass cells and at 0.4 of their speed, so a trail re-forms through it. On a gate, the tool takes it out again. It snaps to the nearest fence cell within 2 cells that can take a gate. A cell takes a gate when opening it joins the open ground on the two sides of the fence (any angle: on a diagonal fence, which is a staircase of cells, a stair's corner pair becomes one two-cell gate with half the delay in each cell). Otherwise the status line says why: "Gates go on fences: there is no fence here.", "No way through here: both sides are blocked." or "A gate needs fence beside it: this is a lone post." |
 | Footbridge | B | Hover over the river to preview, click to lay a bridge (not next to the ford). On touch: press to preview, release on the same spot to build, slide away to cancel |
 | Erase | E | Hover to preview what goes; click or drag over fences (with their gates), gravel and bridges to remove them. On touch: press to preview, release to remove, or drag |
 | Flow preview | P | On by default. While a tool is in use, shows the typical routes that would change: dashed is the route now, solid with arrows is the route after, both faint where they run together. The readout, such as "Reroutes about 20 walkers a day (+13% longer on average)", is in the status line, and next to the pointer with a mouse (not under a finger). The percentage is the trip-weighted mean cost change over the rerouted trips. A cut-off destination gets a red ring and "Blocks the Well for 3 houses" |
-| Wear overlay | W | Heat map of wear (0 to 100) over a dimmed map |
+| Wear overlay | W | Heat map of wear (0 to 100) over a dimmed map (it works in rain too) |
+| Sound | M | Off until you press it. Once on, a Volume slider appears beside it. Nothing about sound is remembered across reloads (see Sound below) |
 | Reset | R | Restarts the same map |
 | New map | N | Generates a new map from a new seed |
 | | Esc | Puts the tool down |
 
-At phone width the controls wrap into rows of buttons at least 40 px high, and the map sits under them on the first screen. The status bar keeps a fixed height (one line on desktop, two on a phone), so the map never moves when a message or the readout appears; long text is cut with an ellipsis (the full text is in its tooltip).
+At phone width the controls wrap into five rows of buttons at least 40 x 40 px (title, Pause and Sound; the four speeds, each 48 px wide; Walkers; the tools; Preview, Wear, Reset and New map, with short labels), and the whole map sits under them on the first screen at 400 x 800 and 360 x 740. Each press or drag on the map belongs to the finger that started it: a second finger during a fence drag, a gravel stroke or a footbridge or gate press is ignored. The status bar keeps a fixed height (one line on desktop, two on a phone), so the map never moves when a message or the readout appears; long text is cut with an ellipsis (the full text is in its tooltip).
 
-The side panel shows the day and season, the walkers out, the frame rate, and three health metrics: detour ratio, trail coverage and trunk share (see below).
+The side panel shows the day and season (the line flashes at each dawn), the walkers out, the town ("Houses: N" and the day the newest was built), the weather ("Dry", "Rain, day N" or "Mud until day N"), the frame rate, and the health metrics: detour ratio, trail coverage and trunk share (see below).
+
+Status messages count properly ("Fence placed (1 cell)."), and the last action's message is cleared when a new flow preview starts, so it never sits beside a readout about something else. With a mouse, the floating readout takes whichever of eight spots round the pointer covers the fewest ghost-route points. When a footbridge would save under 5% of the walk, its readout says "Saves under 5% of the walk, so many will keep to their old way" instead of promising a shorter route (round 3: such bridges take only 24% to 45% of the crossings).
+
+## What the player sees
+
+- **Worn ground.** Trails fade in from a wide pale fringe of flattened grass with ragged edges. Along a trail the colour follows its wear; busy trunks (the walkers' recent footsteps, smoothed over a few seconds) pull towards a stronger compacted-earth colour, darker in the light theme and brighter in the dark one, so side trails stay lighter. Hollow ways keep the most extreme colour. This is drawing only: the wear data is untouched.
+- **Rain.** Light slanted streaks fall over the map (they stop while paused), the whole ground darkens as it wets, and every muddy cell turns wet, dark, churned earth with a few puddle glints, clearly unlike dry trail in both themes. The mud fades as the ground dries.
+- **New houses.** A new cottage rises out of its garden plot with a puff of dust (about a second), two rings spread from it, and a small red badge marks it for about 15 seconds. Grown cottages stand in a garden (the plot is 3 x 3 cells), so they read apart from the first houses.
+- **Fences, gates, gravel.** A diagonal fence is one straight rail: stair steps are ironed out, with posts only at the ends and real corners. A gate is cut into the rail and drawn with its two posts and a leaf standing ajar, along the fence at any angle. Gravel is a pale strip with a thin dark rim and speckled grit.
+- **Tool marks.** A ring pops where something is placed, dust puffs where something is removed, and a red cross shakes where an action is refused.
+
+## Sound
+
+Made in code with Web Audio (`src/ui/audio.ts`, copied from the audio round's measured module, and `src/ui/sound.ts`, which drives it). No files are loaded.
+
+- **Off until pressed.** No AudioContext exists until the Sound button (or M) is pressed; it is made inside that press, and only one is ever made. Sound off costs one null check a frame. Nothing is stored, so a reload starts silent.
+- **Footsteps** are counted, not played per villager: every 120 ms the walkers out on the map are counted in a 4 x 2 grid of map areas, with the ground most of them are on (grass, worn earth, gravel, mud, the bridge deck) and how many are in the ford. Once a beat (64 BPM, fixed, whatever the game speed) the engine plays one step for 1 or 2 walkers, two for 3 to 11 and one pre-mixed shuffle for 12 or more, panned by the area's position, never more than 8 step voices a beat. Rain makes grass steps quieter and worn earth squelch.
+- **Beds and cues.** The river with its D drone; the ford's wading; rain, with the weather's rain level; a bell at dawn each in-game day (at most one every 6 s at high speed); place, erase and refused cues for the tools; the 8-bar theme on a pipe with lyre and frame drum, quiet, with 12 to 26 s of silence between rounds.
+- **Pauses.** Sound pauses (the context is suspended) with the game and when the tab is hidden. A press on the page resumes a context the browser suspended.
+- **Visual twins.** Steps: the walkers. River and ford: the river and the walkers wading. Rain: the streaks and darker ground. Bell: the flashing day line. Tool cues: the tool marks above. Theme: a note on the Sound button while a round plays.
+- **Measured, not heard.** Levels were set offline against the game's own recipes (about -20 LUFS for a busy scene, peaks under -1 dBTP). The smoke test checks scheduling, not how it sounds: after a minute at 8x it counts beats, steps (at most 8 a beat), bells, theme notes and voices alive at once. Not proven: the sound itself, the loop seams, iOS (the hardware silent switch mutes Web Audio; no silent-audio workaround is added).
+- **Debug:** `__tt.sound()` returns whether it is on, whether a context exists, its state and the engine's counts.
 
 ## What is in, and what is not
 
 In: a 128 x 128 meadow of 2 m cells, a meandering river with one ford, 6 to 8 houses, a well, a field and a market across the river; wear with saturation, side spread and state-based decay; five ground states plus gravel; walkers routed on wear-weighted cost-to-go fields with Weidmann crowding and per-walker taste, and a frugal minority (below); fences, gates, gravel, footbridges and erase; pause, speed, reset, new map; the wear overlay; health metrics; a debug API on `window.__tt` for tests.
 
-Round 4 added rain and mud and house growth by the frontage rules (below). Not yet (from the step 1 build list in the design doc): sound, placeable buildings; tool costs (the toy has no money), night-closing gates, stepping stones and toll gates. Hollow ways need wear above 85 held for 10 in-game years (40 minutes at 1x), so they will rarely appear in a session; they are drawn in their own colour when they do.
+Round 4 added rain and mud, house growth by the frontage rules and sound made in code (below). Not yet (from the step 1 build list in the design doc): placeable buildings; tool costs (the toy has no money), night-closing gates, stepping stones and toll gates. Hollow ways need wear above 85 held for 10 in-game years (40 minutes at 1x), so they will rarely appear in a session; they are drawn in their own colour when they do.
 
 ## How it works
 
@@ -59,7 +84,7 @@ Round 4 added rain and mud and house growth by the frontage rules (below). Not y
 - **Walking.** A walker looks 20 cells down its target's field (with its own taste and a small per-cell noise) and heads in a straight line for the farthest of those cells it can reach in clear sight, as long as that line costs no more than the field's route. That gives trails at any angle instead of 8-direction staircases, while walkers still keep to a trail that bends.
 - **Wear.** Entering a cell adds `I * (1 - W/100)` to it and a share of that to the two cells either side of the heading. Wear decays with a half-life that depends on its band.
 - **Blocked walkers.** A walker on a newly fenced cell is moved to the nearest open cell; a walker cut off from its errand heads home; a walker with no way forward for 5 s is sent home.
-- **Drawing** (`src/ui/`). Worn ground is a 512 x 512 layer bilinearly sampled from the wear grid, coloured through a lookup table with alpha, with a fixed mottling and a gentle warp of up to 0.45 cells so long straight legs wander a little (drawing only; the simulation is untouched). Fences are continuous rails through the cell centres (diagonal neighbours join up) with posts at ends and corners; a gate is a leaf standing ajar in the gap; gravel is a scatter of grey stones.
+- **Drawing** (`src/ui/`). Worn ground (`ground.ts`) is a 512 x 512 layer bilinearly sampled from the wear grid and coloured through a lookup table by wear, traffic level (8) and mud level (6), with alpha, a fixed mottling, a per-pixel nudge of the value at trail edges, a 3 x 3 blur that widens the trampled fringe, and a gentle warp of up to 0.45 cells so long straight legs wander a little. It is rebuilt every 250 ms (about 3.3 ms). Wet ground is a multiply over the composited ground. Fences (`ink.ts`) are chains of cells smoothed (two 3-point averages with real corners held) and simplified into straight rails; gates are cut out of the rail. Rain, new houses and tool marks are drawn each frame by `effects.ts` from one pre-drawn rain tile and fixed buffers, with no allocation per frame.
 
 ## Tunable parameters
 

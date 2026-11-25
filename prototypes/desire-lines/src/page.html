@@ -25,7 +25,7 @@
     --map-trunk: #6c4626;
     --map-hollow: #43291a;
     /* Rain: wet ground is multiplied by --map-wet; mud is wet, dark, churned earth with puddle glints. */
-    --map-mud: #463c33;
+    --map-mud: #4f3e2f;
     --map-mud-glint: #d5e2e8;
     --map-wet: #7f8f99;
     --map-rain: #f3f7fa;
@@ -63,7 +63,7 @@
     :root:not([data-theme="light"]) {
       --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
       --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-      --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5d6040;
+      --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535a3b;
       --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
       --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
       --map-gravel-wash: #cfd2c9; --map-gravel-rim: #121511;
@@ -77,7 +77,7 @@
   :root[data-theme="dark"] {
     --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
     --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
-    --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #5d6040;
+    --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535a3b;
     --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
     --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
     --map-gravel-wash: #cfd2c9; --map-gravel-rim: #121511;
@@ -159,7 +159,21 @@
   .sw-grass { background: var(--map-grass); } .sw-trampled { background: var(--map-trampled); }
   .sw-trail { background: var(--map-trail); } .sw-track { background: var(--map-track); }
   .sw-hollow { background: var(--map-hollow); }
-  .sw-gravel { background: var(--map-gravel); }
+  .sw-trunk { background: var(--map-trunk); }
+  .sw-mud { background: radial-gradient(circle at 70% 40%, var(--map-mud-glint) 0 1.5px, transparent 2px), var(--map-mud); }
+  .sw-gravel { background: radial-gradient(circle at 25% 35%, var(--map-gravel) 0 1.2px, transparent 1.6px), radial-gradient(circle at 70% 65%, var(--map-gravel) 0 1.2px, transparent 1.6px), var(--map-gravel-wash); border-color: var(--map-gravel-rim); }
+  .sw-new { background: var(--map-garden); position: relative; }
+  .sw-new i { position: absolute; right: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--map-new); box-shadow: 0 0 0 1.5px var(--map-halo); }
+  [hidden] { display: none !important; }
+  .note { color: inherit; }
+  #hud-weather.wet { color: var(--accent); font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) {
+    #hud-time.dawn { animation: dawn 1.2s ease-out; }
+    @keyframes dawn { 0% { background: var(--accent); color: var(--accent-fg); } 100% { background: transparent; } }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #hud-time.dawn { text-decoration: underline; }
+  }
   .heat { height: 10px; border: 1px solid var(--line);
     background: linear-gradient(90deg, var(--heat-0), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-4)); }
   .heat-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
@@ -173,14 +187,22 @@
     /* Touch targets: at least 40 px high. The control groups wrap with the title, so it shares a row. */
     header { gap: 6px 10px; }
     .controls { display: contents; }
-    button { min-height: 40px; padding: 6px 10px; }
+    button { min-height: 40px; min-width: 44px; padding: 6px 10px; }
     input[type="range"] { height: 40px; width: 140px; margin: 0; }
     .group-label.optional { display: none; }
   }
+  .narrow { display: none; }
   @media (max-width: 480px) {
     h1 span { display: none; }
     header { gap: 6px 8px; }
     button { padding: 6px 8px; }
+    .group { gap: 4px; }
+    /* Phone: five rows. Title, Pause and Sound; speed; walkers; tools; view and map buttons. Short labels. */
+    .wide { display: none; }
+    .narrow { display: inline; }
+    .g-pause { order: 1; } .g-sound { order: 2; } .g-speed { order: 3; } .g-walkers { order: 4; } .g-tools { order: 5; } .g-view { order: 6; }
+    .g-speed button { min-width: 48px; }
+    .volume input[type="range"] { width: 96px; }
   }
   @media (prefers-reduced-motion: no-preference) {
     button { transition: background-color 120ms, border-color 120ms; }
@@ -190,32 +212,36 @@
   <header>
     <h1>Tide &amp; Toll <span>Prototype 1: desire lines</span></h1>
     <div class="controls" role="toolbar" aria-label="Simulation controls">
-      <div class="group">
+      <div class="group g-pause">
         <button id="btn-pause" type="button" aria-pressed="false" title="Pause (Space); pressed while paused">Pause</button>
       </div>
-      <div class="group" role="group" aria-label="Speed">
+      <div class="group g-speed" role="group" aria-label="Speed">
         <span class="group-label optional">Speed</span>
         <button id="speed-1" type="button" aria-pressed="true" title="1x (key 1)">1x</button>
         <button id="speed-2" type="button" aria-pressed="false" title="2x (key 2)">2x</button>
         <button id="speed-4" type="button" aria-pressed="false" title="4x (key 3)">4x</button>
         <button id="speed-8" type="button" aria-pressed="false" title="8x (key 4)">8x</button>
       </div>
-      <div class="group">
+      <div class="group g-walkers">
         <label class="group-label" for="walkers">Walkers</label>
         <input id="walkers" type="range" min="50" max="500" step="10" value="200">
         <output id="walkers-out" for="walkers">200</output>
       </div>
-      <div class="group" role="group" aria-label="Tools">
+      <div class="group g-tools" role="group" aria-label="Tools">
         <span class="group-label optional">Tools</span>
         <button id="tool-fence" type="button" aria-pressed="false" title="Fence: drag to draw (F)">Fence</button>
         <button id="tool-gravel" type="button" aria-pressed="false" title="Gravel: brush along a trail (G)">Gravel</button>
         <button id="tool-gate" type="button" aria-pressed="false" title="Gate: click on a fence (T)">Gate</button>
-        <button id="tool-bridge" type="button" aria-pressed="false" title="Footbridge: click on the river (B)">Footbridge</button>
+        <button id="tool-bridge" type="button" aria-pressed="false" title="Footbridge: click on the river (B)"><span class="wide">Footbridge</span><span class="narrow">Bridge</span></button>
         <button id="tool-erase" type="button" aria-pressed="false" title="Erase fences, gates, gravel and bridges (E)">Erase</button>
       </div>
-      <div class="group">
-        <button id="btn-preview" type="button" aria-pressed="true" title="Flow preview: show where walkers will go before you place or remove anything (P)">Flow preview</button>
-        <button id="btn-overlay" type="button" aria-pressed="false" title="Wear overlay (W)">Wear overlay</button>
+      <div class="group g-sound" role="group" aria-label="Sound">
+        <button id="btn-sound" type="button" aria-pressed="false" title="Sound on or off (M). Made in code; off until you press it">Sound<span id="sound-note" class="note" aria-hidden="true" hidden> &#9834;</span></button>
+        <span class="group volume" hidden><label class="group-label" for="volume">Volume</label><input id="volume" type="range" min="0" max="100" step="5" value="70"></span>
+      </div>
+      <div class="group g-view">
+        <button id="btn-preview" type="button" aria-pressed="true" title="Flow preview: show where walkers will go before you place or remove anything (P)"><span class="wide">Flow preview</span><span class="narrow">Preview</span></button>
+        <button id="btn-overlay" type="button" aria-pressed="false" title="Wear overlay (W)"><span class="wide">Wear overlay</span><span class="narrow">Wear</span></button>
         <button id="btn-reset" type="button" title="Restart this map (R)">Reset</button>
         <button id="btn-newmap" type="button" title="Generate a new map (N)">New map</button>
       </div>
@@ -236,6 +262,8 @@
         <dl>
           <dt>Time</dt><dd id="hud-time">Day 1, Spring</dd>
           <dt>Walkers</dt><dd id="hud-walkers">0</dd>
+          <dt>Town</dt><dd id="hud-houses">Houses: 0</dd>
+          <dt>Weather</dt><dd id="hud-weather">Dry</dd>
           <dt>Map</dt><dd id="hud-seed">Seed 1</dd>
           <dt>Frame rate</dt><dd id="hud-fps">-</dd>
         </dl>
@@ -256,8 +284,11 @@
           <li><span class="swatch sw-trampled"></span>Trampled</li>
           <li><span class="swatch sw-trail"></span>Trail</li>
           <li><span class="swatch sw-track"></span>Track</li>
+          <li><span class="swatch sw-trunk"></span>Busy trunk</li>
           <li><span class="swatch sw-hollow"></span>Hollow way</li>
+          <li><span class="swatch sw-mud"></span>Mud (after rain)</li>
           <li><span class="swatch sw-gravel"></span>Gravel</li>
+          <li><span class="swatch sw-new"><i></i></span>New house (marked a while)</li>
         </ul>
       </section>
       <section id="legend-heat" hidden>
@@ -269,7 +300,8 @@
         <h2>How to play</h2>
         <p class="hint">Villagers walk from their houses to the well, the field and the market, and wear the grass into trails. You never draw a road: draw <b>fences</b> to push the trails aside, put a <b>gate</b> in a fence to let walkers through (slowly), brush <b>gravel</b> where you want a young trail to run (it never grows back), or lay a <b>footbridge</b> across the river. Unused paths grow back.</p>
         <p class="hint">With <b>Flow preview</b> on, a tool shows the typical routes that would change: dashed is now, solid is after, faint where they run together.</p>
-        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> fence, <kbd>G</kbd> gravel, <kbd>T</kbd> gate, <kbd>B</kbd> footbridge, <kbd>E</kbd> erase, <kbd>Esc</kbd> no tool, <kbd>P</kbd> preview, <kbd>W</kbd> overlay, <kbd>R</kbd> reset, <kbd>N</kbd> new map</p>
+        <p class="hint">Rain turns worn trails to <b>mud</b>, which walkers avoid where they can; gravel never turns to mud. New families build cottages beside busy trails, so the town grows where you steer the paths.</p>
+        <p class="hint"><kbd>Space</kbd> pause, <kbd>1</kbd>-<kbd>4</kbd> speed, <kbd>F</kbd> fence, <kbd>G</kbd> gravel, <kbd>T</kbd> gate, <kbd>B</kbd> footbridge, <kbd>E</kbd> erase, <kbd>Esc</kbd> no tool, <kbd>P</kbd> preview, <kbd>W</kbd> overlay, <kbd>M</kbd> sound, <kbd>R</kbd> reset, <kbd>N</kbd> new map</p>
       </section>
     </aside>
   </main>

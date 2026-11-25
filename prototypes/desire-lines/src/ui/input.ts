@@ -295,7 +295,7 @@ export class Input {
       const t = w.gateTarget(x, y), c = t.cells.length ? t.cells[0] : -1, remove = t.remove;
       this.pressAt = c;
       this.gateReason = t.reason || "Gates go on fences.";
-      this.renderer.ghost = { kind: "gate", cell: c, remove, x, y };
+      this.renderer.ghost = { kind: "gate", cells: t.cells, remove, x, y };
       if (c >= 0) this.request(remove ? { ungate: t.cells } : { gate: t.cells }, `${remove ? "u" : "t"}${t.cells.join(",")}`);
       else this.clearPreview();
     } else if (this.tool === "erase") {
