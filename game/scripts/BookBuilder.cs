@@ -28,7 +28,7 @@ public static class BookBuilder
     private static ShaderMaterial? _paper;
 
     /// <summary>Returns the book root.</summary>
-    public static Node3D Build(Node3D parent, SimParams p)
+    public static Node3D Build(Node3D parent, SimParams p, int chapter = 1)
     {
         var table = new Node3D { Name = "Table" };
         parent.AddChild(table);
@@ -46,8 +46,8 @@ public static class BookBuilder
         var left = AddPage(book, "LeftPage", -1);
         var right = AddPage(book, "RightPage", +1);
         AddRibbon(book);
-        FillLeftPage(left);
-        FillRightPage(right, p);
+        FillLeftPage(left, chapter);
+        FillRightPage(right, p, chapter);
         return book;
     }
 
@@ -151,15 +151,15 @@ public static class BookBuilder
             foreach (int k in new[] { f[0], f[1], f[2], f[0], f[2], f[3] }) { st.SetColor(c); st.AddVertex(p[k]); }
     }
 
-    private static void FillLeftPage(Node3D page)
+    private static void FillLeftPage(Node3D page, int chapter)
     {
         // The chapter page's words (title, how to play, the village and path-health entries, the legend) are written
         // by the interface over this page (GameUi / ChapterPage), so they stay sharp at every zoom; only the folio
         // is printed on the paper.
-        AddLabel(page, "Folio", "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
+        AddLabel(page, "Folio", chapter == 2 ? "21" : "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
     }
 
-    private static void FillRightPage(Node3D page, SimParams p)
+    private static void FillRightPage(Node3D page, SimParams p, int chapter)
     {
         float side = p.GridWidth * (float)p.CellMeters;
         // A hair above the paper so the map plane never fights the page for depth.
@@ -170,9 +170,10 @@ public static class BookBuilder
         AddFrame(page, "FrameInner", side + 2f, 1.4f);
         AddFrame(page, "FrameOuter", side + 10f, 0.6f);
         AddCompass(page, new Vector3(side / 2f - 10f, 0.04f, -side / 2f - 14f), 7f);
+        // Chapter II's pages are further on in the book (folios 21 and 22).
         // The title in the chapter page's display face (Uncial Antiqua), folios in Alegreya, as printed in the book.
-        AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink, UiKit.Display);
-        AddLabel(page, "Folio", "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
+        AddLabel(page, "MapTitle", chapter == 2 ? "The Hamlet by the River" : "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink, UiKit.Display);
+        AddLabel(page, "Folio", chapter == 2 ? "22" : "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
     }
 
     private static void AddFrame(Node3D page, string name, float size, float w)

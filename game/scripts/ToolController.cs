@@ -7,7 +7,7 @@ using TideToll.Sim;
 
 namespace TideToll.Game;
 
-public enum Tool { None, Fence, Bridge, Erase, Ferry, Drawbridge }
+public enum Tool { None, Fence, Bridge, Erase, Ferry, Drawbridge, Gravel, Gate }
 
 /// <summary>
 /// The three Prototype 1 tools, as the toy's input.ts plays them, on the map page:
@@ -71,9 +71,11 @@ public partial class ToolController : Node
         "",
         "Fence: drag across the map to draw a fence line. Esc or right-click puts it down.",
         "Footbridge: point at the river to see the bridge, click to build it.",
-        "Erase: click or drag over fences, bridges and ferries to remove them.",
+        "Erase: click or drag over fences, gates, gravel and bridges to remove them.",
         "Ferry: point at the river and click to start a ferry. Walkers queue for the raft; boats always pass.",
         "Drawbridge: point at the river and click to build one. Raise it for barges with a click on it or L.",
+        "Gravel: brush a strip on or beside a route. Esc or right-click puts it down.",
+        "Gate: click a fence to put a gate in it, or a gate to take it out.",
     };
 
     public void Init(Main main)

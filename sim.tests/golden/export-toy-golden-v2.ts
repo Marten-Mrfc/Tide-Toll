@@ -19,6 +19,7 @@
 //                             and rain only
 //   previews                  flow previews off (seeds 2, 4) and live (seed 2 with grown houses, gravel, gates)
 //   table, tableLive          the G3 gate rows on seeds 101-120 (off; with the toy's printed table) and 601-620 (live)
+//   streamsLarge              the weather stream of seeds above 3.39 million (from the toy's Weather class)
 //   baselines                 seeds 1-3 at 200 walkers, 20 days: day-20 wear hash and the next three walker draws,
 //                             off and live (the river-off baseline is re-recorded from these)
 import { writeFileSync, readFileSync } from "node:fs";
@@ -82,6 +83,12 @@ const growthSeed = (s: number) => ((s * 40503) ^ 0x6f7d) >>> 0;
 const streams = [1, 2, 3, 101, 601, 99991].map(seed => {
   const a = mulberry32(weatherSeed(seed)), b = mulberry32(growthSeed(seed));
   return { seed, weatherSeed: weatherSeed(seed), weather: [a(), a(), a(), a()], growthSeed: growthSeed(seed), growth: [b(), b(), b(), b()] };
+});
+// Large seeds (river pass 3): above about 3.39 million the toy's seed * 2654435761 is no longer exact in a double, so
+// the weather stream's seed is the rounded product's low 32 bits. Drawn from the toy's own Weather class.
+const streamsLarge = [3390001, 3390003, 3400001, 3400002, 12345679, 99999999, 2147483647].map(seed => {
+  const wx = new Weather(seed) as any;
+  return { seed, weatherSeed: weatherSeed(seed), weather: [wx.rng(), wx.rng(), wx.rng(), wx.rng()], growthSeed: growthSeed(seed) };
 });
 const explorers = Array.from({ length: 64 }, (_, id) => hash2(id, 77));
 // Low-cost Dijkstra (the toy's bucket queue): costs 0.3 + 0.5 * mulberry32(11), a wall on row 70 for columns 0..99.
@@ -409,7 +416,7 @@ writeFileSync(out, compact({
   seconds: Math.round((Date.now() - t0) / 1000),
   params, legacyParams: LEGACY, probes, streams, explorers, dijkstraLow,
   tracesOff, tracesLive, tracesRain, tracesGrowth, legacyCheck, legacyMatches, weather, plots, edits: [editsOff, editsLive, editsRain],
-  previews, previewsLive, table, tableText, tableLive, baselines,
+  previews, previewsLive, table, tableText, tableLive, baselines, streamsLarge,
 }) + "\n");
 say(`wrote ${out}`);
 if (legacyMatches === false) { console.error("the finished toy with the round-2 values does NOT match the legacy traces"); process.exitCode = 1; }

@@ -8,6 +8,7 @@ namespace TideToll.Sim;
 // fills at that rate. Also the count of walkers crossing the river, by crossing.
 public sealed partial class World
 {
+    internal static int DiagClips, DiagClipCrossed, DiagTokenOn, DiagPassOn; // DIAG
     private int _curWalker; // index of the walker being stepped (for the queues)
 
     /// <summary>Hook of the walker's step, before it enters cell c: true when it must stop and wait on its bank.</summary>
@@ -22,16 +23,16 @@ public sealed partial class World
             w.Pass = false;
             // Its turn came in the queue. A pass for a bridge that has been raised since is spent: it queues again
             // (a walker let on while the bridge was down whose route then went elsewhere kept a stale pass).
-            if (x.Type == CrossingType.Ferry || BridgeOpen(x)) return false;
+            if (x.Type == CrossingType.Ferry || BridgeOpen(x)) { DiagPassOn++; w.DiagClip = false; return false; } // DIAG
         }
         // A walker only clipping the end of an open bridge on its way along the bank (its line cuts the corner of an end
         // cell) is not queued for it: it would be released at its first route check and queue again, for ever.
-        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) return false;
+        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) { DiagClips++; w.DiagClip = true; return false; } // DIAG
         WalkerQueue q = SideOf(w.Cell) < 0 ? x.West! : x.East!;
         // Straight on when nobody is queued on either bank and the bridge has room; otherwise to the back of the queue.
         if (x.Type != CrossingType.Ferry && BridgeOpen(x) && x.Tokens >= 1 && !QueueHasWalker(x, x.West!) && !QueueHasWalker(x, x.East!))
         {
-            x.Tokens -= 1;
+            x.Tokens -= 1; DiagTokenOn++; w.DiagClip = false; // DIAG
             return false;
         }
         w.Hold = WalkerHold.Waiting;
@@ -200,10 +201,12 @@ public sealed partial class World
             if (x != null)
             {
                 x.WalkersCrossed++;
+                if (w.DiagClip) DiagClipCrossed++; // DIAG
                 if (w.Waited) x.WalkersWaited++;
             }
         }
         w.Waited = false;
+        w.DiagClip = false; // DIAG
     }
 
     /// <summary>The walker was moved without walking (sent home, set down off a span): note its bank without counting a crossing.</summary>

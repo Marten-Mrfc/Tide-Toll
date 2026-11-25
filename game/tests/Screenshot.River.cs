@@ -28,9 +28,11 @@ public partial class Screenshot
 {
     private async Task RiverShots()
     {
+        var rules = _main.River ?? RiverRules.Default; // every crossing affordable, whatever the prices are
+        _main.River = rules with { StartMoney = rules.FootbridgePrice + rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 870 };
+        _main.SwitchChapter(2); // Chapter II, The River: the book is built again with the river rules on
+        await Frames(2);
         var sim = _main.Sim;
-        var rules = sim.Params.River ?? RiverRules.Default; // every crossing affordable, whatever the prices are
-        sim.Params = sim.Params with { River = rules with { StartMoney = rules.FootbridgePrice + rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 870 } };
         sim.Reset(1);
         sim.SetSpeed(1);
         sim.SetPaused(true);

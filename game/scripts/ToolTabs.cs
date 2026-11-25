@@ -15,6 +15,9 @@ public partial class ToolTabs : VBoxContainer
 {
     public readonly Dictionary<string, Control> Controls = new();
     public Button? Ferry, Drawbridge;
+    /// <summary>The chapter bookmark: a ribbon at the top of the column that turns the page to the other chapter (C).</summary>
+    public Button ChapterMark = null!;
+    public Button Gravel = null!, Gate = null!;
     public Button Pause = null!, Fence = null!, Bridge = null!, Erase = null!, Preview = null!, Overlay = null!, Sound = null!, Reset = null!, NewMap = null!;
     public readonly Button[] Speed = new Button[4];
     public HSlider Walkers = null!, Volume = null!;
@@ -34,7 +37,7 @@ public partial class ToolTabs : VBoxContainer
     private readonly List<(Button tab, Label price, string tip, double cost)> _priced = new();
     private int _shownCoin = int.MinValue;
 
-    public void Build(float s, RiverRules? river = null)
+    public void Build(float s, RiverRules? river = null, int chapter = 1)
     {
         _s = s;
         _icon = UiKit.Px(s, 24);
@@ -44,6 +47,8 @@ public partial class ToolTabs : VBoxContainer
         AddThemeConstantOverride("separation", UiKit.Px(s, 4));
         MouseFilter = MouseFilterEnum.Ignore;
 
+        ChapterMark = ChapterRibbon(chapter == 2 ? 1 : 2);
+        Gap(6);
         Pause = Tab("Pause", "ui-pause", "Pause", "Space", "Pause or resume time (Space). Tools still work while paused.", true);
         _pauseIcon = Pause.GetNode<TextureRect>("Row/Icon");
         _pauseText = Pause.GetNode<Label>("Row/Text");
@@ -62,10 +67,14 @@ public partial class ToolTabs : VBoxContainer
         AddChild(speeds);
         Gap(10);
         Fence = Tab("Fence", "tool-fence", "Fence", "F", "Fence (F): drag across the map to draw a woven fence. Walkers go round it.", true);
+        Gate = Tab("Gate", "tool-gate", "Gate", "T", "Gate (T): click a fence to put a gate in it; walkers pass through it, slowly. Click a gate to take it out.", true);
+        Gravel = Tab("Gravel", "tool-gravel", "Gravel", "G",
+            "Gravel (G): brush a strip where you want a trail; it snaps to a trail's middle, draws walkers from about 3 cells away and never grows back or turns to mud." +
+            (river != null ? " Free, like fences and gates." : ""), true);
         if (river == null)
         {
             Bridge = Tab("Footbridge", "tool-footbridge", "Footbridge", "B", "Footbridge (B): point at the river and click to build a bridge across it.", true);
-            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences and bridges to remove them.", true);
+            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, gates, gravel and bridges to remove them.", true);
         }
         else
         {
@@ -75,7 +84,7 @@ public partial class ToolTabs : VBoxContainer
                 $"Ferry (Y): a raft on a rope. Every boat passes; walkers wait for the raft, six at a time. {river.FerryUpkeep + river.FerryWage:0}c a season for the ferryman and upkeep.");
             Drawbridge = Priced("Drawbridge", "tool-drawbridge", "Drawbridge", "D", river.DrawbridgePrice,
                 $"Drawbridge (D): walkers cross while it is down; raise it (click it, or L) for barges, or hire a keeper ({river.KeeperPrice:0}c, K) to do it. {river.DrawbridgeUpkeep:0}c a season.");
-            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, bridges and ferries to remove them. Taking down a crossing costs half its price.", true);
+            Erase = Tab("Erase", "tool-erase", "Erase", "E", "Erase (E): click or drag over fences, gates, gravel, bridges and ferries to remove them. Taking down a crossing costs half its price.", true);
         }
         Gap(10);
         Preview = Tab("FlowPreview", "ui-flow-preview", "Flow preview", "P", "Flow preview (P): while you use a tool, show the routes that would change. Dashed is now, solid is after.", true);
@@ -135,6 +144,45 @@ public partial class ToolTabs : VBoxContainer
     {
         foreach (var p in _priced) if (p.tab.Name == name) return !p.price.Text.Contains("short");
         return false;
+    }
+
+    /// <summary>
+    /// The chapter bookmark: a ribbon of the book's binding colour with the chapter it turns to in paper-white letters
+    /// ("Chapter II · The River ›", or "‹ Chapter I · The Hamlet" going back) and its key, C.
+    /// </summary>
+    private Button ChapterRibbon(int to)
+    {
+        string name = Main.ChapterNames[to], num = Main.ChapterNumerals[to];
+        var b = new Button
+        {
+            Name = "Chapter", ToggleMode = false, FocusMode = FocusModeEnum.All, ActionMode = BaseButton.ActionModeEnum.Release,
+            TooltipText = to == 2
+                ? "Turn the page (C) to Chapter II, The River: the same tools, and boats come up the river to trade; buy a ferry, a footbridge or a drawbridge with the coin they bring."
+                : "Turn back (C) to Chapter I, The Hamlet: paths only, with rain, mud and new cottages; no boats and no coin.",
+        };
+        var row = new HBoxContainer { Name = "Row", MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", UiKit.Px(_s, 7));
+        var lines = new VBoxContainer { Name = "Lines", MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        lines.AddThemeConstantOverride("separation", 0);
+        var t1 = UiKit.Text(to == 2 ? $"Chapter {num}  ›" : $"‹  Chapter {num}", _s, 15, UiKit.UiBold, UiKit.Paper);
+        t1.Name = "Text";
+        var t2 = UiKit.Text(name, _s, 13, UiKit.Serif, UiKit.Paper);
+        t2.Name = "Name";
+        lines.AddChild(t1); lines.AddChild(t2);
+        row.AddChild(lines);
+        var key = Keycap("C");
+        key.AddThemeColorOverride("font_color", UiKit.Paper);
+        ((StyleBoxFlat)key.GetThemeStylebox("normal")).BorderColor = new Color(UiKit.Paper, 0.7f);
+        row.AddChild(key);
+        Place(b, row, 44);
+        var ribbon = Palette.Brick;
+        b.AddThemeStyleboxOverride("normal", UiKit.Tab(_s, ribbon, 1.5f, 0));
+        b.AddThemeStyleboxOverride("hover", UiKit.Tab(_s, ribbon.Lightened(0.1f), 1.5f, 4));
+        b.AddThemeStyleboxOverride("pressed", UiKit.Tab(_s, ribbon.Darkened(0.15f), 2.5f, 7));
+        b.AddThemeStyleboxOverride("hover_pressed", UiKit.Tab(_s, ribbon.Darkened(0.15f), 2.5f, 7));
+        AddChild(b);
+        Controls["Chapter"] = b;
+        return b;
     }
 
     private void Gap(float px) => AddChild(new Control { CustomMinimumSize = new Vector2(0, UiKit.Px(_s, px)), MouseFilter = MouseFilterEnum.Ignore });

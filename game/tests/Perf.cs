@@ -84,6 +84,7 @@ public partial class Perf : Node
         AddChild(_first);
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         _main.StartSeed = 1;
+        _main.StartChapter = 2; // the river's chapter
         _main.StartWalkers = _walkers;
         // The river rules on (as the game plays) with a purse for every crossing: a ferry north of the landing and a
         // drawbridge with its keeper south of it, so boats, queues, the raft and the leaf all run during the measure.

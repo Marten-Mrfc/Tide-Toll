@@ -53,8 +53,9 @@ public partial class ChapterPage : PanelContainer
     /// <summary>Least distance in pixels kept between the page's edge and any line on it (UX: at least 12 px).</summary>
     public const float MinInset = 12f;
 
-    public void Build(float s, bool river = false)
+    public void Build(float s, int chapter = 1)
     {
+        bool river = chapter == 2;
         _s = s;
         Name = "Chapter";
         MouseFilter = MouseFilterEnum.Ignore;
@@ -68,8 +69,8 @@ public partial class ChapterPage : PanelContainer
 
         var title = new VBoxContainer { Name = "Title", MouseFilter = MouseFilterEnum.Ignore };
         title.AddThemeConstantOverride("separation", 0);
-        var t1 = UiKit.Text("Chapter I", s, 42, UiKit.Display);
-        var t2 = UiKit.Text("The Hamlet", s, 30, UiKit.Display);
+        var t1 = UiKit.Text("Chapter " + Main.ChapterNumerals[river ? 2 : 1], s, 42, UiKit.Display);
+        var t2 = UiKit.Text(Main.ChapterNames[river ? 2 : 1], s, 30, UiKit.Display);
         t1.HorizontalAlignment = t2.HorizontalAlignment = HorizontalAlignment.Center;
         title.AddChild(t1); title.AddChild(t2);
         title.AddChild(UiKit.Rule(s));

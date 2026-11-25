@@ -54,6 +54,7 @@ public struct Walker
     internal bool Waited;
     /// <summary>Holds a pass through the gate of crossing Via (granted from the queue); spent on stepping onto it.</summary>
     internal bool Pass;
+    internal bool DiagClip; // DIAG
 
     /// <summary>Drawn on the map: walking out or back (not inside a building).</summary>
     public readonly bool Visible => State == WalkState.Out || State == WalkState.Back;

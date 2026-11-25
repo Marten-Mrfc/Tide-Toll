@@ -37,6 +37,7 @@ public partial class RiverTest : Node
         Input.UseAccumulatedInput = false;
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         _main.StartSeed = 1;
+        _main.StartChapter = 2; // the river's chapter
         var rules = RiverRules.Default;
         _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 20 };
         AddChild(_main);

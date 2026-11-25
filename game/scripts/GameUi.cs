@@ -104,11 +104,11 @@ public partial class GameUi : CanvasLayer
         _root.AddChild(Badges);
 
         Chapter = new ChapterPage();
-        Chapter.Build(_s, _main.Params.River != null);
+        Chapter.Build(_s, _main.Chapter);
         _root.AddChild(Chapter);
 
         Tabs = new ToolTabs();
-        Tabs.Build(_s, _main.Params.River);
+        Tabs.Build(_s, _main.Params.River, _main.Chapter);
         _root.AddChild(Tabs);
         // Drawn over the tabs: the page's edge lying on top of them, so they read as bookmarks tucked under the page.
         _lip = new ToolTabs.PageLip { Name = "PageLip", Tabs = Tabs, Scale1 = _s };
@@ -141,7 +141,7 @@ public partial class GameUi : CanvasLayer
         _main.Rig.PlayRoomPx = ToolTabs.WidthFor(_s) + 24 * _s;
         _tabsAt = new Vector2(-1, -1);
         _shownPreview = "";
-        Chapter.SetStatus(_main.Tools.LastMessage.Length > 0 ? _main.Tools.LastMessage : "Choose a tool from the bookmarks on the right, or press F, B or E.");
+        Chapter.SetStatus(_main.Tools.LastMessage.Length > 0 ? _main.Tools.LastMessage : "Choose a tool from the bookmarks on the right, or press F, T, G, B or E.");
         Chapter.SetOverlay(Overlay);
         Chapter.SetNotes(_main.Feed);
         Sync();
@@ -154,7 +154,10 @@ public partial class GameUi : CanvasLayer
         Tabs.Pause.Toggled += on => sim.SetPaused(on);
         int[] sp = { 1, 2, 4, 8 };
         for (int i = 0; i < 4; i++) { int v = sp[i]; Tabs.Speed[i].Pressed += () => { sim.SetSpeed(v); Sync(); }; }
+        Tabs.ChapterMark.Pressed += _main.TurnPage;
         Tabs.Fence.Pressed += () => _main.Tools.ToggleTool(Tool.Fence);
+        Tabs.Gravel.Pressed += () => _main.Tools.ToggleTool(Tool.Gravel);
+        Tabs.Gate.Pressed += () => _main.Tools.ToggleTool(Tool.Gate);
         Tabs.Bridge.Pressed += () => _main.Tools.ToggleTool(Tool.Bridge);
         Tabs.Erase.Pressed += () => _main.Tools.ToggleTool(Tool.Erase);
         if (Tabs.Ferry != null) Tabs.Ferry.Pressed += () => _main.Tools.ToggleTool(Tool.Ferry);
@@ -179,6 +182,8 @@ public partial class GameUi : CanvasLayer
         for (int i = 0; i < 4; i++) Tabs.Speed[i].SetPressedNoSignal(sim.Speed == sp[i]);
         var t = _main.Tools.Tool;
         Tabs.Fence.SetPressedNoSignal(t == Tool.Fence);
+        Tabs.Gravel.SetPressedNoSignal(t == Tool.Gravel);
+        Tabs.Gate.SetPressedNoSignal(t == Tool.Gate);
         Tabs.Bridge.SetPressedNoSignal(t == Tool.Bridge);
         Tabs.Erase.SetPressedNoSignal(t == Tool.Erase);
         Tabs.Ferry?.SetPressedNoSignal(t == Tool.Ferry);
@@ -227,6 +232,8 @@ public partial class GameUi : CanvasLayer
     public override void _Input(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false } k || k.AltPressed || k.MetaPressed) return;
+        // While a page turns the book is being rebuilt: no keys reach the old or the new one.
+        if (_main.Turn.Busy) { GetViewport().SetInputAsHandled(); return; }
         var sim = _main.Sim;
         var tools = _main.Tools;
         // The river's keys: L and K for the selected drawbridge, Ctrl+1..9 for drawbridge n.
@@ -240,7 +247,10 @@ public partial class GameUi : CanvasLayer
             case Key.Key2: sim.SetSpeed(2); Sync(); break;
             case Key.Key3: sim.SetSpeed(4); Sync(); break;
             case Key.Key4: sim.SetSpeed(8); Sync(); break;
+            case Key.C: _main.TurnPage(); break;
             case Key.F: tools.ToggleTool(Tool.Fence); break;
+            case Key.G: tools.ToggleTool(Tool.Gravel); break;
+            case Key.T: tools.ToggleTool(Tool.Gate); break;
             case Key.B: tools.ToggleTool(Tool.Bridge); break;
             case Key.E: tools.ToggleTool(Tool.Erase); break;
             case Key.Y when tools.RiverOn: tools.ToggleTool(Tool.Ferry); break;

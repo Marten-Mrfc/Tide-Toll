@@ -14,12 +14,25 @@ namespace TideToll.Game;
 public partial class Main : Node3D
 {
     /// <summary>
-    /// The simulation's parameters: the defaults with the river rules on (Prototype 1 step 2), unless the command line
-    /// says "-- --no-river" or a test sets <see cref="River"/> to null before the scene enters the tree.
+    /// The simulation's parameters for the chapter being played: Chapter I ("The Hamlet") is the library's Default with
+    /// the river rules off (rain, mud and growing houses on); Chapter II ("The River") is the same with <see cref="River"/>
+    /// on (the library then turns rain and growth off).
     /// </summary>
     public SimParams Params { get; private set; } = SimParams.Default;
-    /// <summary>River rules to play with (tests may change them, e.g. the starting coin, before adding the scene).</summary>
+    /// <summary>River rules for Chapter II (tests may change them, e.g. the starting coin, before adding the scene).</summary>
     public RiverRules? River = RiverRules.Default;
+    /// <summary>The chapter to open on (1 or 2). "-- --chapter 2" on the command line opens Chapter II; "-- --no-river" is Chapter I.</summary>
+    public int StartChapter = 1;
+    /// <summary>The chapter being played: 1, The Hamlet (paths only), or 2, The River (boats, coin and the crossings).</summary>
+    public int Chapter { get; private set; } = 1;
+    /// <summary>Times the book was built for a chapter (1 at start, one more for every page turn).</summary>
+    public int ChapterBuilds { get; private set; }
+    /// <summary>The page-turn moment (an overlay kept across chapters).</summary>
+    public PageTurn Turn { get; private set; } = null!;
+    /// <summary>A new chapter's book is built and ready (tests, sound).</summary>
+    public event System.Action<int>? ChapterChanged;
+    public static readonly string[] ChapterNames = { "", "The Hamlet", "The River" };
+    public static readonly string[] ChapterNumerals = { "", "I", "II" };
     public SimDriver Sim { get; private set; } = null!;
     public CameraRig Rig { get; private set; } = null!;
     public Node3D MapOrigin { get; private set; } = null!;
@@ -50,17 +63,71 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
-        if (System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--no-river") >= 0) River = null;
-        Params = SimParams.Default with { River = River };
+        var args = OS.GetCmdlineUserArgs();
+        int at = System.Array.IndexOf(args, "--chapter");
+        if (at >= 0 && at + 1 < args.Length && int.TryParse(args[at + 1], out int ch)) StartChapter = ch;
+        foreach (var a in args) if (a.StartsWith("--chapter=") && int.TryParse(a.Substring(10), out int ch2)) StartChapter = ch2;
+        if (System.Array.IndexOf(args, "--no-river") >= 0) StartChapter = 1;
+        Chapter = StartChapter == 2 ? 2 : 1;
+        Turn = new PageTurn { Name = "PageTurn" };
+        AddChild(Turn);
+        Turn.Init(this);
+        Build(StartSeed, StartWalkers, null);
+    }
+
+    /// <summary>Turns the page to the other chapter, with the page-turn moment (the C key and the chapter bookmark).</summary>
+    public void TurnPage() => TurnTo(Chapter == 1 ? 2 : 1);
+
+    /// <summary>Turns to a chapter with the page-turn moment; the new book is built while the turning leaf covers it.</summary>
+    public void TurnTo(int chapter)
+    {
+        chapter = chapter == 2 ? 2 : 1;
+        if (chapter == Chapter || Turn.Busy) return;
+        Turn.Start(chapter);
+    }
+
+    /// <summary>
+    /// Builds the book again for a chapter at once (the page turn calls this while its leaf covers the book; tests may
+    /// call it directly): a fresh town from the current seed, with the walker count, speed, pause, sound, flow preview,
+    /// wear overlay and view kept.
+    /// </summary>
+    public void SwitchChapter(int chapter)
+    {
+        chapter = chapter == 2 ? 2 : 1;
+        var keep = new Kept
+        {
+            Seed = Sim.Seed, Walkers = Sim.WalkerCount, Speed = Sim.Speed, Paused = Sim.Paused, Sound = Audio.Enabled,
+            Volume = Audio.Volume, Preview = Tools.PreviewEnabled, Overlay = Ui.Overlay, PlayView = Rig.InPlayView,
+        };
+        foreach (var c in GetChildren())
+        {
+            if (c == Turn) continue;
+            RemoveChild(c);
+            c.QueueFree();
+        }
+        Chapter = chapter;
+        Build(keep.Seed, keep.Walkers, keep);
+    }
+
+    private struct Kept
+    {
+        public int Seed, Walkers, Speed;
+        public bool Paused, Sound, Preview, Overlay, PlayView;
+        public float Volume;
+    }
+
+    private void Build(int seed, int walkers, Kept? keep)
+    {
+        Params = SimParams.Default with { River = Chapter == 2 ? River ?? RiverRules.Default : null };
         AddChild(MakeEnvironment());
         AddChild(MakeSun());
-        BookBuilder.Build(this, Params);
+        BookBuilder.Build(this, Params, Chapter);
         MapOrigin = GetNode<Node3D>("Book/RightPage/MapOrigin");
 
         Sim = new SimDriver { Name = "Sim", Params = Params };
         AddChild(Sim);
-        Sim.Reset(StartSeed);
-        if (StartWalkers >= 0) Sim.SetWalkers(StartWalkers);
+        Sim.Reset(seed);
+        if (walkers >= 0) Sim.SetWalkers(walkers);
 
         Ground = new MapGround(); MapOrigin.AddChild(Ground); Ground.Init(Sim);
         Marks = new GroundMarks(); MapOrigin.AddChild(Marks); Marks.Init(Sim);
@@ -92,9 +159,21 @@ public partial class Main : Node3D
         Audio = new AudioDirector();
         AddChild(Audio);
         Audio.Init(this);
+        if (keep is { } k)
+        {
+            Sim.SetSpeed(k.Speed);
+            Sim.SetPaused(k.Paused);
+            Audio.SetEnabled(k.Sound);
+            Audio.SetVolume(k.Volume);
+            Tools.PreviewEnabled = k.Preview;
+        }
         Ui = new GameUi();
         AddChild(Ui);              // sets Rig.PlayRoomPx for the tabs, so frame afterwards
-        Rig.FramePlay(instant: true);
+        if (keep is { Overlay: true }) Ui.SetOverlay(true);
+        if (keep is { PlayView: false }) Rig.FrameBook(instant: true); else Rig.FramePlay(instant: true);
+        MoveChild(Turn, GetChildCount() - 1);
+        ChapterBuilds++;
+        ChapterChanged?.Invoke(Chapter);
     }
 
     public override void _Process(double delta)
