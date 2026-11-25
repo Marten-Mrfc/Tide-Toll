@@ -63,10 +63,6 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, URL, where used) before it goes into the game; `./check` fails without one. See `docs/asset-pipeline.md`.
 
-## Interrupted work (temporary note from the lead, 25 November 2026)
-
-The container restarted twice tonight (about 00:20 and 01:08 UTC) and may do so again. If you find work in the tree that matches your task but that you did not write, an earlier agent with the same task was interrupted: check each item of your task against what is there, keep what is good, finish or redo the rest, and run the checks again. Do not start again from nothing. Compare with the last commit that names a finished round (`git log --oneline`) to see what is new.
-
 ## Git
 
 Work on branch `claude/prototype-1`. Do not edit `docs/overnight-log.md` unless asked.

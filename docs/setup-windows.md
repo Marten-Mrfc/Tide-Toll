@@ -6,7 +6,7 @@ There are two ways: run the exported build (a few minutes, nothing to install), 
 
 ### Download it from GitHub
 
-GitHub builds the Windows 64-bit game (Windows 10 and 11) by itself: the workflow `.github/workflows/windows-build.yml` runs on every push to `main` or a `claude/` branch that touches the game, the simulation, the assets or the tools. Work-in-progress commits (message starting with "Snapshot") are skipped.
+GitHub builds the Windows 64-bit game (Windows 10 and 11) by itself: the workflow `.github/workflows/windows-build.yml` runs on every push to `main` or a `claude/` branch, except work-in-progress commits (message starting with "Snapshot"), which are skipped.
 
 1. Open https://github.com/Marten-Mrfc/Tide-Toll/actions/workflows/windows-build.yml (sign in to GitHub first).
 2. Click the newest run with a green tick.

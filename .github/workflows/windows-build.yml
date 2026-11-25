@@ -3,9 +3,9 @@
 # Where to get it: the repository's Actions tab, the newest "Windows build" run, the
 # "TideToll-windows-x64" artifact at the bottom of the run page. Unzip all of it and run TideToll.exe.
 #
-# It runs on pushes to main and to claude/ branches that touch the game, the simulation, the assets
-# or the tools, and can be started by hand from the Actions tab once this file is on the default branch.
-# Work-in-progress commits (message starts with "Snapshot") are skipped to save Actions minutes.
+# It runs on every push to main and to claude/ branches whose newest commit is not a work-in-progress
+# commit (message starting with "Snapshot": those are skipped to save Actions minutes), and can be
+# started by hand from the Actions tab once this file is on the default branch.
 # The build is made on Linux by Godot's own Windows export, the same way tools/export-windows.sh
 # does it locally. A private repository uses the account's free Actions minutes: about 4 minutes
 # a run once the Godot download is cached.
@@ -14,12 +14,6 @@ name: Windows build
 on:
   push:
     branches: ["main", "claude/**"]
-    paths:
-      - "game/**"
-      - "sim/**"
-      - "assets/**"
-      - "tools/**"
-      - ".github/workflows/windows-build.yml"
   workflow_dispatch:
 
 permissions:
