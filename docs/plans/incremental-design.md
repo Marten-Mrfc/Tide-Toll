@@ -42,6 +42,8 @@ Every fifth level of a track gives a small named perk. Costs rise geometrically.
 - The first age takes 25 to 40 minutes for a sensible player, and there is always a next thing to reach until the charter.
 - Three bot players (cheapest first, best payback first, random) all finish the age; none is more than twice as fast as another.
 
+If `docs/plans/incremental-research.md` exists, balancers and play-testers read it too: it lists pacing rules from other incremental games and ten recommendations for ours.
+
 ## The town plan
 
 The terrain comes from the existing map generator (meadow and river, by seed). A planner lays out, from the seed alone, every plot and road for all levels of the first age on the west bank, with room kept by the river for the second age: roads with gentle curves, no road through a plot, later roads closing loops, everything reachable. Tests check the plan on 100 seeds. Seed 1 is the default town and must look good in screenshots.

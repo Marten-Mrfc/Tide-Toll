@@ -71,7 +71,7 @@ public static class TownRules
     public const int PerkEvery = 5;
     public const double VillagerPerkCoin = 0.05;    // "Good neighbours": +5 % coin per perk
     public const double PacePerkBell = 0.1;         // "Light feet": bell rests 10 % shorter per perk (floor 50 %)
-    public const double PavePerkDiscount = 0.1;     // "Mason's eye": paving 10 % cheaper per perk (floor 50 %)
+    public const double PavePerkComfort = 0.2;      // "Mason's eye": paved roads carry 20 % more walkers per perk
 
     // ---- Coin per minute ----
     public const int RateWindowSeconds = 60;

@@ -28,6 +28,7 @@ public sealed partial class Town
             _ => TownRules.ComfortPerCellTrack,
         };
         double c = Math.Max(TownRules.MinComfort, Plan.Roads[r].Length * per);
+        if (S.RoadSurface[r] != Surface.Track) c *= 1 + TownRules.PavePerkComfort * (S.Paved / TownRules.PerkEvery);
         return c;
     }
 

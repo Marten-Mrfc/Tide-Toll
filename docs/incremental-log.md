@@ -78,6 +78,7 @@ Stopping
 | --- | --- | --- | --- | --- | --- |
 | 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | | Design doc rewritten by 20:34 (insert only; lead is proof-reading it) |
 | 1b | Settings screen as pages of the book, built on its own in the separate checkout `build/wt/settings` (new files only; handover note `build/wt/settings/docs/plans/settings-handover.md`); round 2's builder copies it in | `wf_4a702972-214`, script `build/wf/settings.js` | 20:37 | | |
+| 1c | Research: how incremental games pace their loop, as checkable rules (`docs/plans/incremental-research.md`) | `wf_424f4e35-7c9`, script `build/wf/research.js` | 20:41 | | |
 
 ## Next steps
 
