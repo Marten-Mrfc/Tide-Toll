@@ -56,6 +56,8 @@ Stopping
 - Agents' progress files: `docs/plans/*-progress.md`. Reports: `docs/plans/` (named per round below).
 - Workflow scripts, copied for resuming: `build/wf/` (not in git).
 - Play-test checkouts (git worktrees at a snapshot commit): `build/pt/` (not in git).
+- Separate build checkouts (git worktrees): `build/wt/` (not in git). `build/wt/settings` holds the settings pages until round 2 copies them in. If it is lost, re-create it with `git worktree add --detach build/wt/settings <commit>`, run `tools/sync-assets.sh` in it, and resume the workflow.
+- Workflows cap at two agents each; a second workflow may run beside the first (three agents at once is the most this machine should carry).
 
 ## How to resume after a restart
 
@@ -74,7 +76,8 @@ Stopping
 
 | Round | What | Workflow run | Started | Ended | Result |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:36 | | |
+| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | | Design doc rewritten by 20:34 (insert only; lead is proof-reading it) |
+| 1b | Settings screen as pages of the book, built on its own in the separate checkout `build/wt/settings` (new files only; handover note `build/wt/settings/docs/plans/settings-handover.md`); round 2's builder copies it in | `wf_4a702972-214`, script `build/wf/settings.js` | 20:37 | | |
 
 ## Next steps
 
@@ -98,6 +101,7 @@ Stopping
 | 8 | The old simulation and its fast tests stay and keep running. The old game scenes move to `game/legacy/` and leave the build; their game tests are retired and listed in `docs/plans/retired-tests.md` | The second age may reuse the river code; the old scenes cannot run beside the new game |
 | 9 | No earnings while the game is closed; it continues where it stopped | Simplest honest behaviour for a first version |
 | 10 | A few new models and icons are made in code tonight (mill, bell, flour sack, interface icons), with ledger rows | The mill and the new buttons have no art yet |
+| 11 | The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2 | It does not depend on the new simulation, so it need not wait |
 
 ## Needs you
 
