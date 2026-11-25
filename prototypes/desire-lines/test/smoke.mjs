@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
+import * as esbuild from "esbuild";
 
 import { hostedUrl, builtFile } from "./host.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
@@ -683,9 +684,11 @@ for (const scheme of ["light", "dark"]) {
   check(bridge.text.startsWith("Saves under 5% of the walk") && bridge.line.startsWith("Saves under 5%") && bridge.tipVisible, `a footbridge that saves little says so: "${bridge.text}" (status line and pointer)`);
   await page.screenshot({ path: join(shots, `bridge-small-saving-1280-${scheme}.png`) });
   await page.keyboard.press("Escape");
-  // Drying: halfway through the mud's last day the least-worn mud is drawn dry again while the
-  // busiest is still wet (drawing only). Compared with the same cells once the ground is dry.
-  await page.evaluate(() => { const w = __tt.world; while (w.time < 600) w.tick(); __tt.startRain(1); while (w.weather.raining) w.tick(); while (w.time < w.weather.mudUntil - 7) w.tick(); });
+  // Drying: a third of the way through the mud's drying window (the simulation's own: the last
+  // 7.5 s of the mud, while the wetness that slows walkers falls) the least-worn mud is drawn dry
+  // again while the busiest is still wet (drawing only). Compared with the same cells once the
+  // ground is dry. (Before round 6 this was halfway through the mud's last full day.)
+  await page.evaluate(() => { const w = __tt.world; while (w.time < 600) w.tick(); __tt.startRain(1); while (w.weather.raining) w.tick(); while (w.time < w.weather.mudUntil - 5) w.tick(); });
   await page.waitForTimeout(600);
   const grab = () => page.evaluate(() => {
     const w = __tt.world, c = document.getElementById("map"), k = c.width / 128, g = c.getContext("2d");
@@ -694,7 +697,7 @@ for (const scheme of ["light", "dark"]) {
       if (w.wear[i] < 32 && light.length < 40) light.push(i); else if (w.wear[i] >= 85 && heavy.length < 40) heavy.push(i);
     }
     const px = cells => cells.map(i => { const d = g.getImageData(((i % 128) + 0.5) * k, (((i / 128) | 0) + 0.5) * k, 1, 1).data; return d[0] + d[1] + d[2]; });
-    return { light, heavy, l: px(light), h: px(heavy), dp: 1 - (w.weather.mudUntil - w.time) / 15 };
+    return { light, heavy, l: px(light), h: px(heavy), dp: 1 - (w.weather.mudUntil - w.time) / 7.5, wet: w.weather.wetness };
   });
   const mid = await grab();
   await page.screenshot({ path: join(shots, `drying-1280-${scheme}.png`) });
@@ -707,8 +710,200 @@ for (const scheme of ["light", "dark"]) {
   }, { light: mid.light, heavy: mid.heavy });
   const avg = a => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
   const dl = avg(dryPx.l) - avg(mid.l), dh = avg(dryPx.h) - avg(mid.h);
-  check(mid.light.length >= 10 && mid.heavy.length >= 10 && dh > dl + 15, `${scheme}: mud dries from the least-worn cells first (half through its last day, ${(mid.dp * 100).toFixed(0)}%: light trail ${dl.toFixed(0)} below its dry brightness, busy track ${dh.toFixed(0)} below; ${mid.light.length} and ${mid.heavy.length} cells)`);
+  check(mid.light.length >= 10 && mid.heavy.length >= 10 && dh > dl + 15, `${scheme}: mud dries from the least-worn cells first (${(mid.dp * 100).toFixed(0)}% through the drying window, wetness ${mid.wet.toFixed(2)}: light trail ${dl.toFixed(0)} below its dry brightness, busy track ${dh.toFixed(0)} below; ${mid.light.length} and ${mid.heavy.length} cells)`);
   check(errors.length === 0, `${scheme}: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await page.close();
+}
+
+// ---------------------------------------------------------------- round 6 fixes: readouts, dawn mark, labels
+console.log("\nRESET, JUMPS, THE DAWN MARK AND THE PLACE LABELS (round 6 fixes)");
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, colorScheme: "light" });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  await page.evaluate(() => { __tt.reset(1); __tt.pause(); });
+  // The time and weather lines follow Reset, New map and a debug jump at once, in the same task.
+  const jump = await page.evaluate(() => {
+    const t = () => document.getElementById("hud-time").textContent, wx = () => document.getElementById("hud-weather").textContent;
+    __tt.advance(6 * 15 + 1);
+    const day7 = t();
+    __tt.startRain(1);
+    const rain = wx();
+    __tt.stopRain(true);
+    const dry = wx();
+    document.getElementById("btn-reset").click();
+    const reset = t();
+    __tt.advance(3 * 15 + 1);
+    document.getElementById("btn-newmap").click();
+    const fresh = t();
+    return { day7, rain, dry, reset, fresh };
+  });
+  check(jump.day7.startsWith("Day 7,") && jump.rain.startsWith("Rain, day 7") && jump.dry === "Dry" && jump.reset.startsWith("Day 1,") && jump.fresh.startsWith("Day 1,"),
+    `the time and weather lines update at once after a debug jump ("${jump.day7}"), rain ("${jump.rain}") and its end ("${jump.dry}"), Reset ("${jump.reset}") and New map ("${jump.fresh}")`);
+  // Ticks run straight on the world (a jump with no refresh call): the next frame shows them.
+  await page.evaluate(() => { const w = __tt.world; while (w.time < 2 * 15 + 1) w.tick(); });
+  await frames(page);
+  check((await page.textContent("#hud-time")).startsWith("Day 3,"), `a jump of the clock shows on the next frame ("${await page.textContent("#hud-time")}")`);
+  // The dawn mark after Reset: day 9 is reached, the map is reset, and its very next dawn is marked.
+  const dawn = await page.evaluate(async () => {
+    const el = document.getElementById("hud-time"), next = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    __tt.reset(1); __tt.pause();
+    __tt.advance(8 * 15 + 1);
+    await new Promise(r => setTimeout(r, 1800)); // the mark of day 9 has ended
+    document.getElementById("btn-reset").click();
+    const afterReset = el.classList.contains("dawn");
+    await next();
+    __tt.advance(15 + 1);
+    await next();
+    const marked = el.classList.contains("dawn") && el.getAnimations().length > 0;
+    document.getElementById("btn-newmap").click();
+    const afterNew = el.classList.contains("dawn");
+    __tt.advance(15 + 1);
+    await next();
+    return { afterReset, marked, afterNew, markedNew: el.classList.contains("dawn") && el.getAnimations().length > 0, text: el.textContent };
+  });
+  check(!dawn.afterReset && dawn.marked && !dawn.afterNew && dawn.markedNew, `Reset and New map clear the dawn mark's day count: the first dawn after each is marked (after Reset ${dawn.marked ? "marked" : "not marked"}, after New map ${dawn.markedNew ? "marked" : "not marked"}; "${dawn.text}")`);
+  check(errors.length === 0, `round 6 readouts: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await page.close();
+}
+{
+  // Reduced motion: the dawn underline shows without a fade and ends after a fixed time, even while paused.
+  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 1, colorScheme: "light", reducedMotion: "reduce" });
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  const rm = await page.evaluate(async () => {
+    const el = document.getElementById("hud-time"), line = () => getComputedStyle(el).textDecorationColor;
+    __tt.reset(1); __tt.pause();
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const before = line();
+    __tt.advance(15 + 1);
+    await new Promise(r => requestAnimationFrame(r));
+    const on = line(), bg = getComputedStyle(el).backgroundColor;
+    await new Promise(r => setTimeout(r, 2200));
+    return { reduce: matchMedia("(prefers-reduced-motion: reduce)").matches, before, on, bg, after: line(), anims: el.getAnimations().length, paused: __tt.stats().paused };
+  });
+  const clear = c => /rgba\(\d+, \d+, \d+, 0\)|transparent/.test(c);
+  check(rm.reduce && rm.paused && clear(rm.before) && !clear(rm.on) && clear(rm.bg) && clear(rm.after) && rm.anims === 0,
+    `reduced motion: the dawn underline shows (${rm.on}, no tint) and is gone 2.2 s later while paused (${rm.after})`);
+  await page.close();
+}
+{
+  // At 360 px the place labels are drawn over the walkers: with walkers crowded onto the "Ford"
+  // label, the pixels of its letters keep the label colour.
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, colorScheme: "dark", hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await page.goto(url);
+  await page.waitForFunction(() => window.__tt);
+  await page.evaluate(() => { __tt.reset(1); __tt.pause(); __tt.advance(3 * 15); });
+  await page.waitForTimeout(500);
+  const box = await page.evaluate(() => {
+    const r = __tt.renderer, l = r.labels.find(x => x.text === "Ford"), c = document.getElementById("map");
+    const hex = r.pal.css.label.trim(), m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    const col = m ? [1, 2, 3].map(i => parseInt(m[i], 16)) : hex.match(/\d+/g).slice(0, 3).map(Number);
+    return { x: l.x, y: l.y, px: l.px, s: c.width / 128, col, x0: Math.round(l.x - 1.6 * l.px), y0: Math.round(l.y - 0.7 * l.px), w: Math.round(3.2 * l.px), h: Math.round(1.4 * l.px) };
+  });
+  const grab = () => page.evaluate(b => Array.from(document.getElementById("map").getContext("2d").getImageData(b.x0, b.y0, b.w, b.h).data), box);
+  const clearOf = await grab();
+  const moved = await page.evaluate(b => {
+    const w = __tt.world;
+    let k = 0;
+    for (const v of w.walkers) {
+      if (!w.isVisible(v)) continue;
+      const fx = (k % 8) / 7 - 0.5, fy = ((k >> 3) % 4) / 3 - 0.5;
+      v.x = v.px = (b.x + fx * 2.6 * b.px) / b.s; v.y = v.py = (b.y + fy * 1.1 * b.px) / b.s;
+      k++;
+    }
+    return k;
+  }, box);
+  await frames(page);
+  const covered = await grab();
+  await page.screenshot({ path: join(shots, "labels-over-walkers-360.png") });
+  // The letters: pixels within 12 of the label colour with no walker near; how many keep it with walkers on them.
+  const near = (d, i) => Math.abs(d[i] - box.col[0]) + Math.abs(d[i + 1] - box.col[1]) + Math.abs(d[i + 2] - box.col[2]) <= 12;
+  let letters = 0, kept = 0, changed = 0;
+  for (let i = 0; i < clearOf.length; i += 4) {
+    if (Math.abs(clearOf[i] - covered[i]) + Math.abs(clearOf[i + 1] - covered[i + 1]) + Math.abs(clearOf[i + 2] - covered[i + 2]) > 30) changed++;
+    if (near(clearOf, i)) { letters++; if (near(covered, i)) kept++; }
+  }
+  check(letters > 20 && moved >= 32 && changed > 100 && kept >= 0.95 * letters, `360 px: the "Ford" label is drawn over the walkers (${kept} of ${letters} letter pixels keep the label colour with ${moved} walkers on the label; ${changed} pixels round them changed)`);
+  await ctx.close();
+}
+
+// ---------------------------------------------------------------- the sound engine offline (round 6 fixes)
+console.log("\nSOUND ENGINE OFFLINE (src/ui/audio.ts in an OfflineAudioContext; round 6 fixes)");
+{
+  const bundle = await esbuild.build({ entryPoints: [join(here, "..", "src", "ui", "audio.ts")], bundle: true, format: "iife", globalName: "DA", write: false, target: "es2020" });
+  const page = await browser.newPage();
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  page.on("console", m => { if (m.type() === "error" || m.type() === "warning") errors.push(`${m.type()}: ${m.text()}`); });
+  await page.setContent("<p>engine</p>");
+  await page.addScriptTag({ content: bundle.outputFiles[0].text });
+  // The step budget's shares: 8 areas of 6 walkers each want 16 steps a beat, twice the budget of 8.
+  // Each area must get its share (an eighth of the steps), whatever its place in the list.
+  const fair = await page.evaluate(async () => {
+    const ctx = new OfflineAudioContext(2, 24000 * 160, 24000);
+    const au = DA.create(ctx, { volume: 0.7, bpm: 240 });
+    const areas = Array.from({ length: 8 }, (_, i) => ({ pan: ((i % 4) + 0.5) / 4 * 1.6 - 0.8, walkers: 6, surface: "dirt", ford: 0 }));
+    for (let t = 0.05; t < 159.9; t += 0.05) { const at = t; ctx.suspend(at).then(() => { au.beat(areas, 8); ctx.resume(); }); }
+    au.beat(areas, 8);
+    await ctx.startRendering();
+    const s = au.stats();
+    return { per: s.areaSteps.slice(0, 8), beats: s.beats, steps: s.steps, maxBeatSteps: s.maxBeatSteps, dropped: s.dropped };
+  });
+  const meanSteps = fair.per.reduce((a, b) => a + b, 0) / 8, least = Math.min(...fair.per);
+  console.log(`  ${fair.beats} beats, ${fair.steps} steps (at most ${fair.maxBeatSteps} a beat, ${fair.dropped} dropped by the budget); steps by area: ${fair.per.join(", ")}`);
+  check(fair.beats >= 500 && fair.maxBeatSteps <= 8 && fair.dropped > 100 && least >= 0.85 * meanSteps,
+    `when the step budget is hit every area gets its share: the least-served area has ${((100 * least) / meanSteps).toFixed(0)}% of the mean (at least 85%)`);
+  // Mute and a hidden tab: nothing scheduled before either may sound after it.
+  const mute = await page.evaluate(async () => {
+    const all = new Set();
+    let phase = 1;
+    for (const P of [AudioScheduledSourceNode.prototype, AudioBufferSourceNode.prototype]) {
+      if (Object.prototype.hasOwnProperty.call(P, "start")) { const f = P.start; P.start = function (when = 0, ...a) { this.__t0 = when; this.__phase = phase; all.add(this); return f.call(this, when, ...a); }; }
+      if (Object.prototype.hasOwnProperty.call(P, "stop")) { const f = P.stop; P.stop = function (when = 0) { this.__stop = when; return f.call(this, when); }; }
+    }
+    const d0 = AudioNode.prototype.disconnect;
+    AudioNode.prototype.disconnect = function (...a) { if (a.length === 0) this.__released = true; return d0.apply(this, a); };
+    const ctx = new OfflineAudioContext(2, 48000 * 20, 48000);
+    const au = DA.create(ctx, { volume: 0.7 });
+    const areas = Array.from({ length: 8 }, (_, i) => ({ pan: ((i % 4) + 0.5) / 4 * 1.6 - 0.8, walkers: 6, surface: "dirt", ford: i === 2 ? 3 : 0 }));
+    au.river(0.5); au.theme(true);
+    const T1 = 10, T2 = 15;
+    let live = true, future1 = 0, future2 = 0, notes1 = 0;
+    const end = s => {
+      const nat = s instanceof AudioBufferSourceNode && !s.loop ? s.__t0 + s.buffer.duration / s.playbackRate.value : Infinity;
+      return Math.min(s.__stop ?? Infinity, nat);
+    };
+    const ahead = (ph, t) => [...all].filter(s => s.__phase === ph && s.__t0 > t).length;
+    for (let t = 0.05; t < 19.9; t += 0.05) {
+      const at = Math.round(t * 100) / 100;
+      ctx.suspend(at).then(() => {
+        if (at === T1) { au.beat(areas, 8); future1 = ahead(1, T1 + 0.12); notes1 = au.stats().themeNotes; au.setMuted(true); live = false; phase = 2; }
+        else if (at === T1 + 0.3) { au.setMuted(false); live = true; }
+        else if (at === T2) { au.beat(areas, 8); future2 = ahead(2, T2); au.hidden(true); live = false; phase = 3; }
+        else if (at === T2 + 0.3) { au.hidden(false); live = true; }
+        if (live) au.beat(areas, 8);
+        ctx.resume();
+      });
+    }
+    au.beat(areas, 8);
+    await ctx.startRendering();
+    await new Promise(r => setTimeout(r, 300));
+    const src = [...all].filter(s => !(s.loop && s.__stop === undefined)); // not the river bed
+    const late1 = src.filter(s => s.__phase === 1 && end(s) > T1 + 0.2 && end(s) > s.__t0).length;
+    const late2 = src.filter(s => s.__phase === 2 && end(s) > T2 + 0.01 && end(s) > s.__t0).length;
+    const unreleased = src.filter(s => s.__phase < 3 && !s.__released && end(s) < 19).length;
+    const s = au.stats();
+    return { future1, future2, late1, late2, unreleased, cancelled: s.cancelled, notesBefore: notes1, notesAfter: s.themeNotes - notes1, stepsAfter: src.filter(x => x.__phase === 3).length, sources: src.length };
+  });
+  console.log(`  ${mute.sources} sources; at the mute ${mute.future1} were scheduled ahead, at the hidden tab ${mute.future2}; ${mute.cancelled} dropped; sounding after: ${mute.late1} after the mute, ${mute.late2} after the hidden tab; ${mute.notesAfter} theme notes after the mute (${mute.notesBefore} before)`);
+  check(mute.future1 > 0 && mute.future2 > 0 && mute.late1 === 0 && mute.late2 === 0 && mute.cancelled >= mute.future1 + mute.future2,
+    "theme notes and footsteps scheduled before a mute or a hidden tab never sound after it (they are stopped or dropped)");
+  check(mute.notesAfter > 0 && mute.stepsAfter > 0 && mute.unreleased === 0, `sound carries on once it is back (theme notes and steps scheduled again), and every dropped source is released (${mute.unreleased} not released)`);
+  check(errors.length === 0, `sound engine offline: no errors${errors.length ? ": " + errors.join(" | ") : ""}`);
   await page.close();
 }
 

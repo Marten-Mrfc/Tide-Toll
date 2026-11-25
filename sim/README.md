@@ -91,21 +91,21 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   turns back. Reputation 0..100 starts at 50, +1 per boat served, -5 per boat turned back.
 - **Goods**: with `HaulGoods` (default) a Landing building is appended after the map's buildings (ids unchanged).
   A walker leaving the field takes 1 grain to the landing, then goes home. A moored boat with room buys it at
-  2c x `BoatValueMul` (2) = 4c, booked when the boat leaves; otherwise the village market pays 70% of 2c, at most
+  2c x `BoatValueMul` (3) = 6c, booked when the boat leaves; otherwise the village market pays 70% of 2c, at most
   1 unit per house per day (the design doc's limit); the rest goes unsold.
 - **Crossings** (`Crossing.Clearance` is the highest mast class that passes): the ford (free, all boats); footbridge
-  (50c, class 1, walker speed 1.2); ferry (40c, 2c upkeep + 3c ferryman a season, never blocks, 6 walkers per trip,
-  leaves 0.5 s after the first boards or when full, 1.0 s across); drawbridge (240c, 4c upkeep, class 1 closed and
+  (50c, class 1, walker speed 1.2); ferry (40c, 5c upkeep + 15c ferryman a season, never blocks, 5 walkers per trip,
+  leaves 0.5 s after the first boards or when full, 1.0 s across); drawbridge (200c, 4c upkeep, class 1 closed and
   all boats raised; raise 1.0 s, one boat per 1.5 s, lower 1.0 s). A raised bridge lowers itself once the boats
-  within 4 rows below are through, or after 8 s with no boat. The keeper (30c, 5c a season) raises 1 s after a
+  within 4 rows below are through, or after 8 s with no boat. The keeper (120c, 5c a season) raises 1 s after a
   masted boat is within 6 rows and lowers once it is through.
 - **Capacity** (doc, crossing table "Walker capacity per day"): every crossing but the ford has a first come, first
   served queue on each bank. A footbridge lets on at most `FootbridgeWalkersPerDay` (120, doc "about 120, 1 cell wide")
   and a closed drawbridge `DrawbridgeWalkersPerDay` (250, doc "about 250 while closed") walkers a day, as a token bucket
   holding `BridgeBurstSec` (1 s, chosen) of capacity; a walker arriving goes straight on only when nobody queues on
   either bank and the bucket has room. A walker only clipping the corner of an open bridge's end cell (its route runs
-  along the bank) is not queued. The ferry turns round for `FerryTurnSec` (0.5 s, chosen) at each stage before
-  boarding, so a full ferry carries 6 per 1.0 + 0.5 s leg: the doc's "about 30 each way per boat" a day. The ford
+  along the bank) is not queued. The ferry turns round for `FerryTurnSec` (0.75 s, tuned) at each stage before
+  boarding, so a full ferry carries 5 per 1.0 + 0.75 s leg, about 21 each way a day (the doc says about 30; tuned down so the ferry's capacity bites at 200 walkers). The ford
   has no limit, only its slow speed (`SimParams.FordSpeedMul` 0.4, doc "walker speed 0.4") and cost (x3). A walker
   who waited delivers its grain later (boats leave after their mooring window, so late grain goes to the market at
   35% of the boat price, or unsold); one who gives up after 40 s drops it (`RiverStats.GrainLost`).
@@ -142,7 +142,7 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   served; riders are drawn moving with the boat (`Hold = Riding`, counted on their boarding cell until they land).
   A walker still on the span when a leaf is fully up is set down on the nearer bank. Erasing a crossing releases
   its queue and lands its riders. A walker that waits 40 s (a safety net) goes home.
-- **Money** starts at 120c. Purchases need the full price in hand; upkeep and flood repairs can take the purse into
+- **Money** starts at 0c (tuned from 120c). Purchases need the full price in hand; upkeep and flood repairs can take the purse into
   debt (10% interest a season). Each season: hearth tax 1c per house, minus upkeep and wages. Erasing a crossing costs
   half its price (chosen; the doc's 2x would stop testers trying several crossings) and is refused, with the reason in
   words, when it would take the purse below `DebtLimit` (-100c).
@@ -171,7 +171,7 @@ r.DrainEvents(list);                                     // since the last call;
 // FordOpen, FloodRepairs (coin), RiverFrozen, Thaw
 // Walker: Hold (None, Waiting, Riding), HoldAt (crossing id), Cargo, WaitT
 
-// Commands: RiverResult { Ok, Reason (words, e.g. "Not enough coin: the drawbridge costs 240c, you have 118c"), Id }
+// Commands: RiverResult { Ok, Reason (words, e.g. "Not enough coin: the drawbridge costs 200c, you have 118c"), Id }
 world.CheckCrossing(CrossingType.Drawbridge, x, y);      // what PlaceCrossing would say, without building
 world.PlaceFerry(x, y); world.PlaceDrawbridge(x, y); world.PlaceFootbridge(x, y); world.PlaceCrossing(type, x, y);
 world.PlaceBridge(x, y);                                 // with the river rules: a 50c footbridge; null on refusal, reason in LastRiverRefusal
@@ -283,6 +283,27 @@ At 12 days (same seeds) the drawbridge is built on day 5.6 and the keeper on day
 clearly the slowest, because at 200 walkers the ferry's queue makes it as slow (19.3 s against 19.4 s); (d) the
 hand-raised drawbridge ends richer than the ferry in only 7 of 40 towns (the ferry costs 40c against 240c and walkers
 learn its wait and use the ford instead).
+
+### Tuning, 25 November 2026 (strategy bot, seeds 101-120 and 201-220, 30 days)
+
+Changed `RiverRules` defaults (before -> after; doc figure; why):
+
+| Value | Before | After | Doc | Why |
+| --- | --- | --- | --- | --- |
+| StartMoney | 120 | 0 | none | drawbridge bought on day 5.5 at 200 walkers (day ~9 at 60); ferry on day 4.4 |
+| BoatValueMul | 2 | 3 | "raise boat value" | a delivery is worth more, so a faster crossing pays back |
+| DrawbridgePrice | 240 | 200 | 200c + 40 stone | payback against the ferry within 30 days at 200 walkers |
+| KeeperPrice | 30 | 120 | none (chosen) | keeper hired about 1 day after the drawbridge at 200 walkers (3.5 at 60) |
+| FerryCapacity | 6 | 5 | none | the ferry's queue bites at 200 walkers |
+| FerryTurnSec | 0.5 | 0.75 | none | same (about 21 a day each way against the doc's 30) |
+| FerryUpkeep / FerryWage | 2 / 3 | 5 / 15 | 2 / 3 | the ferry is cheap to buy but costs more to run (150c over 30 days against 40c) |
+
+Result on 40 seeds at 30 days (medians, 200 walkers): ford only 2231c net, ferry 2153c, drawbridge by hand missing 10% 2246c,
+30% 2013c, 50% 1623c, keeper 2129c, footbridge 1005c. Checks: 15 of 16 pass; (b) fails (ford 19.40 s, ferry 20.32 s on the
+25 far towns: a ferry whose capacity bites is as slow as the ford). Tried and dropped: a longer, likelier flood (FloodChance .9,
+3 days, wade speed .25) made bridges worse too; FerryCapacity 8 with turn 0.25 passes (b) but then (c) and (d) fail; keeper at
+160c makes (e) against the 30% player a coin flip (22 of 40 towns). Cliffs: keeper price (60 to 120 safe, 160 not), ferry
+capacity and turn (above 7 or below 0.4 s flips (b)/(c)/(d)).
 
 ## Parity with the toy
 

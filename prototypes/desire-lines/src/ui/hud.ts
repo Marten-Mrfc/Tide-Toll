@@ -34,6 +34,11 @@ export function setPreviewLine(text: string) {
 }
 
 let lastDay = -1;
+/** A new world (Reset, New map): the dawn mark's day count starts again and any mark showing ends. */
+export function resetVillage() {
+  lastDay = -1;
+  $("hud-time").classList.remove("dawn");
+}
 /**
  * The village panel's weather and houses, and the dawn mark: when a new day
  * begins the day line flashes (the visual twin of the dawn bell).

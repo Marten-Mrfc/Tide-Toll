@@ -13,6 +13,7 @@
 // Round 4 adds a sixth set: seeds 601 to 620 with rain and house growth on at the
 // player's defaults (200 walkers to start), first run after the round 4 rules
 // and numbers were final. The round 4 rule checks are in test/rules.test.ts.
+// Round 6 adds test/drying.test.ts: the drawn drying of mud against the simulation's wetness.
 //
 // Also reported: median trunk width per set, the share of
 // river crossings a new footbridge takes on seeds 1 to 10, and 500 walkers on
@@ -27,6 +28,7 @@ import { FlowPreview, describePreview, Ov, GRAVEL_NOTES } from "../src/sim/previ
 import { readFileSync } from "node:fs";
 import { seedRow, exactTable, Row, SAMPLE_FROM, DAYS, WIDTH_DAY } from "./g3";
 import { gateAngleTests, gateRefusalTests, fenceOverGravelTest, rainTests, growthTests, newDeterminismTest, newIsolationTest, gravelNoteTest } from "./rules.test";
+import { dryingTests } from "./drying.test";
 
 const TPD = PARAMS.daySimSec * PARAMS.tickHz; // ticks per in-game day
 /** The tool and preview checks below predate rain and growth: they run with both off. */
@@ -641,6 +643,8 @@ async function main() {
   growthTests(check, log);
   newDeterminismTest(check);
   newIsolationTest(check, log);
+  // Round 6: the drawn drying of mud follows the simulation's wetness (test/drying.test.ts).
+  dryingTests(check, log);
 
   const results = await tables;
   const rows = results.filter((r): r is Row & { kind: "trunk" } => r.kind === "trunk");

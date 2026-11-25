@@ -13,6 +13,10 @@ export interface Stats {
   alive: number; maxAlive: number; dropped: number; beats: number;
   /** Footstep voices scheduled, and the most in any one beat (the budget is 8). */
   steps: number; maxBeatSteps: number;
+  /** Footstep voices scheduled for each area of beat()'s list, by index (the first 16 areas): the budget's shares. */
+  areaSteps: number[];
+  /** Scheduled sources (steps, cues, the three sources of a theme note) dropped before they could sound, when sound was muted or the tab hidden. */
+  cancelled: number;
   /** Other cues played: tools, bells, fords, theme notes. */
   cues: number; bells: number; themeNotes: number;
   /** Whether a round of the theme is sounding now (not in one of its silences). */
@@ -283,7 +287,7 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
   // voices: ring of (start, end, class) for the budget and the "alive" statistics
   const vs = new Float64Array(64), ve = new Float64Array(64), vc = new Uint8Array(64); let vh = 0;
   const CAP = [16, 4, 4, 8]; // steps, ui cues, ford+bell, theme notes
-  const st: Stats = { alive: 0, maxAlive: 0, dropped: 0, beats: 0, steps: 0, maxBeatSteps: 0, cues: 0, bells: 0, themeNotes: 0, themePlaying: false };
+  const st: Stats = { alive: 0, maxAlive: 0, dropped: 0, beats: 0, steps: 0, maxBeatSteps: 0, areaSteps: new Array(16).fill(0), cancelled: 0, cues: 0, bells: 0, themeNotes: 0, themePlaying: false };
   let beatSteps = 0;
   function count(t: number, cls: number) { let n = 0; for (let i = 0; i < 64; i++) if (vs[i] <= t && ve[i] > t && (cls < 0 || vc[i] === cls)) n++; return n; }
   function claim(t: number, end: number, cls: number) {
@@ -291,16 +295,31 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     vs[vh] = t; ve[vh] = end; vc[vh] = cls; vh = (vh + 1) & 63;
     st.alive = count(t, -1) + (riverNode ? 1 : 0) + (rainNode ? 1 : 0); if (st.alive > st.maxAlive) st.maxAlive = st.alive; return true;
   }
-  function ended(this: AudioScheduledSourceNode) { this.disconnect(); }
+  // Every one-shot source (step, cue, theme note) from its scheduling until it ends, with its start
+  // time, so a mute or a hidden tab can drop what is scheduled and has not sounded yet.
+  const pending = new Map<AudioScheduledSourceNode, number>();
+  function ended(this: AudioScheduledSourceNode) { pending.delete(this); this.disconnect(); }
   // A cue's nodes are released when its source ends, so nothing piles up over a long session.
-  function release(nodes: AudioNode[]) { for (let i = 0; i < nodes.length; i++) nodes[i].disconnect(); }
+  function release(nodes: AudioNode[]) { for (let i = 0; i < nodes.length; i++) { pending.delete(nodes[i] as AudioScheduledSourceNode); nodes[i].disconnect(); } }
+  /**
+   * Stops every one-shot source at `at`: one scheduled to start later never sounds, one sounding
+   * ends there. Their voices are freed, the next beat starts afresh and the theme steps back to
+   * its first note not yet heard, so nothing scheduled before a mute sounds after it.
+   */
+  function dropScheduled(at: number) {
+    pending.forEach((t0, s) => { if (t0 >= at) st.cancelled++; try { s.stop(at); } catch { /* already stopped */ } });
+    pending.clear();
+    for (let i = 0; i < 64; i++) if (ve[i] > at) ve[i] = vs[i] > at ? vs[i] : at;
+    nextBeat = 0;
+    if (themeOn) while (themeI > 0 && themeT0 + ev[themeI - 1].t > at) themeI--;
+  }
   function play(buf: AudioBuffer, bus: AudioNode, t: number, gain: number, pan: number, rate: number, cls: number) {
     if (!on || muted) return;
     t = Math.max(t, ctx.currentTime); if (!claim(t, t + buf.duration / rate, cls)) return;
     st.cues++; if (cls === 3) st.themeNotes++;
     const s = ctx.createBufferSource(), g = ctx.createGain(), p = ctx.createStereoPanner();
     s.buffer = buf; s.playbackRate.value = rate; g.gain.value = gain; p.pan.value = pan < -1 ? -1 : pan > 1 ? 1 : pan;
-    s.connect(g); g.connect(p); p.connect(bus); s.onended = () => release([s, g, p]); s.start(t);
+    s.connect(g); g.connect(p); p.connect(bus); s.onended = () => release([s, g, p]); s.start(t); pending.set(s, t);
   }
   // footstep lanes: 7 pans x 5 gains of persistent Gain->StereoPanner chains, so a step voice is ONE BufferSource
   const GL = [0.25, 0.35, 0.5, 0.7, 1], lanes: GainNode[] = [];
@@ -311,7 +330,7 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     t = Math.max(t, ctx.currentTime); if (!claim(t, t + buf.duration / rate, 0)) return;
     st.steps++; beatSteps++;
     let q = 0; while (q < 4 && gain > Math.sqrt(GL[q] * GL[q + 1])) q++;
-    const s = ctx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate; s.connect(lanes[Math.round((pan < -1 ? -1 : pan > 1 ? 1 : pan) * 3 + 3) * 5 + q]); s.onended = ended; s.start(t);
+    const s = ctx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate; s.connect(lanes[Math.round((pan < -1 ? -1 : pan > 1 ? 1 : pan) * 3 + 3) * 5 + q]); s.onended = ended; s.start(t); pending.set(s, t);
   }
   // beds
   let riverNode: AudioBufferSourceNode | null = null, riverG: GainNode | null = null, rainNode: AudioBufferSourceNode | null = null, rainG: GainNode | null = null, rainF: BiquadFilterNode | null = null;
@@ -337,7 +356,7 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     n.buffer = noiseBuf; n.loop = true; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 3; ng.gain.value = 0.22; n.connect(bp); bp.connect(ng); ng.connect(e); o.connect(e);
     e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel, t + 0.05); e.gain.setTargetAtTime(vel * 0.8, t + 0.05, 0.12); e.gain.setTargetAtTime(0.0001, t + dur, 0.05);
     const pn = ctx.createStereoPanner(); pn.pan.value = -0.12; e.connect(pn); pn.connect(mus);
-    const end = t + dur + 0.5; o.start(t); v.start(t); n.start(t, rnd() * 1.5); o.stop(end); v.stop(end); n.stop(end);
+    const end = t + dur + 0.5; o.start(t); v.start(t); n.start(t, rnd() * 1.5); o.stop(end); v.stop(end); n.stop(end); pending.set(o, t); pending.set(v, t); pending.set(n, t);
     // All eight nodes go once the last of the three sources has ended.
     let left = 3;
     o.onended = v.onended = n.onended = () => { if (--left === 0) release([o, v, vg, n, bp, ng, e, pn]); };
@@ -352,15 +371,16 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     }
   }
   // scheduler: one pass per beat; at most STEP_BUDGET (8) step voices a beat, however many walkers
-  let nextBeat = 0;
+  let nextBeat = 0, rot = 0;
   const clamp1 = (v: number) => v < -1 ? -1 : v > 1 ? 1 : v;
   function ensureRunning() { if (RT && ctx.state !== "running") (ctx as AudioContext).resume(); }
   const api: DesireAudio = {
     ctx,
-    setMuted(m) { muted = m; setMaster(); if (m) { if (RT) setTimeout(() => { if (muted) (ctx as AudioContext).suspend(); }, 200); } else ensureRunning(); },
+    // Muting fades the master out over about 0.1 s and drops what was scheduled, so it cannot sound once unmuted.
+    setMuted(m) { muted = m; setMaster(); if (m) { dropScheduled(ctx.currentTime + 0.12); if (RT) setTimeout(() => { if (muted) (ctx as AudioContext).suspend(); }, 200); } else ensureRunning(); },
     setVolume(v) { vol = v < 0 ? 0 : v > 1 ? 1 : v; setMaster(); },
     ensureRunning,
-    hidden(h) { if (!RT || ctx.state === 'closed') return; if (h) (ctx as AudioContext).suspend(); else if (!muted) ensureRunning(); },
+    hidden(h) { if (h) dropScheduled(ctx.currentTime); if (!RT || ctx.state === 'closed') return; if (h) (ctx as AudioContext).suspend(); else if (!muted) ensureRunning(); },
     footstep(s, pan, gain) { stepAt(steps[s][(rnd() * 6) | 0], ctx.currentTime, gain, pan, 0.94 + 0.12 * rnd()); },
     ford(pan) { play(fords[(rnd() * 3) | 0], sfx, ctx.currentTime, 0.9, pan, 0.96 + 0.08 * rnd(), 2); },
     bell() { st.bells++; play(bells[(rnd() * 4) | 0], sfx, ctx.currentTime, 1, 0, 1, 2); },
@@ -391,8 +411,11 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
       let want = 0;
       for (let i = 0; i < n; i++) { const w = areas[i].walkers; if (w > 0) want += w < 12 ? Math.min(w < 3 ? 1 : 2, 1.2 * Math.sqrt(w)) : 1; }
       const scale = want > STEP_BUDGET ? STEP_BUDGET / want : 1;
-      for (let i = 0; i < n; i++) {
-        const a = areas[i], w = a.walkers;
+      // The loop starts at a different area each beat, so when the budget runs out it is not
+      // always the same areas that lose their steps.
+      const r0 = n > 0 ? rot % n : 0; rot = r0 + 1;
+      for (let k = 0; k < n; k++) {
+        const i = k + r0 < n ? k + r0 : k + r0 - n, a = areas[i], w = a.walkers, s0 = st.steps;
         if (w > 0) {
           const dense = w >= 12, sub = w < 3 ? 1 : 2, p = dense ? Math.min(1, scale) : Math.min(1, Math.min(sub, 1.2 * Math.sqrt(w)) * scale / sub);
           const surf: Surface = a.surface === 'dirt' && rainLevel > 0.35 ? 'mud' : a.surface; // rain turns dirt to mud
@@ -401,6 +424,7 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
           else for (let j = 0; j < sub; j++) if (rnd() < p) stepAt(steps[surf][(rnd() * 6) | 0], t0 + (j + (j & 1 ? swing : 0)) / sub * beatLen + (rnd() - 0.5) * 0.024, g * (0.85 + 0.3 * rnd()), a.pan + (rnd() - 0.5) * 0.3, 0.94 + 0.12 * rnd());
         }
         if (a.ford > 0 && rnd() < Math.min(1, 0.4 * Math.sqrt(a.ford))) play(fords[(rnd() * 3) | 0], sfx, t0 + rnd() * beatLen, 0.8, clamp1(a.pan), 0.96 + 0.08 * rnd(), 2);
+        if (i < 16) st.areaSteps[i] += st.steps - s0;
       }
       if (beatSteps > st.maxBeatSteps) st.maxBeatSteps = beatSteps;
     },

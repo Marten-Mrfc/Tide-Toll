@@ -7,6 +7,8 @@ namespace TideToll.Sim;
 /// on a schedule, crossings with a clearance, money. Off unless <see cref="SimParams.River"/> is set, so a
 /// world made the old way runs exactly as before. Values marked "chosen" are the implementation spec's,
 /// not the design doc's. Times are sim seconds at 1x (1 day = 15 s).
+/// Tuned 25 Nov 2026 with the strategy bot (README "Tuning"): BoatValueMul 2 to 3, StartMoney 120 to 0, DrawbridgePrice 240 to 200,
+/// KeeperPrice 30 to 120, FerryCapacity 6 to 5, FerryTurnSec 0.5 to 0.75, FerryUpkeep 2 to 5, FerryWage 3 to 15.
 /// </summary>
 public sealed record RiverRules
 {
@@ -42,7 +44,7 @@ public sealed record RiverRules
     // Goods and prices.
     public double GrainPrice { get; init; } = 2;
     /// <summary>Boat price multiplier (chosen 2, flag A: with the doc's 70% market fallback a lost boat would cost only 30%).</summary>
-    public double BoatValueMul { get; init; } = 2;
+    public double BoatValueMul { get; init; } = 3;
     public double MarketShare { get; init; } = 0.7;
     /// <summary>The village market buys at most this many units per household per day (doc, Income sources); the rest goes unsold.</summary>
     public double MarketUnitsPerHouseDay { get; init; } = 1;
@@ -51,22 +53,22 @@ public sealed record RiverRules
     public double FootbridgePrice { get; init; } = 50;
     public double FerryPrice { get; init; } = 40;
     /// <summary>200c + 40 stone, with the stone folded into coin (chosen).</summary>
-    public double DrawbridgePrice { get; init; } = 240;
-    public double KeeperPrice { get; init; } = 30;               // chosen
-    public double FerryUpkeep { get; init; } = 2;               // per season
-    public double FerryWage { get; init; } = 3;
+    public double DrawbridgePrice { get; init; } = 200;
+    public double KeeperPrice { get; init; } = 120;              // chosen (tuned 25 Nov: doc has none)
+    public double FerryUpkeep { get; init; } = 5;               // per season
+    public double FerryWage { get; init; } = 15;
     public double DrawbridgeUpkeep { get; init; } = 4;
     public double KeeperWage { get; init; } = 5;
     public int FootbridgeClearance { get; init; } = 1;
     public int DrawbridgeClosedClearance { get; init; } = 1;
-    public int FerryCapacity { get; init; } = 6;
+    public int FerryCapacity { get; init; } = 5;
     public double FerryLoadSec { get; init; } = 0.5;             // chosen
     public double FerryCrossSec { get; init; } = 1.0;            // chosen
     /// <summary>
     /// Unloading and turning round at a stage before boarding starts. Chosen so that a full ferry (6 aboard, 1.0 s across)
     /// carries the doc's "about 30 each way per boat" a day: 6 per leg, a leg every 1.0 + 0.5 s, so 15 s x 6 / 3 s = 30.
     /// </summary>
-    public double FerryTurnSec { get; init; } = 0.5;
+    public double FerryTurnSec { get; init; } = 0.75;
     /// <summary>Walker capacity per day of a 1-cell footbridge and of a closed drawbridge (doc, crossing table: about 120 and about 250).</summary>
     public double FootbridgeWalkersPerDay { get; init; } = 120;
     public double DrawbridgeWalkersPerDay { get; init; } = 250;
@@ -119,7 +121,7 @@ public sealed record RiverRules
     public double IceSpeedMul { get; init; } = 1;
 
     // Money.
-    public double StartMoney { get; init; } = 120;
+    public double StartMoney { get; init; } = 0;
     /// <summary>Upkeep may take the purse down to this; purchases need the full price in hand.</summary>
     public double DebtLimit { get; init; } = -100;
     public double DebtInterest { get; init; } = 0.1;            // per season on a negative purse

@@ -177,8 +177,11 @@
     #hud-time.dawn { animation: dawn 1.6s ease-out; }
     @keyframes dawn { 0% { background-color: var(--dawn); text-decoration-color: var(--accent); } 100% { background-color: transparent; text-decoration-color: transparent; } }
   }
+  /* Reduced motion: no fade, just the underline for the same 1.6 s, then off (it runs on the page's
+     clock, so it ends whatever the game speed and through a pause). */
   @media (prefers-reduced-motion: reduce) {
-    #hud-time.dawn { text-decoration-color: var(--accent); }
+    #hud-time.dawn { animation: dawn-still 1.6s step-end; }
+    @keyframes dawn-still { 0% { text-decoration-color: var(--accent); } 100% { text-decoration-color: transparent; } }
   }
   .heat { height: 10px; border: 1px solid var(--line);
     background: linear-gradient(90deg, var(--heat-0), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-4)); }

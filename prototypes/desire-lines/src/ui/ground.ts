@@ -13,9 +13,14 @@
 //   follows its wear. Hollow ways stay the most extreme colour of all.
 // - Mud is wet trail: the same worn ground, darker, more saturated and more
 //   solid (wet earth is glossy, so the mottling evens out), with a few puddle
-//   glints on the busiest cells only. Over the mud's last day it dries cell by
-//   cell, the least-worn cells first, so the trunks are the last to dry.
-//   Drawing only: the mud rule and its timing (World.mud, weather.ts) are untouched.
+//   glints on the busiest cells only. It dries on the simulation's own clock:
+//   over the last PARAMS.drySimSec of the mud, while the weather's wetness (which
+//   sets the mud's cost and slowdown) falls from 1 to 0, cell by cell, the
+//   least-worn cells first, so the trunks are the last to dry. The order is taken
+//   from the wear when that drying window opens (a snapshot), so a trail worn up
+//   while it dries keeps its place. A cell is never drawn wetter than the
+//   ground's wetness. Drawing only: the mud rule and its timing (World.mud,
+//   weather.ts) are untouched.
 import { World } from "../sim/world";
 import { PARAMS } from "../sim/params";
 import { N, NC } from "../sim/grid";
@@ -31,28 +36,58 @@ const TRUNK_LEVELS = 8; // traffic levels in the LUT
 const MUD_LEVELS = 6; // mud levels in the LUT
 const TRAFFIC_LO = 12, TRAFFIC_HI = 110; // footsteps (flow) from side trail to trunk
 const FRINGE = 22; // the blurred wear spreads the trampled band up to this display value
-const DRY_SPREAD = 0.2; // drying: share of the last day over which one cell goes from wet to dry
+const DRY_SPREAD = 0.2; // drying: share of the drying window over which one cell goes from wet to dry
 const GLINT_TRAFFIC = 5; // puddle glints only on cells at this traffic level or more (of 0..7)
 
 /**
  * How wet the ground under cell `c` is drawn, 0..1 (drawing only). While it rains
- * and through the mud's run this is the weather's wetness; over the mud's last
- * in-game day each muddy cell dries on its own: a cell worn to just trail (wear 25)
- * at the start of that day, the busiest track (wear 85 or more) at its very end.
- * `dry` is how far through the last day the clock is (0..1; below 0 before it).
+ * and until the drying window opens this is the weather's wetness; inside the
+ * window (the last PARAMS.drySimSec of the mud, while the simulation's wetness
+ * falls to 0) each muddy cell dries on its own: a cell worn to just trail (wear 25)
+ * when the window opened dries first, the busiest track (wear 85 or more) last.
+ * `wear` is the cell's wear when the window opened; `dry` is how far through the
+ * window the clock is (0..1; below 0 before it). Never above `wetness`, so the
+ * ground is never drawn wetter than its cost and slowdown say.
  */
 export function wetAmount(wear: number, dry: number, wetness: number): number {
   if (dry <= 0) return wetness;
   const r = wear <= 25 ? 0 : wear >= 85 ? 1 : (wear - 25) / 60;
   const a = ((1 - DRY_SPREAD) * r + DRY_SPREAD - dry) / DRY_SPREAD;
-  return a <= 0 ? 0 : a >= 1 ? 1 : a;
+  const v = a <= 0 ? 0 : a >= 1 ? 1 : a;
+  return v < wetness ? v : wetness;
 }
 
-/** How far through the mud's last in-game day the clock is: below 0 before it, 1 when the mud is gone. */
+/**
+ * How far through the mud's drying window the clock is: below 0 before it (and
+ * while it rains), 1 when the mud is gone. The window is the simulation's own
+ * (PARAMS.drySimSec, weather.ts), so the drawing dries as the walkers speed up.
+ */
 export function dryProgress(w: World): number {
   const wx = w.weather;
   if (wx.raining) return -1;
-  return 1 - (wx.mudUntil - w.time) / PARAMS.daySimSec;
+  return 1 - (wx.mudUntil - w.time) / PARAMS.drySimSec;
+}
+
+/**
+ * The drying order's wear (drawing only): the wear as the drying window opens. Until
+ * it opens the snapshot follows the wear at every call; inside the window it is
+ * kept, so a trail worn up while the mud dries keeps its place in the order. A
+ * snapshot from another window or world (a jump straight into a window) is
+ * retaken at once.
+ */
+export class DryOrder {
+  private snap = new Float32Array(NC);
+  private world: World | null = null;
+  private until = NaN;
+  /** The wear to order the drying by, for world `w` at drying progress `dry` (dryProgress). */
+  wear(w: World, dry: number): Float32Array {
+    if (dry <= 0 || this.world !== w || this.until !== w.weather.mudUntil) {
+      this.snap.set(w.wear);
+      this.world = w;
+      this.until = w.weather.mudUntil;
+    }
+    return this.snap;
+  }
 }
 
 export class WearLayer {
@@ -70,6 +105,7 @@ export class WearLayer {
   private traffic = new Float32Array(NC); // smoothed footsteps per cell (drawing only)
   private trunk = new Float32Array(NC); // 0..TRUNK_LEVELS-1, blurred
   private mudv = new Float32Array(NC); // 0..MUD_LEVELS-1
+  private dryOrder = new DryOrder();
   private gx = new Float32Array(M); // source x of output column, before the warp
   private wy = new Float32Array(M); // warp of the source y, by output column
   private wx = new Float32Array(M); // warp of the source x, by output row
@@ -170,7 +206,10 @@ export class WearLayer {
     const mud = w.mud, mv = this.mudv, wetness = w.rainOn ? w.weather.wetness : 0;
     const dry = w.rainOn ? dryProgress(w) : 1;
     const anyMud = w.rainOn && w.mudCells > 0 && dry < 1 && (dry > 0 || wetness > 0.01);
-    if (anyMud) for (let c = 0; c < NC; c++) mv[c] = mud[c] ? wetAmount(wear[c], dry, wetness) * (MUD_LEVELS - 1) : 0;
+    if (anyMud) {
+      const order = this.dryOrder.wear(w, dry);
+      for (let c = 0; c < NC; c++) mv[c] = mud[c] ? wetAmount(order[c], dry, wetness) * (MUD_LEVELS - 1) : 0;
+    }
     this.anyMud = anyMud;
     this.heatPending = heat ? w : null;
   }

@@ -31,7 +31,7 @@ Stop when all of it is done, after 20 rounds, or when nothing can progress witho
 | --- | --- |
 | Design doc | https://claude.ai/artifact/Ld2BuxHtt8Ht8LpRbVxeJT (doc id `9ee52479-fb74-49e2-9063-a1585cdc1e40`) |
 | Build Plan tab | body node `aa88b9bc-2a93`, tab file `db2db437-ccbf`; "This week" checklist list `m6ea1wgr0x5.1263` (item `.1264` is "Build Prototype 1"). The morning report (written 05:30 UTC on 25 November, replacing the earlier "Overnight build report"): heading `m6ea1wgr0x5.16356`, status paragraph `.16392`, links `.16687`, "What was built" table `.16869`, gates table `.19063`, assets table `.21318`, "Needs you" checklist `.23049`, five questions `.29610`, decisions table `.25043`, "What happens next" list `.28966`. Edit cells with find-and-replace on their text; replacing a whole block needs `force` |
-| Scheduled check | One pending at a time, about every 45 minutes. Current: fires about 06:11 UTC on 25 November (see the newest "Tide & Toll overnight check" in the scheduled tasks). Workflow runs: river round 2 `wf_436cebba-6c1`, toy fixes and sync plan `wf_a5b0f3e5-2b4` (script copies in `build/wf/`) |
+| Scheduled check | One pending at a time, about every 45 minutes. Current: fires about 06:57 UTC on 25 November (see the newest "Tide & Toll overnight check" in the scheduled tasks). Workflow runs: river round 2 `wf_436cebba-6c1`, toy fixes and sync plan `wf_a5b0f3e5-2b4` (script copies in `build/wf/`) |
 | Other tab body nodes | Overview `654f3c1a-1b75`, Gameplay `7e2d7651-21ec`, UX `ba135eb2-f67b`, Sound `6ddff1a9-fd33`, Art `d64ee9a3-3b89`, Engine `b2ac323d-e193` |
 | Browser toy Artifact | https://claude.ai/artifact/V1ng3taGsSZ9Qm45mm4xjw (published from `prototypes/desire-lines/dist/index.html`) |
 | Asset gallery Artifact | https://claude.ai/artifact/PT1cMEr8k973QosfZxf9r2 (published by the gallery agent from `docs/asset-gallery/index.html` plus the files in `docs/asset-gallery/files.json`; to republish from this session, read the artifact first, then publish with that URL) |
@@ -70,7 +70,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 - When round 12 finishes: if the checker says the toy build should replace the published one, build the page, have a fork of the lead read the whole built page and republish it to the same link (version 6), add a line to `ROUNDS.md`, commit, push. Keep `sync-plan.md` for the sync round.
 - When round 10 (river, second pass) finishes: read the review's strategy table on seeds 401 to 424 against the six outcomes (a) to (f) in the round's brief, look at the screenshots, update the river rows and gate rows of the morning report, log every changed river number under "Decisions made for you", commit, push.
-- Then the sync round (needs `sim/` and `game/` free, so after round 10): two builders in sequence follow `sync-plan.md`: the library first (the retuned trail model with frugal walkers, gravel, gates, rain and mud, house growth, new comparison data from the final toy, the river-off baseline re-recorded from that data), then the game (gravel and gate tools, rain and mud on the map, houses arriving). Also: skip the flood in the first spring, so a new town does not open with its ford closed.
+- Then the sync round (needs `sim/` and `game/` free, so after round 10): two builders in sequence follow `docs/plans/sync-plan.md` (written in round 12; about 1,200 lines of C# and 600 of tests in nine library steps, then six game steps). The lead's answers to the plan's questions: switch the library's defaults to the new trail model only at the last library step; house growth stays off while the river rules are on; gravel and gates are free under the river's money; keep the old comparison data alongside the new; no own maths functions tonight, but record probe values so a run on Windows can show whether results differ. Any further river tuning comes AFTER the sync, because the new trail model shifts the river's economy. The work: the library first (the retuned trail model with frugal walkers, gravel, gates, rain and mud, house growth, new comparison data from the final toy, the river-off baseline re-recorded from that data), then the game (gravel and gate tools, rain and mud on the map, houses arriving). Also: skip the flood in the first spring, so a new town does not open with its ford closed.
 - The morning report is in the Build Plan tab since 05:30 UTC. Update it when rounds land, and post the final version in the chat when the build stops. Remove the temporary "Interrupted work" section from `AGENTS.md` before the final report.
 - Stop when the sync round is reviewed, or at 20 rounds: after that every open gate needs people or the owner's PC.
 
@@ -129,6 +129,8 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 26 | In rain, mud multiplies the cost a walker already sees for that ground, and walkers on long detours see less of it | The doc says "cost x1.6" without saying of what. The other reading pushed trunk share out of its band on half the tuning seeds |
 | 27 | Gravel costs 0.6 of grass in the toy, not the tool table's 0.8 | At 0.8 gravel could not pull a trail more than 2 cells; at 0.6 it pulls from about 3 |
 | 28 | The toy's Hamlet stops growing at 248 villagers (16 cottages of 3 on top of the first houses), one cottage every 2 days | The doc's Hamlet target of 250 was read as people; one household per 2 days is the doc's fastest rate |
+| 29 | In the game's river prototype, house growth stays off and gravel and gates cost nothing | The river's prices were tuned for a village of fixed size, and pricing the path tools belongs to the next prototype step |
+| 30 | The simulation does not get its own exp, pow and sin functions yet; the comparison data records probe values instead | Results match on this machine; whether they match on Windows can be shown by running the tests there once (see "Needs you") |
 
 ## Needs you
 
@@ -142,6 +144,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 6 | Say whether you want AI-generated art, sound or music from an online service | Those need an account and a licence check; tonight everything was made by code instead |
 | 7 | Listen to the toy with Sound on, and to the game: are the river and rain audible, is the bell too loud or too soft, do the footsteps follow the walkers | Levels were set from measurements only |
 | 8 | Say whether there is too much rain and mud in the toy | The doc's rain chances keep mud on screen a large part of the time; the numbers are the doc's, so changing them is your call |
+| 9 | On your Windows PC, run `dotnet test sim.tests -c Release` once and send the output | It shows whether the simulation gives exactly the same numbers on Windows as in the build container; replays and saved games will rely on that |
 
 ## Assets
 

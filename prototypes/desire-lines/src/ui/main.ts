@@ -5,7 +5,7 @@ import { N, idx } from "../sim/grid";
 import { Renderer } from "./render";
 import { readPalette, onThemeChange } from "./palette";
 import { Input, Tool } from "./input";
-import { updateHud, setPreviewLine, updateVillage } from "./hud";
+import { updateHud, setPreviewLine, updateVillage, resetVillage } from "./hud";
 import { FlowPreviewer } from "./previewer";
 import { WhatIf } from "../sim/preview";
 import { Sound } from "./sound";
@@ -148,10 +148,10 @@ function reset(newSeed = seed) {
   previewer.setWorld(world);
   input.setTool(input.tool);
   sound.reset();
+  resetVillage();
   shownPopulation = -1;
-  showPopulation();
   acc = 0;
-  updateHud(world.stats(), fps, tickMs, seed, 0);
+  refreshReadouts();
 }
 $("btn-reset").addEventListener("click", () => { reset(); say("Map reset."); });
 $("btn-newmap").addEventListener("click", () => { reset((((Math.imul(seed, 48271) + 12345) % 99991) + 99991) % 99991 + 1); say(`New map, seed ${seed}.`); });
@@ -174,6 +174,25 @@ window.addEventListener("keydown", e => {
 
 // ------------------------------------------------------------------ loop
 let acc = 0, last = performance.now(), fps = 60, tickMs = 0, hudAt = 0, simMs = 0;
+/**
+ * The side panel's readouts (time, weather, town, metrics) and the walker count, now.
+ * They refresh every 500 ms, and at once after Reset, New map, a debug change of the
+ * weather, or a jump in the in-game day or the weather (`readoutKey`).
+ */
+function refreshReadouts() {
+  hudAt = performance.now();
+  shownKey = readoutKey();
+  updateHud(world.stats(), fps, tickMs, seed, world.walkersOut());
+  updateVillage(world);
+  showPopulation();
+}
+/** What the time and weather lines show, as one number: the in-game day, the weather's state and its days. */
+let shownKey = NaN;
+function readoutKey(): number {
+  const wx = world.weather, day = Math.floor(world.time / PARAMS.daySimSec);
+  const state = !world.rainOn ? 0 : wx.raining ? 1 + Math.floor(wx.rainStart / PARAMS.daySimSec) : wx.wetness > 0 ? -1 - Math.floor(wx.mudUntil / PARAMS.daySimSec) : 0;
+  return day * 4096 + state;
+}
 let plainTickMs = 1, heavyTickMs = 4; // moving averages of a plain tick and of one that rebuilds a field
 let tipText = "";
 /**
@@ -265,13 +284,10 @@ function frame(now: number) {
   if (rec) rec.draws.push(performance.now() - td);
   sound.update(now, world);
   if (now - hudAt > 500) {
-    hudAt = now;
     const recent = intervals.slice(-60);
     fps = recent.length ? 1000 / (recent.reduce((a, b) => a + b, 0) / recent.length) : 60;
-    updateHud(world.stats(), fps, tickMs, seed, world.walkersOut());
-    updateVillage(world);
-    showPopulation();
-  }
+    refreshReadouts();
+  } else if (readoutKey() !== shownKey) refreshReadouts(); // a new day, or the weather changed (a debug jump too)
   const work = performance.now() - t0;
   works.push(work);
   if (works.length > 120) works.shift();
@@ -329,9 +345,11 @@ const api = {
   /** What the Gate tool would do at cell (x, y): the gate's cells, whether it removes one, or why not. */
   gateTarget: (x: number, y: number) => world.gateTarget(x + 0.5, y + 0.5),
   /** Rain now (debug): for `days` in-game days (default 1); mud lasts as after a rain day. */
-  startRain: (days = 1) => world.startRain(days * PARAMS.daySimSec),
+  startRain: (days = 1) => { world.startRain(days * PARAMS.daySimSec); refreshReadouts(); },
   /** Stops the rain (debug); with dry = true the mud goes at once too. */
-  stopRain: (dry = false) => world.stopRain(dry),
+  stopRain: (dry = false) => { world.stopRain(dry); refreshReadouts(); },
+  /** A debug jump: runs the world `simSec` seconds ahead at once (as playing would), then refreshes the readouts. */
+  advance(simSec: number) { const end = world.time + simSec; while (world.time < end - 1e-9) world.tick(); refreshReadouts(); },
   /**
    * Weather and growth state for drawing and sound: rain (0..1, how hard it rains now), wetness (0..1),
    * whether it is raining, the mud cell count (world.mud is the per-cell flag), and the houses grown so far.

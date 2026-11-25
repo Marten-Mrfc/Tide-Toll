@@ -1,18 +1,20 @@
 // Canvas 2D renderer.
 // - Ground: a 128 x 128 base image (grass tint, crops) scaled up with
 //   smoothing, plus the worn-ground layer (ground.ts), rebuilt a few times a second.
-// - Static layer: river, buildings, labels, gravel, fences, gates and bridges
-//   as vector ink (ink.ts), redrawn only when the map, size or theme changes.
-// - Every frame: walkers (interpolated between ticks), rain, new houses being
-//   raised and their marks, the short marks of the player's actions, the tool
-//   ghost and the flow preview (effects.ts).
+// - Static layer: river, buildings, gravel, fences, gates and bridges as vector
+//   ink (ink.ts), redrawn only when the map, size or theme changes; the place
+//   labels are placed then too.
+// - Every frame: walkers (interpolated between ticks), then the place labels over
+//   them (with their pale halo), rain, new houses being raised and their marks,
+//   the short marks of the player's actions, the tool ghost and the flow preview
+//   (effects.ts).
 import { World } from "../sim/world";
 import { N, NC } from "../sim/grid";
 import { hash2 } from "../sim/rng";
 import { followField } from "../sim/path";
 import { FlowPreview, RouteChange } from "../sim/preview";
 import { Palette } from "./palette";
-import { WearLayer, mix, dryProgress, GROUND_BANDS } from "./ground";
+import { WearLayer, mix, GROUND_BANDS } from "./ground";
 import { Pen, GateMark, drawFence, drawGate, drawGravel, drawBridge, gateMark } from "./ink";
 import { Effects } from "./effects";
 
@@ -52,6 +54,8 @@ export class Renderer {
   private offY = new Float32Array(1024);
   /** Which points of each shown route are shared with the other route (computed once per preview). */
   private shared = new WeakMap<RouteChange, { old: Uint8Array; now: Uint8Array }>();
+  /** The place labels as placed with the static layer (device pixels), drawn each frame over the walkers. */
+  labels: { text: string; x: number; y: number; px: number }[] = [];
   /** Rain, new houses and action marks, drawn every frame. */
   readonly fx: Effects;
   /** Whether the game is paused (rain stops falling on screen). */
@@ -159,7 +163,7 @@ export class Renderer {
     const hidden = this.fx.raising(w);
     for (const b of m.buildings) if (!hidden.has(b.id)) this.drawBuilding(g, b, this.fx.isGrown(w, b.id));
     drawFence(g, pen, cellsOf(w.fence), p.fence, this.gateMarks(), p.gate);
-    this.drawLabels(g);
+    this.placeLabels(g);
   }
 
   /** Every gate as one mark: a gate cell with its 4-adjacent gate cell (a stair corner's pair). */
@@ -254,9 +258,10 @@ export class Renderer {
 
   /**
    * Labels go where they cover no building, no other label, and as little as
-   * possible of the routes walkers take (traced on the current fields).
+   * possible of the routes walkers take (traced on the current fields). They are
+   * placed with the static layer and drawn every frame over the walkers (`labels`).
    */
-  private drawLabels(g: CanvasRenderingContext2D) {
+  private placeLabels(g: CanvasRenderingContext2D) {
     const w = this.world, m = w.map, s = this.scale;
     const busy = new Uint8Array(NC);
     for (const h of w.houses)
@@ -264,6 +269,7 @@ export class Renderer {
     const px = Math.max(10, Math.min(13, (s * 1.8) / this.dpr)) * this.dpr;
     g.font = `600 ${px}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
     const taken: number[][] = m.buildings.map(b => [b.x - 0.3, b.y - 0.3, b.x + b.w + 0.3, b.y + b.h + 0.3]);
+    const labels: Renderer["labels"] = [];
     const place = (text: string, ax: number, ay: number, aw: number, ah: number) => {
       const tw = g.measureText(text).width / s + 0.6, th = px / s + 0.2;
       const cands = [
@@ -280,11 +286,12 @@ export class Renderer {
         if (v < bv) { bv = v; best = [x0, y0]; }
       }
       taken.push([best[0], best[1], best[0] + tw, best[1] + th]);
-      this.label(g, text, (best[0] + tw / 2) * s, (best[1] + th / 2) * s, px);
+      labels.push({ text, x: (best[0] + tw / 2) * s, y: (best[1] + th / 2) * s, px });
     };
     for (const b of m.buildings) if (LABELS[b.kind]) place(LABELS[b.kind], b.x, b.y, b.w, b.h);
     const fx = m.riverX[m.fordY];
     place("Ford", fx - m.riverHalfW, m.fordY - 1, m.riverHalfW * 2, 3);
+    this.labels = labels;
   }
 
   private label(g: CanvasRenderingContext2D, text: string, x: number, y: number, px: number) {
@@ -347,9 +354,9 @@ export class Renderer {
       g.drawImage(this.baseBig, 0, 0);
       g.drawImage(this.ground.canvas, 0, 0, this.ground.canvas.width, this.ground.canvas.height, 0, 0, W, W);
       // Wet ground is darker: grass and earth are multiplied by a cool grey as the ground wets,
-      // fading out over the mud's last day as the trails dry (see ground.ts).
-      const dp = w.rainOn ? dryProgress(w) : 1;
-      const wet = !w.rainOn ? 0 : dp > 0 ? Math.max(0, 1 - dp) : w.weather.wetness;
+      // fading out with the weather's wetness (the clock of the mud's cost and slowdown) as the
+      // trails dry (see ground.ts).
+      const wet = w.rainOn ? w.weather.wetness : 0;
       if (wet > 0.01 && !this.overlay) {
         g.globalCompositeOperation = "multiply";
         g.globalAlpha = 0.4 * wet;
@@ -390,6 +397,8 @@ export class Renderer {
     ctx.globalAlpha = 1;
     ctx.fillStyle = p.walker;
     ctx.fill();
+    // Place labels over the walkers, with the same pale halo as ever.
+    for (let i = 0; i < this.labels.length; i++) { const l = this.labels[i]; this.label(ctx, l.text, l.x, l.y, l.px); }
     const tf = performance.now();
     this.timing.walkers += tf - tw;
     this.fx.draw(ctx, this, now);
