@@ -9,6 +9,17 @@ namespace TideToll.Sim;
 public sealed partial class World
 {
     internal static int DiagClips, DiagClipCrossed, DiagTokenOn, DiagPassOn; // DIAG
+    internal static System.Collections.Generic.List<string>? DiagLog; // DIAG
+    private string DiagDescribe(ref Walker w, int c, Crossing x) // DIAG
+    {
+        bool fr = w.Frugal;
+        float[] f = fr ? _fieldsX[w.Target] : _fields[w.Target], cost = fr ? _costX : _cost;
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"t={_ticks} w{w.Id} fr={fr} taste={w.Taste:F2} at ({w.Cell % _n},{w.Cell / _n}) f={f[w.Cell]:F1} -> ({c % _n},{c / _n}) f={f[c]:F1} pos=({w.X:F2},{w.Y:F2}) aim=({w.AimX:F2},{w.AimY:F2}) deck row {x.Row} cells {x.Cells[0] % _n}..{x.Cells[x.Cells.Count-1] % _n} state={x.State} path:");
+        int u = w.Cell;
+        for (int s = 0; s < 8; s++) { u = DescendStep(f, cost, u, fr ? 0 : w.Taste, true, w.Id); if (u < 0) break; sb.Append($" ({u % _n},{u / _n}){(_crossAt[u] >= 0 ? "*" : "")}"); }
+        return sb.ToString();
+    }
     private int _curWalker; // index of the walker being stepped (for the queues)
 
     /// <summary>Hook of the walker's step, before it enters cell c: true when it must stop and wait on its bank.</summary>
@@ -27,7 +38,7 @@ public sealed partial class World
         }
         // A walker only clipping the end of an open bridge on its way along the bank (its line cuts the corner of an end
         // cell) is not queued for it: it would be released at its first route check and queue again, for ever.
-        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) { DiagClips++; w.DiagClip = true; return false; } // DIAG
+        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) { DiagClips++; w.DiagClip = true; if (DiagLog != null) DiagLog.Add(DiagDescribe(ref w, c, x)); return false; } // DIAG
         WalkerQueue q = SideOf(w.Cell) < 0 ? x.West! : x.East!;
         // Straight on when nobody is queued on either bank and the bridge has room; otherwise to the back of the queue.
         if (x.Type != CrossingType.Ferry && BridgeOpen(x) && x.Tokens >= 1 && !QueueHasWalker(x, x.West!) && !QueueHasWalker(x, x.East!))
