@@ -74,7 +74,7 @@ Stopping
 
 | Round | What | Workflow run | Started | Ended | Result |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | (filled in at launch) | 20:35 | | |
+| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:36 | | |
 
 ## Next steps
 
