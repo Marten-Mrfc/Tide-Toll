@@ -67,7 +67,7 @@ public static class ToyComparison
             var a = t[i]; var b = c.First(r => r.Seed == a.Seed);
             bool same = a.WearFnv != 0 && a.WearFnv == b.WearFnv;
             if (same) exact++;
-            if (a with { WearFnv = 0 } == b with { WearFnv = 0 } && same) exactRows++;
+            if (a with { WearFnv = 0 } == b with { WearFnv = 0 } && (same || a.WearFnv == 0)) exactRows++;
             log.Log($"{a.Seed,4} | {F(a.Ft, 1),6} {F(b.Ft, 1),6} s   | {F(a.Det, 3)} {F(b.Det, 3)}   | {Pct(a.Cov)} {Pct(b.Cov)}   | {Pct(a.Mean)} {Pct(b.Mean)}     | {Pct(a.Min)} {Pct(b.Min)}     | {(a.WearFnv == 0 ? "n/a" : same ? "identical" : "differs")}");
         }
         double M(IEnumerable<SeedRow> rows, Func<SeedRow, double> f) => GateTables.Mean(rows.Select(f).ToList());
@@ -79,7 +79,7 @@ public static class ToyComparison
             ("trunk share, mean", M(t, r => r.Mean), M(c, r => r.Mean), TrunkMeanTol, 100, " pts"),
             ("trunk share, daily min", M(t, r => r.Min), M(c, r => r.Min), TrunkMinTol, 100, " pts"),
         };
-        log.Log($"Exact parity: day-45 wear grid bit-identical on {exact} of {t.Count} seeds; every row value (first trail, detour, coverage, trunk mean/min/max/D, days out of band) bit-identical on {exactRows} of {t.Count}.");
+        log.Log($"Exact parity: day-45 wear grid bit-identical on {(t[0].WearFnv == 0 ? "n/a (not recorded)" : $"{exact} of {t.Count} seeds")}; every row value (first trail, detour, coverage, trunk mean/min/max/D, days out of band) bit-identical on {exactRows} of {t.Count}.");
         log.Log("20-seed means (toy | C# | difference | tolerance):");
         foreach (var m in metrics)
         {

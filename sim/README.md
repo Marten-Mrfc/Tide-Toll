@@ -325,6 +325,41 @@ clearly the slowest, because at 200 walkers the ferry's queue makes it as slow (
 hand-raised drawbridge ends richer than the ferry in only 7 of 40 towns (the ferry costs 40c against 240c and walkers
 learn its wait and use the ford instead).
 
+### The finished toy's trail model and the river (sync step A8, 25 November 2026; nothing retuned)
+
+`river --seed-sets 101-120 --days 30 --sweep --trail toy` against `--trail legacy`, same build, same seeds (20 towns, 30 days;
+both runs include the first-spring rule, so they compare only with each other, not with the 40-seed table above). Medians:
+
+| player (200 walkers unless noted) | net money legacy -> toy | trip s legacy -> toy | trade c legacy -> toy |
+| --- | --- | --- | --- |
+| S1 ford only | 2276 -> 2359 | 18.05 -> 18.00 | 2223 -> 2306 |
+| S2 ferry | 2242 -> 2227 | 19.13 -> 18.68 | 2351 -> 2339 |
+| S3 footbridge | 1043 -> 1047 | 14.77 -> 15.17 | 1038 -> 1052 |
+| S4 drawbridge, never raised | 990 -> 1025 | 15.01 -> 15.71 | 1161 -> 1197 |
+| S5 drawbridge by hand, misses 10% | 2425 -> 2378 | 15.82 -> 16.39 | 2600 -> 2549 |
+| S5, misses 30% / 50% | 2155 / 1703 -> 2084 / 1759 | 15.60 / 15.21 -> 16.15 / 15.95 | 2323 / 1878 -> 2259 / 1934 |
+| S6 drawbridge + keeper | 2342 -> 2154 | 15.95 -> 16.96 | 2660 -> 2476 |
+| S2 ferry, 60 walkers | 767 -> 772 | 15.47 -> 15.38 | 876 -> 880 |
+| S5-10, 60 walkers | 727 -> 730 | 14.50 -> 14.33 | 898 -> 898 |
+| S6, 60 walkers | 579 -> 538 | 14.38 -> 14.42 | 899 -> 846 |
+
+What shifts: with the new trail model, trips over the bridges get slower (footbridge +0.4 s, drawbridges +0.5 to 1.0 s; explorers
+and detour-capped walkers ignore the trunks), the ferry's share of walkers who wait rises from 12% to 30% and its queue from 40 to
+48, and the keeper loses most (-188c at 200 walkers: 6.1 days to hire instead of 5.9 and fewer boats a day through). Checks: legacy
+fails 1 of 16 ((b) ford clearly slowest: S1 18.34 s, S2 19.67 s on the 11 far towns); toy fails 2 of 16: (b) again (S1 18.27 s, S2
+19.04 s) and (d) the hand-raised drawbridge ends richer than the ferry in only 9 of 20 towns at 200 walkers (14 of 20 on legacy;
+medians S5 2378c, S2 2227c). The keeper minus the 10% player at 200 walkers goes from -83c to -224c (report only). Left for the
+river's next tuning round.
+
+Three River* tests fail on the new trail model (all pass on `Legacy`: `TIDETOLL_RIVER_PRESET=legacy`): a narrow drawbridge (20 a
+day) lets on 25.5 a day (a walker whose any-angle line cuts across the span while its three-step descent does not touch it is
+treated as clipping the corner and let on without the queue; on Legacy no walker does); the learned wait at a raised drawbridge
+ends at 0.35 s, under the test's 0.5 s (more walkers use the bridge, so short waits at capacity outnumber the raised spells in its
+moving average); and a walker set down from a rising leaf takes over 40 s to finish its trip (it waits out the raise, crosses,
+then has a long walk). Fixed on the way (both presets): the route check of a waiting walker now uses the walker's own view
+(frugal walkers descend the frugal field: sync plan conflict A), and a queue pass for a drawbridge that was raised since is spent
+instead of letting the walker onto the raised span.
+
 ### Tuning, 25 November 2026 (strategy bot, seeds 101-120 and 201-220, 30 days)
 
 Changed `RiverRules` defaults (before -> after; doc figure; why):
