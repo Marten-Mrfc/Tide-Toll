@@ -79,8 +79,9 @@ public partial class HamletTest : Node
         double t0 = _main.Town.Now;
         while (_main.Town.Rising > 0 && _main.Town.Now - t0 < TownLayer.RaiseSec + 1) await TestInput.Frames(this, 1);
         Check(_main.Town.Rising == 0 && Mathf.IsEqualApprox(node!.Scale.Y, 1f), "the cottage never finished rising");
-        await TestInput.Frames(this, 40);
         var page = _main.Ui.Chapter;
+        // The page refreshes on a half-second timer: wait until it counts the new house (up to 2 s), then check it.
+        await WaitFor(() => page.GetNode<Label>("Column/Houses/Value").Text == w.Houses.Length.ToString(), 2);
         string count = page.GetNode<Label>("Column/Houses/Value").Text, note = page.GetNode<Label>("Column/HousesNote").Text;
         Check(count == w.Houses.Length.ToString(), $"page says {count} houses, the town has {w.Houses.Length}");
         Check(note == $"newest on day {g.Day}", $"houses note '{note}'");
@@ -89,6 +90,13 @@ public partial class HamletTest : Node
         _main.Walkers.Sync();
         Check(_main.Walkers.Drawn == w.WalkersOut(), $"drew {_main.Walkers.Drawn} of {w.WalkersOut()} walkers out");
         _notes.Add($"house@tick{ticks}(day {g.Day}) walkers={w.WalkerCount}");
+    }
+
+    /// <summary>Waits until done() holds or the time is up (the chapter page refreshes on a half-second timer).</summary>
+    private async Task WaitFor(Func<bool> done, double seconds)
+    {
+        ulong end = Time.GetTicksMsec() + (ulong)(seconds * 1000);
+        while (!done() && Time.GetTicksMsec() < end) await TestInput.Frames(this, 1);
     }
 
     private async Task Seconds(double s)
@@ -147,6 +155,7 @@ public partial class HamletTest : Node
         sim.StepTicks(4 * p.TicksPerDay);   // trails worn enough to turn to mud
         if (w.Weather.Raining || w.Weather.Wetness > 0) { w.StopRain(dry: true); sim.StepTicks(2); }
         await TestInput.Frames(this, 40);
+        await WaitFor(() => _main.Ui.Chapter.WeatherText == "Dry", 2); // the page refreshes on a half-second timer
         Check(_main.Ui.Chapter.WeatherText == "Dry", $"weather line '{_main.Ui.Chapter.WeatherText}' before the shower");
         Check(_main.Ui.Rain.Level == 0 && _main.Ground.MudShownMax == 0, "rain or mud drawn on dry ground");
         // A forced shower of one day.
@@ -161,6 +170,7 @@ public partial class HamletTest : Node
         sim.SetPaused(true);
         _main.Ground.Upload();
         await TestInput.Frames(this, 40);
+        await WaitFor(() => _main.Ui.Chapter.WeatherText != "Dry", 2); // the weather line, refreshed on its timer
         Check(_main.Ui.Rain.Level > 0.1f && _main.Ui.Rain.Visible, $"no rain over the map (level {_main.Ui.Rain.Level})");
         Check(_main.Ground.Wet > 0.5f, $"the ground is not drawn wet ({_main.Ground.Wet:F2})");
         Check(_main.Ground.MudShownMax > 0.9f, $"mud drawn at most {_main.Ground.MudShownMax:F2} while it rains");
@@ -169,9 +179,12 @@ public partial class HamletTest : Node
         Check(_main.Audio.RainDb > -70, $"no rain bed ({_main.Audio.RainDb:F0} dB)");
         int mudCells = w.MudCells;
         // The shower stops: the rain goes, the mud stays its days, then dries from the least worn cells first.
+        string rainLine = _main.Ui.Chapter.WeatherText;
         w.StopRain();
         sim.StepTicks(5 * (int)p.TickHz);
         await TestInput.Frames(this, 40);
+        // The page refreshes on a half-second timer of frame time, not every frame: wait until the line has changed.
+        await WaitFor(() => _main.Ui.Chapter.WeatherText != rainLine, 2);
         int mudDay = (int)Math.Floor(w.Weather.MudUntil / p.DaySimSec) + 1;
         Check(!w.Weather.Raining && w.MudCells > 0, "the mud went with the rain");
         Check(_main.Ui.Rain.Level == 0 && !_main.Ui.Rain.Visible, "rain still drawn after it stopped");
@@ -188,6 +201,7 @@ public partial class HamletTest : Node
         _main.Ground.Upload();
         for (int i = 0; i < 300 && _main.Ground.Wet > 0; i++) await TestInput.Frames(this, 1);
         await TestInput.Frames(this, 40);
+        await WaitFor(() => _main.Ui.Chapter.WeatherText == "Dry", 2); // the weather line, refreshed on its timer
         Check(w.MudCells == 0 && _main.Ground.MudShownMax == 0, "mud left after the ground dried");
         Check(_main.Ground.Wet == 0, $"ground still drawn wet ({_main.Ground.Wet:F2})");
         Check(_main.Ui.Chapter.WeatherText == "Dry", $"weather line '{_main.Ui.Chapter.WeatherText}' once dry");

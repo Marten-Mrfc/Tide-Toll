@@ -262,7 +262,8 @@ public partial class RiverRulesTest : Node
         TestInput.Key(Godot.Key.K);
         await TestInput.Frames(this, 2);
         Check(!x.Keeper && R.Money == money, "a keeper was hired before the unlock");
-        Check(_main.Tools.LastMessage.Contains("raise it by hand"), $"K before the unlock says '{_main.Tools.LastMessage}'");
+        string waiting = need == 1 ? "1 more waiting barge first" : $"{need} more waiting barges first";
+        Check(_main.Tools.LastMessage.Contains("raise the bridge for " + waiting), $"K before the unlock says '{_main.Tools.LastMessage}'");
         int unlockNotes = 0, cues = _main.Audio.UnlockCues;
         // Restated 25 Nov 2026 (fix round, item 6): the library now counts a hand raise toward the keeper only when it lets
         // a waiting masted boat through (the count belongs to the town). Ten bare raises by L no longer earn a keeper, so
@@ -283,16 +284,43 @@ public partial class RiverRulesTest : Node
         Check(x.HandRaises == 0 && x.RaisesToKeeper == need, $"a raise with no boat waiting counted ({x.HandRaises})");
         await WaitFor(() => badges.UnlockText(id) == BridgeBadges.RaiseText(need), BridgeBadges.NoCountSec + 2);
         Check(badges.UnlockText(id) == BridgeBadges.RaiseText(need), $"the quiet note never gave way to the count: '{badges.UnlockText(id)}'");
+        // A second bare raise, then the first counted raise while its note is still up (fix round, 25 Nov 2026): the note
+        // must go the moment the count moves. Up to that raise's count the simulation is stepped without frames, so the
+        // note's seconds (frame time) stand still and it is surely still showing when the count moves.
+        quiet = badges.NoCountNotes;
+        TestInput.Key(Godot.Key.L); // raise with no boat waiting
+        await TestInput.Frames(this, 2);
+        Check(badges.NoCountNotes == quiet + 1 && badges.UnlockText(id).Replace("\n", " ") == BridgeBadges.NoCountText,
+            $"the second bare raise is not noted on the badge: '{badges.UnlockText(id)}'");
+        for (int t = 0; t < 200 && x.State != BridgeState.Raised; t++) _main.Sim.StepTicks(1);
+        TestInput.Key(Godot.Key.L); // lower
+        await TestInput.Frames(this, 1);
+        for (int t = 0; t < 400 && x.State != BridgeState.Closed; t++) _main.Sim.StepTicks(1);
+        Check(x.State == BridgeState.Closed && x.HandRaises == 0, $"the second bare raise did not come down uncounted ({x.State}, {x.HandRaises})");
         for (int k = 1; k <= need; k++)
         {
             // A barge waiting below the bridge (one sent up the river when none is there yet).
             if (x.BoatsWaiting == 0) W.SpawnBoat(BoatKind.Barge);
-            await StepFast(() => x.BoatsWaiting > 0, 4000, $"raise {k}: no barge came to wait below the bridge");
+            if (k == 1)
+            {
+                for (int t = 0; t < 6000 && x.BoatsWaiting == 0; t++) _main.Sim.StepTicks(1);
+                Check(x.BoatsWaiting > 0, "raise 1: no barge came to wait below the bridge");
+                await TestInput.Frames(this, 1);
+                Check(badges.UnlockText(id).Replace("\n", " ") == BridgeBadges.NoCountText, $"test setup: the quiet note went before the barge came: '{badges.UnlockText(id)}'");
+            }
+            else await StepFast(() => x.BoatsWaiting > 0, 4000, $"raise {k}: no barge came to wait below the bridge");
             int notes = badges.NoCountNotes;
             TestInput.Key(Godot.Key.L); // raise
             await TestInput.Frames(this, 1);
             Check(x.State == BridgeState.Raising, $"raise {k}: L did not raise the bridge ({x.State}, '{_main.Tools.LastMessage}')");
             Check(badges.NoCountNotes == notes && !_main.Tools.LastMessage.Contains(BridgeBadges.NoCountText), $"raise {k}: a raise for a waiting barge was called one that does not count");
+            if (k == 1)
+            {
+                for (int t = 0; t < 400 && x.HandRaises < 1; t++) _main.Sim.StepTicks(1);
+                Check(x.HandRaises == 1, $"raise 1: the waiting barge's passing did not count (count {x.HandRaises})");
+                await TestInput.Frames(this, 2);
+                Check(badges.UnlockText(id) == (need > 1 ? BridgeBadges.RaiseText(need - 1) : ""), $"the 'does not count' note stayed after the count moved: '{badges.UnlockText(id)}'");
+            }
             await StepUntil(() => x.HandRaises == k, 400, $"raise {k}: the waiting barge's passing did not count (count {x.HandRaises})");
             TestInput.Key(Godot.Key.L); // lower
             await TestInput.Frames(this, 1);
@@ -333,7 +361,6 @@ public partial class RiverRulesTest : Node
         int turned0 = R.Stats.TurnedBack[(int)BoatKind.Barge], maxWaiting = 0, maxTurned = 0;
         _turnTimes.Clear();
         _sameDayRepeat = false;
-        _lastNote = "";
         _main.Feed.Event += OnTurnBack;
         for (int i = 0; i < 400 && R.Stats.TurnedBack[(int)BoatKind.Barge] < turned0 + 2; i++)
         {
@@ -362,24 +389,24 @@ public partial class RiverRulesTest : Node
         }
         bool counted = false;
         for (int i = 0; i < RiverFeed.ChronicleLines; i++) counted |= _main.Feed.Note(i).Contains("(×");
-        if (_sameDayRepeat) Check(counted, $"two identical turn-back notes in a row that day, but no line with a count: '{_main.Feed.Note(0)}'");
+        if (_sameDayRepeat) Check(counted, $"two identical turn-back notes in a row that day, but no line with a count: '{_main.Feed.Note(0)}' / '{_main.Feed.Note(1)}'");
         _notes.Add($"queue waiting={maxWaiting} turned={turned} float×{maxTurned} note='{_main.Feed.Note(0)}'");
     }
 
     private readonly List<ulong> _turnTimes = new();
     private bool _sameDayRepeat;
-    private string _lastNote = "";
 
     /// <summary>Real time of each turn-back, and whether one wrote the same chronicle note as the note just before it.</summary>
     private void OnTurnBack(RiverEvent e)
     {
         if (e.Kind != RiverEventKind.BoatTurnedBack) return;
         _turnTimes.Add(Time.GetTicksMsec());
+        // This turn-back's note is the newest line. "In a row" means the line just before it in the chronicle: either the
+        // feed merged it into that line (a count), or it wrote the same line again (which the check after the run fails).
+        // Restated 25 Nov 2026: it compared with the previous turn-back note even when another note (a barge waiting below
+        // the footbridge) lay between them, so two turn-backs that were not in a row were taken for a repeat.
         string body = _main.Feed.Note(0);
-        int at = body.IndexOf(" (×", StringComparison.Ordinal);
-        if (at >= 0) body = body.Substring(0, at) + ".";
-        if (body == _lastNote) _sameDayRepeat = true;
-        _lastNote = body;
+        if (body.Contains(" (×", StringComparison.Ordinal) || body == _main.Feed.Note(1)) _sameDayRepeat = true;
     }
 
     private (int carrying, int wet) Carried()

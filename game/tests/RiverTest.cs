@@ -264,7 +264,9 @@ public partial class RiverTest : Node
             _main.Sim.StepTicks(15);
             await TestInput.Frames(this, 1);
         }
-        await WaitFor(() => _main.Ui.Chapter.GetNode<Label>("Column/Coin/Value").Text == $"{(int)Math.Floor(R.Money + 1e-9)}c", 3);
+        // The ledger refreshes on a half-second timer: wait until it shows both the purse and the newest chronicle note.
+        await WaitFor(() => _main.Ui.Chapter.GetNode<Label>("Column/Coin/Value").Text == $"{(int)Math.Floor(R.Money + 1e-9)}c"
+            && _main.Ui.Chapter.GetNode<Label>("Column/Chronicle/Note0").Text == feed.Note(0), 3);
         int sold = R.Stats.Served[0] + R.Stats.Served[1];
         Check(feed.Drained > drained + 20, $"only {feed.Drained - drained} river events in {days} days");
         Check(feed.NotesWritten > notes, "no chronicle notes");

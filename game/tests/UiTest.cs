@@ -232,8 +232,10 @@ public partial class UiTest : Node
     private async Task Page()
     {
         _main.Sim.StepTicks(3 * _main.Params.TicksPerDay);
-        await TestInput.Frames(this, 40); // the page refreshes twice a second
         var ch = _main.Ui.Chapter;
+        // The page refreshes on a half-second timer: wait until the date entry shows the day reached (up to 2 s).
+        int dayNow = _main.Sim.World.Stats().Day;
+        await WaitFor(() => ch.GetNode<Label>("Column/Date/Value").Text.Contains($"ay {dayNow},"), 2);
         var day = ch.GetNode<Label>("Column/Date/Value").Text;
         Check(day.Contains("ay ") && day.Contains("year"), $"date entry reads '{day}'");
         Check(ch.GetNode<Label>("Column/Walkers/Value").Text.Contains("out of"), "walkers entry empty");
@@ -338,6 +340,13 @@ public partial class UiTest : Node
         Controls();
         await LabelsInside("1280x720-II");
         _notes.Add("chapter2=ok");
+    }
+
+    /// <summary>Waits until done() holds or the time is up (the chapter page refreshes on a half-second timer).</summary>
+    private async Task WaitFor(Func<bool> done, double seconds)
+    {
+        ulong end = Time.GetTicksMsec() + (ulong)(seconds * 1000);
+        while (!done() && Time.GetTicksMsec() < end) await TestInput.Frames(this, 1);
     }
 
     private static void Check(bool ok, string why)

@@ -146,7 +146,7 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   began and passes during it; a raise with nothing waiting still works but does not count). The count belongs to the
   town, not the bridge: a rebuilt or a second drawbridge starts from it (`Crossing.HandRaises`, `RaisesToKeeper`,
   `KeeperUnlocked` report the town's count; a press while it is already going up, and the keeper's own raises, do not count). Until then `HireKeeper` is refused in words, e.g. "No keeper will take this bridge on yet:
-  raise it by hand six times more first (four of ten raises done)"; the `KeeperUnlocked` event names the bridge when
+  raise the bridge for 6 more waiting barges first (4 of 10 done)" (1: "1 more waiting barge"); the `KeeperUnlocked` event names the bridge when
   it unlocks.
 - **Capacity** (doc, crossing table "Walker capacity per day"): every crossing but the ford has a first come, first
   served queue on each bank. A footbridge lets on at most `FootbridgeWalkersPerDay` (120, doc "about 120, 1 cell wide")

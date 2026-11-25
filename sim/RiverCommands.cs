@@ -20,29 +20,15 @@ public sealed partial class World
 
     private static string Coin(double c) => Math.Floor(c + 1e-9).ToString("0", CultureInfo.InvariantCulture) + "c";
 
-    /// <summary>Why a keeper cannot be hired yet, with the hand raises still to go, in words.</summary>
+    /// <summary>
+    /// Why a keeper cannot be hired yet, with what still counts toward one: raises by hand for a waiting barge, e.g.
+    /// "raise the bridge for 3 more waiting barges first (7 of 10 done)", as the bridge's badge says it.
+    /// </summary>
     private string KeeperLockedReason(Crossing x)
     {
         int left = x.RaisesToKeeper, all = _river!.KeeperUnlockRaises;
-        return $"No keeper will take this bridge on yet: raise it by hand {Times(left)} more first ({CountWord(x.HandRaises)} of {CountWord(all)} raises done)";
+        return $"No keeper will take this bridge on yet: raise the bridge for {left} more waiting {(left == 1 ? "barge" : "barges")} first ({x.HandRaises} of {all} done)";
     }
-
-    private static readonly string[] Words =
-    {
-        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
-        "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
-    };
-
-    private static string CountWord(int n) => n >= 0 && n < Words.Length ? Words[n] : n.ToString(CultureInfo.InvariantCulture);
-
-    /// <summary>"once", "twice", "three times".</summary>
-    internal static string Times(int n) => n switch
-    {
-        0 => "no times",
-        1 => "once",
-        2 => "twice",
-        _ => CountWord(n) + " times",
-    };
 
     public static string CrossingName(CrossingType t) => t switch
     {

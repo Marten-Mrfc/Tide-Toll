@@ -285,6 +285,7 @@ public partial class BridgeBadges : Control
                 b.Walkers.Text = $" · walkers W {x.QueueWest}, E {x.QueueEast}";
             }
             int toGo = x.RaisesToKeeper;
+            if (b.ShownToGo >= 0 && toGo != b.ShownToGo) b.NoCountAt = -1e9; // a raise counted: the "does not count" note is stale
             bool noCount = _now - b.NoCountAt < NoCountSec && toGo > 0 && !x.Keeper;
             if (force || x.Keeper != b.ShownKeeper || coin != b.ShownCoin || toGo != b.ShownToGo || noCount != b.ShownNoCount)
             {

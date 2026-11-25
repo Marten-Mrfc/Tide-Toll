@@ -54,7 +54,7 @@ public class RiverRules3Tests
         Assert.False(x.KeeperUnlocked);
         var no = w.HireKeeper(x.Id);
         Assert.False(no.Ok);
-        Assert.Equal("No keeper will take this bridge on yet: raise it by hand ten times more first (zero of ten raises done)", no.Reason);
+        Assert.Equal("No keeper will take this bridge on yet: raise the bridge for 10 more waiting barges first (0 of 10 done)", no.Reason);
         // Ten raises with no boat (and a second press while one is going up) still work as raises, but leave ten to go.
         for (int i = 0; i < 10; i++)
         {
@@ -73,7 +73,7 @@ public class RiverRules3Tests
         Assert.Equal(1, x.HandRaises);
         Assert.Equal(9, x.RaisesToKeeper);
         double money = r.Money;
-        Assert.Equal("No keeper will take this bridge on yet: raise it by hand nine times more first (one of ten raises done)", w.HireKeeper(x.Id).Reason);
+        Assert.Equal("No keeper will take this bridge on yet: raise the bridge for 9 more waiting barges first (1 of 10 done)", w.HireKeeper(x.Id).Reason);
         Assert.Equal(money, r.Money); // a refused hire costs nothing
         // A raise begun with nothing waiting does not count, even if a barge sails through while it is up.
         int late = w.SpawnBoat(BoatKind.Barge).Id;
@@ -98,7 +98,7 @@ public class RiverRules3Tests
         Assert.Equal(1, w.Erase(y.Cells.ToArray()));
         Drain(w);
         while (z.RaisesToKeeper > 1) RaiseForABarge(w, z);
-        Assert.Equal("No keeper will take this bridge on yet: raise it by hand once more first (nine of ten raises done)", w.HireKeeper(z.Id).Reason);
+        Assert.Equal("No keeper will take this bridge on yet: raise the bridge for 1 more waiting barge first (9 of 10 done)", w.HireKeeper(z.Id).Reason);
         Assert.DoesNotContain(Drain(w), e => e.Kind == RiverEventKind.KeeperUnlocked);
         RaiseForABarge(w, z);
         var unlocked = Drain(w).Where(e => e.Kind == RiverEventKind.KeeperUnlocked).ToList();
