@@ -44,7 +44,7 @@ void fragment() {
 		float ex = custom.w;
 		if (kind < 5.5) {
 			// Ferry: posts at both ends, the rope dotted between them, the raft on it.
-			float rope = step(abs(p.y), 0.08 + px) * step(0.45, fract(q.x * 2.0));
+			float rope = step(abs(p.y), 0.10 + px) * step(0.5, fract(q.x * 3.0));
 			float pa = 1.0 - smoothstep(0.26, 0.26 + px * 2.0, length(vec2(q.x - 0.3, p.y)));
 			float pb = 1.0 - smoothstep(0.26, 0.26 + px * 2.0, length(vec2(q.x - (aspect - 0.3), p.y)));
 			float raftX = abs(UV.x - fill) / max(ex * 0.5, 1e-3);

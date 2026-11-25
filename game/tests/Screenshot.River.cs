@@ -29,7 +29,8 @@ public partial class Screenshot
     private async Task RiverShots()
     {
         var sim = _main.Sim;
-        sim.Params = sim.Params with { River = (sim.Params.River ?? RiverRules.Default) with { StartMoney = 1200 } };
+        var rules = sim.Params.River ?? RiverRules.Default; // every crossing affordable, whatever the prices are
+        sim.Params = sim.Params with { River = rules with { StartMoney = rules.FootbridgePrice + rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 870 } };
         sim.Reset(1);
         sim.SetSpeed(1);
         sim.SetPaused(true);

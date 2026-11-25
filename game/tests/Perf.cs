@@ -87,7 +87,8 @@ public partial class Perf : Node
         _main.StartWalkers = _walkers;
         // The river rules on (as the game plays) with a purse for every crossing: a ferry north of the landing and a
         // drawbridge with its keeper south of it, so boats, queues, the raft and the leaf all run during the measure.
-        _main.River = TideToll.Sim.RiverRules.Default with { StartMoney = 600 };
+        var rules = TideToll.Sim.RiverRules.Default; // prices from the rules, so a retuned price never breaks the set-up
+        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 290 };
         AddChild(_main);
         if (_noHud) _main.GetNode("Hud").Free(); // to see what the HUD's text costs
         _main.Sim.StepTicks(6 * _main.Params.TicksPerDay);

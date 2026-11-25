@@ -149,6 +149,20 @@ Unchanged from the spec: the state thresholds (10, 25, 50, 85), state speeds, ta
 
 The page caps simulation work at 10 ms per frame (and 8 ticks), and at 5 ms on a frame that came more than 25 ms after the last, so a machine that is already late catches up on frames first; on a slow machine the sim runs slower than the chosen speed instead of stalling. The cap is kept honestly: the page tracks the cost of a plain tick and of a heavy one (a tick that rebuilds a route field, or in which a household arrives, about four times a plain one; `World.nextTickRefreshes()` says which is next) and starts a tick only if it should still fit (the first tick of a frame always runs). The flow preview builds its base costs in four slices, so the first preview of a drag does not stall a frame. Neither changes any result.
 
+## Frames on a slow machine (round 5, report only)
+
+500 walkers at 8x under Chromium's 4x CPU throttling (`npm run perf`), on the shared 4-core build machine at a load average of 6 to 9 from other agents, so the numbers wobble from run to run. Drawing time is the renderer's JS time per frame (the raster work it queues is not in it).
+
+| | fps | Worst frame | Drawing p95 | Drawing worst |
+| --- | --- | --- | --- | --- |
+| Round 4 review | 33 | 133 ms | 35 to 40 ms | |
+| Round 5 start (same code, this machine), dry | 34.6 | 267 ms | 34.1 ms | 227 ms |
+| Round 5 start, rain | 26.7 | 300 ms | 38.8 ms | 186 ms |
+| Round 5 final, dry (last three runs) | 32.3 to 36.4 | 83 to 167 ms | 15.4 to 16.7 ms | 27 to 76 ms |
+| Round 5 final, rain (last three runs) | 25.1 to 29.1 | 67 to 317 ms | 18.1 to 19.3 ms | 28 to 262 ms |
+
+What changed: the worn-ground rebuild (about 16 ms throttled) is spread over 4 frames instead of landing on one; the grass base is scaled up once, not on every recomposite; walkers are one path; the rain is one fill instead of two; a frame that is already late gets 5 ms of sim work instead of 10. Drawing's 95th percentile halved and the rain's frame rate rose (21 to 31 fps in a side-by-side run), but the frame rate at 8x is set by the simulation's ticks (the budget cuts it to about 4.3 sim seconds a second), and single long frames still come when the machine is loaded. None of this changes results: the five old gate sets are still bit-identical to the baseline.
+
 ## Rain and mud (round 4)
 
 Spec: "Weather and mud", "Ground states" and "Seasons and weather" (Gameplay tab). Code: `src/sim/weather.ts` and `World.updateMud`.
