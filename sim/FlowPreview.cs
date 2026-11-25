@@ -68,8 +68,9 @@ public sealed class FlowPreview
 /// Flow preview (the toy's preview.ts): where traffic would go if the player placed or removed something.
 /// It reads the live wear, crowding and trip counts, but writes only to its own scratch arrays, never to the
 /// world's fields, costs or random stream, so previewing cannot change a run. Run it in steps with
-/// <see cref="Begin"/> and <see cref="Step"/> (each step does at most one Dijkstra, a few ms), or at once
-/// with <see cref="Compute"/>.
+/// <see cref="Begin"/> and <see cref="Step()"/> (each step does at most one Dijkstra, a few ms), in bounded slices with
+/// <see cref="Step(int)"/> (a work budget, for a frame that must stop within about 2 ms), or at once with
+/// <see cref="Compute"/>. All three give bit-identical results.
 /// </summary>
 public sealed class FlowPredictor
 {
@@ -92,7 +93,10 @@ public sealed class FlowPredictor
     private readonly List<float> _pts = new();
 
     private Phase _phase = Phase.Idle;
-    private int _di, _pendingVersion, _maxPairs;
+    private int _di, _hi, _dj, _pendingVersion, _maxPairs;
+    private readonly DijkstraRun _run = new();
+    private List<RouteChange>? _all;
+    private List<(int Dest, int Houses)>? _blockedPairs;
     private double _pendingTime;
     private int[] _block = Array.Empty<int>(), _open = Array.Empty<int>(), _bridge = Array.Empty<int>(), _close = Array.Empty<int>();
     private CrossingWhatIf? _crossing;
@@ -135,39 +139,75 @@ public sealed class FlowPredictor
         _phase = Phase.Start;
     }
 
-    /// <summary>Does about one Dijkstra's worth of work. Returns true while more steps remain.</summary>
-    public bool Step()
+    /// <summary>Does one Dijkstra (or the set-up, or the collection of results). Returns true while more steps remain.</summary>
+    public bool Step() => Advance(int.MaxValue, oneItem: true);
+
+    /// <summary>
+    /// Does at most about <paramref name="maxWork"/> units of work, then returns: true while more remains. A unit is one
+    /// heap entry popped by a Dijkstra (0.1 to 0.3 microseconds in Release); rebuilding the base costs, a pass over the
+    /// grid (about 0.3 ms), is one block of <see cref="CostRebuildWork"/> units, and the result collection counts per
+    /// pair examined and route traced. The result is bit-identical to <see cref="Step()"/> and <see cref="Compute"/> however the
+    /// work is sliced. A frame that must stop within about 2 ms calls this with about 1000 units at a time (0.1 to
+    /// 0.4 ms a call on this machine) until its own clock says stop.
+    /// </summary>
+    public bool Step(int maxWork) => Advance(Math.Max(1, maxWork), oneItem: false);
+
+    /// <summary>Work units charged for one rebuild of the base costs (it cannot be split: it is one snapshot of the town).</summary>
+    public const int CostRebuildWork = 1024;
+    /// <summary>Work units charged per (house, destination) pair examined and per route traced while collecting the result (a trace is about 0.1 to 0.3 ms).</summary>
+    public const int PairWork = 4, TraceWork = 1000;
+
+    private bool Advance(int budget, bool oneItem)
     {
         var B = _w.Buildings;
-        switch (_phase)
+        while (budget > 0)
         {
-            case Phase.Start:
-                if (_w.Version != _baseVersion || _w.Time - _baseTime > BaseMaxAge)
-                {
-                    _baseVersion = -1; // marks the base incomplete until it is rebuilt
-                    _pendingVersion = _w.Version;
-                    _pendingTime = _w.Time;
-                    _w.BuildCost(_baseCost);
-                    _di = 0;
-                    _phase = Phase.Base;
-                }
-                else StartHyp();
-                return true;
-            case Phase.Base:
-                CostField.Dijkstra(_w.Grid, B[_dests[_di]].Door, _baseCost, _base[_dests[_di]], _heap, _doors);
-                if (++_di == _dests.Length) { _baseVersion = _pendingVersion; _baseTime = _pendingTime; StartHyp(); }
-                return true;
-            case Phase.Hyp:
-                CostField.Dijkstra(_w.Grid, B[_dests[_di]].Door, _cost, _hyp[_dests[_di]], _heap, _doors);
-                if (++_di == _dests.Length) _phase = Phase.Collect;
-                return true;
-            case Phase.Collect:
-                Result = Collect();
-                _phase = Phase.Done;
-                return false;
-            default:
-                return false;
+            switch (_phase)
+            {
+                case Phase.Start:
+                    if (_w.Version != _baseVersion || _w.Time - _baseTime > BaseMaxAge)
+                    {
+                        _baseVersion = -1; // marks the base incomplete until it is rebuilt
+                        _pendingVersion = _w.Version;
+                        _pendingTime = _w.Time;
+                        _w.BuildCost(_baseCost);
+                        budget -= CostRebuildWork;
+                        _di = 0;
+                        _phase = Phase.Base;
+                        if (_dests.Length > 0) _run.Begin(_w.Grid, B[_dests[0]].Door, _baseCost, _base[_dests[0]], _heap, _doors);
+                    }
+                    else StartHyp();
+                    if (oneItem) return true;
+                    break;
+                case Phase.Base:
+                case Phase.Hyp:
+                    if (_dests.Length == 0) { _baseVersion = _pendingVersion; _baseTime = _pendingTime; StartHyp(); break; }
+                    if (_run.Run(budget)) return true; // out of budget mid-field
+                    budget -= _run.LastPops;
+                    _di++;
+                    if (_phase == Phase.Base && _di == _dests.Length) { _baseVersion = _pendingVersion; _baseTime = _pendingTime; StartHyp(); }
+                    else if (_phase == Phase.Hyp && _di == _dests.Length) BeginCollect();
+                    else
+                    {
+                        int d = _dests[_di];
+                        if (_phase == Phase.Base) _run.Begin(_w.Grid, B[d].Door, _baseCost, _base[d], _heap, _doors);
+                        else _run.Begin(_w.Grid, B[d].Door, _cost, _hyp[d], _heap, _doors);
+                    }
+                    if (oneItem) return true;
+                    break;
+                case Phase.Collect:
+                    if (_hi < _w.Houses.Length && _dests.Length > 0) budget -= CollectPair();
+                    else _hi = _w.Houses.Length;
+                    if (_hi < _w.Houses.Length && !oneItem) break;
+                    if (_hi < _w.Houses.Length) continue; // Step(): the whole collection is one step
+                    Result = Finish();
+                    _phase = Phase.Done;
+                    return false;
+                default:
+                    return false;
+            }
         }
+        return _phase != Phase.Done && _phase != Phase.Idle;
     }
 
     /// <summary>Runs a preview to completion.</summary>
@@ -187,7 +227,21 @@ public sealed class FlowPredictor
         Apply(_block, CostOverride.Block);
         if (_crossing is { } cw) foreach (int c in cw.Cells) _cost[c] = (float)_w.WhatIfCrossingCost(cw.Type, cw.Cells.Length, c);
         _di = 0;
-        _phase = _dests.Length > 0 ? Phase.Hyp : Phase.Collect;
+        if (_dests.Length > 0)
+        {
+            _phase = Phase.Hyp;
+            _run.Begin(_w.Grid, _w.Buildings[_dests[0]].Door, _cost, _hyp[_dests[0]], _heap, _doors);
+        }
+        else BeginCollect();
+    }
+
+    private void BeginCollect()
+    {
+        _phase = Phase.Collect;
+        _hi = 0;
+        _dj = 0;
+        _all = new List<RouteChange>();
+        _blockedPairs = new List<(int Dest, int Houses)>();
     }
 
     private void Apply(int[] cells, CostOverride ov)
@@ -195,35 +249,39 @@ public sealed class FlowPredictor
         foreach (int c in cells) _cost[c] = (float)_w.CellCost(c, ov);
     }
 
-    private FlowPreview Collect()
+    /// <summary>Compares the base and what-if routes of one (house, destination) pair, in house then destination order. Returns the work done.</summary>
+    private int CollectPair()
     {
         var w = _w;
         var B = w.Buildings;
-        var all = new List<RouteChange>();
-        var blocked = new List<(int Dest, int Houses)>();
-        foreach (int h in w.Houses)
+        int h = w.Houses[_hi], d = _dests[_dj];
+        if (++_dj == _dests.Length) { _dj = 0; _hi++; }
+        int door = B[h].Door;
+        double rate = w.TripRatePerDay(h, d);
+        if (rate < MinRate) return PairWork;
+        float f0 = _base[d][door], f1 = _hyp[d][door];
+        if (!(f0 < float.PositiveInfinity)) return PairWork; // not reachable now either
+        bool reachable = f1 < float.PositiveInfinity;
+        double costRatio = reachable ? (double)f1 / f0 : double.PositiveInfinity;
+        if (reachable && Math.Abs(costRatio - 1) < SameCost) return PairWork;
+        float[] oldPts = TraceRoute(_base[d], _baseCost, door, B[d].Door);
+        float[] newPts = reachable ? TraceRoute(_hyp[d], _cost, door, B[d].Door) : CutAtBlock(oldPts, _cost);
+        int work = PairWork + (reachable ? 2 : 1) * TraceWork;
+        if (reachable && Math.Abs(costRatio - 1) <= AffectedCost && MaxDeviation(newPts, oldPts) <= AffectedCells) return work;
+        var blocked = _blockedPairs!;
+        if (!reachable)
         {
-            int door = B[h].Door;
-            foreach (int d in _dests)
-            {
-                double rate = w.TripRatePerDay(h, d);
-                if (rate < MinRate) continue;
-                float f0 = _base[d][door], f1 = _hyp[d][door];
-                if (!(f0 < float.PositiveInfinity)) continue; // not reachable now either
-                bool reachable = f1 < float.PositiveInfinity;
-                double costRatio = reachable ? (double)f1 / f0 : double.PositiveInfinity;
-                if (reachable && Math.Abs(costRatio - 1) < SameCost) continue;
-                float[] oldPts = TraceRoute(_base[d], _baseCost, door, B[d].Door);
-                float[] newPts = reachable ? TraceRoute(_hyp[d], _cost, door, B[d].Door) : CutAtBlock(oldPts, _cost);
-                if (reachable && Math.Abs(costRatio - 1) <= AffectedCost && MaxDeviation(newPts, oldPts) <= AffectedCells) continue;
-                if (!reachable)
-                {
-                    int k = blocked.FindIndex(q => q.Dest == d);
-                    if (k < 0) blocked.Add((d, 1)); else blocked[k] = (d, blocked[k].Houses + 1);
-                }
-                all.Add(new RouteChange { Home = h, Dest = d, Rate = rate, OldPts = oldPts, NewPts = newPts, Reachable = reachable, CostRatio = costRatio });
-            }
+            int k = blocked.FindIndex(q => q.Dest == d);
+            if (k < 0) blocked.Add((d, 1)); else blocked[k] = (d, blocked[k].Houses + 1);
         }
+        _all!.Add(new RouteChange { Home = h, Dest = d, Rate = rate, OldPts = oldPts, NewPts = newPts, Reachable = reachable, CostRatio = costRatio });
+        return work;
+    }
+
+    private FlowPreview Finish()
+    {
+        var w = _w;
+        var all = _all!;
         // Busiest first; a stable insertion sort, as the toy's Array.prototype.sort is stable.
         for (int i = 1; i < all.Count; i++)
         {
@@ -238,7 +296,8 @@ public sealed class FlowPredictor
         if (_crossing is { } cw) (boatsBlocked, boatsRaise) = w.BoatsHeldPerDay(cw.Type, cw.Row);
         var p = new FlowPreview { More = Math.Max(0, all.Count - _maxPairs), ReroutedPerDay = rerouted, Version = w.Version, BoatsBlockedPerDay = boatsBlocked, BoatsNeedRaisePerDay = boatsRaise };
         for (int i = 0; i < all.Count && i < _maxPairs; i++) p.Changes.Add(all[i]);
-        p.Blocked.AddRange(blocked);
+        p.Blocked.AddRange(_blockedPairs!);
+        _all = null; _blockedPairs = null;
         return p;
     }
 

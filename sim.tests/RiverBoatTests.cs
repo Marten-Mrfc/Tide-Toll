@@ -221,4 +221,24 @@ public class RiverBoatTests
         Assert.True(carried);
         Assert.True(w.TripRatePerDay(w.Houses[0], landing) > 0 || w.Houses.ToArray().Any(h => w.TripRatePerDay(h, landing) > 0));
     }
+
+    [Fact]
+    public void ANorthboundBoatNeverMovesSouthEvenWithOneBerthAndACrowdedRiver()
+    {
+        // One berth, a boat every second of each kind and a short mooring window: boats queue for the berth all day.
+        var rules = RiverRules.Default with { Berths = 1, RowboatGapSec = 1, BargeGapSec = 1.3, MooringSec = 3, HaulGoods = false };
+        var w = Make(2, 0, rules);
+        int queued = 0;
+        for (int t = 0; t < 1500; t++)
+        {
+            w.Tick();
+            foreach (var b in w.River!.Boats)
+            {
+                if (b.State == BoatState.TurnedBack) continue;
+                Assert.True(b.Y <= b.PrevY + 1e-9, $"tick {t}: boat {b.Id} ({b.State}) moved south from {b.PrevY} to {b.Y}");
+                if (b.State == BoatState.Waiting && b.WaitingAt == -2) queued++;
+            }
+        }
+        Assert.True(queued > 100, $"only {queued} boat-ticks waited for the berth");
+    }
 }

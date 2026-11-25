@@ -62,6 +62,16 @@ public sealed record RiverRules
     public int FerryCapacity { get; init; } = 6;
     public double FerryLoadSec { get; init; } = 0.5;             // chosen
     public double FerryCrossSec { get; init; } = 1.0;            // chosen
+    /// <summary>
+    /// Unloading and turning round at a stage before boarding starts. Chosen so that a full ferry (6 aboard, 1.0 s across)
+    /// carries the doc's "about 30 each way per boat" a day: 6 per leg, a leg every 1.0 + 0.5 s, so 15 s x 6 / 3 s = 30.
+    /// </summary>
+    public double FerryTurnSec { get; init; } = 0.5;
+    /// <summary>Walker capacity per day of a 1-cell footbridge and of a closed drawbridge (doc, crossing table: about 120 and about 250).</summary>
+    public double FootbridgeWalkersPerDay { get; init; } = 120;
+    public double DrawbridgeWalkersPerDay { get; init; } = 250;
+    /// <summary>A bridge's bucket holds this many seconds of its capacity, so a small group crosses together (chosen).</summary>
+    public double BridgeBurstSec { get; init; } = 1;
     /// <summary>Expected wait for loading and half the headway, in the ferry's routing cost (spec: 0.75 s).</summary>
     public double FerryExpectedWaitSec { get; init; } = 0.75;
     /// <summary>Drawbridge cycle, half the doc's 2 s / 3 s per boat / 2 s (flag B).</summary>

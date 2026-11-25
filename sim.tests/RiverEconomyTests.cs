@@ -103,4 +103,46 @@ public class RiverEconomyTests
         ToyHarness.Run(w, 4);
         Assert.Equal(-5 - 5 - 0.5, w.River.Money, 9);
     }
+
+    [Fact]
+    public void ErasingIsRefusedWhenItWouldTakeThePurseBelowTheDebtLimit()
+    {
+        // 240c for the drawbridge leaves 0c; upkeep then takes the purse into debt.
+        var w = Make(1, 0, NoSchedule with { StartMoney = 240, HearthTax = 0, DrawbridgeUpkeep = 50 });
+        var r = w.River!;
+        var d = PlaceAtFirstRow(w, CrossingType.Drawbridge);
+        Assert.True(d.Ok, d.Reason);
+        ToyHarness.Run(w, 4); // one season: -50c
+        Assert.Equal(-50, r.Money, 9);
+        // Taking it down costs 120c, which would leave -170c: refused, in words, once, and the bridge stays.
+        var x = r.Crossings.Single(c => c.Id == d.Id);
+        Drain(w);
+        Assert.False(w.CheckErase(d.Id).Ok);
+        Assert.Equal(0, w.Erase(x.Cells.ToArray()));
+        Assert.Equal("Not enough coin: taking down the drawbridge costs 120c, you have -50c and the purse may not go below -100c", w.LastRiverRefusal);
+        Assert.Equal(-50, r.Money, 9);
+        Assert.Single(w.Bridges);
+        Assert.Contains(r.Crossings, c => c.Id == d.Id);
+        Assert.Equal(2, Drain(w).Count(e => e.Kind == RiverEventKind.CannotAfford)); // CheckErase, then Erase once for all its cells
+        // A ferry erase that fits within the limit goes through: 20c takes -50c to -70c.
+        var w2 = Make(1, 0, NoSchedule with { StartMoney = 40, HearthTax = 0, FerryUpkeep = 50 });
+        var f = PlaceAtFirstRow(w2, CrossingType.Ferry);
+        Assert.True(f.Ok, f.Reason);
+        ToyHarness.Run(w2, 4);
+        Assert.Equal(-53, w2.River!.Money, 9);
+        Assert.Equal(1, w2.Erase(w2.River.Crossings.Single(c => c.Id == f.Id).Cells.ToArray()));
+        Assert.Equal(-73, w2.River.Money, 9);
+    }
+
+    [Fact]
+    public void PurchasesNeverGoIntoDebt()
+    {
+        var w = Make(1, 0, NoSchedule with { StartMoney = 40, HearthTax = 0 });
+        Assert.True(PlaceAtFirstRow(w, CrossingType.Ferry).Ok);
+        ToyHarness.Run(w, 4); // -5c
+        var no = PlaceAtFirstRow(w, CrossingType.Footbridge, 9);
+        Assert.False(no.Ok);
+        Assert.Equal("Not enough coin: the footbridge costs 50c, you have -5c", no.Reason);
+        Assert.Equal(-5, w.River!.Money, 9);
+    }
 }

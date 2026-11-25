@@ -52,7 +52,13 @@ public sealed class Crossing
     /// <summary>Ferry: -1 docked at the west stage, +1 east, 0 crossing.</summary>
     public int FerrySide { get; internal set; }
     public int Passengers => _passengers;
+    /// <summary>Walkers served after a wait (boarded, let on, or gave up).</summary>
     public int WalkersServed { get; internal set; }
+    /// <summary>Walkers who reached the other bank by this crossing, and how many of them waited at a gate first.</summary>
+    public int WalkersCrossed { get; internal set; }
+    public int WalkersWaited { get; internal set; }
+    /// <summary>Footbridge and drawbridge: walkers that may step on now (a bucket filled at the bridge's capacity per day).</summary>
+    public double Tokens { get; internal set; }
     public int BoatsPassed { get; internal set; }
 
     private readonly int[] _cells;
@@ -63,6 +69,7 @@ public sealed class Crossing
     internal int _passengers;
     internal int FerryFrom;          // side the current leg started from
     internal double LoadT = -1;      // seconds since the first passenger boarded, -1 none
+    internal double DockT;           // seconds since the ferry last docked (it turns round before boarding)
     internal bool Sailing;
     internal readonly WalkerQueue? West, East;
     // Drawbridge.
@@ -73,18 +80,20 @@ public sealed class Crossing
     internal Crossing(int id, CrossingType type, int row, int[] cells, int westEnd, int eastEnd, int bridgeId, RiverRules rules, int maxWalkers)
     {
         Id = id; Type = type; Row = row; _cells = cells; WestEnd = westEnd; EastEnd = eastEnd; BridgeId = bridgeId; _rules = rules;
+        if (type != CrossingType.Ford)
+        {
+            West = new WalkerQueue(maxWalkers * 2 + 8);
+            East = new WalkerQueue(maxWalkers * 2 + 8);
+        }
         if (type == CrossingType.Ferry)
         {
             PassengerIdx = new int[rules.FerryCapacity];
             PassengerTicket = new int[rules.FerryCapacity];
-            West = new WalkerQueue(maxWalkers * 2 + 8);
-            East = new WalkerQueue(maxWalkers * 2 + 8);
             FerrySide = -1;
         }
         else { PassengerIdx = PassengerTicket = Array.Empty<int>(); }
+        Tokens = 1;
     }
-
-    internal bool Gated => Type == CrossingType.Ferry || Type == CrossingType.Drawbridge;
 }
 
 /// <summary>First come, first served queue of (walker index, ticket); stale entries are skipped when they reach the head.</summary>

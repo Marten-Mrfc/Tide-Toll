@@ -91,14 +91,35 @@ public class RiverWalkerTests
                 maxQueue = Math.Max(maxQueue, x.QueueWest + x.QueueEast);
             }
             while (x.State != BridgeState.Closed) w.Tick();
-            w.Tick(); w.Tick();
-            foreach (var k in w.Walkers) Assert.False(k.Hold == WalkerHold.Waiting && k.HoldAt == x.Id, $"walker {k.Id} still waits at a lowered bridge");
+            // Once down, the queue goes over at the bridge's capacity (about 250 a day): never faster, and nobody is left behind.
+            var waiting = new HashSet<int>();
+            foreach (var k in w.Walkers) if (k.Hold == WalkerHold.Waiting && k.HoldAt == x.Id) waiting.Add(k.Id);
+            int queued = waiting.Count;
+            double perTick = w.River!.Rules.DrawbridgeWalkersPerDay / w.Params.DaySimSec / w.Params.TickHz;
+            var span = new HashSet<int>(x.Cells);
+            var onSpan = new HashSet<int>();
+            foreach (var k in w.Walkers) if (span.Contains(k.Cell)) onSpan.Add(k.Id);
+            int ticks = 0, entered = 0;
+            while (ticks < Math.Ceiling(queued / perTick) + 2)
+            {
+                w.Tick(); ticks++;
+                foreach (var k in w.Walkers)
+                {
+                    if (span.Contains(k.Cell)) { if (onSpan.Add(k.Id)) entered++; }
+                    else onSpan.Remove(k.Id);
+                    if (!(k.Hold == WalkerHold.Waiting && k.HoldAt == x.Id)) waiting.Remove(k.Id); // its turn came (it may queue again later)
+                }
+                Assert.True(entered <= perTick * (ticks + w.Params.TickHz * w.River.Rules.BridgeBurstSec) + 1, $"{entered} walkers stepped on in {ticks} ticks: faster than the bridge's capacity");
+            }
+            Assert.True(waiting.Count == 0, $"{waiting.Count} walkers still wait at a lowered bridge {ticks} ticks after it came down ({queued} queued)");
             AssertRiverInvariants(w, $"cycle {cycle}");
             for (int t = 0; t < 100; t++) w.Tick();
         }
         Assert.True(maxQueue >= 2, $"queue never formed ({maxQueue})");
         Assert.True(x.AvgWait > 0.5, $"avg wait {x.AvgWait}, served {x.WalkersServed}, mean {w.River!.Stats.MeanWalkerWait}, worst {w.River.Stats.WalkerWaitMax}");
-        Assert.True(w.River!.Stats.WalkerWaitMax <= 10.2, $"worst wait {w.River.Stats.WalkerWaitMax}"); // 1 s up, 8 s held, 1 s down at most
+        // 1 s up, 8 s held, 1 s down at most, then the queue's turn at the bridge's capacity.
+        double drain = 2 * maxQueue / (w.River!.Rules.DrawbridgeWalkersPerDay / w.Params.DaySimSec);
+        Assert.True(w.River!.Stats.WalkerWaitMax <= 10.2 + drain, $"worst wait {w.River.Stats.WalkerWaitMax}");
     }
 
     [Fact]

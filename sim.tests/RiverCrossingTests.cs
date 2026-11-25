@@ -176,9 +176,20 @@ public class RiverCrossingTests
         Assert.True(f.AvgWait > 0 && d.AvgWait > 0, $"ferry {f.AvgWait}, drawbridge {d.AvgWait}");
         Assert.Equal(3 * (0.75 + 1.0 + f.AvgWait) / f.Cells.Count, w.CellCost(f.Cells[0]), 9);
         Assert.Equal(0.8 + 3 * d.AvgWait / d.Cells.Count, w.CellCost(d.Cells[0]), 9);
-        Assert.Equal(0.8, w.CellCost(fb.Cells[0]), 9);
+        // A footbridge learns no wait: its deck cost is the bridge cost with the usual crowding term only.
+        Assert.Equal(0.8 * Crowding(w, fb.Cells[0]), w.CellCost(fb.Cells[0]), 9);
         // Overrides used by the flow preview still win.
         Assert.True(double.IsPositiveInfinity(w.CellCost(f.Cells[0], CostOverride.Block)));
         Assert.True(double.IsPositiveInfinity(w.CellCost(f.Cells[0], CostOverride.CloseBridge)));
+    }
+
+    /// <summary>The crowding multiplier CellCost applies to a cell (1 when it is nearly empty).</summary>
+    internal static double Crowding(World w, int c)
+    {
+        var p = w.Params;
+        double rho = w.Occupancy[c] / p.CellAreaM2;
+        if (rho <= 0.05) return 1;
+        double v = Math.Max(1 / p.CrowdMaxCostMul, 1 - Math.Exp(-p.WeidmannGamma * (1 / rho - 1 / p.WeidmannRhoMax)));
+        return 1 + p.CrowdStrength * (1 / Math.Min(1, v) - 1);
     }
 }

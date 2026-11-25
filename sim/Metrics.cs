@@ -66,6 +66,9 @@ public sealed class Metrics
         _trail = new int[_nc];
         _seen = new byte[_nc];
         _stack = new int[_nc];
+        // The first Array.Sort of an int range of 2 or more creates the runtime's shared sort helper (24 bytes, once
+        // per process). Do it here, so Stats() allocates nothing even on its first call.
+        Array.Sort(_trail, 0, 2);
     }
 
     internal void Advance(double time)

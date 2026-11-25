@@ -74,8 +74,17 @@ public class InvariantTests
     [Fact]
     public void TickAndStatsAllocateNothing()
     {
+        // Warm-up runs every path once (ticks, Stats, a walker count change), so one-time JIT and runtime set-up is
+        // not counted. Stats() must allocate nothing even on its first call: Metrics creates the runtime's shared
+        // int sort helper (the 24 bytes this test used to report when run alone) in its constructor.
         var w = new World(3, 500);
+        long s0 = GC.GetAllocatedBytesForCurrentThread();
+        w.Stats();
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - s0);
         for (int i = 0; i < 300; i++) w.Tick();
+        w.SetWalkerCount(200);
+        w.SetWalkerCount(500);
+        w.Tick();
         long a0 = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 300; i++) w.Tick(); // includes field rebuilds, decay sweeps and the first-trail check
         var s = w.Stats();

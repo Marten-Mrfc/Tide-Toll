@@ -42,6 +42,14 @@ public struct Walker
     public float WaitT;
     internal int Ticket;
     internal double TripT0;
+    /// <summary>Bank the walker last stood on (-1 west, +1 east, 0 not yet known), for counting crossings.</summary>
+    internal sbyte Side;
+    /// <summary>Crossing id last stood on (ford 0; -2 the ice; -1 none), credited when the walker reaches the other bank.</summary>
+    internal short Via;
+    /// <summary>Waited at a gate since its last crossing.</summary>
+    internal bool Waited;
+    /// <summary>Holds a pass through the gate of crossing Via (granted from the queue); spent on stepping onto it.</summary>
+    internal bool Pass;
 
     /// <summary>Drawn on the map: walking out or back (not inside a building).</summary>
     public readonly bool Visible => State == WalkState.Out || State == WalkState.Back;

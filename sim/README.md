@@ -62,7 +62,9 @@ Grid.Line4(x0, y0, x1, y1, List<int> cells)             // a 4-connected fence l
 // Flow preview: never touches the world's state or random stream
 var p = new FlowPredictor(world);
 p.Begin(new WhatIf { Block = cells }, maxPairs: 5);     // also Open, Bridge, CloseBridge
-while (p.Step()) { /* one Dijkstra per call: spread over frames */ }
+while (p.Step()) { /* one Dijkstra per call (1 to 12 ms): spread over frames */ }
+// or bounded slices, bit-identical results: about 1000 units is 0.1 to 0.8 ms (thread CPU time, Release)
+while (p.Step(maxWork: 1000) && frameClockMs < 2) { }
 FlowPreview r = p.Result!;                              // Changes (old/new route points), More, ReroutedPerDay, Blocked
 string line = FlowPredictor.Describe(r, b => name);     // "Reroutes about 40 walkers a day (+8% longer)"
 world.PreviewFlows(whatIf, maxPairs)                    // the same in one call
@@ -129,7 +131,9 @@ world.CheckCrossing(CrossingType.Drawbridge, x, y);      // what PlaceCrossing w
 world.PlaceFerry(x, y); world.PlaceDrawbridge(x, y); world.PlaceFootbridge(x, y); world.PlaceCrossing(type, x, y);
 world.PlaceBridge(x, y);                                 // with the river rules: a 50c footbridge; null on refusal, reason in LastRiverRefusal
 world.SetBridge(id, raise: true); world.HireKeeper(id);
-world.Erase(cells);                                      // also removes ferries and drawbridges (half the price, no refund)
+world.Erase(cells);                                      // also removes ferries and drawbridges (half the price, no refund);
+                                                         // a crossing whose erase would take the purse below the debt limit stays
+world.CheckErase(id); world.EraseCost(type);             // what Erase would say for a crossing, without removing it
 world.SpawnBoat(BoatKind.Barge);                         // outside the schedule, for tests and tutorials
 world.CrossingAt(cell);                                  // crossing id on a cell, -1
 

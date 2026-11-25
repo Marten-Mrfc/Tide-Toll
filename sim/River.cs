@@ -90,6 +90,7 @@ public sealed partial class World
             var x = _crossings[i];
             if (x.Type == CrossingType.Drawbridge) StepDrawbridge(x, dt);
             else if (x.Type == CrossingType.Ferry) StepFerry(x, dt);
+            if (x.Type == CrossingType.Drawbridge || x.Type == CrossingType.Footbridge) StepBridgeGate(x, dt);
         }
     }
 
@@ -196,6 +197,15 @@ public sealed class RiverStats
     public int WalkerWaits { get; internal set; }
     public double WalkerWaitSum { get; internal set; }
     public double WalkerWaitMax { get; internal set; }
+    /// <summary>Walkers who crossed the river (reached the other bank), by any crossing or the ice, and how many waited at a gate first.</summary>
+    public int Crossings { get; internal set; }
+    public int CrossingsWaited { get; internal set; }
+    /// <summary>Crossings made over the ice.</summary>
+    public int IceCrossings { get; internal set; }
+    /// <summary>Grain dropped on the way: its carrier gave up (waited too long, or was sent home).</summary>
+    public int GrainLost { get; internal set; }
+    /// <summary>Grain that reached the landing (to a boat, to the market, or unsold).</summary>
+    public int GrainDelivered => GrainToBoats + GrainToMarket + GrainUnsold;
     public int Trips { get; internal set; }
     public double TripTimeSum { get; internal set; }
 

@@ -170,7 +170,16 @@ public sealed partial class World
     {
         int berth = -1;
         for (int j = 0; j < _berth.Length; j++) if (_berth[j] < 0) { berth = j; break; }
-        if (berth < 0) { b.Y = landY + _river!.StopRows; return; } // taken this tick by a boat ahead
+        if (berth < 0)
+        {
+            // Taken this tick by a boat ahead: hold short of the landing like a boat that found the berths full,
+            // but never move back south of where the boat was before this tick's move.
+            b.Y = Math.Min(b.PrevY, Math.Max(b.Y, landY + _river!.StopRows));
+            if (b.State != BoatState.Waiting) Emit(RiverEventKind.BoatWaiting, b.Id, BerthFull, 0);
+            b.State = BoatState.Waiting;
+            b.WaitingAt = BerthFull;
+            return;
+        }
         _berth[berth] = b.Id;
         b.Berth = berth;
         b.Y = landY;

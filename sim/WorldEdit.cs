@@ -47,6 +47,7 @@ public sealed partial class World
                 _here[w.Cell]--; _here[best]++;
                 w.Cell = best; w.HasAim = false;
                 w.X = w.Px = best % n + 0.5; w.Y = w.Py = best / n + 0.5;
+                if (_river != null) RiverPlaced(ref w);
                 return;
             }
         }
@@ -138,10 +139,14 @@ public sealed partial class World
         return br;
     }
 
-    /// <summary>Removes fences and whole bridges touching these cells. Returns how many things were removed.</summary>
+    /// <summary>
+    /// Removes fences and whole bridges touching these cells. Returns how many things were removed. With the river rules a
+    /// crossing whose erase cost would take the purse below the debt limit stays (reason in LastRiverRefusal).
+    /// </summary>
     public int Erase(ReadOnlySpan<int> cells)
     {
         int n = 0;
+        _eraseRefused = -1;
         foreach (int c in cells)
         {
             if (c < 0 || c >= _nc) continue;
@@ -150,7 +155,8 @@ public sealed partial class World
             int b = _bridgeAt[c];
             if (b >= 0)
             {
-                if (_river != null) RiverBridgeErased(b);
+                // With the river rules taking a bridge down costs coin; a purse at the debt limit keeps it standing.
+                if (_river != null && !RiverBridgeErased(b)) continue;
                 int k = _bridges.FindIndex(q => q.Id == b);
                 foreach (int bc in _bridges[k].Cells) _bridgeAt[bc] = -1;
                 _bridges.RemoveAt(k); // keeps the order of the others, as the toy's filter does

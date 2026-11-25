@@ -65,3 +65,73 @@ public static class CostField
         return v;
     }
 }
+
+/// <summary>
+/// <see cref="CostField.Dijkstra"/> split into bounded slices: <see cref="Begin"/> sets it up and each
+/// <see cref="Run"/> settles at most a given number of heap entries, so a caller can stop within a frame budget.
+/// Pops, ties and float rounding are exactly those of <see cref="CostField.Dijkstra"/>, so the finished field is
+/// bit-identical however the work was sliced. Allocation-free after construction.
+/// </summary>
+public sealed class DijkstraRun
+{
+    private Grid _grid;
+    private float[] _cost = Array.Empty<float>(), _field = Array.Empty<float>();
+    private int[]? _goals;
+    private BinaryHeap? _heap;
+    private int _left;
+
+    /// <summary>Heap entries popped by the last <see cref="Run"/>.</summary>
+    public int LastPops { get; private set; }
+
+    /// <summary>True once the field is complete.</summary>
+    public bool Done { get; private set; } = true;
+
+    /// <summary>Starts a field towards <paramref name="target"/>; fills <paramref name="field"/> with +Infinity first (one pass over the grid).</summary>
+    public void Begin(in Grid grid, int target, float[] cost, float[] field, BinaryHeap heap, int[]? goals = null)
+    {
+        if (cost.Length != grid.Count || field.Length != grid.Count)
+            throw new ArgumentException("cost and field must have one entry per grid cell.");
+        _grid = grid; _cost = cost; _field = field; _heap = heap; _goals = goals;
+        Array.Fill(field, float.PositiveInfinity);
+        heap.Clear();
+        Done = false;
+        if (!(cost[target] < float.PositiveInfinity)) { Done = true; return; }
+        field[target] = 0;
+        heap.Push(0, target);
+        _left = goals == null || goals.Length == 0 ? -1 : goals.Length;
+    }
+
+    /// <summary>Pops at most <paramref name="maxPops"/> heap entries (stale ones included). Returns true while work remains.</summary>
+    public bool Run(int maxPops)
+    {
+        LastPops = 0;
+        if (Done) return false;
+        var heap = _heap!;
+        float[] cost = _cost, field = _field;
+        int w = _grid.Width, h = _grid.Height;
+        for (int pops = 0; pops < maxPops; pops++)
+        {
+            if (heap.Count == 0) { Done = true; return false; }
+            int u = heap.Pop();
+            LastPops++;
+            double du = heap.LastKey;
+            if (du > field[u]) continue; // stale entry
+            if (_left > 0 && Array.IndexOf(_goals!, u) >= 0 && --_left == 0) { Done = true; return false; }
+            int ux = u % w, uy = u / w;
+            float cu = cost[u];
+            for (int k = 0; k < 8; k++)
+            {
+                int vx = ux + Grid.DX[k], vy = uy + Grid.DY[k];
+                if (vx < 0 || vy < 0 || vx >= w || vy >= h) continue;
+                int v = vy * w + vx;
+                float cv = cost[v];
+                if (float.IsPositiveInfinity(cv)) continue;
+                if (k >= 4 && (float.IsPositiveInfinity(cost[uy * w + vx]) || float.IsPositiveInfinity(cost[vy * w + ux]))) continue;
+                float nd = (float)(du + Grid.DL[k] * 0.5 * ((double)cu + cv));
+                if (nd < field[v]) { field[v] = nd; heap.Push(nd, v); }
+            }
+        }
+        if (heap.Count == 0) Done = true;
+        return !Done;
+    }
+}

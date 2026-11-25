@@ -159,33 +159,61 @@ public sealed partial class World
         return RiverResult.Success(id, $"Hired a keeper for {Coin(price)}");
     }
 
-    /// <summary>Hook of Erase for cell c: removes a ferry on it. Returns how many crossings were removed.</summary>
+    /// <summary>Hook of Erase for cell c: removes a ferry on it (if the purse allows). Returns how many crossings were removed.</summary>
     private int RiverEraseAt(int c)
     {
         int id = _crossAt[c];
         if (id < 0) return 0;
         var x = CrossingById(id);
         if (x == null || x.Type != CrossingType.Ferry) return 0;
-        RemoveCrossing(x);
-        return 1;
+        return RemoveCrossing(x) ? 1 : 0;
     }
 
-    /// <summary>Hook of Erase before a footbridge or drawbridge is removed.</summary>
-    private void RiverBridgeErased(int bridgeId)
+    /// <summary>Hook of Erase before a footbridge or drawbridge is removed: false (and nothing removed) when the purse cannot pay for it.</summary>
+    private bool RiverBridgeErased(int bridgeId)
     {
         foreach (var x in _crossings)
-            if (x.BridgeId == bridgeId && x.Type != CrossingType.Ford) { RemoveCrossing(x); return; }
+            if (x.BridgeId == bridgeId && x.Type != CrossingType.Ford) return RemoveCrossing(x);
+        return true;
     }
 
-    private void RemoveCrossing(Crossing x)
+    /// <summary>What taking a crossing down costs (EraseCostShare of its price).</summary>
+    public double EraseCost(CrossingType t) => _river == null ? 0 : _river.EraseCostShare * _river.Price(t);
+
+    /// <summary>
+    /// Whether the purse can pay for taking crossing <paramref name="id"/> down without going below the debt limit,
+    /// with the reason in words when not. Removes nothing.
+    /// </summary>
+    public RiverResult CheckErase(int id)
     {
+        if (_river == null) return Refuse("The river rules are off");
+        var x = CrossingById(id);
+        if (x == null || x.Type == CrossingType.Ford) return Refuse("There is nothing here to take down");
+        double cost = EraseCost(x.Type);
+        if (_money - cost < _river.DebtLimit - 1e-9)
+        {
+            Emit(RiverEventKind.CannotAfford, -1, id, cost);
+            return Refuse($"Not enough coin: taking down the {CrossingName(x.Type)} costs {Coin(cost)}, you have {Coin(_money)} " +
+                          $"and the purse may not go below {Coin(_river.DebtLimit)}");
+        }
+        _lastRefusal = "";
+        return RiverResult.Success(id);
+    }
+
+    private int _eraseRefused = -1; // crossing refused in the current Erase call (asked once, not once per cell)
+
+    private bool RemoveCrossing(Crossing x)
+    {
+        if (x.Id == _eraseRefused) return false;
+        if (!CheckErase(x.Id).Ok) { _eraseRefused = x.Id; return false; }
         ReleaseAll(x);
         foreach (int c in x.Cells) _crossAt[c] = -1;
         for (int i = 0; i < _boatCount; i++) if (_boats[i].Through == x.Id) _boats[i].Through = -1;
         _crossings.Remove(x);
-        double cost = _river!.EraseCostShare * _river.Price(x.Type);
+        double cost = EraseCost(x.Type);
         Spend(cost);
         Emit(RiverEventKind.CrossingRemoved, -1, x.Id, cost);
+        return true;
     }
 
     /// <summary>

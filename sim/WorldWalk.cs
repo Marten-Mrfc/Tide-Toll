@@ -88,6 +88,7 @@ public sealed partial class World
     {
         if (w.Visible) _here[w.Cell]--;
         w.Hold = WalkerHold.None;
+        if (w.Cargo != 0 && _river != null) _rs!.GrainLost += w.Cargo;
         w.Cargo = 0;
         w.Cell = _map.Buildings[w.Home].Door;
         w.State = WalkState.Home;
@@ -95,6 +96,7 @@ public sealed partial class World
         w.HasAim = false;
         w.X = w.Px = w.Cell % _n + 0.5;
         w.Y = w.Py = w.Cell / _n + 0.5;
+        if (_river != null) { w.Waited = false; RiverPlaced(ref w); }
     }
 
     private bool ComputeAim(ref Walker w)
@@ -208,6 +210,7 @@ public sealed partial class World
             {
                 _here[w.Cell]--; _here[c]++;
                 w.Cell = c;
+                if (_river != null) RiverEnter(ref w, c);
                 Footstep(c, w.X, w.Y, dx, dy, d);
                 w.HasAim = false;
             }

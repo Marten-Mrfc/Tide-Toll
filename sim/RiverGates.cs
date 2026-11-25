@@ -2,12 +2,10 @@ using System;
 
 namespace TideToll.Sim;
 
-// Crossings on the tick: the drawbridge state machine and its keeper, the ferry's cycle, walkers waiting
-// at a gate (a drawbridge that is not down, or a ferry stage), and the routing cost of each crossing.
+// Crossings on the tick: the drawbridge state machine and its keeper, the ferry's cycle, and the routing cost of
+// each crossing. Walkers waiting at a gate are in RiverQueues.cs.
 public sealed partial class World
 {
-    private int _curWalker; // index of the walker being stepped (for the ferry queues)
-
     // ---------------------------------------------------------------- routing cost
 
     /// <summary>Per-cell cost of a ferry's water cells: (expected load and headway wait + ride + learned wait), in cost units, spread over the cells.</summary>
@@ -41,107 +39,6 @@ public sealed partial class World
         if (id < 0 || _bridgeAt[c] < 0) return false;
         var x = CrossingById(id);
         return x != null && x.Type == CrossingType.Drawbridge && x.State == BridgeState.Raised;
-    }
-
-    // ---------------------------------------------------------------- walkers at a gate
-
-    /// <summary>Hook of the walker's step, before it enters cell c: true when it must stop and wait on its bank.</summary>
-    private bool RiverGate(ref Walker w, int c)
-    {
-        int id = _crossAt[c];
-        if (id < 0 || _crossAt[w.Cell] == id) return false;
-        var x = CrossingById(id);
-        if (x == null || !x.Gated) return false;
-        if (x.Type == CrossingType.Drawbridge && x.State == BridgeState.Closed) return false;
-        w.Hold = WalkerHold.Waiting;
-        w.HoldAt = (short)id;
-        w.WaitT = 0;
-        w.Ticket = ++_ticketSeq;
-        if (x.Type == CrossingType.Ferry) (SideOf(w.Cell) < 0 ? x.West! : x.East!).Push(_curWalker, w.Ticket);
-        return true;
-    }
-
-    private int SideOf(int c)
-    {
-        int s = _map.Bank[c];
-        if (s != 0) return s;
-        return c % _n + 0.5 < _map.RiverX[c / _n] ? -1 : 1;
-    }
-
-    /// <summary>A waiting walker's tick. True when it is released and walks on this tick.</summary>
-    private bool RiverHold(ref Walker w, double dt)
-    {
-        var x = CrossingById(w.HoldAt);
-        if (x == null) { Release(ref w); return true; }
-        w.WaitT = (float)(w.WaitT + dt);
-        w.Stuck = 0;
-        if (SideOf(w.Cell) < 0) x.QueueWest++; else x.QueueEast++;
-        if (x.Type == CrossingType.Drawbridge && x.State == BridgeState.Closed)
-        {
-            RecordWait(x, w.WaitT);
-            Release(ref w);
-            return true;
-        }
-        if (w.WaitT >= _river!.MaxWalkerWaitSec)
-        {
-            RecordWait(x, w.WaitT);
-            Release(ref w);
-            SendHome(ref w);
-            return false;
-        }
-        // Once a second: does the route still use this crossing (its learned wait may have sent it elsewhere)?
-        if ((int)w.WaitT != (int)(w.WaitT - dt) && !RouteUses(ref w, x.Id))
-        {
-            RecordWait(x, w.WaitT);
-            Release(ref w);
-            return true;
-        }
-        return false;
-    }
-
-    private bool RouteUses(ref Walker w, int id)
-    {
-        float[] f = _fields[w.Target];
-        int u = w.Cell;
-        for (int s = 0; s < 3; s++)
-        {
-            u = DescendStep(f, _cost, u, w.Taste, true, w.Id);
-            if (u < 0) return false;
-            if (_crossAt[u] == id) return true;
-        }
-        return false;
-    }
-
-    private static void Release(ref Walker w)
-    {
-        w.Hold = WalkerHold.None;
-        w.WaitT = 0;
-        w.HasAim = false;
-    }
-
-    private void RecordWait(Crossing x, double wait)
-    {
-        x.AvgWait += _river!.WaitAlpha * (wait - x.AvgWait);
-        x.WalkersServed++;
-        var rs = _rs!;
-        rs.WalkerWaits++;
-        rs.WalkerWaitSum += wait;
-        if (wait > rs.WalkerWaitMax) rs.WalkerWaitMax = wait;
-    }
-
-    /// <summary>Sets walkers waiting at (or riding) a crossing that is going away free: riders land on the far stage.</summary>
-    private void ReleaseAll(Crossing x)
-    {
-        for (int i = 0; i < _walkerCount; i++)
-        {
-            ref Walker w = ref _walkers[i];
-            if (w.Hold == WalkerHold.None || w.HoldAt != x.Id) continue;
-            if (w.Hold == WalkerHold.Riding) LandRider(ref w, x.FerryFrom == -1 ? x.EastEnd : x.WestEnd);
-            else Release(ref w);
-        }
-        x.West?.Clear();
-        x.East?.Clear();
-        x._passengers = 0;
     }
 
     // ---------------------------------------------------------------- drawbridge
@@ -238,24 +135,6 @@ public sealed partial class World
 
     // ---------------------------------------------------------------- ferry
 
-    private bool ValidRider(int idx, int ticket, int id, WalkerHold hold)
-    {
-        if (idx < 0 || idx >= _walkerCount) return false;
-        ref Walker w = ref _walkers[idx];
-        return w.Hold == hold && w.HoldAt == id && w.Ticket == ticket;
-    }
-
-    /// <summary>Drops stale entries; true if a walker is really waiting at the head.</summary>
-    private bool QueueHasWalker(Crossing x, WalkerQueue q)
-    {
-        while (q.Peek(out int idx, out int ticket))
-        {
-            if (ValidRider(idx, ticket, x.Id, WalkerHold.Waiting)) return true;
-            q.Pop();
-        }
-        return false;
-    }
-
     private void StepFerry(Crossing x, double dt)
     {
         var r = _river!;
@@ -287,10 +166,13 @@ public sealed partial class World
             x.FerrySide = -x.FerryFrom;
             x.StateT = 0;
             x.LoadT = -1;
+            x.DockT = 0;
             Emit(RiverEventKind.FerryLanded, -1, x.Id, landed);
             return;
         }
         x.Progress = x.FerrySide < 0 ? 0 : 1;
+        // Unloading and turning round at the stage: the doc's ~30 walkers each way a day for a full ferry.
+        if (x.DockT < r.FerryTurnSec - 1e-9) { x.DockT += dt; return; }
         WalkerQueue here = x.FerrySide < 0 ? x.West! : x.East!, there = x.FerrySide < 0 ? x.East! : x.West!;
         while (x._passengers < r.FerryCapacity && QueueHasWalker(x, here))
         {
@@ -329,6 +211,7 @@ public sealed partial class World
         _here[w.Cell]--;
         _here[cell]++;
         w.Cell = cell;
+        RiverEnter(ref w, cell);
         w.X = cell % _n + 0.5; w.Y = cell / _n + 0.5;
         w.Hold = WalkerHold.None;
         w.WaitT = 0;
