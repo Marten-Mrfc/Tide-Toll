@@ -20,6 +20,24 @@ public partial class CameraRig : Node3D
 
     public float Distance = 300f;
     public float PitchDegrees = -90f;
+    /// <summary>
+    /// Tilt with zoom (round 2): at view heights up to <see cref="TiltFullSize"/> the camera looks down at
+    /// <see cref="TiltDegrees"/> so buildings and villagers show their sides; it flattens smoothly (smoothstep on the
+    /// view height) and is straight down from <see cref="TiltFlatSize"/> (the whole page) out. 90 turns tilting off.
+    /// </summary>
+    public float TiltDegrees = 56f;
+    public float TiltFullSize = 70f, TiltFlatSize = 300f;
+    /// <summary>The pitch (degrees below the horizon) for a view height.</summary>
+    public float PitchFor(float size)
+    {
+        float t = Mathf.Clamp((size - TiltFullSize) / Math.Max(1f, TiltFlatSize - TiltFullSize), 0f, 1f);
+        t = t * t * (3f - 2f * t);
+        return Mathf.Lerp(TiltDegrees, 90f, t);
+    }
+    /// <summary>The pitch in use now, degrees below the horizon (90 = straight down).</summary>
+    public float PitchNow => -Pitch.RotationDegrees.X;
+    /// <summary>The view height the zoom eases toward.</summary>
+    public float TargetSize => _targetSize;
     /// <summary>Vertical extent of the orthographic view (Camera.Size), metres: limits.</summary>
     public float MinSize = 28f, MaxSize = 440f;
     /// <summary>Metres of map that may leave the screen edge when panned to the limit.</summary>
@@ -181,7 +199,7 @@ public partial class CameraRig : Node3D
     {
         _anchored = false;
         _target = Clamp(_target, _targetSize);
-        if (instant) { Camera.Size = _targetSize; SetPivotLocal(_target); }
+        if (instant) { Camera.Size = _targetSize; ApplyPitch(); SetPivotLocal(_target); }
     }
 
     /// <summary>Zoom by a factor keeping the map point under a screen position fixed (wheel).</summary>
@@ -216,7 +234,7 @@ public partial class CameraRig : Node3D
     {
         var vp = ViewportSize;
         float h = Math.Max(1f, vp.Y);
-        float hh = size / 2f, hw = hh * vp.X / h;
+        float hh = size / 2f / MathF.Sin(Mathf.DegToRad(PitchFor(size))), hw = size / 2f * vp.X / h;
         float yaw = Yaw.Rotation.Y, c = MathF.Abs(MathF.Cos(yaw)), s = MathF.Abs(MathF.Sin(yaw));
         float ex = hw * c + hh * s, ey = hw * s + hh * c;
         // Book rectangle in map space.
@@ -255,6 +273,7 @@ public partial class CameraRig : Node3D
         float k = 1f - MathF.Exp(-Smoothing * dt);
         if (MathF.Abs(Camera.Size - _targetSize) > 1e-3f) Camera.Size = Mathf.Lerp(Camera.Size, _targetSize, k);
         else Camera.Size = _targetSize;
+        ApplyPitch();
         if (_anchored)
         {
             // Re-solve the pivot so the anchored map point stays under the cursor while the size eases.
@@ -271,6 +290,12 @@ public partial class CameraRig : Node3D
             var p = PivotLocal;
             SetPivotLocal(p.DistanceTo(_target) < 1e-3f ? _target : p.Lerp(_target, k));
         }
+    }
+
+    private void ApplyPitch()
+    {
+        float p = PitchFor(Camera.Size);
+        if (MathF.Abs(PitchNow - p) > 1e-4f) Pitch.RotationDegrees = new Vector3(-p, 0, 0);
     }
 
     private void KeyboardPan(float dt)
