@@ -67,6 +67,13 @@ Stopping
 4. Never use SendMessage on an agent inside a running workflow: it starts a second copy. What an agent needs goes in a file its brief reads.
 5. Keep exactly one scheduled check pending (`send_later`, 45 minutes). The one-shot switches itself off after firing: arm a new one each time, and delete the pending one before arming another. Cancel it when the build stops.
 6. Workflows run two agents at a time on this machine.
+7. GitHub cancels a Windows build that is still running when the next push arrives (snapshot pushes too). After pushing a finished round, wait until its run has completed (`gh run list --repo Marten-Mrfc/Tide-Toll --limit 3`, about two minutes) before pushing anything else.
+
+## Windows builds
+
+| Round | Commit | Run | Result |
+| --- | --- | --- | --- |
+| 1 | `55543fc` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45705589636 | success, artifact `TideToll-windows-x64` |
 
 ## Scheduled check
 
