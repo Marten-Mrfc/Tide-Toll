@@ -21,23 +21,28 @@ public sealed class ToyGolden
         return new ToyGolden(doc.RootElement.Clone());
     }
 
-    /// <summary>Finds sim.tests/golden/toy-golden.json next to the binaries or by walking up to the repository root.</summary>
-    public static string DefaultPath()
+    /// <summary>
+    /// Finds sim.tests/golden/<paramref name="name"/> (toy-golden.json, the round-2 toy; toy-golden-v2.json, the finished
+    /// toy) next to the binaries or by walking up to the repository root.
+    /// </summary>
+    public static string DefaultPath(string name = "toy-golden.json")
     {
-        string local = Path.Combine(AppContext.BaseDirectory, "golden", "toy-golden.json");
+        string local = Path.Combine(AppContext.BaseDirectory, "golden", name);
         if (File.Exists(local)) return local;
         for (var d = new DirectoryInfo(Directory.GetCurrentDirectory()); d != null; d = d.Parent)
         {
-            string p = Path.Combine(d.FullName, "sim.tests", "golden", "toy-golden.json");
+            string p = Path.Combine(d.FullName, "sim.tests", "golden", name);
             if (File.Exists(p)) return p;
         }
-        throw new FileNotFoundException("sim.tests/golden/toy-golden.json not found");
+        throw new FileNotFoundException($"sim.tests/golden/{name} not found");
     }
 
     public List<SeedRow> Table() => Root.GetProperty("table").EnumerateArray().Select(r => new SeedRow(
         r.GetProperty("seed").GetInt32(), r.GetProperty("walkers").GetInt32(), r.GetProperty("ft").GetDouble(), r.GetProperty("det").GetDouble(),
         r.GetProperty("cov").GetDouble(), r.GetProperty("mean").GetDouble(), r.GetProperty("min").GetDouble(), r.GetProperty("max").GetDouble(),
-        r.GetProperty("meanD").GetDouble(), r.GetProperty("below").GetInt32(), r.GetProperty("wearFnv").GetUInt32())).ToList();
+        r.GetProperty("meanD").GetDouble(), r.GetProperty("below").GetInt32(),
+        // Version 2 records a fingerprint of the row's values instead of the day-45 wear hash (0: not compared).
+        r.TryGetProperty("wearFnv", out var wf) ? wf.GetUInt32() : 0)).ToList();
 }
 
 /// <summary>
@@ -60,10 +65,10 @@ public static class ToyComparison
         for (int i = 0; i < t.Count; i++)
         {
             var a = t[i]; var b = c.First(r => r.Seed == a.Seed);
-            bool same = a.WearFnv == b.WearFnv;
+            bool same = a.WearFnv != 0 && a.WearFnv == b.WearFnv;
             if (same) exact++;
             if (a with { WearFnv = 0 } == b with { WearFnv = 0 } && same) exactRows++;
-            log.Log($"{a.Seed,4} | {F(a.Ft, 1),6} {F(b.Ft, 1),6} s   | {F(a.Det, 3)} {F(b.Det, 3)}   | {Pct(a.Cov)} {Pct(b.Cov)}   | {Pct(a.Mean)} {Pct(b.Mean)}     | {Pct(a.Min)} {Pct(b.Min)}     | {(same ? "identical" : "differs")}");
+            log.Log($"{a.Seed,4} | {F(a.Ft, 1),6} {F(b.Ft, 1),6} s   | {F(a.Det, 3)} {F(b.Det, 3)}   | {Pct(a.Cov)} {Pct(b.Cov)}   | {Pct(a.Mean)} {Pct(b.Mean)}     | {Pct(a.Min)} {Pct(b.Min)}     | {(a.WearFnv == 0 ? "n/a" : same ? "identical" : "differs")}");
         }
         double M(IEnumerable<SeedRow> rows, Func<SeedRow, double> f) => GateTables.Mean(rows.Select(f).ToList());
         (string name, double toyV, double csV, double tol, double scale, string unit)[] metrics =

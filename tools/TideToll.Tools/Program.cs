@@ -9,12 +9,15 @@ namespace TideToll.Tools;
 
 /// <summary>
 /// Headless runner for TideToll.Sim. Commands:
-///   run   [--seed 1] [--walkers 200] [--days 30] [--every 5]   run a town and print its metrics
+///   run   [--seed 1] [--walkers 200] [--days 30] [--every 5] [--off | --legacy]   run a town (SimParams.Default; --off:
+///                                                               rain and growth off, SimParams.Toy; --legacy: the round-2 model)
 ///   bench [--seed 1] [--budget-ms 5] [--p99-budget-ms 25]      ms per tick at 200 and 500 walkers (build in Release)
-///   gate  [--quick] [--threads 3] [--golden path]              the toy's gate tables, gate checks and the comparison with the toy
-///   checks                                                      the toy's reroute, bridge, robustness, determinism and preview checks
+///   gate  [--quick] [--threads 3] [--golden path] [--legacy]   the toy's gate tables, gate checks and the comparison with the toy
+///                                                               (SimParams.Toy against toy-golden-v2.json; --legacy: round 2)
+///   checks                                                      the round-2 toy's reroute, bridge, robustness, determinism and preview
+///                                                               checks (on SimParams.Legacy, as ported)
 ///   river [--seeds 20] [--first 101] [--seed-sets 101-120,201-220] [--days 30 | 12,30] [--walkers 200] [--sweep]
-///         [--threads 3] [--brief] [--only S1,S2,S5-30,S6] [--set KeeperPrice=15,BoatValueMul=3]
+///         [--threads 3] [--brief] [--only S1,S2,S5-30,S6] [--set KeeperPrice=15,BoatValueMul=3] [--trail legacy|toy]
 ///                                                               the river strategy experiment: S1 to S4, S5 missing 10%, 30% and
 ///                                                               50% of boats, S6; --sweep runs 12 and 30 days and S2, S5-10, S6 at 60
 ///                                                               walkers too; --set overrides RiverRules values for tuning runs
@@ -57,7 +60,7 @@ public static class Program
     private static int RunTown(Dictionary<string, string> o)
     {
         int seed = Int(o, "seed", 1), walkers = Int(o, "walkers", 200), days = Int(o, "days", 30), every = Int(o, "every", 5);
-        var w = new World(seed, walkers);
+        var w = new World(seed, walkers, o.ContainsKey("legacy") ? SimParams.Legacy : o.ContainsKey("off") ? SimParams.Toy : SimParams.Default);
         Console.WriteLine($"seed {seed}, {w.WalkerCount} walkers, {w.Buildings.Length} buildings ({w.Houses.Length} houses), {days} in-game days");
         Console.WriteLine(" day | trunk share | trunk D | detour | coverage | trips in window | walkers out | first trail");
         var sw = Stopwatch.StartNew();
@@ -98,7 +101,11 @@ public static class Program
         var sw = Stopwatch.StartNew();
         var jobs = GateTables.Range(101, n).ToList();
         if (!quick) jobs.AddRange(GateTables.Range(1, 20).Concat(GateTables.Range(201, 20)).Concat(GateTables.Range(1, 5, 500)));
-        var rows = GateTables.RunSeeds(jobs, threads);
+        // The gate is defined on the finished toy's trail model with rain and growth off (SimParams.Toy), as the toy runs it;
+        // --legacy runs the round-2 model against the round-2 toy's table instead.
+        bool legacy = o.ContainsKey("legacy");
+        var preset = legacy ? SimParams.Legacy : SimParams.Toy;
+        var rows = GateTables.RunSeeds(jobs, threads, preset);
         List<SeedRow> Pick(int a, int b, int walkers = 200) => rows.Where(r => r.Seed >= a && r.Seed <= b && r.Walkers == walkers).ToList();
         var gate = Pick(101, 120);
         GateTables.PrintTable(Console.Out, $"GATE G3 (held-out seeds 101 to {100 + n}): every daily sample must lie within 30% to 70%", gate);
@@ -109,7 +116,7 @@ public static class Program
             GateTables.PrintTable(Console.Out, "500 WALKERS (seeds 1 to 5, report only)", Pick(1, 5, 500));
         }
         var log = new CheckLog();
-        string goldenPath = o.TryGetValue("golden", out var g) ? g : ToyGolden.DefaultPath();
+        string goldenPath = o.TryGetValue("golden", out var g) ? g : ToyGolden.DefaultPath(legacy ? "toy-golden.json" : "toy-golden-v2.json");
         var golden = ToyGolden.Load(goldenPath);
         if (!quick) ToyComparison.Compare(golden.Table(), gate, log);
         Console.WriteLine(log);
@@ -118,12 +125,14 @@ public static class Program
         GateTables.GateChecks(gate, gl);
         Console.WriteLine(gl);
         int failed = log.Checks.Count(c => !c.Ok) + gl.Checks.Count(c => !c.Ok);
-        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads){(quick ? " [quick mode: 4 gate seeds, no report tables]" : "")}; toy golden from commit {golden.ToyCommit}");
+        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads){(quick ? " [quick mode: 4 gate seeds, no report tables]" : "")}; {(legacy ? "SimParams.Legacy" : "SimParams.Toy")}; toy golden from commit {golden.ToyCommit}");
         return failed > 0 ? 1 : 0;
     }
 
     private static int River(Dictionary<string, string> o)
     {
+        if (o.TryGetValue("trail", out var trail))
+            RiverBot.Trail = trail switch { "legacy" => SimParams.Legacy, "toy" => SimParams.Toy, _ => throw new ArgumentException("--trail legacy|toy") };
         int seeds = Int(o, "seeds", 20), first = Int(o, "first", 101), walkers = Int(o, "walkers", 200);
         int threads = Int(o, "threads", Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1)));
         bool sweep = o.ContainsKey("sweep");

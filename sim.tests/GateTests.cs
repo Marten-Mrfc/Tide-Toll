@@ -3,10 +3,17 @@ using Xunit.Abstractions;
 
 namespace TideToll.Sim.Tests;
 
-/// <summary>Runs the 20 held-out gate seeds once (in parallel) for all the gate tests.</summary>
+/// <summary>
+/// Runs the 20 held-out gate seeds once (in parallel) for all the gate tests: on the finished toy's trail model with rain
+/// and growth off (SimParams.Toy, the gate's definition), and on the round-2 model for the comparison with the round-2
+/// toy's table (toy-golden.json).
+/// </summary>
 public sealed class GateRowsFixture
 {
-    public List<SeedRow> Rows { get; } = GateTables.RunSeeds(GateTables.Range(101, 20), Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1)));
+    private static int Threads => Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1));
+    public List<SeedRow> Rows { get; } = GateTables.RunSeeds(GateTables.Range(101, 20), Threads, SimParams.Toy);
+    private readonly Lazy<List<SeedRow>> _legacy = new(() => GateTables.RunSeeds(GateTables.Range(101, 20), Threads, SimParams.Legacy));
+    public List<SeedRow> LegacyRows => _legacy.Value;
 }
 
 /// <summary>
@@ -47,11 +54,12 @@ public class GateTests : IClassFixture<GateRowsFixture>
         Assert.True(log.Checks[1].Ok, log.Checks[1].What + "\n" + Table());
     }
 
+    /// <summary>The round-2 model (SimParams.Legacy) against the round-2 toy's table.</summary>
     [Fact]
     public void MetricsAgreeWithTheToyWithinThePortPlanTolerances()
     {
         var log = new CheckLog();
-        ToyComparison.Compare(Golden.Toy.Table(), _f.Rows, log);
+        ToyComparison.Compare(Golden.Toy.Table(), _f.LegacyRows, log);
         _out.WriteLine(log.ToString());
         Console.WriteLine(log.ToString());
         Assert.True(log.AllPassed, "Failed: " + string.Join("; ", log.Checks.Where(c => !c.Ok).Select(c => c.What)) + "\n" + log);

@@ -100,21 +100,23 @@ public class RiverSeasonTests
         while (w.Ticks < p.TicksPerSeason - 1) w.Tick(); // to the last tick of spring
         Assert.True(r.Muddy);
         // Worn band cells too quiet for the crowding term: cost now (mud) against cost one tick later (summer, dry).
-        var cells = new List<(int Cell, double Mul, double Cost)>();
+        var cells = new List<(int Cell, double Mul, double Cost, float Wear, float Flow)>();
         for (int c = 0; c < w.Grid.Count; c++)
         {
             if (r.FloodBand[c] == 0 || w.IsBlocked(c) || w.Map.Ford[c] != 0 || w.Occupancy[c] > 0.19) continue; // no crowding term
             double mul = p.GroundOf(w.Wear[c], w.Hollow[c] == 1) switch { Ground.Trail => 1.6, Ground.Track => 1.7, Ground.Hollow => 1.8, _ => 1.0 };
-            cells.Add((c, mul, w.CellCost(c)));
+            cells.Add((c, mul, w.CellCost(c), w.Wear[c], w.Flow[c]));
         }
         Assert.Contains(cells, q => q.Mul > 1);
         w.Tick();
         Assert.Equal(1, w.Stats().Season);
         Assert.False(r.Muddy);
         int compared = 0;
-        foreach (var (c, mul, cost) in cells)
+        foreach (var (c, mul, cost, wear, flow) in cells)
         {
             if (w.Occupancy[c] > 0.19) continue;
+            // A footstep in that one tick (wear and flow only ever fall otherwise) changed the dry ground under the mud.
+            if (w.Wear[c] > wear || w.Flow[c] > flow) continue;
             double ratio = cost / w.CellCost(c);
             Assert.True(Math.Abs(ratio - mul) < 0.03 * mul, $"cell {c}: mud x{ratio:F3}, doc x{mul}");
             compared++;

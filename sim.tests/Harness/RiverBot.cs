@@ -64,10 +64,13 @@ public static class RiverBot
         _ => "S6 drawbridge + keeper",
     };
 
+    /// <summary>The trail model the bot's towns run on (tools: <c>river --trail legacy|toy</c>); SimParams.Default unless set.</summary>
+    public static SimParams Trail { get; set; } = SimParams.Default;
+
     public static RiverRunResult Run(int seed, int walkers, RiverPlayer pl, int days = 12, RiverRules? rules = null)
     {
         var s = pl.Strategy;
-        var p = SimParams.Default with { River = rules ?? RiverRules.Default };
+        var p = Trail with { River = rules ?? RiverRules.Default };
         var w = new World(seed, walkers, p);
         var river = w.River!;
         CrossingType? type = s switch

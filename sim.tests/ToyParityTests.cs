@@ -49,7 +49,7 @@ public class ToyParityTests
     internal static (bool wearOk, string report) Trace(JsonElement t, int days)
     {
         int seed = t.GetProperty("seed").GetInt32(), walkers = t.GetProperty("walkers").GetInt32();
-        var w = new World(seed, walkers);
+        var w = new World(seed, walkers, SimParams.Legacy);
         int tpd = w.Params.TicksPerDay;
         uint[] wearFnv = t.GetProperty("wearFnv").EnumerateArray().Select(e => e.GetUInt32()).ToArray();
         uint[] posFnv = t.GetProperty("posFnv").EnumerateArray().Select(e => e.GetUInt32()).ToArray();
@@ -117,7 +117,7 @@ public class ToyParityTests
     public void FlowPreviewsMatchTheToyExactly(int which)
     {
         var g = Golden.Root.GetProperty("previews")[which];
-        var w = new World(g.GetProperty("seed").GetInt32(), 200);
+        var w = new World(g.GetProperty("seed").GetInt32(), 200, SimParams.Legacy);
         Run(w, 20);
         // Same inputs first: if these match, the previews must match exactly (same Dijkstra, same trace).
         Assert.Equal(g.GetProperty("wearFnv").GetUInt32(), Fnv(w.Wear));

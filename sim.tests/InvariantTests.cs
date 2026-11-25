@@ -39,7 +39,8 @@ public class InvariantTests
     [Fact]
     public void InvariantsHoldThroughEditsAndWalkerChanges()
     {
-        var w = new World(7, 300);
+        // The trail model without house growth: this test holds the walker count to what it sets (growth adds villagers).
+        var w = new World(7, 300, SimParams.Toy);
         int n = w.Grid.Width;
         void Ticks(int count, int walkers, string phase)
         {

@@ -176,11 +176,21 @@ public class RiverCrossingTests
         Assert.True(f.AvgWait > 0 && d.AvgWait > 0, $"ferry {f.AvgWait}, drawbridge {d.AvgWait}");
         Assert.Equal(3 * (0.75 + 1.0 + f.AvgWait) / f.Cells.Count, w.CellCost(f.Cells[0]), 9);
         Assert.Equal(0.8 + 3 * d.AvgWait / d.Cells.Count, w.CellCost(d.Cells[0]), 9);
-        // A footbridge learns no wait: its deck cost is the bridge cost with the usual crowding term only.
-        Assert.Equal(0.8 * Crowding(w, fb.Cells[0]), w.CellCost(fb.Cells[0]), 9);
+        // A footbridge learns no wait: its deck cost is the bridge cost with the usual crowding term, and (SimParams.BridgeFlow,
+        // the finished toy's trail model) the traffic discount any lane gets, floored at MinSurface.
+        Assert.Equal(0.8 * DeckFlow(w, fb.Cells[0]) * Crowding(w, fb.Cells[0]), w.CellCost(fb.Cells[0]), 9);
         // Overrides used by the flow preview still win.
         Assert.True(double.IsPositiveInfinity(w.CellCost(f.Cells[0], CostOverride.Block)));
         Assert.True(double.IsPositiveInfinity(w.CellCost(f.Cells[0], CostOverride.CloseBridge)));
+    }
+
+    /// <summary>A bridge deck's traffic discount (1 when SimParams.BridgeFlow is 0): the flow table's value, floored at MinSurface.</summary>
+    internal static double DeckFlow(World w, int c)
+    {
+        var p = w.Params;
+        if (p.BridgeFlow <= 0) return 1;
+        var lut = w.FlowLookup;
+        return Math.Max(p.MinSurface, lut[Math.Min(lut.Length - 1, (int)(w.Flow[c] * 4.0))]);
     }
 
     /// <summary>The crowding multiplier CellCost applies to a cell (1 when it is nearly empty).</summary>

@@ -14,7 +14,7 @@ public static class ToyChecks
 {
     public static void Reroute(int seed, CheckLog log)
     {
-        var w = new World(seed, 200);
+        var w = new World(seed, 200, SimParams.Legacy);
         int N = w.Grid.Width, NC = w.Grid.Count, TPD = TicksPerDay(w);
         Run(w, 20);
         uint[] fw = w.Metrics.Window().ToArray();
@@ -86,7 +86,7 @@ public static class ToyChecks
 
     public static void BridgeCheck(int seed, CheckLog log)
     {
-        var w = new World(seed, 200);
+        var w = new World(seed, 200, SimParams.Legacy);
         int N = w.Grid.Width, TPD = TicksPerDay(w);
         Run(w, 15);
         // Bridge on the row of the market door, or the nearest row that takes one.
@@ -117,7 +117,7 @@ public static class ToyChecks
 
     public static void Robustness(CheckLog log)
     {
-        var w = new World(5, 300);
+        var w = new World(5, 300, SimParams.Legacy);
         int NC = w.Grid.Count, TPD = TicksPerDay(w);
         Run(w, 4);
         // Wall a house in completely, fence a crowded strip, then check every walker.

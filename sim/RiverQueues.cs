@@ -17,7 +17,13 @@ public sealed partial class World
         if (id < 0 || _crossAt[w.Cell] == id) return false;
         var x = CrossingById(id);
         if (x == null || x.Type == CrossingType.Ford || _frozen) return false; // on ice every crossing is open ground
-        if (w.Pass && w.HoldAt == id) { w.Pass = false; return false; }     // its turn came in the queue
+        if (w.Pass && w.HoldAt == id)
+        {
+            w.Pass = false;
+            // Its turn came in the queue. A pass for a bridge that has been raised since is spent: it queues again
+            // (a walker let on while the bridge was down whose route then went elsewhere kept a stale pass).
+            if (x.Type == CrossingType.Ferry || BridgeOpen(x)) return false;
+        }
         // A walker only clipping the end of an open bridge on its way along the bank (its line cuts the corner of an end
         // cell) is not queued for it: it would be released at its first route check and queue again, for ever.
         if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) return false;
@@ -101,11 +107,13 @@ public sealed partial class World
 
     private bool RouteUses(ref Walker w, int id)
     {
-        float[] f = _fields[w.Target];
+        // The walker's own view (sync plan, conflict A): a frugal trip descends the frugal field, with no taste.
+        bool fr = w.Frugal;
+        float[] f = fr ? _fieldsX[w.Target] : _fields[w.Target], cost = fr ? _costX : _cost;
         int u = w.Cell;
         for (int s = 0; s < 3; s++)
         {
-            u = DescendStep(f, _cost, u, w.Taste, true, w.Id);
+            u = DescendStep(f, cost, u, fr ? 0 : w.Taste, true, w.Id);
             if (u < 0) return false;
             if (_crossAt[u] == id) return true;
         }

@@ -4,13 +4,13 @@ Purpose: the engine-free simulation library. The game (`game/`), the tests (`sim
 
 Rules: no Godot types, no `System.Random`, no clock. Everything is seeded and deterministic. Grids are flat arrays indexed `y * width + x`. `World.Tick()` allocates nothing (a test checks it).
 
-It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/src/sim/`, snapshot at commit `a057b50`, and, being synced, the finished toy's later rules: `docs/plans/sync-plan.md`, progress in `docs/plans/sync-progress.md`): same order of operations, formulas, constants and random draws. It keeps the toy's mulberry32 generator, float32 storage of wear, flow, cost and fields, and a replica of V8's `Math.hypot`, so runs can be compared with the toy bit for bit (see "Parity with the toy").
+It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/src/sim/`): first of round 2 (commit `a057b50`), now of the finished toy (commit `6982009`, rounds 3 to 5: the retuned trail model with explorers and the detour cap, gravel, gates, rain and mud, house growth, the second flow preview; `docs/plans/sync-plan.md`, progress in `docs/plans/sync-progress.md`): same order of operations, formulas, constants and random draws. It keeps the toy's mulberry32 generator, float32 storage of wear, flow, cost and fields, and a replica of V8's `Math.hypot`, so runs can be compared with the toy bit for bit (see "Parity with the toy").
 
 ## Files
 
 | File | Toy source | What it holds |
 | --- | --- | --- |
-| `SimParams.cs` | params.ts | every tunable, same names; presets `Legacy` (round 2, the default until sync step A9) and `Toy` (the finished trail model); `Ground` and `GroundOf` |
+| `SimParams.cs` | params.ts | every tunable, same names; presets `Default` (the finished toy as a player meets it: rain and growth on), `Toy` (the same with rain and growth off, as the gate runs) and `Legacy` (round 2); `Ground` and `GroundOf` |
 | `Rng.cs` | rng.ts | `Mulberry32`, `Hash.Hash2` |
 | `JsMath.cs` | (V8) | `Hypot` (V8's algorithm) and `Round` (JavaScript rounding) |
 | `Grid.cs` | grid.ts | grid shape, neighbour tables, `Line4` |
@@ -24,7 +24,10 @@ It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/
 | `WorldEdit.cs` | world.ts | fence, gravel (with the brush's snap), gates, footbridge, erase, eviction, urgent refresh |
 | `WorldViews.cs` | world.ts | the read-only API, `Stats()`, `PreviewFlows` |
 | `Metrics.cs` | metrics.ts | footstep window, trip ring, detour, coverage, both trunk shares, first trail |
-| `FlowPreview.cs` | preview.ts | `FlowPredictor` (`Step()`, bounded `Step(maxWork)`), `WhatIf` (with `CrossingWhatIf`), `FlowPreview`, `Describe` |
+| `FlowPreview.cs` | preview.ts | `WhatIf` (with `CrossingWhatIf`), `RouteChange`, `FlowPreview`, `GravelNote`, `Describe`, the gravel note |
+| `FlowPredictor.cs`, `FlowPredictorRoutes.cs` | preview.ts | `FlowPredictor` (`Step()`, bounded `Step(maxWork)`): base and what-if fields for both kinds of walker, `outOfReach`; then the groups, sort, shown routes and the result |
+| `RainWeather.cs`, `WorldRain.cs` | weather.ts, world.ts | the weather (own stream), the mud layer, its cost and speed, `StartRain`/`StopRain` |
+| `Growth.cs` | growth.ts, world.ts | house growth: plot search (allocation-free), `AddHouse`, `Plot`, `GrownHouse`, `PlotSearch()` |
 | `RiverRules.cs` | (new) | `RiverRules` (every river number), `Boat`, the enums, `RiverEvent`, `RiverResult` |
 | `RiverCrossing.cs` | (new) | `Crossing` (read-only view of the ford, a footbridge, ferry or drawbridge), the bank queues |
 | `River.cs` | (new) | river state, set-up, `RiverStep`, the season books, `RiverStats`, `RiverView` |
@@ -54,6 +57,9 @@ Ground GroundAt(int cell); bool IsBlocked(int cell); bool CanFence(int cell)
 double CellCost(int cell, CostOverride ov = None, bool frugal = false); double TripRatePerDay(int home, int dest); int WalkersOut()
 ReadOnlySpan<float>  CostX; ReadOnlySpan<float> FieldX(int building)   // the frugal walkers' view (empty unless Params.UseFrugal)
 ReadOnlySpan<byte>   Gravel, Gate, GatePair                // Walker.Explorer, Walker.Frugal
+ReadOnlySpan<byte>   Mud; int MudCells; RainWeather Weather // Rain, Wetness, Raining, RainStart, RainEnd, MudUntil, RainDays; bool RainOn
+ReadOnlySpan<GrownHouse> Grown; ReadOnlySpan<byte> Fronted; double NextHouseTime; bool GrowthOn   // houses added by growth
+int TripRateStride                                      // TripRate row length (room for grown houses; TripRatePerDay hides it)
 SimStats Stats()       // DetourRatio, TrailCoverage, TrunkShare, TrunkShareD, TripsInWindow, TrailCells,
                        // Walkers, SimTime, Day, Season, Year, FirstTrailTime; allocation-free
 
@@ -63,6 +69,7 @@ Bridge? PlaceBridge(double x, double y)                 // null if no bridge fit
 bool    BridgeCellsAt(double x, double y, List<int> cells)   // the cells a bridge would cover (for a ghost); false if an end is off the map
 int     Erase(ReadOnlySpan<int> cells)                  // fences (with their gates), gravel and whole bridges touching the cells
 int     PlaceGravel(ReadOnlySpan<int> cells); int GravelSnap(int cell); bool CanGravel(int cell)   // a fence over gravel takes it up
+void    StartRain(double? simSec = null, double strength = 1); void StopRain(bool dry = false)   // debug and tutorials; no-ops with rain off
 GateTarget GateTarget(double x, double y)               // Cells (1, or a stair corner's 2), Remove, Reason (FenceGates.NoFence, LonePost, NoWay)
 bool    PlaceGate(int fenceCell); bool RemoveGate(int cell); int[]? GateCellsFor(int fenceCell)
 void    SetWalkerCount(int n)                           // clamped to 0..MaxWalkers; never allocates
@@ -74,12 +81,30 @@ p.Begin(new WhatIf { Block = cells }, maxPairs: 5);     // also Open, Bridge, Cl
 while (p.Step()) { /* one Dijkstra per call (1 to 12 ms): spread over frames */ }
 // or bounded slices, bit-identical results: about 1000 units is 0.1 to 0.8 ms (thread CPU time, Release)
 while (p.Step(maxWork: 1000) && frameClockMs < 2) { }
-FlowPreview r = p.Result!;                              // Changes (old/new route points), More, ReroutedPerDay, Blocked
-string line = FlowPredictor.Describe(r, b => name);     // "Reroutes about 40 walkers a day (+8% longer)"
+FlowPreview r = p.Result!;                              // Changes (old/new route points, Explorers, Frugal), More, ReroutedPerDay,
+                                                        // MeanCostRatio, Blocked, Note (gravel: Far, On, Near)
+string line = FlowPredictor.Describe(r, b => name);     // "Reroutes about 40 walkers a day (+8% longer on average)"
 world.PreviewFlows(whatIf, maxPairs)                    // the same in one call
 ```
 
 Positions are in cell units (cell x spans x to x + 1). Draw walkers by interpolating `Px, Py` to `X, Y`; only `Visible` walkers (Out or Back) are on the map.
+
+With `SimParams.Default` houses grow: `Buildings`, `Houses` and the walker count change during `Tick` (a cottage every
+30 s while the town is below 250 people; the toy's frontage rules). Building indices never change; the game should
+watch `Buildings.Length` (or `Grown`) and draw new cottages. The world pre-sizes room for `SimParams.MaxGrownHouses`
+houses (84 at the defaults, about 10 MB of fields), so growth allocates nothing; if the walker count is lowered by hand
+again and again that room can run out, and then no more houses come (the toy has no such limit).
+
+### Presets
+
+| Preset | Trail model | Rain and mud | House growth | Preview | Used by |
+| --- | --- | --- | --- | --- | --- |
+| `Default` (`new SimParams()`) | finished toy | on | on | version 2 | `new World(seed)`, the game, the bench |
+| `Toy` | finished toy | off | off | version 2 | the gate (`tools gate`, GateTests), the comparison traces |
+| `Legacy` | round 2 (2.4 / 0.3 / 0.6 / ford x3, no explorers) | off | off | version 1 | toy-golden.json, the pre-river baselines, the round-2 checks (`tools checks`) |
+
+The river rules turn rain and growth off whatever the preset says (a river town's prices assume a village of fixed
+size, and the river has its own flood mud).
 
 ## River rules (Prototype 1, step 2; second pass 25 November 2026)
 
@@ -323,7 +348,7 @@ capacity and turn (above 7 or below 0.4 s flips (b)/(c)/(d)).
 
 ## Parity with the toy
 
-Tested in `sim.tests` against `sim.tests/golden/toy-golden.json` (made from the toy by `sim.tests/golden/export.mjs`):
+Tested in `sim.tests` against `sim.tests/golden/toy-golden.json` (made from the round-2 toy by `sim.tests/golden/export.mjs --legacy`), on `SimParams.Legacy`:
 
 - Maps for seeds 1 to 50, the Dijkstra field, RNG, hash and `Line4`: identical.
 - Wear grids: identical at every day mark for 45 days on seeds 1 to 8 (200 walkers) and 1 and 2 (500 walkers), with identical final stats and walker 0's first trip.
@@ -331,11 +356,15 @@ Tested in `sim.tests` against `sim.tests/golden/toy-golden.json` (made from the 
 - Flow previews at day 20 (seeds 2 and 4): routes, rates, cost ratios and readouts identical.
 - Walker positions drift by about 1 ulp within a day, because .NET's `Math.Exp` (crowding speed) differs from V8's in the last bit on about 10% of inputs. Float32 storage absorbs it, so wear and metrics stay identical. Porting fdlibm's `exp` would make positions exact too.
 
-The finished toy (`toy-golden-v2.json`, made by `node sim.tests/golden/export.mjs --legacy <toy-r2> <final-toy>`; `ToyV2ParityTests`,
-`ToyV2ToolTests`), on `SimParams.Toy` with rain and growth off (not ported yet): every one of the 10 off traces identical for 45 days in
-wear, flow, cost, costX, frugal walkers, walker 0's first trip and final stats; the gate table on seeds 101 to 120 exactly the toy's, printed
-text included; the edits at fixed ticks (fence, gravel, gates at 0, 30, 45, 60 and 90 degrees, refusals, bridge, erase) identical every 50
-ticks; the lookup tables identical. On this machine 11 of 146 maths probes (`pow(0.5, 1/20)`, some `exp` and `pow`) differ from V8 in the last
+The finished toy (`toy-golden-v2.json`, made by `node sim.tests/golden/export.mjs --legacy <toy-r2> <final-toy>`, or
+`node sim.tests/golden/export.mjs prototypes/desire-lines` for version 2 alone, about 11 minutes; `ToyV2*Tests`): every one of the
+10 off traces (rain and growth off, `SimParams.Toy`) identical for 45 days in wear, flow, cost, costX, frugal walkers, walker 0's first
+trip and final stats; the 4 rain-only, 2 growth-only and 4 live traces likewise, with mud, the weather and the grown houses; the weather
+alone on 50 seeds for 120 days; the plot search (counts, best eight, exact scores, choice); the gate table on seeds 101 to 120 exactly
+the toy's, printed text included; the edits at fixed ticks (fence, gravel, gates at 0, 30, 45, 60 and 90 degrees, refusals, bridge,
+erase, a forced shower), off, rain only and live, identical every 50 ticks; the flow previews (block, bridge, enclose, gravel on, near
+and far, gate, ungate) off and in a live town with grown houses: rates, groups, cost ratios, mean, note, readout and route hashes; the
+day-20 baselines (wear and the walkers' next draws) off and live; the lookup tables identical. On this machine 11 of 146 maths probes (`pow(0.5, 1/20)`, some `exp` and `pow`) differ from V8 in the last
 bit of the double; they agree at float32, where results are stored (`MathsProbesMatchV8BitForBit`, Gate, fails honestly).
 
 The Engine tab's PCG32 generator and integer costs come later and will break this parity on purpose; regenerate the goldens then.

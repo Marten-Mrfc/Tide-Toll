@@ -47,11 +47,11 @@ public static class GateTables
     }
 
     /// <summary>Runs the seeds on up to <paramref name="threads"/> threads; each world is independent, so results do not depend on scheduling.</summary>
-    public static List<SeedRow> RunSeeds(IEnumerable<(int Seed, int Walkers)> jobs, int threads)
+    public static List<SeedRow> RunSeeds(IEnumerable<(int Seed, int Walkers)> jobs, int threads, SimParams? p = null)
     {
         var list = jobs.ToList();
         var rows = new SeedRow[list.Count];
-        Parallel.For(0, list.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, threads) }, i => rows[i] = Row(list[i].Seed, list[i].Walkers));
+        Parallel.For(0, list.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, threads) }, i => rows[i] = Row(list[i].Seed, list[i].Walkers, p));
         return rows.ToList();
     }
 

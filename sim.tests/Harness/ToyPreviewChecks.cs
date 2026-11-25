@@ -40,7 +40,7 @@ public static class ToyPreviewChecks
     public static void Basics(CheckLog log)
     {
         log.Log("\nFLOW PREVIEW: basics (seed 2, 200 walkers, day 20)");
-        var w = new World(2, 200);
+        var w = new World(2, 200, SimParams.Legacy);
         int N = w.Grid.Width;
         Run(w, 20);
         var empty = w.PreviewFlows(new WhatIf());
@@ -120,7 +120,7 @@ public static class ToyPreviewChecks
         int detourPts = 0, detourNear = 0, eraseShorter = 0;
         foreach (int seed in seeds)
         {
-            var w = new World(seed, 200);
+            var w = new World(seed, 200, SimParams.Legacy);
             int N = w.Grid.Width, TPD = TicksPerDay(w);
             Run(w, 20);
             int[] fence = FenceAcrossRoute(w, w.Houses[seed % w.Houses.Length], 0.3);

@@ -15,7 +15,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 | --- | --- |
 | `sim/` | `TideToll.Sim`: the engine-free simulation (map, wear, walkers, tools, metrics, flow preview) |
 | `sim.tests/` | `TideToll.Sim.Tests` (xUnit); `Harness/` holds the toy's checks, also compiled into the tools |
-| `sim.tests/golden/` | `toy-golden.json` and its generator `export.mjs` (never edit the JSON by hand) |
+| `sim.tests/golden/` | `toy-golden.json` (round-2 toy), `toy-golden-v2.json` (finished toy) and their generator `export.mjs` (never edit the JSON by hand) |
 | `tools/TideToll.Tools/` | headless runner: `run`, `bench`, `gate`, `checks`, `river` (the river strategy bot) |
 | `game/` | the Godot project; references `sim/` |
 | `prototypes/desire-lines/` | the browser toy (Prototype 1) |
@@ -29,8 +29,11 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 - Same seed and same commands at the same ticks give the same run. Iterate arrays, never hash sets or dictionaries.
 - The game reads the simulation through read-only spans and changes it only through commands (`World` API in `sim/README.md`).
 - Files under about 400 lines, one system per file.
-- The river rules (`SimParams.River`) are off by default and must stay invisible when off: `RiverOffBaselineTests` holds hashes recorded before they existed, and river code runs only behind `_river != null`.
+- Presets: `SimParams.Default` is the finished toy as a player meets it (its trail model, rain and mud, house growth, preview version 2); `SimParams.Toy` is the same with rain and growth off (the gate and the comparison traces); `SimParams.Legacy` is the round-2 toy (toy-golden.json, the pre-river baselines, the round-2 checks). A test that compares with recorded data names its preset.
+- The river rules (`SimParams.River`) are off by default and must stay invisible when off: `RiverOffBaselineTests` holds hashes recorded before they existed (on `Legacy`) and the finished toy's own day-20 baselines (on `Toy` and `Default`), and river code runs only behind `_river != null`. With the river rules on, rain and house growth are off whatever the preset says.
 - Until PCG32 and integer costs land, the port keeps the toy's mulberry32, float32 storage and V8's `Math.hypot`, so the goldens stay exact. A deliberate change of results means regenerating the goldens.
+- Mirroring the toy: same order of operations and of random draws (the walkers', the weather's and the growth stream are separate); time accumulates `time += 0.1`; JS stable sorts become insertion sorts or a fixed best-N array filled in order; JS `Map` iteration becomes an ordered list; `exp`, `pow` and `sin` go through .NET's Math (the probes in toy-golden-v2.json show at once if another machine's maths differs: `MathsProbesMatchV8BitForBit`).
+- House growth adds buildings and walkers during `Tick`: per-building arrays are pre-sized (`SimParams.MaxGrownHouses`), so loop over `Buildings.Length`/`_nb`, never an array's length.
 
 ## Hot-path rules (anything `World.Tick` calls)
 
@@ -48,10 +51,12 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
 dotnet run --project tools/TideToll.Tools -c Release -- run --seed 1 --walkers 500 --days 30
 dotnet run --project tools/TideToll.Tools -c Release -- river --seed-sets 101-120,201-220 --sweep   # river bot, 12 and 30 days (~16 min); seeds 401-424 are the reviewer's only
-node sim.tests/golden/export.mjs <toy-dir>   # regenerate goldens from a toy folder with node_modules
+node sim.tests/golden/export.mjs prototypes/desire-lines                 # regenerate toy-golden-v2.json from the finished toy (~11 min; needs its node_modules)
+node sim.tests/golden/export.mjs --legacy <toy-r2-dir> <final-toy-dir>   # both files; the legacy one byte-equal from the round-2 toy (~4 min more)
+TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQualifiedName~River"   # the river tests on another trail model (legacy|toy)
 ```
 
-`./check` must pass before every commit. The gate may fail honestly (the toy's own G3 fails on seed 115); never tune parameters or edit a test to make it pass. Logs go to `build/check-logs/`.
+`./check` must pass before every commit. The gate may fail honestly (the round-2 toy's own G3 fails on seed 115; the gate itself now runs on `SimParams.Toy`); never tune parameters or edit a test to make it pass. Logs go to `build/check-logs/`.
 
 ## Assets
 

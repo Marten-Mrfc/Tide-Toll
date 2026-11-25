@@ -7,28 +7,35 @@ namespace TideToll.Sim;
 /// Every tunable of the simulation, ported one for one from the toy's params.ts, with the same names in PascalCase.
 /// A record so tests can change one value with `with` and leave the defaults alone. The world copies what its hot
 /// path needs into fields at construction, so reading these properties never costs anything per tick.
-/// Two presets: <see cref="Legacy"/>, the round-2 toy (snapshot a057b50; the property initialisers below), and
-/// <see cref="Toy"/>, the finished toy's trail model (rounds 3 to 5). <see cref="Default"/> is Legacy until the
-/// sync plan's step A9 (docs/plans/sync-plan.md) flips it.
+/// The property initialisers are the finished toy's player defaults (params.ts after rounds 3 to 5, commit 6982009):
+/// its trail model with rain and house growth on. Presets: <see cref="Default"/> (those), <see cref="Toy"/> (the same
+/// trail model with rain and growth off, as the toy's gate runs it) and <see cref="Legacy"/> (the round-2 toy, snapshot
+/// a057b50, which the old comparison data and the river's first tuning were made with). Sync step A9 made the finished
+/// toy the default (docs/plans/sync-plan.md).
 /// </summary>
 public sealed record SimParams
 {
-    /// <summary>The round-2 toy (a057b50): no explorers, no detour cap, no bridge flow discount.</summary>
-    public static readonly SimParams Legacy = new();
+    /// <summary>
+    /// The finished toy as a player meets it: wearPerStep 2.2, sideShare 0.4, minSurface 0.45, fordCostMul 4, explorers
+    /// 10%, frugal discount 0.3, detour cap 1.25, bridge flow discount, preview version 2, rain and house growth on (both
+    /// stay off while the river rules are on). What <c>new World(seed)</c> uses.
+    /// </summary>
+    public static readonly SimParams Default = new();
+
+    /// <summary>The finished toy's trail model with rain and growth off: what its gate tables and comparison traces use.</summary>
+    public static readonly SimParams Toy = Default with { RainOn = false, GrowthOn = false };
 
     /// <summary>
-    /// The finished toy's trail model (params.ts, rounds 3 to 5): wearPerStep 2.2, sideShare 0.4, minSurface 0.45,
-    /// fordCostMul 4, explorers 10%, frugal discount 0.3, detour cap 1.25, bridge flow discount on.
+    /// The round-2 toy (a057b50): wearPerStep 2.4, sideShare 0.3, minSurface 0.6, fordCostMul 3, no explorers, no detour
+    /// cap, no bridge flow discount, the round-2 flow preview, no rain, no growth. toy-golden.json and the pre-river
+    /// baseline hashes hold its results.
     /// </summary>
-    public static readonly SimParams Toy = Legacy with
+    public static readonly SimParams Legacy = Default with
     {
-        WearPerStep = 2.2, SideShare = 0.4, MinSurface = 0.45, FordCostMul = 4.0,
-        ExplorerShare = 0.1, FrugalDisc = 0.3, DetourCap = 1.25, BridgeFlow = 1,
-        PreviewV2 = true,
+        WearPerStep = 2.4, SideShare = 0.3, MinSurface = 0.6, FordCostMul = 3.0,
+        ExplorerShare = 0, DetourCap = 0, BridgeFlow = 0,
+        PreviewV2 = false, RainOn = false, GrowthOn = false,
     };
-
-    /// <summary>What <c>new World(seed)</c> uses: <see cref="Legacy"/> until step A9.</summary>
-    public static readonly SimParams Default = Legacy;
 
     // Map. One cell is 2 m, so a 128-cell side is 256 m. The map generator is tuned for 128 x 128;
     // the world needs a square grid (GridWidth == GridHeight).
@@ -57,8 +64,8 @@ public sealed record SimParams
     public double RetrySimSec { get; init; } = 5;
 
     // Wear. W in 0..100; gain W += I * (1 - W/100) on entering a cell.
-    public double WearPerStep { get; init; } = 2.4;
-    public double SideShare { get; init; } = 0.3;
+    public double WearPerStep { get; init; } = 2.2;
+    public double SideShare { get; init; } = 0.4;
     // Ground-state thresholds: grass < 10 <= trampled < 25 <= trail < 50 <= track; hollow at 85.
     public double ThresholdTrampled { get; init; } = 10;
     public double ThresholdTrail { get; init; } = 25;
@@ -74,7 +81,7 @@ public sealed record SimParams
     public double FlowDiscount { get; init; } = 0.5;
     public double FlowScale { get; init; } = 40;
     public double FlowHalfLife { get; init; } = 20;
-    public double MinSurface { get; init; } = 0.6;
+    public double MinSurface { get; init; } = 0.45;
     public double HalfLifeLow { get; init; } = 60;
     public double HalfLifeMid { get; init; } = 120;
     public double HalfLifeHigh { get; init; } = 240;
@@ -88,7 +95,7 @@ public sealed record SimParams
     public double CropPenalty { get; init; } = 0.5;
     public int Lookahead { get; init; } = 20;
     public double ShortcutSlack { get; init; } = 1.0;
-    public double FordCostMul { get; init; } = 3.0;
+    public double FordCostMul { get; init; } = 4.0;
     public double FordSpeedMul { get; init; } = 0.4;
     public double BridgeCost { get; init; } = 0.8;
     public double BridgeSpeedMul { get; init; } = 1.2;
@@ -98,11 +105,11 @@ public sealed record SimParams
     /// Hash2(id, 77)) or if the ordinary route from where it stands is longer than DetourCap x the straight distance (0 off).
     /// With ExplorerShare and DetourCap both 0 the frugal view is never built.
     /// </summary>
-    public double ExplorerShare { get; init; } = 0;
+    public double ExplorerShare { get; init; } = 0.1;
     public double FrugalDisc { get; init; } = 0.3;
-    public double DetourCap { get; init; } = 0;
+    public double DetourCap { get; init; } = 1.25;
     /// <summary>1: a bridge deck is made cheaper by recent traffic like any lane (floored at MinSurface); 0: fixed BridgeCost.</summary>
-    public double BridgeFlow { get; init; } = 0;
+    public double BridgeFlow { get; init; } = 1;
     // Steering tools (toy rounds 3 and 4): gravel and gates in fences.
     public double GravelCost { get; init; } = 0.6;
     public double GravelSpeedMul { get; init; } = 1.15;
@@ -112,11 +119,11 @@ public sealed record SimParams
     public double GateCost { get; init; } = 1.5;
     public double GateSpeedMul { get; init; } = 0.4;
     /// <summary>
-    /// Rain and mud (toy round 4; RainWeather.cs). Off in both presets here (the toy's player default is on; the gate runs
-    /// with it off) and always off while the river rules are on (the river has its own flood mud). A weather stream of its
+    /// Rain and mud (toy round 4; RainWeather.cs). On by default as in the toy (off in Toy and Legacy; the gate runs with it
+    /// off) and always off while the river rules are on (the river has its own flood mud). A weather stream of its
     /// own rolls once a day for rain; while it rains every unpaved land cell at wear 25 or more is mud, until the ground dries.
     /// </summary>
-    public bool RainOn { get; init; }
+    public bool RainOn { get; init; } = true;
     /// <summary>Chance of rain per day, by season (spring, summer, autumn, winter).</summary>
     public IReadOnlyList<double> RainChance { get; init; } = new[] { 0.3, 0.15, 0.4, 0.0 };
     /// <summary>Days of mud counting the rain day, by season.</summary>
@@ -133,12 +140,12 @@ public sealed record SimParams
     public double MudSpeedMul { get; init; } = 0.7;
 
     /// <summary>
-    /// House growth by the frontage rules (toy round 4; Growth.cs). Off in both presets here (the toy's player default is
-    /// on; the gate runs with it off) and always off while the river rules are on (their prices assume a village of fixed
+    /// House growth by the frontage rules (toy round 4; Growth.cs). On by default as in the toy (off in Toy and Legacy; the
+    /// gate runs with it off) and always off while the river rules are on (their prices assume a village of fixed
     /// size). A Hamlet cottage (3 x 3 with its garden, HouseholdSize villagers) appears every HouseEverySimSec on the best
     /// valid plot while the population is below HamletTarget; new villagers draw from a growth stream of their own.
     /// </summary>
-    public bool GrowthOn { get; init; }
+    public bool GrowthOn { get; init; } = true;
     public double HouseEverySimSec { get; init; } = 30;
     public double HouseFirstSimSec { get; init; } = 30;
     public int HamletTarget { get; init; } = 250;
@@ -167,7 +174,7 @@ public sealed record SimParams
     /// The flow preview's version (see <see cref="FlowPredictor"/>): false is round 2's, true the finished toy's (both
     /// kinds of walker, pairs from 0.2 trips a day, the mean cost change in the readout, the gravel note).
     /// </summary>
-    public bool PreviewV2 { get; init; }
+    public bool PreviewV2 { get; init; } = true;
 
     // Flow preview bookkeeping: trips per (house, destination) decay with this time constant in days.
     public double TripRateDays { get; init; } = 3;
