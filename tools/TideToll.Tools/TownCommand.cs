@@ -30,6 +30,9 @@ public static class TownCommand
         if (which is "all" or "cheapest") bots.Add(BotKind.Cheapest);
         if (which is "all" or "payback") bots.Add(BotKind.Payback);
         if (which is "all" or "random") bots.Add(BotKind.Random);
+        if (which is "all" or "saver") bots.Add(BotKind.Saver);
+        if (o.ContainsKey("extras")) return Extras(seed);
+        if (o.TryGetValue("shopat", out var sa)) return ShopAt(seed, double.Parse(sa, Inv));
         if (o.TryGetValue("seeds", out var range))
         {
             var p = range.Split('-');
@@ -113,6 +116,30 @@ public static class TownCommand
         return 0;
     }
 
+    /// <summary>--extras: bell worth, paving worth and requests met per bot on one seed.</summary>
+    private static int Extras(int seed)
+    {
+        foreach (BotKind k in Enum.GetValues<BotKind>())
+        {
+            var a = TownPacing.Run(seed, k, TownTargets.RunMinutes);
+            var np = TownPacing.Run(seed, k, TownTargets.RunMinutes, noPave: true);
+            double bell = TownPacing.BellWorth(seed, k);
+            Console.WriteLine($"seed {seed} {TownBot.Name(k)}: charter {Min(a.Charter)}, never paving {Min(np.Charter)} ({(np.Charter < 0 ? double.NaN : np.Charter / a.Charter - 1) * 100:F0} % slower), bell +{bell * 100:F1} %, requests met {a.RequestsMet}/{a.RequestsAsked}");
+        }
+        return 0;
+    }
+
+    /// <summary>--shopat M: the cheapest-first bot plays to minute M; then the shop is printed (tuning).</summary>
+    private static int ShopAt(int seed, double minute)
+    {
+        var t = new Town(seed); var bot = new TownBot(BotKind.Cheapest, seed);
+        while (t.Time < minute * 60) { t.Step(); bot.Act(t); }
+        var items = new List<ShopItem>(); t.ShopItems(items);
+        Console.WriteLine($"minute {minute}: coin {t.Coin:F0}, coin/min {t.CoinPerMinute:F0}, level {t.Level}, villagers {t.VillagerCount}/{t.Housing}; hint: {t.Hint}");
+        foreach (var it in items) Console.WriteLine($"  {it.Kind,-9} {it.Name,-18} L{it.Level,-3} {it.Price,8:F0}  {it.Reason}");
+        return 0;
+    }
+
     private static string Min(double sec) => sec < 0 ? "never" : (sec / 60).ToString("F1", Inv);
 
     public static string Table(PacingResult r, bool md)
@@ -131,6 +158,10 @@ public static class TownCommand
         for (int i = 1; i < r.LevelTimes.Length; i++) lv.Append($" L{i + 1} {Min(r.LevelTimes[i])}");
         sb.AppendLine($"{(md ? "- " : "")}level reached (minute):{lv}");
         sb.AppendLine($"{(md ? "- " : "")}charter at minute {Min(r.Charter)}");
+        var bk = new StringBuilder();
+        for (int k = 0; k < r.ByKind.Length; k++) if (r.ByKind[k] > 0) bk.Append($" {(ShopItemKind)k} {r.ByKind[k]},");
+        sb.AppendLine($"{(md ? "- " : "")}purchases by kind before the charter:{bk.ToString().TrimEnd(',')}");
+        sb.AppendLine($"{(md ? "- " : "")}longest gap with nothing new on the map after minute 2: {r.LongestMapGap / 60:F1} min (from minute {r.LongestMapGapAt / 60:F1}); requests met {r.RequestsMet} of {r.RequestsAsked}");
         return sb.ToString();
     }
 

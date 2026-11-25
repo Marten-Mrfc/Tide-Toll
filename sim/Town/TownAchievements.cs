@@ -47,8 +47,8 @@ public static class TownAchievements
         A("level_6", "Closing the loop", "Reach level 6.", 6, t => t.Level),
         A("level_9", "Growing town", "Reach level 9.", 9, t => t.Level),
         A("charter", "Chartered", "Receive the town charter.", 1, t => t.HasCharter ? 1 : 0),
-        A("market", "Market day", "Buy the market stall.", 1, t => t.OfferBought(1) ? 1 : 0),
-        A("mill", "The miller", "Build the mill.", 1, t => t.OfferBought(3) ? 1 : 0),
+        A("market", "Market day", "Buy the market stall.", 1, t => t.OfferOf(OfferKind.MarketStall) is int m && m >= 0 && t.OfferBought(m) ? 1 : 0),
+        A("mill", "The miller", "Build the mill.", 1, t => t.OfferOf(OfferKind.Mill) is int m && m >= 0 && t.OfferBought(m) ? 1 : 0),
         A("rate_300", "Thriving", "Earn 300 coin in one minute.", 300, t => t.MaxCoinPerMinute),
     };
 }

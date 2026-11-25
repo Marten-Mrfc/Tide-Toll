@@ -26,15 +26,25 @@ public sealed class PacingResult
     /// <summary>Lowest purchases in one minute in the first TownTargets.EarlyMinutes, and after them until the charter.</summary>
     public int MinEarlyPerMinute = int.MaxValue, MinLatePerMinute = int.MaxValue;
     public int WorstEarlyMinute = -1, WorstLateMinute = -1;
+    // ---- Rules v2 ----
+    /// <summary>Purchases by ShopItemKind (index = (int)kind) before the charter.</summary>
+    public int[] ByKind = new int[11];
+    /// <summary>Load steps and building offers bought before the charter.</summary>
+    public int LoadSteps, Buildings;
+    /// <summary>Longest gap in seconds between new things on the map (level gift, building opened, road paved, cottage extended) after minute 2 and before the charter.</summary>
+    public double LongestMapGap, LongestMapGapAt;
+    public int RequestsAsked, RequestsMet;
+    public double CoinAt20 = -1;
 }
 
 /// <summary>Plays a bot on a seed and measures the pacing (used by the 'town' tool and the pacing tests).</summary>
 public static class TownPacing
 {
-    public static PacingResult Run(int seed, BotKind kind, int minutes, bool stopAtCharter = true, TownPlan? plan = null)
+    public static PacingResult Run(int seed, BotKind kind, int minutes, bool stopAtCharter = true, TownPlan? plan = null, bool noBell = false, bool noPave = false)
     {
         var t = plan != null ? new Town(plan) : new Town(seed);
-        var bot = new TownBot(kind, seed);
+        var bot = new TownBot(kind, seed) { NoBell = noBell, NoPave = noPave };
+        double lastNew = 120;
         var res = new PacingResult { Seed = seed, Bot = kind, LevelTimes = new double[t.MaxLevel] };
         Array.Fill(res.LevelTimes, -1);
         res.LevelTimes[0] = 0;
@@ -48,7 +58,21 @@ public static class TownPacing
             t.Step();
             t.DrainEvents(events);
             foreach (var e in events)
+            {
                 if (e.Kind == TownEventKind.LevelReached) res.LevelTimes[e.Level - 1] = e.Time;
+                if (res.Charter < 0 && e.Kind == TownEventKind.Purchase)
+                {
+                    res.ByKind[(int)e.Item]++;
+                    if (e.Item == ShopItemKind.Load) res.LoadSteps++;
+                    if (e.Item == ShopItemKind.Building) res.Buildings++;
+                }
+                if (res.Charter < 0 && e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended)
+                {
+                    if (e.Time > 120 && e.Time - lastNew > res.LongestMapGap) { res.LongestMapGap = e.Time - lastNew; res.LongestMapGapAt = lastNew; }
+                    if (e.Time > 120) lastNew = e.Time;
+                }
+            }
+            if (t.Tick == 20 * 60 * TownRules.TickHz) res.CoinAt20 = t.CoinEarned + t.RequestCoin;
             // Nothing affordable? (sampled when the bot thinks)
             if (t.Tick % TownBot.ThinkTicks == 0 && !t.CanRingNextAge)
             {
@@ -87,6 +111,7 @@ public static class TownPacing
             double len = t.Time - spellStart;
             if (len > res.LongestNothingAffordable) { res.LongestNothingAffordable = len; res.LongestNothingAffordableAt = spellStart; }
         }
+        res.RequestsAsked = t.RequestsAsked; res.RequestsMet = t.RequestsMet;
         res.FirstCoin = t.FirstCoinTime;
         res.FirstPurchase = t.FirstPurchaseTime;
         res.Purchases = t.Purchases;
@@ -114,9 +139,31 @@ public static class TownPacing
                 fastest = Math.Min(fastest, r.Charter); slowest = Math.Max(slowest, r.Charter);
             }
         }
+        foreach (var r in rs)
+        {
+            string n = $"seed {r.Seed} {TownBot.Name(r.Bot)}";
+            long total = 0; foreach (int c in r.ByKind) total += c;
+            for (int k = 0; k < r.ByKind.Length; k++)
+                if (total > 0 && r.ByKind[k] > TownTargets.MaxTrackShare * total) m.Add($"{n}: track {(ShopItemKind)k} is {100.0 * r.ByKind[k] / total:F0} % of purchases > {TownTargets.MaxTrackShare * 100:F0} %");
+            if (r.Bot is BotKind.Saver or BotKind.Payback)
+            {
+                foreach (var k in TownTargets.EveryKind)
+                    if (r.ByKind[(int)k] == 0) m.Add($"{n}: never bought {k} before the charter");
+                if (r.LoadSteps < TownRules.LoadPrices.Length) m.Add($"{n}: bought {r.LoadSteps} of {TownRules.LoadPrices.Length} Load steps before the charter");
+                if (r.Buildings < 4) m.Add($"{n}: bought {r.Buildings} of 4 buildings before the charter");
+            }
+            if (r.LongestMapGap > TownTargets.MaxMapGap) m.Add($"{n}: nothing new on the map for {r.LongestMapGap / 60:F1} min (from minute {r.LongestMapGapAt / 60:F1}) > {TownTargets.MaxMapGap / 60:F1}");
+        }
         if (rs.Count > 1 && slowest > 0 && fastest < double.MaxValue && slowest / fastest > TownTargets.MaxBotSpread)
             m.Add($"bots spread {slowest / fastest:F2} > {TownTargets.MaxBotSpread}");
         return m;
     }
 
+    /// <summary>Bell worth: coin earned in 20 minutes with the bell rung whenever ready over the same bot never ringing it, minus 1.</summary>
+    public static double BellWorth(int seed, BotKind kind, TownPlan? plan = null)
+    {
+        var a = Run(seed, kind, 20, stopAtCharter: false, plan: plan);
+        var b = Run(seed, kind, 20, stopAtCharter: false, plan: plan, noBell: true);
+        return a.CoinAt20 / b.CoinAt20 - 1;
+    }
 }

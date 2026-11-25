@@ -47,8 +47,11 @@ public class TownRulesTests
     [Fact]
     public void LoadRefusesAnotherVersion()
     {
-        string json = TownSave.Save(new T(1)).Replace("\"Version\":1", "\"Version\":99");
-        Assert.Throws<InvalidOperationException>(() => TownSave.Load(json));
+        // Rules v2: the save version is 2 (was 1); another version, version 1 included, is refused.
+        string json = TownSave.Save(new T(1));
+        Assert.Contains("\"Version\":2", json);
+        Assert.Throws<InvalidOperationException>(() => TownSave.Load(json.Replace("\"Version\":2", "\"Version\":99")));
+        Assert.Throws<InvalidOperationException>(() => TownSave.Load(json.Replace("\"Version\":2", "\"Version\":1")));
     }
 
     [Fact]
@@ -56,7 +59,7 @@ public class TownRulesTests
     {
         var t = new T(4);
         var bot = new TownBot(BotKind.Random, 4);
-        double coin = t.Coin, delivered = 0, spent = 0;
+        double coin = t.Coin, delivered = 0, spent = 0, rewards = 0;
         double vp = t.VillagerPrice, pp = t.PacePrice, lp = t.LoadPrice;
         var items = new List<ShopItem>();
         var ev = new List<TownEvent>();
@@ -69,12 +72,15 @@ public class TownRulesTests
             {
                 if (e.Kind == TownEventKind.Delivery) { Assert.True(e.Coin > 0); delivered += e.Coin; }
                 if (e.Kind == TownEventKind.Purchase) spent += e.Coin;
+                if (e.Kind == TownEventKind.RequestMet) { Assert.True(e.Coin > 0); rewards += e.Coin; } // rules v2: request rewards
             }
-            Assert.Equal(coin + delivered - spent, t.Coin, 6);
+            // Rules v2: a tolerance instead of rounding to 6 places (a sum landing on ...xxx5 rounded the two sides apart).
+            Assert.True(Math.Abs(coin + delivered + rewards - spent - t.Coin) < 1e-6, $"coin {t.Coin} vs {coin + delivered + rewards - spent}");
             Assert.True(t.VillagerPrice >= vp && t.PacePrice >= pp && t.LoadPrice >= lp, "a price fell");
             vp = t.VillagerPrice; pp = t.PacePrice; lp = t.LoadPrice;
         }
         Assert.Equal(delivered, t.CoinEarned, 6);
+        Assert.Equal(rewards, t.RequestCoin, 6);
         Assert.True(delivered > 0);
     }
 
@@ -171,7 +177,11 @@ public class TownRulesTests
                 for (int i = 0; i < t.VillagerCount; i++)
                 {
                     var v = t.Villager(i);
-                    Assert.True(OnSomeRoad(t, v.X, v.Y), $"seed {seed} {kind}: villager {i} off the roads at {v.X:F2},{v.Y:F2} ({v.Phase})");
+                    // Rules v2 (decision 7): working villagers stand at their work spot in or beside the workplace, idle ones at home
+                    // at the door or in the yard; everyone else stays on the roads.
+                    if (v.Phase is VillagerPhase.Working or VillagerPhase.Idle && !OnSomeRoad(t, v.X, v.Y))
+                        Assert.True(NearPlot(t, v.Phase == VillagerPhase.Working ? t.Workplace(v.Workplace).Plot : v.Home, v.X, v.Y), $"seed {seed} {kind}: villager {i} ({v.Phase}) at {v.X:F2},{v.Y:F2} is not at its plot");
+                    else Assert.True(OnSomeRoad(t, v.X, v.Y), $"seed {seed} {kind}: villager {i} off the roads at {v.X:F2},{v.Y:F2} ({v.Phase})");
                     if (v.Phase == VillagerPhase.Walking)
                     {
                         Assert.True(t.RoadOpen(v.Road));
@@ -198,6 +208,12 @@ public class TownRulesTests
         }
         // At a node with no open road yet (never expected after level 1).
         return false;
+    }
+
+    private static bool NearPlot(T t, int plot, double x, double y)
+    {
+        var p = t.Plan.Plots[plot];
+        return x >= p.X - 1.2 && y >= p.Y - 1.2 && x <= p.X + p.W + 1.2 && y <= p.Y + p.H + 1.2;
     }
 
     private static double SegDist(double px, double py, double ax, double ay, double bx, double by)

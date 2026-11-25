@@ -17,7 +17,7 @@ public sealed partial class Town
                 if (Walk(v)) Arrive(v, 0);
                 break;
             case VillagerPhase.Working:
-                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1);
+                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1) * ToolsFactor;
                 if (v.WorkLeft <= 1e-9) FinishWork(v);
                 break;
             case VillagerPhase.Queued:
@@ -65,20 +65,32 @@ public sealed partial class Town
         v.Phase = VillagerPhase.Working;
         var kind = Plan.Plots[w.Plot].Kind;
         v.WorkLeft = kind == PlotKind.Well ? TownRules.WellWork : kind == PlotKind.Field ? TownRules.FieldWork : TownRules.MillWork;
+        int slot = 0;
+        while (slot < 30 && (w.SlotMask & (1 << slot)) != 0) slot++;
+        v.Slot = slot;
+        if (slot < 30) w.SlotMask |= 1 << slot;
+        Place(v); // straight to the work spot, also when called up from the queue by someone else's step
     }
+
+    private static int PopQueue(WorkplaceState w)
+    {
+        int next = w.Queue[0];
+        for (int i = 1; i < w.QueueLen; i++) w.Queue[i - 1] = w.Queue[i];
+        w.QueueLen--;
+        return next;
+    }
+
+    /// <summary>Work speed from the Tools track (1 with no Tools).</summary>
+    internal double ToolsFactor => 1 + TownRules.ToolsStep * S.ToolsLevel;
 
     private void FinishWork(VillagerState v)
     {
         var w = S.Workplaces[v.Workplace];
         w.Busy--;
-        // The first in the queue takes the place.
-        if (w.QueueLen > 0)
-        {
-            int next = w.Queue[0];
-            for (int i = 1; i < w.QueueLen; i++) w.Queue[i - 1] = w.Queue[i];
-            w.QueueLen--;
-            StartWork(S.Villagers[next]);
-        }
+        if (v.Slot >= 0 && v.Slot < 30) w.SlotMask &= ~(1 << v.Slot);
+        v.Slot = -1;
+        // The first in the queue takes the place (every free place, r1 bug hunt finding 1).
+        while (w.QueueLen > 0 && w.Busy < w.Places) StartWork(S.Villagers[PopQueue(w)]);
         v.Amount = LoadUnits;
         if (v.Job == JobKind.Flour && v.Stage == 0)
         {
@@ -109,19 +121,30 @@ public sealed partial class Town
         return -1;
     }
 
-    internal double JobValue(JobKind j) => j switch
+    internal double JobValue(JobKind j)
     {
-        JobKind.Water => TownRules.WaterValue,
-        JobKind.GrainHome => TownRules.GrainHomeValue,
-        JobKind.GrainMarket => TownRules.GrainMarketValue,
-        JobKind.Flour => TownRules.FlourValue,
-        _ => 0,
-    };
+        double b = j switch
+        {
+            JobKind.Water => TownRules.WaterValue,
+            JobKind.GrainHome => TownRules.GrainHomeValue,
+            JobKind.GrainMarket => TownRules.GrainMarketValue,
+            JobKind.Flour => TownRules.FlourValue,
+            _ => 0,
+        };
+        Good g = GoodOf(j);
+        return b * ValueFactor(g) * (S.ReqActive && S.ReqGood == g ? TownRules.RequestBonus : 1);
+    }
+
+    internal static Good GoodOf(JobKind j) => j switch { JobKind.Water => Good.Water, JobKind.Flour => Good.Flour, JobKind.None => Good.None, _ => Good.Grain };
+
+    /// <summary>Value multiplier of a good from its value track (1 with no levels).</summary>
+    public double ValueFactor(Good g) => 1 + TownRules.ValueStep * S.ValueLevel[(int)g];
 
     private void Deliver(VillagerState v)
     {
         double coin = v.Amount * JobValue(v.Job) * CoinBonus;
-        Earn(coin);
+        Earn(coin, v.Carry);
+        if (S.ReqActive && v.Carry == S.ReqGood) RequestDelivered(v.Amount);
         S.Trips++;
         S.Delivered[(int)v.Carry] += v.Amount;
         var nd = Plan.Nodes[v.Node];
@@ -141,7 +164,7 @@ public sealed partial class Town
         if (over <= 0) return 0;
         var kind = Plan.Plots[w.Plot].Kind;
         double work = kind == PlotKind.Well ? TownRules.WellWork : kind == PlotKind.Field ? TownRules.FieldWork : TownRules.MillWork;
-        return over * work / w.Places;
+        return over * work / ToolsFactor / w.Places;
     }
 
     /// <summary>Picks the job paying the most coin per second (travel, work and expected wait), then sets off. Ties: lower workplace, then job order.</summary>
@@ -165,14 +188,14 @@ public sealed partial class Town
             double wait = ExpectedWait(wi, v);
             if (kind == PlotKind.Well)
             {
-                Consider(JobKind.Water, wi, toW + wait + TownRules.WellWork + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
+                Consider(JobKind.Water, wi, toW + wait + TownRules.WellWork / ToolsFactor + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
                 continue;
             }
-            double baseT = toW + wait + TownRules.FieldWork;
+            double baseT = toW + wait + TownRules.FieldWork / ToolsFactor;
             Consider(JobKind.GrainHome, wi, baseT + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
             if (market >= 0) Consider(JobKind.GrainMarket, wi, baseT + TravelTime(wn, market), ref best, ref bestJob, ref bestW, load);
             if (market >= 0 && millNode >= 0)
-                Consider(JobKind.Flour, wi, baseT + TravelTime(wn, millNode) + ExpectedWait(mill, v) + TownRules.MillWork + TravelTime(millNode, market), ref best, ref bestJob, ref bestW, load);
+                Consider(JobKind.Flour, wi, baseT + TravelTime(wn, millNode) + ExpectedWait(mill, v) + TownRules.MillWork / ToolsFactor + TravelTime(millNode, market), ref best, ref bestJob, ref bestW, load);
         }
         if (bestJob == JobKind.None) return false;
         v.Job = bestJob; v.Stage = 0; v.Workplace = bestW;

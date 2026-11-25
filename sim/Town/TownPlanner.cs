@@ -32,11 +32,11 @@ public static class TownPlanner
         new("c3", PlotKind.Cottage, 11, 26, 3, 3, 4),
         new("market", PlotKind.Market, 27, 11, 5, 4, 5, 1),
         new("c4", PlotKind.Cottage, 22, 24, 3, 3, 7),
-        new("c5", PlotKind.Cottage, 2, 13, 3, 3, 7),
-        new("f2", PlotKind.Field, 13, 1, 9, 6, 8, 2),
-        new("c6", PlotKind.Cottage, 17, 31, 3, 3, 9),
-        new("mill", PlotKind.Mill, 25, 2, 4, 4, 10, 3),
-        new("c7", PlotKind.Cottage, 29, 20, 3, 3, 11),
+        new("c5", PlotKind.Cottage, 2, 13, 3, 3, 8),
+        new("f2", PlotKind.Field, 13, 1, 9, 6, 9, 2),
+        new("c6", PlotKind.Cottage, 17, 31, 3, 3, 11),
+        new("mill", PlotKind.Mill, 25, 2, 4, 4, 13, 3),
+        new("c7", PlotKind.Cottage, 29, 20, 3, 3, 14),
     };
 
     private static readonly (int Level, string A, string B)[] TemplateRoads =
@@ -47,12 +47,12 @@ public static class TownPlanner
         (4, "c3", "c2"),
         (5, "market", "bell"),
         (6, "c3", "well"),
-        (7, "c4", "well"), (7, "c5", "c1"),
-        (8, "f2", "f1"), (8, "f2", "market"),
-        (9, "c6", "c3"), (9, "c6", "c4"),
-        (10, "mill", "market"),
-        (11, "c7", "market"), (11, "c7", "c4"),
-        (12, "c5", "c2"),
+        (7, "c4", "well"), (8, "c5", "c1"),
+        (9, "f2", "f1"), (10, "f2", "market"),
+        (11, "c6", "c3"), (12, "c6", "c4"),
+        (13, "mill", "market"),
+        (14, "c7", "market"), (15, "c7", "c4"),
+        (16, "c5", "c2"),
     };
 
     private static readonly string[] Gifts =
@@ -63,11 +63,15 @@ public static class TownPlanner
         "A cottage, a lane and a second bucket for the well",
         "The market square, with a stall to buy",
         "A shortcut that closes a loop",
-        "Two cottages and their lanes",
-        "A second field to buy, two tracks and cobbles",
-        "A cottage and two lanes",
+        "A cottage and its lane",
+        "A cottage by the first field",
+        "A second field to buy, its track and cobbles",
+        "A track from the second field to the market",
+        "A cottage and its lane",
+        "A lane that joins the south cottages",
         "The mill to buy and its road",
-        "A cottage and two lanes",
+        "A cottage by the market",
+        "A lane that closes the east loop",
         "The town charter and a last lane",
     };
 
@@ -163,8 +167,8 @@ public static class TownPlanner
         {
             new Offer { Id = 0, Kind = OfferKind.SecondBucket, Name = "Second bucket", Price = TownRules.SecondBucketPrice, Level = 4, Plot = names["well"] },
             new Offer { Id = 1, Kind = OfferKind.MarketStall, Name = "Market stall", Price = TownRules.MarketStallPrice, Level = 5, Plot = names["market"] },
-            new Offer { Id = 2, Kind = OfferKind.SecondField, Name = "Second field", Price = TownRules.SecondFieldPrice, Level = 8, Plot = names["f2"] },
-            new Offer { Id = 3, Kind = OfferKind.Mill, Name = "Mill", Price = TownRules.MillPrice, Level = 10, Plot = names["mill"] },
+            new Offer { Id = 2, Kind = OfferKind.SecondField, Name = "Second field", Price = TownRules.SecondFieldPrice, Level = 9, Plot = names["f2"] },
+            new Offer { Id = 3, Kind = OfferKind.Mill, Name = "Mill", Price = TownRules.MillPrice, Level = 13, Plot = names["mill"] },
         };
 
         int nl = TownRules.LevelRenown.Length;
