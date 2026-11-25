@@ -48,12 +48,13 @@ def glb_stats(path):
     tris = 0
     lo, hi = [1e9] * 3, [-1e9] * 3
     for n in j["nodes"]:
+        t = n.get("translation", [0.0, 0.0, 0.0])          # River set: hinged and moving nodes carry a translation
         for p in j["meshes"][n["mesh"]]["primitives"]:
             acc = j["accessors"]
             tris += (acc[p["indices"]]["count"] if "indices" in p else acc[p["attributes"]["POSITION"]]["count"]) // 3
             pa = acc[p["attributes"]["POSITION"]]
-            lo = [min(a, c) for a, c in zip(lo, pa["min"])]
-            hi = [max(a, c) for a, c in zip(hi, pa["max"])]
+            lo = [min(a, c + o) for a, c, o in zip(lo, pa["min"], t)]
+            hi = [max(a, c + o) for a, c, o in zip(hi, pa["max"], t)]
     return tris, lo, hi, [n.get("name", "") for n in j["nodes"]]
 
 
@@ -294,6 +295,161 @@ for item, stem, title, what, melody, fmax in LOOPS:
 </article>""")
 score_note = ledger_facts("assets/audio/music/theme-hamlet-draft-score.json")
 
+
+# ---------------------------------------------------------------- River set (third round, 2026-11-25)
+def node_info(path):
+    b = path.read_bytes()
+    jl = struct.unpack("<I", b[12:16])[0]
+    j = json.loads(b[20:20 + jl])
+    out = []
+    for n in j["nodes"]:
+        acc = j["accessors"][j["meshes"][n["mesh"]]["primitives"][0]["indices"]]
+        t = n.get("translation")
+        out.append((n["name"], acc["count"] // 3, t))
+    return out
+
+
+RIVER_MODELS = [
+    ("barge", "Masted sailing barge", 600,
+     "Drawn at 1.5x like the rowboat and almost twice its length: a bluff dark hull with a Cast-iron green gunwale, "
+     "leeboards, an open hold, a limewashed deckhouse aft and a big rudder. Bow +Z, y = 0 is the waterline. From above "
+     "the furled sail on its yard makes a white cross-bar over the hull: the mast mark that a low bridge blocks.",
+     {"mast": "pivot at the mast step; rotate about X by -80 degrees to lower the mast aft",
+      "cargo": "goods in the hold; hide the node for an empty barge"}, ["barge-mast-lowered"]),
+    ("ferry-raft", "Ferry raft", 500,
+     "Plank raft on three log floats, rails on both long sides, boarding flaps at both ends, a ferryman's pole. "
+     "The rope runs through two guides on the +X side: the rope line is x = +1.95, y = 1.3 at every z.", {}, []),
+    ("ferry-post", "Ferry landing post", 300,
+     "One per bank: the rope is made fast at y = 1.3 and leaves towards -Z (the river) from (0, 1.3, -0.3); a small "
+     "hand bell hangs from a bracket to call the ferry.", {}, []),
+    ("drawbridge-lift", "Drawbridge, lifting section", 1500,
+     "White timber Dutch drawbridge: a 2 m pier with the gantry on the near bank and a 6 m leaf that spans a 3-cell "
+     "river, deck 0.9 m above the water (masts cannot pass while it is down). Raised to 80 degrees the leaf shows its "
+     "dark underside and leaves a 4.4 m channel. Rotate leaf and beam by the same angle; move the chains with the beam "
+     "tip to (0, 5.9 + 6 sin a, 2 - 6 cos a).",
+     {"leaf": "hinge; rotate about X by +a (0 to 80 degrees) to raise",
+      "beam": "pivot above the hinge; rotate about X by the same +a",
+      "chains": "do not rotate; move with the beam tip",
+      "signal": "arm pivot; rotate about Z by +90 degrees for vertical (boats' turn)"}, ["drawbridge-lift-raised"]),
+    ("drawbridge-span", "Drawbridge fixed span", 400,
+     "2 m module, 4 m wide, deck 0.9, on piles, for rivers wider than 6 m (boats still pass only under the leaf).", {}, []),
+    ("drawbridge-end", "Drawbridge bank ramp", 500,
+     "2 x 4 m ramp from the ground (+Z) to the deck, with the sill the leaf tip rests on; turn the far one 180 degrees.",
+     {"barrier": "pole pivot; the pole lies across the ramp (closed to walkers); rotate about Z by +80 degrees to lift it"}, []),
+    ("landing", "Landing", 500,
+     "Short timber jetty from the bank (+Z) over the water: deck 2.4 x 6 m at 0.5 m, four tall mooring posts, a bollard "
+     "with a coiled line, crates, sacks and a wool bale waiting for a boat.", {}, []),
+    ("keeper-hut", "Bridge keeper's hut", 500,
+     "Tiny limewashed hut under a steep thatch, a bell-cote with the warning bell on the ridge (a small slate cross-roof "
+     "from above) and a lantern beside the door (+Z). Stands by the drawbridge ramp.", {}, []),
+    ("ferry-rope", "Ferry rope", 50,
+     "A 1 m rope piece from the origin to (0, 0, -1): place it at the near post's rope point, face the far post, scale Z "
+     "by the distance.", {}, []),
+]
+RIVER_EXTRA_TITLE = {"barge-mast-lowered": "Mast lowered (pose preview)",
+                     "drawbridge-lift-raised": "Raised to 80 degrees (pose preview)"}
+river_cards = []
+river_tris = 0
+for name, title, bud, what, notes, extras in RIVER_MODELS:
+    item = f"assets/models/{name}.glb"
+    tris, lo, hi, nodes = glb_stats(ROOT / item)
+    river_tris += tris
+    sheet = ROOT / f"assets/src/contact-sheets/{name}.png"
+    figs = ""
+    if sheet.exists():
+        img = put(f"assets/src/contact-sheets/{name}.png", f"models/{name}.png")
+        figs += (f'<figure><img src="{img}" alt="Contact sheet of {E(title)}: top view, 45-degree views from south, east '
+                 f'and north, and four side views" loading="lazy" width="1920" height="960"></figure>')
+    for ex in extras:
+        img = put(f"assets/src/contact-sheets/{ex}.png", f"models/{ex}.png")
+        figs += (f'<figure><img src="{img}" alt="Contact sheet of {E(title)}, {E(RIVER_EXTRA_TITLE[ex])}" loading="lazy" '
+                 f'width="1920" height="960"><figcaption class="muted" style="padding:6px 12px">{E(RIVER_EXTRA_TITLE[ex])}</figcaption></figure>')
+    w, h, d = hi[0] - lo[0], hi[1], hi[2] - lo[2]
+    below = f", reaches {m(-lo[1])} m below y = 0" if lo[1] < -0.01 else ""
+    rows = ""
+    for nn, nt, tr in node_info(ROOT / item):
+        org = f"origin ({', '.join(m(v) for v in tr)})" if tr else "origin (0, 0, 0)"
+        rows += f"<li><code>{E(nn)}</code> {nt} tris, {org}{'; ' + E(notes[nn]) if nn in notes else ''}</li>"
+    node_list = f'<ul class="nodes">{rows}</ul>' if len(nodes) > 1 else ""
+    river_cards.append(f"""
+<article class="card model" id="{name}">
+  {figs}
+  <div class="body">
+    <h3>{E(title)} <code>{name}.glb</code></h3>
+    <p>{E(what)}</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>{m(w)} x {m(d)} m (x by z)</dd>
+      <dt>Height</dt><dd>{m(h)} m{below}</dd>
+      <dt>Triangles</dt><dd>{tris} <span class="muted">of {bud}</span></dd>
+    </dl>
+    {node_list}
+    {ledger_facts(item)}
+  </div>
+</article>""")
+river_scene = put("assets/src/contact-sheets/river-scene.png", "models/river-scene.png")
+river_scene_open = put("assets/src/contact-sheets/river-scene-open.png", "models/river-scene-open.png")
+
+RIVER_ICONS = [("tool-ferry", "Ferry"), ("tool-drawbridge", "Drawbridge"), ("ui-raise-bridge", "Raise the bridge"),
+               ("ui-lower-bridge", "Lower the bridge"), ("ui-hire-keeper", "Hire the keeper"), ("ui-coin", "Coin"),
+               ("ui-boat", "Boat"), ("ui-reputation", "Reputation")]
+
+
+def icon_row(name, label, gen):
+    src = put(f"assets/icons/{name}.svg", f"icons/{name}.svg")
+    cells = "".join(f'<img class="ico" src="{src}" width="{s}" height="{s}" alt="">' for s in (20, 40, 80))
+    return (f'<li id="{name}"><div class="pair" role="img" aria-label="{E(label)} icon at 20, 40 and 80 px on Paper and on Ink">'
+            f'<div class="on-paper">{cells}</div><div class="on-ink">{cells}</div></div>\n'
+            f'<p><b>{E(label)}</b> <code>{name}.svg</code> <span class="muted">{E(LEDGER[f"assets/icons/{name}.svg"]["licence"])}, {gen}</span></p></li>')
+
+
+river_icon_rows = [icon_row(n, l, "icons-river.py") for n, l in RIVER_ICONS]
+river_icon_prev = put("assets/src/2d/previews/icons-river-preview.png", "icons/icons-river-preview.png")
+_rr = LEDGER["assets/icons/tool-ferry.svg"]
+river_icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_rr["source"])}</dd><dt>Licence</dt><dd>{E(_rr["licence"])}</dd>'
+                    f'<dt>Verified</dt><dd>{E(_rr["verified"])}, {E(_rr["date_checked"])}</dd></dl>')
+
+
+def sfx_card(stem, count, title, what, fmax):
+    global n_audio
+    rows = []
+    suffixes = [f"{i:02d}" for i in range(1, count + 1)]
+    for suf in suffixes:
+        nm = f"{stem}-{suf}"
+        item = f"assets/audio/sfx/{nm}.wav"
+        snd = put(item, f"audio/{nm}.wav")
+        spec = put(f"build/audio-previews/{nm}.png", f"spectrograms/{nm}.png")
+        length, loud, peak = fmt_audio(measure(item))
+        n_audio += 1
+        src = LEDGER[item]["source"]
+        seed = src[src.find("(seed"):src.find(")") + 1] if "(seed" in src else ""
+        rows.append(f"""<li class="take">
+  <div class="take-head"><b>{nm}</b> <span class="muted">{E(seed)}</span></div>
+  <audio controls preload="none" src="{snd}" aria-label="Play {nm}"></audio>
+  <img src="{spec}" alt="Waveform and spectrogram of {nm}, 0 to {fmax} kHz" loading="lazy" width="800" height="360">
+  <p class="meta">{length}; {loud}; peak {peak}</p>
+</li>""")
+    return f"""
+<article class="card sfx" id="{stem}">
+  <div class="body">
+    <h3>{E(title)} <code>{stem}-{suffixes[0]}..{suffixes[-1]}.wav</code></h3>
+    <p>{E(what)} WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to {fmax} kHz.</p>
+    {ledger_facts(f"assets/audio/sfx/{stem}-{suffixes[0]}.wav")}
+  </div>
+  <ol class="takes">{"".join(rows)}</ol>
+</article>"""
+
+
+RIVER_SFX = [
+    ("drawbridge-raise", 3, "Drawbridge raising", "About 2.3 s: the winch pawl clicking steadily (8 to 9 a second), the timber leaf creaking under load, chains taking up slack, and the pawl locking with a clunk at the top.", 12),
+    ("drawbridge-lower", 3, "Drawbridge lowering", "About 2.3 s: the drum freewheeling faster under the brake, chains paying out, creaks, and the leaf landing on its sill with a heavy thud at 2.0 s.", 12),
+    ("boat-call", 6, "Boat calling for the bridge or ferry", "01 to 03: a small hand bell shaken two or three times (hum D5, A4, E5); 04 to 06: a short cow-horn call on A3, D4 and G3.", 6),
+    ("coin", 6, "Trade income", "One to three small coins clinking, under half a second, the lowest partials in the 2 to 4 kHz UI lane, so the game can quantise and stack them.", 12),
+    ("ferry-rope", 4, "Ferry rope pull", "A low stick-slip creak of the rope on its guide, a soft rasp through the hands and a hollow plank knock.", 12),
+    ("oar-splash", 6, "Oar stroke and wake", "01 to 04: a thole-pin creak, then the blade dipping with a slap, slosh and bubbles; 05 and 06: bigger wake washes against the bank.", 12),
+    ("boat-turn-away", 3, "Boat turns back", "Two muffled low bell strikes falling by a third (G3 to E3, D4 to B3, C4 to A3): a disappointed sigh, not an alarm.", 4),
+]
+river_sfx = [sfx_card(*r) for r in RIVER_SFX]
+
 # ---------------------------------------------------------------- counts
 counts = {}
 for r in LEDGER.values():
@@ -404,6 +560,8 @@ audio{width:100%;max-width:100%;height:36px}
 .melody{font-family:var(--f-mono);font-size:.85rem;background:var(--tag-bg);padding:6px 10px;border-radius:2px;overflow-wrap:anywhere}
 .label{font-family:var(--f-body);color:var(--ink-soft);margin-right:6px}
 .notes{display:grid;gap:8px;max-width:75ch;margin:0;padding-left:20px}
+.nodes{margin:0;padding-left:18px;font-size:.86rem;display:grid;gap:2px}
+.river-new{border-left-color:var(--river)}
 footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:16px;font-size:.88rem;color:var(--ink-soft);display:grid;gap:6px}
 footer p{margin:0}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
@@ -419,6 +577,7 @@ JUMP_TEX = jump([("tex-" + n, t) for n, t, _, _ in TEX] + [("wear-ramp", "Wear r
 JUMP_ICONS = jump([(n, t) for n, t in ICONS])
 JUMP_FONTS = jump([("font-" + fn.split(".")[0], lbl.split(" (")[0]) for fn, lbl, *_ in FONTS])
 JUMP_SFX = jump([(st, t) for st, _, t, _, _ in SFX])
+JUMP_RIVER = jump([(n, t) for n, t, *_ in RIVER_MODELS] + [("river-icons", "Icons"), ("river-sfx", "Sounds")])
 JUMP_LOOPS = jump([(st, t) for _, st, t, _, _, _ in LOOPS] + [("score", "Score data")])
 CHANGES = [
     "Icons redrawn in one language: crisp closed shapes, Paper fill inside a 2-unit Ink outline, one stroke weight. The same files now read on Paper and on Ink; this page shows the real SVGs (no recolouring mask). The footbridge icon is a bold deck with a hand rail over water.",
@@ -440,13 +599,29 @@ PAGE = f"""<title>Tide &amp; Toll Asset Gallery</title>
 <style>{CSS}</style>
 <div class="wrap" id="top">
 <header class="title">
-  <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-24</p>
+  <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-25</p>
   <h1>The Hamlet asset set</h1>
-  <p class="lead">Every model, texture, icon, font and sound made for the first era, with how it was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
+  <p class="lead">Every model, texture, icon, font and sound made for the first era, now with the River set for the river prototype, with how each was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
   <ul class="counts"><li><b>{n_files}</b> files in the ledger</li><li>{count_line}</li></ul>
-  <nav class="toc" aria-label="Sections"><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <nav class="toc" aria-label="Sections"><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <aside class="changes river-new" id="new-river"><h2>New: the River set</h2><p class="muted">Third round, 2026-11-25, for the river prototype (boats, crossings, trade).</p><ul><li>{len(RIVER_MODELS)} models ({river_tris:,} triangles): masted barge with a lowering mast and a cargo node, rope ferry (raft, posts, rope), Dutch drawbridge with a hinged leaf, balance beam, chains and signal arm, its span and ramp with a barrier, the landing and the keeper's hut.</li><li>{len(RIVER_ICONS)} icons in the house language; {sum(r[1] for r in RIVER_SFX)} sounds in {len(RIVER_SFX)} families.</li><li>The six free asset sites are blocked from the build container (checked 2026-11-25), so everything was made in code; every file has a ledger row.</li></ul></aside>
   <aside class="changes" id="changes"><h2>Changed since the first version</h2><p class="muted">Second round, after the art and audio review.</p><ul>{CHANGES_HTML}</ul></aside>
 </header>
+
+<section id="river">
+  <header><h2>River set</h2>
+  <p>Everything the river prototype needs: boats, crossings and their moving parts, icons and sounds. Same Living Map style and palette atlas as the Hamlet set; built by <code>assets/src/models/barge.py</code>, <code>ferry.py</code>, <code>drawbridge.py</code>, <code>landing.py</code>, <code>keeper-hut.py</code>, <code>assets/src/2d/icons-river.py</code> and six generators in <code>assets/src/audio/</code>. Nodes that move carry a translation in the file: their origin is the hinge or pivot, so the game rotates the node itself.</p>{JUMP_RIVER}</header>
+  <figure class="wide"><img src="{river_scene}" alt="The River set at true scale by a 6 m river: drawbridge lowered with a barge waiting, ferry, landing with a rowboat, keeper's hut" width="2880" height="720"><figcaption>Bridge down: the barge waits west of the drawbridge; ferry on its rope, the landing with a moored rowboat, the keeper's hut (preview scene built by <code>assets/src/models/_river_scene.py</code>).</figcaption></figure>
+  <figure class="wide"><img src="{river_scene_open}" alt="The same scene with the drawbridge raised and the barge passing through" loading="lazy" width="2880" height="720"><figcaption>Bridge up: leaf and beam at 80 degrees, signal arm vertical, barriers down, the barge in the gap.</figcaption></figure>
+  <div class="grid">{"".join(river_cards)}</div>
+  <h3 id="river-icons">Icons</h3>
+  <ul class="icons">{"".join(river_icon_rows)}</ul>
+  <figure class="wide"><img src="{river_icon_prev}" alt="The eight river icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="766" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
+  <article class="card"><div class="body"><h3>Ledger, the same for all eight river icons</h3>{river_icon_facts}</div></article>
+  <h3 id="river-sfx">Sounds</h3>
+  <p class="listen"><b>Measured, not yet listened to.</b> Judged from spectrograms, loudness and peak numbers only.</p>
+  <div class="grid">{"".join(river_sfx)}</div>
+</section>
 
 <section id="models">
   <header><h2>Models</h2>

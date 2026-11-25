@@ -45,6 +45,8 @@ public partial class ToolController : Node
     public bool PointerOverUi { get; private set; }
     public bool PointerKnown { get; private set; }
     public string LastMessage { get; private set; } = "";
+    /// <summary>Frames in which preview work was skipped because the simulation was busy (perf test, stats).</summary>
+    public int PreviewSkips { get; private set; }
 
     private (int x, int y)? _dragStart;           // fence drag
     private (int x, int y) _dragEnd;
@@ -268,141 +270,8 @@ public partial class ToolController : Node
         return (Math.Clamp((int)MathF.Floor(l.X / CellM), 0, n - 1), Math.Clamp((int)MathF.Floor(l.Z / CellM), 0, n - 1));
     }
 
-    // ------------------------------------------------------------------ ghosts and previews
-
-    private void FenceCells((int x, int y) end)
-    {
-        _cells.Clear();
-        W.Grid.Line4(_dragStart!.Value.x, _dragStart.Value.y, end.x, end.y, _cells);
-    }
-
-    private void FenceGhost()
-    {
-        FenceCells(_dragEnd);
-        int n = W.Grid.Width;
-        var fence = W.Fence;
-        _ok.Clear(); _bad.Clear();
-        Ghost.Begin();
-        foreach (int c in _cells)
-        {
-            bool ok = W.CanFence(c) && fence[c] == 0;
-            if (ok) _ok.Add(c); else _bad.Add(c);
-            Ghost.Cell(c % n, c / n, ok ? ToolGhost.Ok : ToolGhost.Bad, ok ? ToolGhost.OkColour : ToolGhost.BadColour);
-        }
-        Ghost.End();
-        if (_ok.Count > 0) Previewer.Request(new WhatIf { Block = _ok.ToArray() }, FlowPreviewer.Key('f', CollectionsMarshal.AsSpan(_ok)));
-        else Previewer.Clear();
-        Say(_bad.Count > 0 && _ok.Count > 0 ? "Fence: hatched cells are water, doors or buildings and stay open."
-            : _ok.Count == 0 ? "Fences can't stand on water, doors or buildings." : Hints[1]);
-    }
-
-    private void Hover(Vector2 pos, bool force = false)
-    {
-        bool over = PointerOverUi;
-        if (Tool == Tool.None || over || !_main.Rig.PickLocal(pos, out var l))
-        {
-            Ghost.Clear();
-            Previewer.Clear();
-            _hoverCell = (-999, -999);
-            return;
-        }
-        float x = l.X / CellM, y = l.Z / CellM;
-        int cx = (int)MathF.Floor(x), cy = (int)MathF.Floor(y), n = W.Grid.Width;
-        bool onMap = cx >= 0 && cy >= 0 && cx < n && cy < n;
-        if (!force && (cx, cy) == _hoverCell) return;
-        _hoverCell = (cx, cy);
-        Ghost.Begin();
-        if (!onMap) { Ghost.End(); Previewer.Clear(); return; }
-        switch (Tool)
-        {
-            case Tool.Fence:
-                bool ok = W.CanFence(cy * n + cx) && W.Fence[cy * n + cx] == 0;
-                Ghost.Cell(cx, cy, ok ? ToolGhost.Ok : ToolGhost.Bad, ok ? ToolGhost.OkColour : ToolGhost.BadColour);
-                Previewer.Clear();
-                break;
-            case Tool.Bridge:
-                if (W.BridgeCellsAt(x, y, _bridgeCells))
-                {
-                    foreach (int c in _bridgeCells) Ghost.Cell(c % n, c / n, ToolGhost.Ok, ToolGhost.OkColour);
-                    Previewer.Request(new WhatIf { Bridge = _bridgeCells.ToArray() }, FlowPreviewer.Key('b', CollectionsMarshal.AsSpan(_bridgeCells)));
-                    Say(Hints[2]);
-                }
-                else
-                {
-                    Ghost.Cell(cx, cy, ToolGhost.Bad, ToolGhost.BadColour, 2f);
-                    Previewer.Clear();
-                    Say(BridgeReason(cx, cy));
-                }
-                break;
-            case Tool.Erase:
-                EraseTargets(cx, cy);
-                Ghost.Ring(x, y, 3.2f);
-                foreach (int c in _fenceT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
-                foreach (int c in _bridgeT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
-                if (_fenceT.Count + _bridgeT.Count > 0)
-                    Previewer.Request(new WhatIf { Open = _fenceT.ToArray(), CloseBridge = _bridgeT.ToArray() },
-                        FlowPreviewer.Key('e', CollectionsMarshal.AsSpan(_fenceT), CollectionsMarshal.AsSpan(_bridgeT)));
-                else Previewer.Clear();
-                break;
-        }
-        Ghost.End();
-    }
-
-    /// <summary>Why no footbridge fits at a cell, in words (mirrors World.BridgeCellsAt's checks; read-only).</summary>
-    public string BridgeReason(int cx, int cy)
-    {
-        var w = W;
-        int n = w.Grid.Width;
-        if (cy < 0 || cy >= n) return "Point at the river to lay a footbridge.";
-        int rx = (int)MathF.Floor(w.RiverX[cy]);
-        if (Math.Abs(cx - rx) > w.Map.RiverHalfW + 4) return "A footbridge goes across the river: point at the water.";
-        if (Math.Abs(cy - w.Map.FordY) <= 2) return "Too close to the ford: villagers already cross here.";
-        for (int x = Math.Max(0, rx - 8); x <= Math.Min(n - 1, rx + 8); x++)
-            if (w.BridgeAt[cy * n + x] >= 0) return "There is already a footbridge here.";
-        return "No footbridge fits here: both ends need open ground on the bank.";
-    }
-
-    /// <summary>Fence cells in the 3 x 3 round a cell, and every cell of any bridge touched (the toy's brush).</summary>
-    private void EraseTargets(int x, int y)
-    {
-        var w = W;
-        int n = w.Grid.Width;
-        _fenceT.Clear(); _bridgeT.Clear();
-        var fence = w.Fence;
-        var bridgeAt = w.BridgeAt;
-        for (int dy = -1; dy <= 1; dy++)
-            for (int dx = -1; dx <= 1; dx++)
-            {
-                int xx = x + dx, yy = y + dy;
-                if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
-                int c = yy * n + xx;
-                if (fence[c] != 0) _fenceT.Add(c);
-                int b = bridgeAt[c];
-                if (b < 0 || _bridgeT.Contains(c)) continue;
-                foreach (var br in w.Bridges)
-                    if (br.Id == b)
-                        foreach (int bc in br.Cells) if (!_bridgeT.Contains(bc)) _bridgeT.Add(bc);
-            }
-    }
-
-    private void EraseAt(Vector2 pos)
-    {
-        if (PointerOverUi || !_main.Rig.PickCell(pos, out int cx, out int cy)) { Hover(pos); return; }
-        int n = W.Grid.Width;
-        // Along the drag, so a fast swipe leaves no gaps.
-        _line.Clear();
-        if (_lastErase is { } le) W.Grid.Line4(le.x, le.y, cx, cy, _line); else _line.Add(cy * n + cx);
-        _lastErase = (cx, cy);
-        _cells.Clear();
-        foreach (int p in _line)
-        {
-            EraseTargets(p % n, p / n);
-            _cells.AddRange(_fenceT);
-            _cells.AddRange(_bridgeT);
-        }
-        if (_cells.Count > 0 && Sim.Erase(CollectionsMarshal.AsSpan(_cells)) > 0) { Say("Removed."); Erased?.Invoke(); }
-        Hover(pos, force: true);
-    }
+    /// <summary>Why no footbridge fits at a cell, in words (see <see cref="ToolTargets.BridgeReason"/>).</summary>
+    public string BridgeReason(int cx, int cy) => ToolTargets.BridgeReason(W, cx, cy);
 
     // ------------------------------------------------------------------ per frame
 
@@ -414,8 +283,10 @@ public partial class ToolController : Node
             bool over = OverUi();
             if (over != PointerOverUi) { PointerOverUi = over; Refresh(); }
         }
-        double budget = Sim.SimMsThisFrame > Sim.TickBudgetMs * 0.8 ? FlowPreviewer.BusyBudgetMs : FlowPreviewer.BudgetMs;
-        Previewer.Update(Clock.Elapsed.TotalMilliseconds, budget);
+        // A frame in which the simulation already took more than SkipAboveSimMs (several ticks at 8x) does no preview
+        // work at all, so the two never stack into one long frame; the preview simply finishes a frame or two later.
+        if (Sim.SimMsThisFrame > FlowPreviewer.SkipAboveSimMs) PreviewSkips++;
+        else Previewer.Update(Clock.Elapsed.TotalMilliseconds, FlowPreviewer.BudgetMs);
         var vp = GetViewport().GetVisibleRect().Size;
         // Route widths are in pixels at 800 px of window height and grow with taller windows (as the interface does).
         float px = Math.Max(1f, vp.Y / 800f);

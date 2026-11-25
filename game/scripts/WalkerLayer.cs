@@ -28,6 +28,8 @@ public partial class WalkerLayer : MultiMeshInstance3D
     private float[] _buf = Array.Empty<float>();
     private float[] _yaw = Array.Empty<float>();
     private ShaderMaterial _mat = null!, _hull = null!;
+    private MultiMeshInstance3D _shadows = null!;
+    private Rid _shadowRid;
     private float _metresPerPx = 0.2f;
     private Rid _rid;
 
@@ -48,6 +50,11 @@ public partial class WalkerLayer : MultiMeshInstance3D
         _hull = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/walker_hull.gdshader") };
         _hull.SetShaderParameter("ink", Palette.Ink);
         _mat.NextPass = _hull;
+        // Outfits: six palette tunic colours and three dark hats or hoods, picked per villager (custom data w).
+        Color[] tunics = { Palette.Brick, Palette.DeepWater, Palette.CastIronGreen, Palette.SlateRoof, Palette.Thatch, Palette.SootBrick };
+        for (int i = 0; i < tunics.Length; i++) _mat.SetShaderParameter("tunic" + i, tunics[i]);
+        Color[] hats = { Palette.Mud, Palette.Ink, Palette.SootBrick.Darkened(0.2f) };
+        for (int i = 0; i < hats.Length; i++) _mat.SetShaderParameter("hat" + i, hats[i]);
         mesh.SurfaceSetMaterial(0, _mat);
         Multimesh = new MultiMesh
         {
@@ -58,9 +65,22 @@ public partial class WalkerLayer : MultiMeshInstance3D
         };
         Multimesh.VisibleInstanceCount = 0;
         _rid = Multimesh.GetRid();
+        // A soft shadow disc under each villager: a second MultiMesh fed the same buffer, drawn just before them.
+        var shadowMat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/walker_shadow.gdshader"), RenderPriority = -1 };
+        shadowMat.SetShaderParameter("ink", Palette.Ink);
+        var disc = new PlaneMesh { Size = new Vector2(1.15f, 1.15f), Material = shadowMat, CenterOffset = new Vector3(0, 0.04f, 0) };
+        var smm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, InstanceCount = Capacity, Mesh = disc,
+        };
+        smm.VisibleInstanceCount = 0;
+        _shadows = new MultiMeshInstance3D { Name = "Shadows", Multimesh = smm, CastShadow = ShadowCastingSetting.Off };
+        _shadowRid = smm.GetRid();
         CastShadow = ShadowCastingSetting.Off; // 500 shadow casters cost more than they show
         // Instances span the whole map but the buffer upload does not grow the node's bounds: never cull it.
         CustomAabb = new Aabb(new Vector3(-8, -4, -8), new Vector3(sim.World.Grid.Width * 2f + 16, 16, sim.World.Grid.Height * 2f + 16));
+        _shadows.CustomAabb = CustomAabb;
+        AddChild(_shadows);
     }
 
     /// <summary>Ink width follows the zoom so it stays about 1.2 screen pixels.</summary>
@@ -99,12 +119,14 @@ public partial class WalkerLayer : MultiMeshInstance3D
             _buf[o + 12] = (k.Id * 0.6180339f) % 1f;  // stride phase, golden-ratio spread so neighbours differ
             _buf[o + 13] = 1.6f + (k.Id % 5) * 0.08f; // strides per second
             _buf[o + 14] = moving ? 0.12f : 0f;       // bob height in metres before scale
-            _buf[o + 15] = 0;
+            _buf[o + 15] = (k.Id * 0.7548777f + 0.31f) % 1f; // outfit: fixed per villager, neighbours differ
             n++;
         }
         Drawn = n;
         Multimesh.VisibleInstanceCount = n;
         RenderingServer.MultimeshSetBuffer(_rid, _buf);
+        _shadows.Multimesh.VisibleInstanceCount = n;
+        RenderingServer.MultimeshSetBuffer(_shadowRid, _buf);
         float t = (float)_sim.AnimTime;
         _mat.SetShaderParameter(AnimTime, t);
         _hull.SetShaderParameter(AnimTime, t);

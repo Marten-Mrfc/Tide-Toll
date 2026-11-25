@@ -35,6 +35,9 @@ public partial class RouteLayer : MeshInstance3D
     /// <summary>Routes in the mesh now (tests).</summary>
     public int Routes { get; private set; }
     public int Vertices => _v.Count;
+    /// <summary>Managed bytes allocated by mesh rebuilds so far, and rebuilds (perf test).</summary>
+    public long BuildBytes { get; private set; }
+    public int Builds { get; private set; }
 
     public void Init(float cellMetres)
     {
@@ -50,7 +53,14 @@ public partial class RouteLayer : MeshInstance3D
     /// <summary>Per frame: follow the zoom, march the dashes, fade in or out, and rebuild when the result changed.</summary>
     public void Show(FlowPreview? p, float metresPerPx, double time, double delta)
     {
-        if (!ReferenceEquals(p, _shown) && p != null) { Build(p); _shown = p; }
+        if (!ReferenceEquals(p, _shown) && p != null)
+        {
+            long a0 = GC.GetAllocatedBytesForCurrentThread();
+            Build(p);
+            BuildBytes += GC.GetAllocatedBytesForCurrentThread() - a0;
+            Builds++;
+            _shown = p;
+        }
         float target = p != null ? 1f : 0f;
         if (_opacity != target)
         {
@@ -200,20 +210,48 @@ public partial class RouteLayer : MeshInstance3D
         _i.Add(b); _i.Add(b + 1); _i.Add(b + 2);
     }
 
+    // Pooled upload arrays: they only grow (doubling), and each rebuild copies the lists into them and pads the rest
+    // with degenerate triangles on vertex 0, so a new preview allocates no new managed arrays (the perf test gates
+    // the bytes per preview). One ArrayMesh, cleared and refilled.
+    private Vector3[] _va = Array.Empty<Vector3>(), _na = Array.Empty<Vector3>();
+    private Vector2[] _uva = Array.Empty<Vector2>(), _uv2a = Array.Empty<Vector2>();
+    private Color[] _ca = Array.Empty<Color>();
+    private int[] _ia = Array.Empty<int>();
+    private ArrayMesh? _mesh;
+    private Godot.Collections.Array? _arrays;
+
+    private static void Pool<T>(ref T[] a, List<T> src, T pad)
+    {
+        if (a.Length < src.Count) a = new T[Math.Max(src.Count, a.Length * 2)];
+        System.Runtime.InteropServices.CollectionsMarshal.AsSpan(src).CopyTo(a);
+        Array.Fill(a, pad, src.Count, a.Length - src.Count);
+    }
+
     private void Commit()
     {
         if (_v.Count == 0) { Mesh = null; return; }
-        var arr = new Godot.Collections.Array();
-        arr.Resize((int)Mesh.ArrayType.Max);
-        arr[(int)Mesh.ArrayType.Vertex] = _v.ToArray();
-        arr[(int)Mesh.ArrayType.Normal] = _n.ToArray();
-        arr[(int)Mesh.ArrayType.TexUV] = _uv.ToArray();
-        arr[(int)Mesh.ArrayType.TexUV2] = _uv2.ToArray();
-        arr[(int)Mesh.ArrayType.Color] = _c.ToArray();
-        arr[(int)Mesh.ArrayType.Index] = _i.ToArray();
-        var m = new ArrayMesh();
-        m.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
-        m.CustomAabb = new Aabb(new Vector3(-20, -1, -20), new Vector3(300, 4, 300));
-        Mesh = m;
+        Pool(ref _va, _v, _v[0]);
+        Pool(ref _na, _n, Vector3.Right);
+        Pool(ref _uva, _uv, Vector2.Zero);
+        Pool(ref _uv2a, _uv2, Vector2.Zero);
+        Pool(ref _ca, _c, new Color(0, 0, 0, 0));
+        if (_ia.Length < _i.Count) _ia = new int[Math.Max(_i.Count, _ia.Length * 2) / 3 * 3 + 3];
+        System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_i).CopyTo(_ia);
+        Array.Fill(_ia, 0, _i.Count, _ia.Length - _i.Count);
+        if (_arrays == null)
+        {
+            _arrays = new Godot.Collections.Array();
+            _arrays.Resize((int)Mesh.ArrayType.Max);
+        }
+        _arrays[(int)Mesh.ArrayType.Vertex] = _va;
+        _arrays[(int)Mesh.ArrayType.Normal] = _na;
+        _arrays[(int)Mesh.ArrayType.TexUV] = _uva;
+        _arrays[(int)Mesh.ArrayType.TexUV2] = _uv2a;
+        _arrays[(int)Mesh.ArrayType.Color] = _ca;
+        _arrays[(int)Mesh.ArrayType.Index] = _ia;
+        _mesh ??= new ArrayMesh { CustomAabb = new Aabb(new Vector3(-20, -1, -20), new Vector3(300, 4, 300)) };
+        _mesh.ClearSurfaces();
+        _mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, _arrays);
+        if (Mesh != _mesh) Mesh = _mesh;
     }
 }

@@ -18,7 +18,7 @@ namespace TideToll.Game.Tests;
 public partial class Screenshot : Node
 {
     private string _dir = "user://";
-    private bool _uiOnly;
+    private bool _uiOnly, _groundOnly;
     private string _suffix = "";
     private Main _main = null!;
     private bool _failed;
@@ -29,6 +29,7 @@ public partial class Screenshot : Node
         {
             if (a.StartsWith("--out-dir=")) _dir = a.Substring(10).TrimEnd('/') + "/";
             if (a == "--ui-only") _uiOnly = true;
+            if (a == "--ground-only") _groundOnly = true;
         }
         Input.UseAccumulatedInput = false;
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
@@ -45,6 +46,7 @@ public partial class Screenshot : Node
             var vs = GetViewport().GetVisibleRect().Size;
             _suffix = $"-{vs.X}x{vs.Y}";
             await Frames(4);
+            if (_groundOnly) { await GroundShots(); return; }
             _main.Rig.FrameBook(instant: true);
             await Frames(20);
             Check(await Snap("book", true), "book");
@@ -113,6 +115,32 @@ public partial class Screenshot : Node
             Done("book map wear preview close field market fence bridge bridge-hover erase-hover");
         }
         catch (Exception e) { Quit(1, e.ToString()); }
+    }
+
+    /// <summary>
+    /// "-- --ground-only": the worn ground for judging the trails, seed 1, 200 walkers, paused: the play view
+    /// (overview) and a close look at the well's crossroads (60 m of map in view), at day 20 and at day 45:
+    /// ground-d20-overview.png, ground-d20-close.png, ground-d45-overview.png, ground-d45-close.png.
+    /// </summary>
+    private async System.Threading.Tasks.Task GroundShots()
+    {
+        var w = _main.Sim.World;
+        var well = w.Buildings[w.OfKind(TideToll.Sim.BuildingKind.Well)[0]];
+        var near = new Vector3((well.X + well.W / 2f) * 2f + 6f, 0, (well.Y + well.H / 2f) * 2f + 10f);
+        _main.Sim.SetPaused(true);
+        foreach (int day in new[] { 20, 45 })
+        {
+            while (w.Stats().Day < day) _main.Sim.StepTicks(10);
+            _main.Ground.SnapNext();
+            _main.Ground.Upload();
+            _main.Rig.FramePlay(instant: true);
+            await Frames(6);
+            Check(await Snap($"ground-d{day}-overview"), "overview");
+            _main.Rig.LookAt(near, 60f);
+            await Frames(6);
+            Check(await Snap($"ground-d{day}-close"), "close");
+        }
+        Done("ground-d20-overview ground-d20-close ground-d45-overview ground-d45-close");
     }
 
     private void Done(string names)

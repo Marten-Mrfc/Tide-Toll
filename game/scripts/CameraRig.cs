@@ -40,8 +40,13 @@ public partial class CameraRig : Node3D
     /// tabs (GameUi sets it); the views shift the book left to make the room, showing more of the chapter page.
     /// </summary>
     public float PlayRoomPx = 0f;
-    /// <summary>View height of the play view: the map page with its title and a little paper round it.</summary>
-    public float PlaySize => MapSize * 1.13f;
+    /// <summary>
+    /// View height of the play view: the map page with its title and compass (about 30 m above the map) and the
+    /// frame's outer rule (5 m below it) fully in view, with a few metres of paper round them.
+    /// </summary>
+    public float PlaySize => MapSize * 1.2f;
+    /// <summary>Map-local z of the play view's centre: the middle of the compass top (-30 m) and the frame bottom.</summary>
+    public float PlayCentreZ => (MapSize + 5f - 30f) / 2f;
 
     public bool InPlayView { get; private set; }
     public float MapSize => MapCells * CellMetres;
@@ -143,7 +148,7 @@ public partial class CameraRig : Node3D
         float pageEdge = MapSize + (BookBuilderPageMargin + 6f);
         float cx = pageEdge + PlayRoomPx * _targetSize / Math.Max(1f, vp.Y) - hw;
         cx = Mathf.Clamp(cx, MapSize / 2f - Math.Max(0f, hw - MapSize / 2f - 6f), MapSize / 2f);
-        _target = new Vector3(cx, 0, MapSize / 2f - 14f);
+        _target = new Vector3(cx, 0, PlayCentreZ);
         InPlayView = true;
         Finish(instant);
     }
@@ -184,30 +189,46 @@ public partial class CameraRig : Node3D
     private void SetPivotLocal(Vector3 p) => GlobalPosition = MapXf * new Vector3(p.X, 0, p.Z);
 
     /// <summary>
-    /// Keeps the view centre inside the allowed area: the map plus a margin at play zoom, widening smoothly to the
-    /// whole book as the view zooms out to it; when the view is wider than that area it is centred on it.
+    /// Where the view centre may be, for a view of height <paramref name="size"/>. Two rules, both must hold:
+    /// 1. the centre stays over the map plus PanMargin at play zoom, an area that widens smoothly to the whole book as
+    ///    the view zooms out to it (you can never lose the map);
+    /// 2. the view stays on the book (on its right with the tabs' room, <see cref="PlayRoomPx"/>, added), or, when it
+    ///    is wider than that, keeps the whole book in view.
+    /// Zooming in toward any point over the map always satisfies both (the centre moves toward the point, the view
+    /// shrinks), so zoom at the cursor holds there; only zooming out at the very edge can be stopped.
     /// Measured along the map's axes with the rotated view's bounding box, so it holds under yaw.
     /// </summary>
     private Vector3 Clamp(Vector3 p, float size)
     {
         var vp = ViewportSize;
-        float hh = size / 2f, hw = hh * vp.X / Math.Max(1f, vp.Y);
+        float h = Math.Max(1f, vp.Y);
+        float hh = size / 2f, hw = hh * vp.X / h;
         float yaw = Yaw.Rotation.Y, c = MathF.Abs(MathF.Cos(yaw)), s = MathF.Abs(MathF.Sin(yaw));
         float ex = hw * c + hh * s, ey = hw * s + hh * c;
         // Book rectangle in map space.
         var inv = MapXf.AffineInverse();
         var b0 = inv * (BookCentre - new Vector3(BookSize.X / 2f, 0, BookSize.Y / 2f));
         var b1 = inv * (BookCentre + new Vector3(BookSize.X / 2f, 0, BookSize.Y / 2f));
+        float bx0 = Math.Min(b0.X, b1.X), bx1 = Math.Max(b0.X, b1.X), bz0 = Math.Min(b0.Z, b1.Z), bz1 = Math.Max(b0.Z, b1.Z);
         float play = MapSize * 1.05f, book = Math.Max(BookSize.Y * 1.10f, play + 1f);
         float t = Mathf.Clamp((size - play) / (book - play), 0f, 1f);
-        float lx = Mathf.Lerp(-PanMargin, Math.Min(b0.X, b1.X), t), hx = Mathf.Lerp(MapSize + PanMargin, Math.Max(b0.X, b1.X), t);
-        float lz = Mathf.Lerp(-PanMargin, Math.Min(b0.Z, b1.Z), t), hz = Mathf.Lerp(MapSize + PanMargin, Math.Max(b0.Z, b1.Z), t);
-        // A view wider than the area keeps the whole area in view (rather than centring), so the views can shift
-        // the book aside for the interface.
-        p.X = ex * 2 >= hx - lx ? Mathf.Clamp(p.X, hx - ex, lx + ex) : Mathf.Clamp(p.X, lx + ex, hx - ex);
-        p.Z = ey * 2 >= hz - lz ? Mathf.Clamp(p.Z, hz - ey, lz + ey) : Mathf.Clamp(p.Z, lz + ey, hz - ey);
+        float lx = Mathf.Lerp(-PanMargin, bx0, t), hx = Mathf.Lerp(MapSize + PanMargin, bx1, t);
+        float lz = Mathf.Lerp(-PanMargin, bz0, t), hz = Mathf.Lerp(MapSize + PanMargin, bz1, t);
+        float room = PlayRoomPx * size / h; // metres of table right of the book kept for the tabs
+        p.X = Axis(p.X, lx, hx, bx0, bx1 + room, ex);
+        p.Z = Axis(p.Z, lz, hz, bz0, bz1, ey);
         p.Y = 0;
         return p;
+    }
+
+    // One axis of Clamp: centre in [lo, hi] (rule 1) and the view's half extent e within [b0, b1] (rule 2).
+    private static float Axis(float v, float lo, float hi, float b0, float b1, float e)
+    {
+        float r0, r1;
+        if (2 * e <= b1 - b0) { r0 = b0 + e; r1 = b1 - e; }   // narrower than the book: stay on it
+        else { r0 = b1 - e; r1 = b0 + e; }                     // wider: keep all of it in view
+        float a = Math.Max(lo, r0), b = Math.Min(hi, r1);
+        return a <= b ? Mathf.Clamp(v, a, b) : Mathf.Clamp(v, r0, r1);
     }
 
     // ------------------------------------------------------------------ per frame

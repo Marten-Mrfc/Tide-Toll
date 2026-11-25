@@ -23,6 +23,8 @@ public partial class ToolTabs : VBoxContainer
     private int _icon;
 
     public float TabWidth { get; private set; }
+    /// <summary>Pixels (at scale 1) of each bookmark that lie under the page edge.</summary>
+    public const float Tuck = 9f;
 
     public static float WidthFor(float s) => 188f * s;
 
@@ -41,6 +43,8 @@ public partial class ToolTabs : VBoxContainer
         _pauseText = Pause.GetNode<Label>("Row/Text");
         var speeds = new HBoxContainer { Name = "Speeds", MouseFilter = MouseFilterEnum.Ignore };
         speeds.AddThemeConstantOverride("separation", UiKit.Px(s, 3));
+        // The speed keys are loose cards, not bookmarks: they start where the page edge ends.
+        speeds.AddChild(new Control { Name = "Tucked", CustomMinimumSize = new Vector2(UiKit.Px(s, Tuck + 2), 0), MouseFilter = MouseFilterEnum.Ignore });
         int[] sp = { 1, 2, 4, 8 };
         for (int i = 0; i < 4; i++)
         {
@@ -118,7 +122,7 @@ public partial class ToolTabs : VBoxContainer
     {
         b.CustomMinimumSize = new Vector2(0, UiKit.Px(_s, height));
         row.SetAnchorsPreset(LayoutPreset.FullRect);
-        row.OffsetLeft = UiKit.Px(_s, 10); row.OffsetRight = -UiKit.Px(_s, 8);
+        row.OffsetLeft = UiKit.Px(_s, 10 + Tuck); row.OffsetRight = -UiKit.Px(_s, 8);
         row.OffsetTop = UiKit.Px(_s, 3); row.OffsetBottom = -UiKit.Px(_s, 3);
         b.AddChild(row);
     }
@@ -171,5 +175,48 @@ public partial class ToolTabs : VBoxContainer
     {
         Sound.SetPressedNoSignal(on);
         _soundIcon.Texture = UiKit.Icon(on ? "ui-sound-on" : "ui-sound-off", _icon);
+    }
+
+    /// <summary>
+    /// The page's outer edge drawn over the bookmarks' tucked-in ends: a strip of page paper with the edge's ink rule
+    /// and a stack line, and a soft shadow the page casts on each tab. Only over the tabs' rows; nothing when the tabs
+    /// lie loose on the page (a narrow window). Redrawn only when the edge or the tabs move.
+    /// </summary>
+    public partial class PageLip : Control
+    {
+        public ToolTabs Tabs = null!;
+        public float Scale1 = 1;
+        private float _edge = float.NaN;
+        private bool _on;
+        private Vector2 _tabsAt, _tabsSize;
+
+        public override void _Ready() => MouseFilter = MouseFilterEnum.Ignore;
+
+        public void Place(float edgeX, bool on)
+        {
+            if (edgeX == _edge && on == _on && Tabs.Position == _tabsAt && Tabs.Size == _tabsSize) return;
+            _edge = edgeX; _on = on; _tabsAt = Tabs.Position; _tabsSize = Tabs.Size;
+            QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            if (!_on || float.IsNaN(_edge)) return;
+            float s = Scale1, x0 = Tabs.Position.X - 1, x1 = Mathf.Round(_edge);
+            if (x1 <= x0) return;
+            var paper = UiKit.Paper;
+            var stack = UiKit.Paper.Darkened(0.12f);
+            foreach (var c in Tabs.GetChildren())
+            {
+                if (c is not (Button or PanelContainer)) continue;
+                var r = ((Control)c).GetRect();
+                float y0 = Tabs.Position.Y + r.Position.Y - 1, h = r.Size.Y + 2;
+                DrawRect(new Rect2(x0, y0, x1 - x0, h), paper);
+                DrawRect(new Rect2(x1 - 3 * s, y0, Mathf.Max(1, s), h), stack);        // a page of the stack
+                for (int k = 0; k < 4; k++)                                             // the page's soft shadow
+                    DrawRect(new Rect2(x1 + k * s, y0 + 1, s, h - 2), new Color(UiKit.Ink, 0.16f * (1 - k / 4f)));
+                DrawRect(new Rect2(x1 - Mathf.Max(1, s), y0, Mathf.Max(1, 1.2f * s), h), UiKit.Ink); // the edge rule
+            }
+        }
     }
 }

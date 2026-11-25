@@ -20,6 +20,7 @@ public static class Palette
     public static readonly Color Thatch = Color.FromHtml("#C9A55A");
     public static readonly Color Brick = Color.FromHtml("#A4553A");
     public static readonly Color SootBrick = Color.FromHtml("#7A4436");
+    public static readonly Color SlateRoof = Color.FromHtml("#5E6B78");
     public static readonly Color CastIronGreen = Color.FromHtml("#44604F");
     public static readonly Color Limewash = Color.FromHtml("#E9E2CF");
 

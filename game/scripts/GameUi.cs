@@ -17,6 +17,8 @@ public partial class GameUi : CanvasLayer
     private Main _main = null!;
     private Control _root = null!;
     public ChapterPage Chapter { get; private set; } = null!;
+    /// <summary>The paper tags naming the well, market, field and ford at overview zoom.</summary>
+    public MapTags Tags { get; private set; } = null!;
     public ToolTabs Tabs { get; private set; } = null!;
     private PanelContainer _tip = null!, _fpsPlate = null!;
     private Label _tipText = null!, _fps = null!;
@@ -78,6 +80,11 @@ public partial class GameUi : CanvasLayer
         _root = new Control { Name = "Root", Theme = UiKit.MakeTheme(_s), MouseFilter = Control.MouseFilterEnum.Ignore };
         _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_root);
+
+        // First, so the chapter page and the tabs lie over them.
+        Tags = new MapTags();
+        Tags.Build(_main, _s);
+        _root.AddChild(Tags);
 
         Chapter = new ChapterPage();
         Chapter.Build(_s);
@@ -188,7 +195,7 @@ public partial class GameUi : CanvasLayer
     public void Reset() { _main.Sim.Reset(); _main.Tools.Say("Map reset: day one again, same seed."); }
     public void NewMap() { _main.Sim.NewMap(); _main.Tools.Say($"New map, seed {_main.Sim.Seed}."); }
 
-    private void OnWorldReplaced() { Sync(); _since = 1; }
+    private void OnWorldReplaced() { Sync(); Tags.SetWorld(_main.Sim.World); _since = 1; }
     private void OnMessage(string m) => Chapter.SetStatus(m);
     private void OnBell() => Chapter.Bell(_now);
 

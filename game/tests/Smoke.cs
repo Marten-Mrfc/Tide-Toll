@@ -172,8 +172,41 @@ public partial class Smoke : Node
         rig.LookAt(new Vector3(-5000, 0, 9000), 1f);
         var p = rig.PivotLocal;
         Check(rig.Camera.Size >= rig.MinSize && p.X >= -rig.PanMargin && p.Z <= rig.MapSize + rig.PanMargin, $"pan or zoom passed its limit: {p}, size {rig.Camera.Size}");
+        float wheel = WheelFromPlayView(rig);
         rig.FramePlay(instant: true);
-        _notes.Add($"viewport={vp.X}x{vp.Y} picks={checkedPoints} zoomdrift={before.DistanceTo(after):F4}m");
+        _notes.Add($"viewport={vp.X}x{vp.Y} picks={checkedPoints} zoomdrift={before.DistanceTo(after):F4}m wheeldrift={wheel:F4}m");
+    }
+
+    /// <summary>
+    /// Wheel zoom from the play view at points off the centre (near each corner of the map and its sides), through the
+    /// camera's own wheel handler: four notches in, a few frames apart as a hand turns a wheel, then four back out.
+    /// The map point under the cursor must stay put (the clamp allows every one of these). Returns the worst drift.
+    /// </summary>
+    private float WheelFromPlayView(CameraRig rig)
+    {
+        float worst = 0;
+        Vector3[] points = { new(14, 0, 18), new(242, 0, 22), new(20, 0, 238), new(236, 0, 230), new(60, 0, 128), new(128, 0, 12) };
+        foreach (var target in points)
+        {
+            rig.FramePlay(instant: true);
+            var cursor = rig.LocalToScreen(target);
+            rig.PickLocal(cursor, out var at0);
+            foreach (var button in new[] { MouseButton.WheelUp, MouseButton.WheelDown })
+            {
+                for (int notch = 0; notch < 4; notch++)
+                {
+                    rig._UnhandledInput(new InputEventMouseButton { Position = cursor, GlobalPosition = cursor, ButtonIndex = button, Pressed = true });
+                    for (int i = 0; i < 5; i++) rig._Process(1 / 60.0);
+                }
+                for (int i = 0; i < 150; i++) rig._Process(1 / 60.0);
+                rig.PickLocal(cursor, out var at1);
+                float drift = at0.DistanceTo(at1);
+                worst = Math.Max(worst, drift);
+                Check(drift < 0.05f, $"wheel {(button == MouseButton.WheelUp ? "in" : "out")} at {target} from the play view moved the point under the cursor by {drift:F3} m");
+            }
+            Check(Mathf.IsEqualApprox(rig.Camera.Size, rig.PlaySize, 0.01f), $"four notches in and out ended at size {rig.Camera.Size}, not {rig.PlaySize}");
+        }
+        return worst;
     }
 
     private void CheckScenery(World w)

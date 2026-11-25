@@ -15,8 +15,10 @@ namespace TideToll.Game;
 public sealed class FlowPreviewer
 {
     public const double MinGapMs = 100, RefreshMs = 1000;
-    /// <summary>Preview work allowed per frame (the toy's 6 ms; half when the simulation was busy this frame).</summary>
-    public const double BudgetMs = 6, BusyBudgetMs = 3;
+    /// <summary>Preview work allowed per frame (the toy's 6 ms).</summary>
+    public const double BudgetMs = 6;
+    /// <summary>No preview work in a frame whose simulation ticks already took longer than this (ToolController).</summary>
+    public const double SkipAboveSimMs = 4;
 
     private World _world;
     private FlowPredictor _predictor;
@@ -42,6 +44,11 @@ public sealed class FlowPreviewer
     public long Steps { get; private set; }
     /// <summary>Milliseconds spent on preview work in the last frame.</summary>
     public double LastFrameMs { get; private set; }
+    /// <summary>The longest predictor step seen lately, in milliseconds (decays slowly); a step that would not fit in
+    /// what is left of the frame's budget waits for the next frame.</summary>
+    public double StepMs { get; private set; } = 1;
+    /// <summary>Managed bytes allocated inside <see cref="Update"/> so far (the predictor's result and readout).</summary>
+    public long AllocBytes { get; private set; }
 
     public bool Enabled
     {
@@ -89,10 +96,21 @@ public sealed class FlowPreviewer
         if (_jobKey != _wantKey && nowMs - _startedAt >= MinGapMs) Start(nowMs); // the pointer moved on
         long t0 = Stopwatch.GetTimestamp();
         long limit = t0 + (long)(budgetMs * Stopwatch.Frequency / 1000.0);
+        long a0 = GC.GetAllocatedBytesForCurrentThread();
+        long stepTicks = (long)(StepMs * Stopwatch.Frequency / 1000.0);
+        long now = t0;
         do
         {
             Steps++;
-            if (!_predictor.Step())
+            bool more = _predictor.Step();
+            long after = Stopwatch.GetTimestamp();
+            double ms = (after - now) * 1000.0 / Stopwatch.Frequency;
+            // Remembers the slow steps (a Dijkstra) and forgets them over a few steps; capped at the budget, so one
+            // freak step (the first call compiling) cannot hold the previewer to a step a frame for long.
+            StepMs = Math.Max(Math.Min(ms, budgetMs), StepMs * 0.9);
+            stepTicks = (long)(StepMs * Stopwatch.Frequency / 1000.0);
+            now = after;
+            if (!more)
             {
                 _job = false;
                 if (_jobKey == _wantKey)
@@ -107,7 +125,8 @@ public sealed class FlowPreviewer
                 }
                 break;
             }
-        } while (Stopwatch.GetTimestamp() < limit);
+        } while (now + stepTicks < limit); // the first step always runs, so a preview always makes progress
+        AllocBytes += GC.GetAllocatedBytesForCurrentThread() - a0;
         LastFrameMs = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
     }
 

@@ -19,6 +19,7 @@ public partial class Main : Node3D
     public Node3D MapOrigin { get; private set; } = null!;
     public MapGround Ground { get; private set; } = null!;
     public TownLayer Town { get; private set; } = null!;
+    public GroundMarks Marks { get; private set; } = null!;
     public Scenery Scenery { get; private set; } = null!;
     public EditLayer Edits { get; private set; } = null!;
     public WalkerLayer Walkers { get; private set; } = null!;
@@ -48,6 +49,7 @@ public partial class Main : Node3D
         if (StartWalkers >= 0) Sim.SetWalkers(StartWalkers);
 
         Ground = new MapGround(); MapOrigin.AddChild(Ground); Ground.Init(Sim);
+        Marks = new GroundMarks(); MapOrigin.AddChild(Marks); Marks.Init(Sim);
         Town = new TownLayer(); MapOrigin.AddChild(Town); Town.Init(Sim);
         Scenery = new Scenery(); MapOrigin.AddChild(Scenery); Scenery.Init(Sim);
         Edits = new EditLayer(); MapOrigin.AddChild(Edits); Edits.Init(Sim);
@@ -87,6 +89,7 @@ public partial class Main : Node3D
         // Villagers stay about 7 px wide when zoomed out (the mesh is 1 m wide, already 1.5x life size).
         Walkers.WalkerScale = Mathf.Clamp(7f / pxPerM, 1f, 1.8f);
         Walkers.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
+        Marks.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
     }
 
     /// <summary>World position of a cell centre on the map page (cells are 2 m).</summary>

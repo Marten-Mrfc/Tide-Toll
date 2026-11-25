@@ -28,6 +28,23 @@ public static class UiKit
     public static FontFile Serif => _serif ??= GD.Load<FontFile>("res://assets/fonts/Alegreya-Variable.ttf");
     public static FontFile Display => _display ??= GD.Load<FontFile>("res://assets/fonts/UncialAntiqua-Regular.ttf");
 
+    private static readonly System.Collections.Generic.Dictionary<FontFile, FontFile> Msdf = new();
+
+    /// <summary>
+    /// A copy of a font rendered as a multichannel signed distance field: text printed on the book (map title, folios,
+    /// paper tags) stays crisp at every zoom from one small glyph atlas. Cached per font.
+    /// </summary>
+    public static FontFile PrintFont(FontFile f)
+    {
+        if (Msdf.TryGetValue(f, out var m)) return m;
+        m = (FontFile)f.Duplicate();
+        m.MultichannelSignedDistanceField = true;
+        m.MsdfPixelRange = 16;
+        m.MsdfSize = 128;
+        Msdf[f] = m;
+        return m;
+    }
+
     /// <summary>Interface scale for a viewport height.</summary>
     public static float ScaleFor(float height) => Mathf.Clamp(height / 1080f, 0.78f, 2.5f);
 
@@ -73,21 +90,25 @@ public static class UiKit
         return t;
     }
 
-    /// <summary>A bookmark tab: square on the left (tucked under the page edge), rounded on the right.</summary>
+    /// <summary>
+    /// A bookmark tab: square on the left, where it is tucked under the page edge (ToolTabs.Tuck pixels of it lie
+    /// under the page, which the PageLip draws over it), rounded on the right.
+    /// </summary>
     public static StyleBoxFlat Tab(float s, Color bg, float border, float pullOut)
     {
         var b = new StyleBoxFlat
         {
             BgColor = bg,
             BorderColor = Ink,
-            ContentMarginLeft = Px(s, 10 + pullOut), ContentMarginRight = Px(s, 10),
+            ContentMarginLeft = Px(s, 10 + ToolTabs.Tuck), ContentMarginRight = Px(s, 10),
             ContentMarginTop = Px(s, 5), ContentMarginBottom = Px(s, 5),
-            // Pressed tabs stick out further to the left: shape, not only colour, says "on".
-            ExpandMarginLeft = Px(s, pullOut),
+            // Pressed tabs are pulled further out of the book, to the right: shape, not only colour, says "on".
+            ExpandMarginRight = Px(s, pullOut),
             AntiAliasing = true,
         };
-        b.BorderWidthTop = b.BorderWidthBottom = b.BorderWidthRight = Mathf.Max(1, Px(s, border));
-        b.BorderWidthLeft = pullOut > 0 ? Px(s, 5) : 0;
+        b.BorderWidthTop = b.BorderWidthBottom = Mathf.Max(1, Px(s, border));
+        b.BorderWidthRight = Mathf.Max(1, Px(s, pullOut > 0 ? border + 1.5f : border));
+        b.BorderWidthLeft = 0;
         b.CornerRadiusTopRight = b.CornerRadiusBottomRight = Px(s, 7);
         return b;
     }

@@ -1,6 +1,6 @@
 # Prototype 1 build log
 
-The lead's log of each build round: what was built, what the review found, and what was decided. The limit is 8 rounds.
+The lead's log of each build round: what was built, what the review found, and what was decided. The toy's rounds count toward the overnight build's limit of 20 rounds (see `docs/overnight-log.md`).
 
 ## Checklist
 
@@ -20,6 +20,8 @@ The lead's log of each build round: what was built, what the review found, and w
 | G2 | Gate: testers move a trail within three attempts, flow preview on (needs people) |
 | G3 | Gate: no collapse or smear in 20 seeds, trunk share stays between 30% and 70% |
 | G4 | Gate: 200 agents at 60 fps in a desktop browser |
+| F11 | Gravel and gate tools (added in round 3) |
+| F12 | Rain and mud, house growth, sound made in code (planned for round 4) |
 
 ## Round 1 (2026-11-24)
 
@@ -83,3 +85,37 @@ Also in round 2: four small bugs from the bug hunt, layout polish, and a time bu
 2. The map must not move when the status text changes, and touch must work at phone width.
 3. Gravel and gate tools join the kit. Sound, rain and mud, and house growth follow in round 4.
 4. Polish from the review: fences drawn as rails, ghost routes that show only what changes, a clearer dark palette, a less road-like track colour.
+
+## Round 3 (2026-11-25)
+
+**Built:** a retuned trail model with real room in the trunk-share gate and working footbridges (worn ground is cheaper; walkers on long detours and one villager in ten ignore most of the discount, so new shortcuts still get found), a flow preview that models both kinds of walker, gravel and gate tools, fences drawn as rails, clearer ghost routes, a new dark palette, softer worn earth, a fixed-height status bar so the map never moves, touch input that works at phone width, and all five bug-hunt fixes. The route search is about twice as fast, which pays for the extra work.
+
+**Review result:**
+
+| Id | Status | Evidence |
+| --- | --- | --- |
+| F1 | Pass | 130 KB page, page contract checks pass |
+| F2 | Pass | Houses, well, field, market and ford are distinct and labelled |
+| F3 | Pass | Routes respond to ground, wear and traffic |
+| F4 | Pass | Ground states are distinct in both themes |
+| F5 | Pass | With no walkers, track cells fall from wear 84 to 14 in 24 days |
+| F6 | Pass | Mouse and touch drags; a new trail forms round the fence end within 20 s |
+| F7 | Pass | Works with mouse and with touch at 400 and 360 px; the map does not move |
+| F8 | Pass | All controls and shortcuts work |
+| F9 | Pass | Heat map with legend in both themes |
+| F10 | Pass | 60 fps at 500 walkers at 1x and 8x on an idle machine; stalls up to 100 ms appear when the machine is busy or throttled 4x |
+| F11 | Partial | Both tools work, but a gate cannot be placed on most of a diagonal fence, and gravel only pulls a trail that is within about 2 cells |
+| G1 | Needs people | Stand-in: first trail in 8 to 13 s; trunk about 3 cells wide; trails merge. Mature trails still read a little like dirt roads |
+| G2 | Needs people | Stand-in: reroute test passes; previews leave the simulation untouched; 77% to 84% of predicted detour points get a new trail |
+| G3 | Pass | All five seed sets pass with every daily reading counted, including fresh seeds 401 to 420 (lowest 34.9%). The reviewer's own run on seeds 501 to 520: lowest 33.5%, highest 54.7%, mean 44.1% |
+| G4 | Pass | 60 fps at 200 walkers |
+
+Footbridges: every bridge that saves 8% or more of the walk takes at least half the crossings by the third day. On maps where the bridge saves under 5% it takes 24% to 45%.
+
+**Lead's decision: accepted and republished. One more build round, then a polish round.**
+
+1. Fix the two tool defects: a gate must go on any fence cell, and gravel must either reach further or say plainly when it is too far from any route to matter.
+2. Add the rest of the build list: rain and mud, house growth, and sound made in code (off until the Sound button is pressed).
+3. From the bug hunt: a second finger must not disturb a drag or a press; a fence over gravel; a gate on a lone post; the phone test must run at a real phone layout.
+4. Polish: diagonal fences as straight rails, gravel as a clearer strip, trunks darker than side trails, 40 px speed buttons on phones, small wording fixes, and smoother frames at 8x on slow machines.
+5. From round 4 on, the gate is also judged with rain and house growth switched on, on seeds nobody has looked at (601 to 620).

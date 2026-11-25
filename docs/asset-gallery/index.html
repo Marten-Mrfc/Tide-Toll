@@ -95,19 +95,382 @@ audio{width:100%;max-width:100%;height:36px}
 .melody{font-family:var(--f-mono);font-size:.85rem;background:var(--tag-bg);padding:6px 10px;border-radius:2px;overflow-wrap:anywhere}
 .label{font-family:var(--f-body);color:var(--ink-soft);margin-right:6px}
 .notes{display:grid;gap:8px;max-width:75ch;margin:0;padding-left:20px}
+.nodes{margin:0;padding-left:18px;font-size:.86rem;display:grid;gap:2px}
+.river-new{border-left-color:var(--river)}
 footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:16px;font-size:.88rem;color:var(--ink-soft);display:grid;gap:6px}
 footer p{margin:0}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
 </style>
 <div class="wrap" id="top">
 <header class="title">
-  <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-24</p>
+  <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-25</p>
   <h1>The Hamlet asset set</h1>
-  <p class="lead">Every model, texture, icon, font and sound made for the first era, with how it was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
-  <ul class="counts"><li><b>99</b> files in the ledger</li><li>24 models, 9 textures, 14 icons, 4 fonts, 44 sound effects, 3 music files, 1 ambience loop</li></ul>
-  <nav class="toc" aria-label="Sections"><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <p class="lead">Every model, texture, icon, font and sound made for the first era, now with the River set for the river prototype, with how each was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
+  <ul class="counts"><li><b>147</b> files in the ledger</li><li>33 models, 9 textures, 22 icons, 4 fonts, 75 sound effects, 3 music files, 1 ambience loop</li></ul>
+  <nav class="toc" aria-label="Sections"><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <aside class="changes river-new" id="new-river"><h2>New: the River set</h2><p class="muted">Third round, 2026-11-25, for the river prototype (boats, crossings, trade).</p><ul><li>9 models (3,580 triangles): masted barge with a lowering mast and a cargo node, rope ferry (raft, posts, rope), Dutch drawbridge with a hinged leaf, balance beam, chains and signal arm, its span and ramp with a barrier, the landing and the keeper's hut.</li><li>8 icons in the house language; 31 sounds in 7 families.</li><li>The six free asset sites are blocked from the build container (checked 2026-11-25), so everything was made in code; every file has a ledger row.</li></ul></aside>
   <aside class="changes" id="changes"><h2>Changed since the first version</h2><p class="muted">Second round, after the art and audio review.</p><ul><li>Icons redrawn in one language: crisp closed shapes, Paper fill inside a 2-unit Ink outline, one stroke weight. The same files now read on Paper and on Ink; this page shows the real SVGs (no recolouring mask). The footbridge icon is a bold deck with a hand rail over water.</li><li>Weeping willow rebuilt with a curtain of hanging fronds (224 triangles).</li><li>Small hut (cottage-03) has a gabled roof with crossed gable horns, so it differs from the longhouses from above.</li><li>Footbridge rails end exactly 1.2 m above the deck; the pipeline table now says rails are measured from the deck.</li><li>Reeds rebuilt as thin upright stems with dark seed heads; villager has a pack on the back as a facing cue from above.</li><li>Trees, fields and reeds use a soft ink pass (creases inked only above 1.5 instead of 0.45, by stencil), so they carry no more ink than the houses; field furrows are low-pitched and no longer go near-black from the side.</li><li>Hollow way is now a dark wet lane with puddles and no ink specks; trampled grass is isotropic; grass has smaller patches so the 4 x 4 repeat is less obvious. The wear ramp&#x27;s blends are documented as intentional.</li><li>Bells: six 3 s gameplay strikes on D4, E4, G4 and A4 with 2 to 3 kHz strike partials (highest correlation between takes 0.53, was 0.89), plus four long 6 s strikes as named variants.</li><li>Place has 2 to 4 kHz content (13 to 17 % of its energy, was under 1 %); erase is about 0.3 s (was 0.5 s).</li><li>Theme: 45 s loop (the 8 bars twice, with a variation); the seam level step is 0.5 dB (was 9 dB).</li><li>Housekeeping: asset sync keeps Godot&#x27;s import files (rsync installed, and the fallback keeps them too); generators no longer rewrite tracked ledger files on every rebuild; this page has a jump list in each section.</li></ul></aside>
 </header>
+
+<section id="river">
+  <header><h2>River set</h2>
+  <p>Everything the river prototype needs: boats, crossings and their moving parts, icons and sounds. Same Living Map style and palette atlas as the Hamlet set; built by <code>assets/src/models/barge.py</code>, <code>ferry.py</code>, <code>drawbridge.py</code>, <code>landing.py</code>, <code>keeper-hut.py</code>, <code>assets/src/2d/icons-river.py</code> and six generators in <code>assets/src/audio/</code>. Nodes that move carry a translation in the file: their origin is the hinge or pivot, so the game rotates the node itself.</p><nav class="jump" aria-label="Jump to"><b>Jump to:</b><a href="#barge">Masted sailing barge</a><a href="#ferry-raft">Ferry raft</a><a href="#ferry-post">Ferry landing post</a><a href="#drawbridge-lift">Drawbridge, lifting section</a><a href="#drawbridge-span">Drawbridge fixed span</a><a href="#drawbridge-end">Drawbridge bank ramp</a><a href="#landing">Landing</a><a href="#keeper-hut">Bridge keeper&#x27;s hut</a><a href="#ferry-rope">Ferry rope</a><a href="#river-icons">Icons</a><a href="#river-sfx">Sounds</a><a class="top" href="#top">Back to top</a></nav></header>
+  <figure class="wide"><img src="media/models/river-scene.png" alt="The River set at true scale by a 6 m river: drawbridge lowered with a barge waiting, ferry, landing with a rowboat, keeper's hut" width="2880" height="720"><figcaption>Bridge down: the barge waits west of the drawbridge; ferry on its rope, the landing with a moored rowboat, the keeper's hut (preview scene built by <code>assets/src/models/_river_scene.py</code>).</figcaption></figure>
+  <figure class="wide"><img src="media/models/river-scene-open.png" alt="The same scene with the drawbridge raised and the barge passing through" loading="lazy" width="2880" height="720"><figcaption>Bridge up: leaf and beam at 80 degrees, signal arm vertical, barriers down, the barge in the gap.</figcaption></figure>
+  <div class="grid">
+<article class="card model" id="barge">
+  <figure><img src="media/models/barge.png" alt="Contact sheet of Masted sailing barge: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure><figure><img src="media/models/barge-mast-lowered.png" alt="Contact sheet of Masted sailing barge, Mast lowered (pose preview)" loading="lazy" width="1920" height="960"><figcaption class="muted" style="padding:6px 12px">Mast lowered (pose preview)</figcaption></figure>
+  <div class="body">
+    <h3>Masted sailing barge <code>barge.glb</code></h3>
+    <p>Drawn at 1.5x like the rowboat and almost twice its length: a bluff dark hull with a Cast-iron green gunwale, leeboards, an open hold, a limewashed deckhouse aft and a big rudder. Bow +Z, y = 0 is the waterline. From above the furled sail on its yard makes a white cross-bar over the hull: the mast mark that a low bridge blocks.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>5.5 x 12.7 m (x by z)</dd>
+      <dt>Height</dt><dd>9.69 m, reaches 0.5 m below y = 0</dd>
+      <dt>Triangles</dt><dd>594 <span class="muted">of 600</span></dd>
+    </dl>
+    <ul class="nodes"><li><code>hull</code> 322 tris, origin (0, 0, 0)</li><li><code>mast</code> 100 tris, origin (0, 1.15, 2.6); pivot at the mast step; rotate about X by -80 degrees to lower the mast aft</li><li><code>cargo</code> 172 tris, origin (0, 0, 0); goods in the hold; hide the node for an empty barge</li></ul>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/barge.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: masted sailing barge (nodes hull, mast, cargo; cargo hidden when empty)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="ferry-raft">
+  <figure><img src="media/models/ferry-raft.png" alt="Contact sheet of Ferry raft: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Ferry raft <code>ferry-raft.glb</code></h3>
+    <p>Plank raft on three log floats, rails on both long sides, boarding flaps at both ends, a ferryman&#x27;s pole. The rope runs through two guides on the +X side: the rope line is x = +1.95, y = 1.3 at every z.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>3.95 x 6 m (x by z)</dd>
+      <dt>Height</dt><dd>1.48 m, reaches 0.25 m below y = 0</dd>
+      <dt>Triangles</dt><dd>368 <span class="muted">of 500</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/ferry.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: rope ferry raft (rope line at x = +1.95, y = 1.3)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="ferry-post">
+  <figure><img src="media/models/ferry-post.png" alt="Contact sheet of Ferry landing post: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Ferry landing post <code>ferry-post.glb</code></h3>
+    <p>One per bank: the rope is made fast at y = 1.3 and leaves towards -Z (the river) from (0, 1.3, -0.3); a small hand bell hangs from a bracket to call the ferry.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.64 x 1.5 m (x by z)</dd>
+      <dt>Height</dt><dd>2.8 m</dd>
+      <dt>Triangles</dt><dd>170 <span class="muted">of 300</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/ferry.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: ferry landing post with hand bell, rope made fast at y = 1.3</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="drawbridge-lift">
+  <figure><img src="media/models/drawbridge-lift.png" alt="Contact sheet of Drawbridge, lifting section: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure><figure><img src="media/models/drawbridge-lift-raised.png" alt="Contact sheet of Drawbridge, lifting section, Raised to 80 degrees (pose preview)" loading="lazy" width="1920" height="960"><figcaption class="muted" style="padding:6px 12px">Raised to 80 degrees (pose preview)</figcaption></figure>
+  <div class="body">
+    <h3>Drawbridge, lifting section <code>drawbridge-lift.glb</code></h3>
+    <p>White timber Dutch drawbridge: a 2 m pier with the gantry on the near bank and a 6 m leaf that spans a 3-cell river, deck 0.9 m above the water (masts cannot pass while it is down). Raised to 80 degrees the leaf shows its dark underside and leaves a 4.4 m channel. Rotate leaf and beam by the same angle; move the chains with the beam tip to (0, 5.9 + 6 sin a, 2 - 6 cos a).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>7.2 x 10.13 m (x by z)</dd>
+      <dt>Height</dt><dd>7.32 m, reaches 0.8 m below y = 0</dd>
+      <dt>Triangles</dt><dd>1188 <span class="muted">of 1500</span></dd>
+    </dl>
+    <ul class="nodes"><li><code>frame</code> 452 tris, origin (0, 0, 0)</li><li><code>leaf</code> 388 tris, origin (0, 0.9, 2); hinge; rotate about X by +a (0 to 80 degrees) to raise</li><li><code>beam</code> 148 tris, origin (0, 5.9, 2); pivot above the hinge; rotate about X by the same +a</li><li><code>chains</code> 120 tris, origin (0, 5.9, -4); do not rotate; move with the beam tip</li><li><code>signal</code> 80 tris, origin (2.75, 4, 3.4); arm pivot; rotate about Z by +90 degrees for vertical (boats&#x27; turn)</li></ul>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/drawbridge.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: drawbridge lifting section (nodes frame, leaf, beam, chains, signal; leaf and beam rotate about X)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="drawbridge-span">
+  <figure><img src="media/models/drawbridge-span.png" alt="Contact sheet of Drawbridge fixed span: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Drawbridge fixed span <code>drawbridge-span.glb</code></h3>
+    <p>2 m module, 4 m wide, deck 0.9, on piles, for rivers wider than 6 m (boats still pass only under the leaf).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>4 x 2.18 m (x by z)</dd>
+      <dt>Height</dt><dd>2.01 m, reaches 0.8 m below y = 0</dd>
+      <dt>Triangles</dt><dd>204 <span class="muted">of 400</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/drawbridge.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: drawbridge fixed 2 m span module (for rivers wider than 6 m)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="drawbridge-end">
+  <figure><img src="media/models/drawbridge-end.png" alt="Contact sheet of Drawbridge bank ramp: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Drawbridge bank ramp <code>drawbridge-end.glb</code></h3>
+    <p>2 x 4 m ramp from the ground (+Z) to the deck, with the sill the leaf tip rests on; turn the far one 180 degrees.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>5.25 x 2.18 m (x by z)</dd>
+      <dt>Height</dt><dd>2 m, reaches 0.5 m below y = 0</dd>
+      <dt>Triangles</dt><dd>278 <span class="muted">of 500</span></dd>
+    </dl>
+    <ul class="nodes"><li><code>ramp</code> 194 tris, origin (0, 0, 0)</li><li><code>barrier</code> 84 tris, origin (-2.2, 1.35, 0.75); pole pivot; the pole lies across the ramp (closed to walkers); rotate about Z by +80 degrees to lift it</li></ul>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/drawbridge.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: drawbridge bank ramp with barrier pole (nodes ramp, barrier)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="landing">
+  <figure><img src="media/models/landing.png" alt="Contact sheet of Landing: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Landing <code>landing.glb</code></h3>
+    <p>Short timber jetty from the bank (+Z) over the water: deck 2.4 x 6 m at 0.5 m, four tall mooring posts, a bollard with a coiled line, crates, sacks and a wool bale waiting for a boat.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>3.2 x 6.5 m (x by z)</dd>
+      <dt>Height</dt><dd>1.88 m, reaches 0.8 m below y = 0</dd>
+      <dt>Triangles</dt><dd>468 <span class="muted">of 500</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/landing.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: Hamlet landing (timber jetty with mooring posts and goods waiting)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="keeper-hut">
+  <figure><img src="media/models/keeper-hut.png" alt="Contact sheet of Bridge keeper&#x27;s hut: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Bridge keeper&#x27;s hut <code>keeper-hut.glb</code></h3>
+    <p>Tiny limewashed hut under a steep thatch, a bell-cote with the warning bell on the ridge (a small slate cross-roof from above) and a lantern beside the door (+Z). Stands by the drawbridge ramp.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>3.38 x 3.47 m (x by z)</dd>
+      <dt>Height</dt><dd>4.75 m</dd>
+      <dt>Triangles</dt><dd>294 <span class="muted">of 500</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/keeper-hut.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: bridge keeper&#x27;s hut with warning bell and lantern (stands by the drawbridge)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="ferry-rope">
+  
+  <div class="body">
+    <h3>Ferry rope <code>ferry-rope.glb</code></h3>
+    <p>A 1 m rope piece from the origin to (0, 0, -1): place it at the near post&#x27;s rope point, face the far post, scale Z by the distance.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>0.13 x 1 m (x by z)</dd>
+      <dt>Height</dt><dd>0.07 m, reaches 0.07 m below y = 0</dd>
+      <dt>Triangles</dt><dd>16 <span class="muted">of 50</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/ferry.py; script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: ferry rope, 1 m piece scaled along Z between the two posts</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article></div>
+  <h3 id="river-icons">Icons</h3>
+  <ul class="icons"><li id="tool-ferry"><div class="pair" role="img" aria-label="Ferry icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/tool-ferry.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/tool-ferry.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/tool-ferry.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/tool-ferry.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/tool-ferry.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/tool-ferry.svg" width="80" height="80" alt=""></div></div>
+<p><b>Ferry</b> <code>tool-ferry.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="tool-drawbridge"><div class="pair" role="img" aria-label="Drawbridge icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/tool-drawbridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/tool-drawbridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/tool-drawbridge.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/tool-drawbridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/tool-drawbridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/tool-drawbridge.svg" width="80" height="80" alt=""></div></div>
+<p><b>Drawbridge</b> <code>tool-drawbridge.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-raise-bridge"><div class="pair" role="img" aria-label="Raise the bridge icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-raise-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-raise-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-raise-bridge.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-raise-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-raise-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-raise-bridge.svg" width="80" height="80" alt=""></div></div>
+<p><b>Raise the bridge</b> <code>ui-raise-bridge.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-lower-bridge"><div class="pair" role="img" aria-label="Lower the bridge icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-lower-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-lower-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-lower-bridge.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-lower-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-lower-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-lower-bridge.svg" width="80" height="80" alt=""></div></div>
+<p><b>Lower the bridge</b> <code>ui-lower-bridge.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-hire-keeper"><div class="pair" role="img" aria-label="Hire the keeper icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-hire-keeper.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-hire-keeper.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-hire-keeper.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-hire-keeper.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-hire-keeper.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-hire-keeper.svg" width="80" height="80" alt=""></div></div>
+<p><b>Hire the keeper</b> <code>ui-hire-keeper.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-coin"><div class="pair" role="img" aria-label="Coin icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-coin.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-coin.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-coin.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-coin.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-coin.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-coin.svg" width="80" height="80" alt=""></div></div>
+<p><b>Coin</b> <code>ui-coin.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-boat"><div class="pair" role="img" aria-label="Boat icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-boat.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-boat.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-boat.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-boat.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-boat.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-boat.svg" width="80" height="80" alt=""></div></div>
+<p><b>Boat</b> <code>ui-boat.svg</code> <span class="muted">self-made, icons-river.py</span></p></li><li id="ui-reputation"><div class="pair" role="img" aria-label="Reputation icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-reputation.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-reputation.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-reputation.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-reputation.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-reputation.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-reputation.svg" width="80" height="80" alt=""></div></div>
+<p><b>Reputation</b> <code>ui-reputation.svg</code> <span class="muted">self-made, icons-river.py</span></p></li></ul>
+  <figure class="wide"><img src="media/icons/icons-river-preview.png" alt="The eight river icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="766" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
+  <article class="card"><div class="body"><h3>Ledger, the same for all eight river icons</h3><dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/icons-river.py; script written by Claude Opus 5.5; SVG written as code: closed Paper shapes in a 2-unit Ink outline; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl></div></article>
+  <h3 id="river-sfx">Sounds</h3>
+  <p class="listen"><b>Measured, not yet listened to.</b> Judged from spectrograms, loudness and peak numbers only.</p>
+  <div class="grid">
+<article class="card sfx" id="drawbridge-raise">
+  <div class="body">
+    <h3>Drawbridge raising <code>drawbridge-raise-01..03.wav</code></h3>
+    <p>About 2.3 s: the winch pawl clicking steadily (8 to 9 a second), the timber leaf creaking under load, chains taking up slack, and the pawl locking with a clunk at the top. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/drawbridge-winch.py (seed 701); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: drawbridge raise (winch ratchet, timber creak, chain, pawl clunk; about 2 s)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>drawbridge-raise-01</b> <span class="muted">(seed 701)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-raise-01.wav" aria-label="Play drawbridge-raise-01"></audio>
+  <img src="media/spectrograms/drawbridge-raise-01.png" alt="Waveform and spectrogram of drawbridge-raise-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -21.8 LUFS momentary max, -25.3 LUFS integrated; peak -10.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>drawbridge-raise-02</b> <span class="muted">(seed 702)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-raise-02.wav" aria-label="Play drawbridge-raise-02"></audio>
+  <img src="media/spectrograms/drawbridge-raise-02.png" alt="Waveform and spectrogram of drawbridge-raise-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -22.1 LUFS momentary max, -24.1 LUFS integrated; peak -7.5 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>drawbridge-raise-03</b> <span class="muted">(seed 703)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-raise-03.wav" aria-label="Play drawbridge-raise-03"></audio>
+  <img src="media/spectrograms/drawbridge-raise-03.png" alt="Waveform and spectrogram of drawbridge-raise-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -21.5 LUFS momentary max, -24.5 LUFS integrated; peak -9.7 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="drawbridge-lower">
+  <div class="body">
+    <h3>Drawbridge lowering <code>drawbridge-lower-01..03.wav</code></h3>
+    <p>About 2.3 s: the drum freewheeling faster under the brake, chains paying out, creaks, and the leaf landing on its sill with a heavy thud at 2.0 s. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/drawbridge-winch.py (seed 711); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: drawbridge lower (winch ratchet, timber creak, chain, landing thud; about 2 s)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>drawbridge-lower-01</b> <span class="muted">(seed 711)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-lower-01.wav" aria-label="Play drawbridge-lower-01"></audio>
+  <img src="media/spectrograms/drawbridge-lower-01.png" alt="Waveform and spectrogram of drawbridge-lower-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -21.5 LUFS momentary max, -24.4 LUFS integrated; peak -6.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>drawbridge-lower-02</b> <span class="muted">(seed 712)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-lower-02.wav" aria-label="Play drawbridge-lower-02"></audio>
+  <img src="media/spectrograms/drawbridge-lower-02.png" alt="Waveform and spectrogram of drawbridge-lower-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -22.6 LUFS momentary max, -24.9 LUFS integrated; peak -7.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>drawbridge-lower-03</b> <span class="muted">(seed 713)</span></div>
+  <audio controls preload="none" src="media/audio/drawbridge-lower-03.wav" aria-label="Play drawbridge-lower-03"></audio>
+  <img src="media/spectrograms/drawbridge-lower-03.png" alt="Waveform and spectrogram of drawbridge-lower-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">2.30 s, mono; -22.7 LUFS momentary max, -24.8 LUFS integrated; peak -7.7 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="boat-call">
+  <div class="body">
+    <h3>Boat calling for the bridge or ferry <code>boat-call-01..06.wav</code></h3>
+    <p>01 to 03: a small hand bell shaken two or three times (hum D5, A4, E5); 04 to 06: a short cow-horn call on A3, D4 and G3. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 6 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/boat-call.py (seed 731); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: boat calling for the bridge or ferry (hand bell, hum D5)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>boat-call-01</b> <span class="muted">(seed 731)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-01.wav" aria-label="Play boat-call-01"></audio>
+  <img src="media/spectrograms/boat-call-01.png" alt="Waveform and spectrogram of boat-call-01, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -22.0 LUFS momentary max, -25.7 LUFS integrated; peak -12.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-call-02</b> <span class="muted">(seed 732)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-02.wav" aria-label="Play boat-call-02"></audio>
+  <img src="media/spectrograms/boat-call-02.png" alt="Waveform and spectrogram of boat-call-02, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -21.6 LUFS momentary max, -24.4 LUFS integrated; peak -12.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-call-03</b> <span class="muted">(seed 733)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-03.wav" aria-label="Play boat-call-03"></audio>
+  <img src="media/spectrograms/boat-call-03.png" alt="Waveform and spectrogram of boat-call-03, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -21.7 LUFS momentary max, -26.4 LUFS integrated; peak -13.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-call-04</b> <span class="muted">(seed 734)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-04.wav" aria-label="Play boat-call-04"></audio>
+  <img src="media/spectrograms/boat-call-04.png" alt="Waveform and spectrogram of boat-call-04, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.60 s, mono; -21.6 LUFS momentary max, -22.8 LUFS integrated; peak -10.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-call-05</b> <span class="muted">(seed 735)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-05.wav" aria-label="Play boat-call-05"></audio>
+  <img src="media/spectrograms/boat-call-05.png" alt="Waveform and spectrogram of boat-call-05, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.60 s, mono; -21.8 LUFS momentary max, -23.7 LUFS integrated; peak -11.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-call-06</b> <span class="muted">(seed 736)</span></div>
+  <audio controls preload="none" src="media/audio/boat-call-06.wav" aria-label="Play boat-call-06"></audio>
+  <img src="media/spectrograms/boat-call-06.png" alt="Waveform and spectrogram of boat-call-06, 0 to 6 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.60 s, mono; -21.9 LUFS momentary max, -23.0 LUFS integrated; peak -10.8 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="coin">
+  <div class="body">
+    <h3>Trade income <code>coin-01..06.wav</code></h3>
+    <p>One to three small coins clinking, under half a second, the lowest partials in the 2 to 4 kHz UI lane, so the game can quantise and stack them. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/coin.py (seed 751); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: trade income coin clink (1 coin)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>coin-01</b> <span class="muted">(seed 751)</span></div>
+  <audio controls preload="none" src="media/audio/coin-01.wav" aria-label="Play coin-01"></audio>
+  <img src="media/spectrograms/coin-01.png" alt="Waveform and spectrogram of coin-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -23.9 LUFS momentary max, -23.9 LUFS integrated; peak -8.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>coin-02</b> <span class="muted">(seed 752)</span></div>
+  <audio controls preload="none" src="media/audio/coin-02.wav" aria-label="Play coin-02"></audio>
+  <img src="media/spectrograms/coin-02.png" alt="Waveform and spectrogram of coin-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -24.6 LUFS momentary max, -26.9 LUFS integrated; peak -11.4 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>coin-03</b> <span class="muted">(seed 753)</span></div>
+  <audio controls preload="none" src="media/audio/coin-03.wav" aria-label="Play coin-03"></audio>
+  <img src="media/spectrograms/coin-03.png" alt="Waveform and spectrogram of coin-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -24.1 LUFS momentary max, -26.7 LUFS integrated; peak -9.3 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>coin-04</b> <span class="muted">(seed 754)</span></div>
+  <audio controls preload="none" src="media/audio/coin-04.wav" aria-label="Play coin-04"></audio>
+  <img src="media/spectrograms/coin-04.png" alt="Waveform and spectrogram of coin-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -23.7 LUFS momentary max, -25.4 LUFS integrated; peak -10.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>coin-05</b> <span class="muted">(seed 755)</span></div>
+  <audio controls preload="none" src="media/audio/coin-05.wav" aria-label="Play coin-05"></audio>
+  <img src="media/spectrograms/coin-05.png" alt="Waveform and spectrogram of coin-05, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -24.5 LUFS momentary max, -26.3 LUFS integrated; peak -11.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>coin-06</b> <span class="muted">(seed 756)</span></div>
+  <audio controls preload="none" src="media/audio/coin-06.wav" aria-label="Play coin-06"></audio>
+  <img src="media/spectrograms/coin-06.png" alt="Waveform and spectrogram of coin-06, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.50 s, mono; -24.3 LUFS momentary max, -27.1 LUFS integrated; peak -8.7 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="ferry-rope">
+  <div class="body">
+    <h3>Ferry rope pull <code>ferry-rope-01..04.wav</code></h3>
+    <p>A low stick-slip creak of the rope on its guide, a soft rasp through the hands and a hollow plank knock. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/ferry-rope.py (seed 771); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: ferry rope pull (rope creak on the guide, rasp, plank knock)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>ferry-rope-01</b> <span class="muted">(seed 771)</span></div>
+  <audio controls preload="none" src="media/audio/ferry-rope-01.wav" aria-label="Play ferry-rope-01"></audio>
+  <img src="media/spectrograms/ferry-rope-01.png" alt="Waveform and spectrogram of ferry-rope-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.04 s, mono; -23.5 LUFS momentary max, -25.0 LUFS integrated; peak -11.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>ferry-rope-02</b> <span class="muted">(seed 772)</span></div>
+  <audio controls preload="none" src="media/audio/ferry-rope-02.wav" aria-label="Play ferry-rope-02"></audio>
+  <img src="media/spectrograms/ferry-rope-02.png" alt="Waveform and spectrogram of ferry-rope-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.95 s, mono; -23.4 LUFS momentary max, -24.9 LUFS integrated; peak -11.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>ferry-rope-03</b> <span class="muted">(seed 773)</span></div>
+  <audio controls preload="none" src="media/audio/ferry-rope-03.wav" aria-label="Play ferry-rope-03"></audio>
+  <img src="media/spectrograms/ferry-rope-03.png" alt="Waveform and spectrogram of ferry-rope-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.92 s, mono; -24.3 LUFS momentary max, -25.7 LUFS integrated; peak -10.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>ferry-rope-04</b> <span class="muted">(seed 774)</span></div>
+  <audio controls preload="none" src="media/audio/ferry-rope-04.wav" aria-label="Play ferry-rope-04"></audio>
+  <img src="media/spectrograms/ferry-rope-04.png" alt="Waveform and spectrogram of ferry-rope-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.97 s, mono; -23.5 LUFS momentary max, -24.9 LUFS integrated; peak -9.4 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="oar-splash">
+  <div class="body">
+    <h3>Oar stroke and wake <code>oar-splash-01..06.wav</code></h3>
+    <p>01 to 04: a thole-pin creak, then the blade dipping with a slap, slosh and bubbles; 05 and 06: bigger wake washes against the bank. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 12 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/oar-splash.py (seed 791); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: rowboat oar stroke (thole-pin creak and splash)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>oar-splash-01</b> <span class="muted">(seed 791)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-01.wav" aria-label="Play oar-splash-01"></audio>
+  <img src="media/spectrograms/oar-splash-01.png" alt="Waveform and spectrogram of oar-splash-01, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.75 s, mono; -25.3 LUFS momentary max, -27.5 LUFS integrated; peak -9.5 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>oar-splash-02</b> <span class="muted">(seed 792)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-02.wav" aria-label="Play oar-splash-02"></audio>
+  <img src="media/spectrograms/oar-splash-02.png" alt="Waveform and spectrogram of oar-splash-02, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.75 s, mono; -24.8 LUFS momentary max, -26.4 LUFS integrated; peak -10.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>oar-splash-03</b> <span class="muted">(seed 793)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-03.wav" aria-label="Play oar-splash-03"></audio>
+  <img src="media/spectrograms/oar-splash-03.png" alt="Waveform and spectrogram of oar-splash-03, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.75 s, mono; -25.1 LUFS momentary max, -27.2 LUFS integrated; peak -11.1 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>oar-splash-04</b> <span class="muted">(seed 794)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-04.wav" aria-label="Play oar-splash-04"></audio>
+  <img src="media/spectrograms/oar-splash-04.png" alt="Waveform and spectrogram of oar-splash-04, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.75 s, mono; -25.2 LUFS momentary max, -27.2 LUFS integrated; peak -10.9 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>oar-splash-05</b> <span class="muted">(seed 795)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-05.wav" aria-label="Play oar-splash-05"></audio>
+  <img src="media/spectrograms/oar-splash-05.png" alt="Waveform and spectrogram of oar-splash-05, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.95 s, mono; -24.5 LUFS momentary max, -29.1 LUFS integrated; peak -6.7 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>oar-splash-06</b> <span class="muted">(seed 796)</span></div>
+  <audio controls preload="none" src="media/audio/oar-splash-06.wav" aria-label="Play oar-splash-06"></audio>
+  <img src="media/spectrograms/oar-splash-06.png" alt="Waveform and spectrogram of oar-splash-06, 0 to 12 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">0.95 s, mono; -24.0 LUFS momentary max, -27.6 LUFS integrated; peak -4.7 dBTP</p>
+</li></ol>
+</article>
+<article class="card sfx" id="boat-turn-away">
+  <div class="body">
+    <h3>Boat turns back <code>boat-turn-away-01..03.wav</code></h3>
+    <p>Two muffled low bell strikes falling by a third (G3 to E3, D4 to B3, C4 to A3): a disappointed sigh, not an alarm. WAV, 48 kHz, 16-bit, mono. Spectrograms run 0 to 4 kHz.</p>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/audio/boat-turn-away.py (seed 811); script written by Claude Opus 5.5; free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org) blocked from the build container, checked 2026-11-25, so made in code</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: boat turns back (two muffled low bell strikes, G3 falling to E3)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+  <ol class="takes"><li class="take">
+  <div class="take-head"><b>boat-turn-away-01</b> <span class="muted">(seed 811)</span></div>
+  <audio controls preload="none" src="media/audio/boat-turn-away-01.wav" aria-label="Play boat-turn-away-01"></audio>
+  <img src="media/spectrograms/boat-turn-away-01.png" alt="Waveform and spectrogram of boat-turn-away-01, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -22.9 LUFS momentary max, -25.9 LUFS integrated; peak -10.8 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-turn-away-02</b> <span class="muted">(seed 812)</span></div>
+  <audio controls preload="none" src="media/audio/boat-turn-away-02.wav" aria-label="Play boat-turn-away-02"></audio>
+  <img src="media/spectrograms/boat-turn-away-02.png" alt="Waveform and spectrogram of boat-turn-away-02, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -22.9 LUFS momentary max, -25.7 LUFS integrated; peak -11.2 dBTP</p>
+</li><li class="take">
+  <div class="take-head"><b>boat-turn-away-03</b> <span class="muted">(seed 813)</span></div>
+  <audio controls preload="none" src="media/audio/boat-turn-away-03.wav" aria-label="Play boat-turn-away-03"></audio>
+  <img src="media/spectrograms/boat-turn-away-03.png" alt="Waveform and spectrogram of boat-turn-away-03, 0 to 4 kHz" loading="lazy" width="800" height="360">
+  <p class="meta">1.90 s, mono; -22.8 LUFS momentary max, -25.5 LUFS integrated; peak -11.2 dBTP</p>
+</li></ol>
+</article></div>
+</section>
 
 <section id="models">
   <header><h2>Models</h2>

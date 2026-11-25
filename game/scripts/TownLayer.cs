@@ -68,6 +68,24 @@ public partial class TownLayer : Node3D
         return dx >= 0 ? MathF.PI / 2f : -MathF.PI / 2f;
     }
 
+    // Thatch tones: fresh straw, the palette's Reed and thatch, weathered toward Packed earth, old and greyed.
+    private static readonly Color[] ThatchTones =
+    {
+        Palette.Thatch.Lerp(Palette.Paper, 0.16f), Palette.Thatch, Palette.Thatch.Lerp(Palette.PackedEarth, 0.32f),
+        Palette.Thatch.Lerp(Color.FromHtml("#6F6450"), 0.38f),
+    };
+    private static ShaderMaterial? _building;
+
+    /// <summary>The cottages' material (shaders/building.gdshader): the model look plus a per-house thatch tone.</summary>
+    private static ShaderMaterial BuildingMaterial(string model)
+    {
+        if (_building != null) return _building;
+        _building = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/building.gdshader") };
+        _building.SetShaderParameter("atlas", ((StandardMaterial3D)ModelLib.Mesh(model).SurfaceGetMaterial(0)).AlbedoTexture);
+        _building.SetShaderParameter("thatch", Palette.Thatch);
+        return _building;
+    }
+
     private static void AddHouse(Node3D node, in Building b, int seed, float width, float depth)
     {
         int pick = (int)(Hash.Hash2(seed * 101 + 7, b.Id) * Cottages.Length);
@@ -76,7 +94,10 @@ public partial class TownLayer : Node3D
         // Life-size cottages are wider than the 6 m footprint: scale to fit with a little room, never up.
         float s = MathF.Min(1f, MathF.Min((width - 0.2f) / aabb.Size.X, (depth - 0.6f) / aabb.Size.Z));
         float back = -depth / 2f + aabb.Size.Z * s / 2f + 0.1f; // back of the house at the back of the footprint
-        AddPiece(node, model, "Cottage", 0, back, 0, s);
+        var mi = AddPiece(node, model, "Cottage", 0, back, 0, s);
+        mi.MaterialOverride = BuildingMaterial(model);
+        int tone = (int)(Hash.Hash2(seed * 31 + 3, b.Id * 7 + 1) * ThatchTones.Length);
+        mi.SetInstanceShaderParameter("thatch_tone", ThatchTones[Math.Clamp(tone, 0, ThatchTones.Length - 1)]);
     }
 
     private static void AddMarket(Node3D node, float width, float depth)
@@ -99,12 +120,13 @@ public partial class TownLayer : Node3D
                 AddPiece(node, "fence-post", $"Post{i++}", sx * (w / 2f - 0.2f), sz * (h / 2f - 0.2f), 0, 1.2f);
     }
 
-    private static void AddPiece(Node3D parent, string model, string name, float x, float z, float yaw, float scale)
+    private static MeshInstance3D AddPiece(Node3D parent, string model, string name, float x, float z, float yaw, float scale)
     {
         var mi = ModelLib.Instance(model, name);
         mi.Position = new Vector3(x, 0, z);
         mi.Rotation = new Vector3(0, yaw, 0);
         mi.Scale = new Vector3(scale, scale, scale);
         parent.AddChild(mi);
+        return mi;
     }
 }

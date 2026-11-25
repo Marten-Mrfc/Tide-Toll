@@ -156,7 +156,7 @@ public static class BookBuilder
         // The chapter page's words (title, how to play, the village and path-health entries, the legend) are written
         // by the interface over this page (GameUi / ChapterPage), so they stay sharp at every zoom; only the folio
         // is printed on the paper.
-        AddLabel(page, "Folio", "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk);
+        AddLabel(page, "Folio", "1", new Vector3(-130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
     }
 
     private static void FillRightPage(Node3D page, SimParams p)
@@ -170,8 +170,9 @@ public static class BookBuilder
         AddFrame(page, "FrameInner", side + 2f, 1.4f);
         AddFrame(page, "FrameOuter", side + 10f, 0.6f);
         AddCompass(page, new Vector3(side / 2f - 10f, 0.04f, -side / 2f - 14f), 7f);
-        AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink);
-        AddLabel(page, "Folio", "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk);
+        // The title in the chapter page's display face (Uncial Antiqua), folios in Alegreya, as printed in the book.
+        AddLabel(page, "MapTitle", "A Plan of the Hamlet", new Vector3(0, 0.1f, -side / 2f - 13f), 1000, Palette.Ink, UiKit.Display);
+        AddLabel(page, "Folio", "2", new Vector3(130, 0.1f, 152), 900, Palette.FadedInk, UiKit.Serif);
     }
 
     private static void AddFrame(Node3D page, string name, float size, float w)
@@ -205,7 +206,7 @@ public static class BookBuilder
         mat.VertexColorIsSrgb = true;
         mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
         page.AddChild(new MeshInstance3D { Name = "Compass", Mesh = st.Commit(), Position = at, MaterialOverride = mat });
-        AddLabel(page, "CompassN", "N", at + new Vector3(0, 0, -r - 4f), 700, Palette.Ink);
+        AddLabel(page, "CompassN", "N", at + new Vector3(0, 0, -r - 4f), 700, Palette.Ink, UiKit.Serif);
     }
 
     private static void AddRibbon(Node3D book)
@@ -249,21 +250,25 @@ public static class BookBuilder
         });
     }
 
-    private static void AddLabel(Node3D parent, string name, string text, Vector3 pos, int fontSize, Color c)
+    /// <summary>Printed text lying flat on the page, reading north-up; <paramref name="size100"/> is the em in centimetres.</summary>
+    public static Label3D AddLabel(Node3D parent, string name, string text, Vector3 pos, int size100, Color c, FontFile font)
     {
-        // Lies flat on the page, reading north-up. PixelSize keeps labels in metres.
-        parent.AddChild(new Label3D
+        // An MSDF font: one small atlas, crisp at every zoom. FontSize 100 px at size100 / 10000 m per pixel.
+        var l = new Label3D
         {
             Name = name,
             Text = text,
             Position = pos,
             RotationDegrees = new Vector3(-90, 0, 0),
-            FontSize = fontSize,
-            PixelSize = 0.01f,
+            Font = UiKit.PrintFont(font),
+            FontSize = 100,
+            PixelSize = size100 / 10000f,
             Modulate = c,
             OutlineSize = 0,
             Shaded = false,
             DoubleSided = false,
-        });
+        };
+        parent.AddChild(l);
+        return l;
     }
 }

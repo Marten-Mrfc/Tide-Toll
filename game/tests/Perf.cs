@@ -24,6 +24,13 @@ public partial class Perf : Node
     private static readonly (int speed, double budgetMs, bool preview)[] Runs = { (1, 6.0, false), (8, 10.0, false), (8, 10.0, true) };
     private const int Warmup = 240;
     private const double AllocBudget = 64;
+    /// <summary>Preview run: no frame above this (the simulation and a preview step must never stack up).</summary>
+    private const double PreviewWorstMs = 25;
+    /// <summary>Preview run: managed bytes allocated per finished preview (its result, readout and route mesh).</summary>
+    private const double PreviewAllocBudget = 48 * 1024; // 22 KB measured on 2026-11-25: the predictor's result and route points
+    private int _completed0, _skips0, _builds0, _worstTicks;
+    private double _worstMs, _worstSim, _worstPreview;
+    private long _predAlloc0, _routeAlloc0;
     private int _frames = 600;
     private int _walkers = 500;
     private double _simMs;
@@ -131,6 +138,13 @@ public partial class Perf : Node
         if (_frame >= 0 && _frame < _frames)
         {
             _ms[_frame] = (Stopwatch.GetTimestamp() - _first.Stamp) * 1000.0 / Stopwatch.Frequency;
+            if (_ms[_frame] > _worstMs)
+            {
+                _worstMs = _ms[_frame];
+                _worstSim = _main.Sim.SimMsThisFrame;
+                _worstTicks = _main.Sim.TicksThisFrame;
+                _worstPreview = _main.Tools.Previewer.LastFrameMs;
+            }
             _simMs += _main.Sim.SimMsThisFrame;
         }
         if (Runs[_run].preview && _frame % 45 == 0)
@@ -139,7 +153,14 @@ public partial class Perf : Node
             Input.ParseInputEvent(new InputEventMouseMotion { Position = p, GlobalPosition = p, ButtonMask = MouseButtonMask.Left });
         }
         _frame++;
-        if (_frame == 0) { _simMs = 0; _alloc0 = GC.GetAllocatedBytesForCurrentThread(); _gc0 = GC.CollectionCount(0); }
+        if (_frame == 0)
+        {
+            _simMs = 0; _alloc0 = GC.GetAllocatedBytesForCurrentThread(); _gc0 = GC.CollectionCount(0);
+            _worstMs = 0; _worstSim = 0; _worstPreview = 0; _worstTicks = 0;
+            var t = _main.Tools;
+            _completed0 = t.Previewer.Completed; _skips0 = t.PreviewSkips; _builds0 = t.Routes.Builds;
+            _predAlloc0 = t.Previewer.AllocBytes; _routeAlloc0 = t.Routes.BuildBytes;
+        }
         if (_frame <= _frames) return;
         long bytes = GC.GetAllocatedBytesForCurrentThread() - _alloc0;
         int gcs = GC.CollectionCount(0) - _gc0;
@@ -165,8 +186,24 @@ public partial class Perf : Node
         bool ok = mean <= budget && (preview || perFrame <= AllocBudget);
         _failed |= !ok;
         string what = preview ? $"{speed}x+preview" : $"{speed}x";
-        if (preview) GD.Print($"PERF preview: {_main.Tools.Previewer.Completed} previews finished, {_main.Tools.Previewer.Steps} steps, '{_main.Tools.Previewer.Text}'");
-        if (preview && _main.Tools.Previewer.Completed < 3) { ok = false; GD.Print("PERF preview did not run"); }
+        if (preview)
+        {
+            // The preview run's own gates: the worst frame, and bytes per finished preview (so they cannot grow unseen).
+            var t = _main.Tools;
+            int done = t.Previewer.Completed - _completed0;
+            double perPreview = done > 0 ? bytes / (double)done : double.PositiveInfinity;
+            double pred = (t.Previewer.AllocBytes - _predAlloc0) / Math.Max(1.0, done);
+            double route = (t.Routes.BuildBytes - _routeAlloc0) / Math.Max(1.0, t.Routes.Builds - _builds0);
+            bool worstOk = worst < PreviewWorstMs, allocOk = perPreview <= PreviewAllocBudget;
+            GD.Print($"PERF preview: {done} previews finished in the measured frames, {t.Previewer.Steps} steps, " +
+                     $"{t.PreviewSkips - _skips0} frames skipped (sim over {FlowPreviewer.SkipAboveSimMs} ms), '{t.Previewer.Text}'");
+            GD.Print($"PERF preview gates: worst frame {worst:F3} ms (gate < {PreviewWorstMs}) {(worstOk ? "ok" : "OVER")}; " +
+                     $"(sim {_worstSim:F2} ms in {_worstTicks} ticks, preview {_worstPreview:F2} ms, longest preview step {t.Previewer.StepMs:F2} ms); " +
+                     $"{perPreview / 1024:F1} KB allocated per finished preview (gate {PreviewAllocBudget / 1024:F0} KB) {(allocOk ? "ok" : "OVER")}: " +
+                     $"predictor {pred / 1024:F1} KB, route mesh {route / 1024:F1} KB per build, the rest ghost, requests and readout");
+            ok &= worstOk && allocOk;
+            if (done < 3) { ok = false; GD.Print("PERF preview did not run"); }
+        }
         _failed |= !ok;
         GD.Print($"PERF {_walkers} walkers {what}: cpu ms/frame mean {mean:F3} p95 {p95:F3} worst {worst:F3} (budget mean {budget}; of which sim {_simMs / _frames:F3}) | " +
                  $"alloc {perFrame:F1} B/frame, gen0 GCs {gcs} | sim {s.MsPerTick:F3} ms/tick, budget hits {s.BudgetHits}, " +

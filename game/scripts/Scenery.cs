@@ -7,7 +7,7 @@ namespace TideToll.Game;
 
 /// <summary>
 /// Decoration that the simulation does not know about, placed from the seed so the same seed always gives the
-/// same picture: trees (mostly along the map edge, a few copses inside, willows near the water), reed clumps on
+/// same picture: trees in copses (round the map edge, a few small ones inside, willows near the water), reed clumps on
 /// the river banks, a moored rowboat, and stepping stones on the ford. One MultiMesh per model, so a hundred trees
 /// cost three draw calls. Rules: nothing sits on a door or ford cell (the ford stones are the ford itself), trees
 /// keep clear of buildings, the water and the likely paths (straight lines from every house to the well, the field
@@ -30,7 +30,12 @@ public partial class Scenery : Node3D
     {
         _sim = sim;
         Name = "Scenery";
-        for (int i = 0; i < 3; i++) { _trees[i] = ModelLib.Multi(TreeModels[i], "Trees" + i, 160); AddChild(_trees[i]); }
+        for (int i = 0; i < 3; i++)
+        {
+            _trees[i] = ModelLib.Multi(TreeModels[i], "Trees" + i, 160);
+            _trees[i].Multimesh.Mesh = TreeMesh(TreeModels[i]);
+            AddChild(_trees[i]);
+        }
         _reeds = ModelLib.Multi("reeds", "Reeds", 256); AddChild(_reeds);
         _stones = ModelLib.Multi("ford-stones", "FordStones", 64); AddChild(_stones);
         _stones.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
@@ -38,6 +43,28 @@ public partial class Scenery : Node3D
         sim.WorldReplaced += Rebuild;
         sim.Edited += OnEdited;
         Rebuild();
+    }
+
+    // Crown centre and the height the crown starts, per model (assets/src/models/tree.py), for the round shading.
+    private static readonly Dictionary<string, (Vector3 centre, float baseY)> Crowns = new()
+    {
+        ["tree-oak"] = (new Vector3(0, 4.8f, 0), 3.2f),
+        ["tree-poplar"] = (new Vector3(0, 5.4f, 0), 2.2f),
+        ["tree-willow"] = (new Vector3(0, 3.6f, 0), 1.4f),
+    };
+
+    /// <summary>A private copy of a tree model with the round-clump tree shader (shaders/tree.gdshader).</summary>
+    private static ArrayMesh TreeMesh(string model)
+    {
+        var src = ModelLib.Mesh(model);
+        var mesh = (ArrayMesh)src.Duplicate();
+        var mat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/tree.gdshader") };
+        mat.SetShaderParameter("atlas", ((StandardMaterial3D)src.SurfaceGetMaterial(0)).AlbedoTexture);
+        var (centre, baseY) = Crowns[model];
+        mat.SetShaderParameter("crown_centre", centre);
+        mat.SetShaderParameter("crown_base", baseY);
+        mesh.SurfaceSetMaterial(0, mat);
+        return mesh;
     }
 
     public override void _ExitTree()
@@ -59,45 +86,88 @@ public partial class Scenery : Node3D
 
     // ------------------------------------------------------------------ trees
 
+    /// <summary>Tree crowns are drawn a little wider and flatter than the models (clumps from above, not cones).</summary>
+    public static readonly Vector3 CrownScale = new(1.18f, 0.92f, 1.18f);
+
+    /// <summary>
+    /// Copses, not an even scatter: clusters of 5 to 12 trees spaced round the map's border (a wooded edge to the plan),
+    /// a few small copses of 3 to 5 inside, and a handful of lone trees; all from the seed, all clear of buildings,
+    /// doors, water, the ford and the likely paths (<see cref="TreeClearance"/>).
+    /// </summary>
     private void PlaceTrees(World w, ref Mulberry32 rng)
     {
         int n = w.Grid.Width;
         var clear = TreeClearance(w);
         var lists = new List<Transform3D>[3] { new(), new(), new() };
         TreeCells.Clear();
-        for (int attempt = 0; attempt < 1400 && TreeCells.Count < 150; attempt++)
+        Copses = 0;
+        // Border copses: centres every 18 to 30 cells round the perimeter, 3 to 9 cells in from the edge.
+        int perimeter = 4 * (n - 1);
+        for (double t = rng.NextDouble() * 12; t < perimeter; t += 18 + rng.NextDouble() * 12)
         {
-            int x = 1 + (int)(rng.NextDouble() * (n - 2)), y = 1 + (int)(rng.NextDouble() * (n - 2));
-            int edge = Math.Min(Math.Min(x, y), Math.Min(n - 1 - x, n - 1 - y));
-            // Dense along the edge of the plan, sparse inside: the map reads as a clearing with a wooded border.
-            double keep = edge < 6 ? 0.85 : edge < 14 ? 0.3 : 0.025;
-            if (rng.NextDouble() > keep) continue;
-            TryTree(w, x, y, clear, lists, ref rng);
-            // Sometimes a copse: two or three more close by.
-            if (edge >= 6 && rng.NextDouble() < 0.45)
-                for (int k = 0; k < 3; k++)
-                    TryTree(w, x + (int)(rng.NextDouble() * 7) - 3, y + (int)(rng.NextDouble() * 7) - 3, clear, lists, ref rng);
+            int along = (int)t, side = along / (n - 1), off = along % (n - 1);
+            int inset = 3 + (int)(rng.NextDouble() * 7);
+            (int x, int y) c = side switch
+            {
+                0 => (off, inset),
+                1 => (n - 1 - inset, off),
+                2 => (n - 1 - off, n - 1 - inset),
+                _ => (inset, n - 1 - off),
+            };
+            Copse(w, c.x, c.y, 5 + (int)(rng.NextDouble() * 8), clear, lists, ref rng);
+        }
+        // A few small copses inside, where the clearance allows (tried at random spots).
+        for (int k = 0, made = 0; k < 60 && made < 4; k++)
+        {
+            int x = 16 + (int)(rng.NextDouble() * (n - 32)), y = 16 + (int)(rng.NextDouble() * (n - 32));
+            if (clear[y * n + x] != 0) continue;
+            int before = TreeCells.Count;
+            Copse(w, x, y, 3 + (int)(rng.NextDouble() * 3), clear, lists, ref rng);
+            if (TreeCells.Count > before) made++;
+        }
+        // And a few lone trees in the open.
+        for (int k = 0, made = 0; k < 80 && made < 5; k++)
+        {
+            int x = 8 + (int)(rng.NextDouble() * (n - 16)), y = 8 + (int)(rng.NextDouble() * (n - 16));
+            if (TryTree(w, x, y, clear, lists, ref rng)) made++;
         }
         for (int i = 0; i < 3; i++) Fill(_trees[i], lists[i]);
     }
 
-    private void TryTree(World w, int x, int y, byte[] clear, List<Transform3D>[] lists, ref Mulberry32 rng)
+    /// <summary>Copses placed for the current map (tests and stats).</summary>
+    public int Copses { get; private set; }
+
+    // Trees of one copse: scattered round a centre, densest in the middle, never on top of each other.
+    private void Copse(World w, int cx, int cy, int count, byte[] clear, List<Transform3D>[] lists, ref Mulberry32 rng)
+    {
+        float r = 2.2f + count * 0.45f;
+        int placed = 0;
+        for (int k = 0; k < count * 5 && placed < count; k++)
+        {
+            double a = rng.NextDouble() * Math.Tau, d = r * Math.Sqrt(rng.NextDouble()) * (0.55 + 0.45 * rng.NextDouble());
+            if (TryTree(w, cx + (int)Math.Round(Math.Cos(a) * d), cy + (int)Math.Round(Math.Sin(a) * d), clear, lists, ref rng)) placed++;
+        }
+        if (placed > 0) Copses++;
+    }
+
+    private bool TryTree(World w, int x, int y, byte[] clear, List<Transform3D>[] lists, ref Mulberry32 rng)
     {
         int n = w.Grid.Width;
-        if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || clear[y * n + x] != 0) return;
+        if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || clear[y * n + x] != 0) return false;
         foreach (var (c, _) in TreeCells)
         {
             int dx = c % n - x, dy = c / n - y;
-            if (dx * dx + dy * dy < 7) return; // canopies may touch but not stack
+            if (dx * dx + dy * dy < 5) return false; // crowns overlap into a clump but never stack
         }
         float riverDist = MathF.Abs(x + 0.5f - w.RiverX[y]) - (float)w.Map.RiverHalfW;
         int kind = riverDist < 7 ? 2 : rng.NextDouble() < 0.68 ? 0 : 1;
         float cell = (float)w.Params.CellMeters;
         float jx = (float)rng.NextDouble() - 0.5f, jz = (float)rng.NextDouble() - 0.5f;
         float s = 0.85f + 0.3f * (float)rng.NextDouble();
-        var basis = new Basis(Vector3.Up, (float)(rng.NextDouble() * Math.Tau)).Scaled(new Vector3(s, s, s));
+        var basis = new Basis(Vector3.Up, (float)(rng.NextDouble() * Math.Tau)).Scaled(CrownScale * s);
         lists[kind].Add(new Transform3D(basis, new Vector3((x + 0.5f + jx) * cell, 0, (y + 0.5f + jz) * cell)));
         TreeCells.Add((y * n + x, kind));
+        return true;
     }
 
     /// <summary>1 where no tree may stand: water and banks, buildings and their margin, doors, the ford, likely paths.</summary>

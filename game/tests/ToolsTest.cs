@@ -257,7 +257,7 @@ public partial class ToolsTest : Node
         TestInput.Key(Key.Escape);
         await TestInput.Frames(this, 1);
         int previews = _main.Tools.Previewer.Completed - done0;
-        Check(previews >= 3, $"only {previews} previews finished during the isolation run");
+        Check(previews >= 3, $"only {previews} previews finished during the isolation run ({_main.Tools.Previewer.Steps} steps, {_main.Tools.PreviewSkips} frames skipped, longest step {_main.Tools.Previewer.StepMs:F1} ms)");
         Check(FenceCount() == 0 && W.Bridges.Count == 0, "the isolation run built something");
         ulong a = Hash(W);
         // Run B: no tools.

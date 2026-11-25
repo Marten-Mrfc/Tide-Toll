@@ -226,6 +226,56 @@ public partial class UiTest : Node
         int smallest = SmallestFont(_main.Ui);
         Check(smallest >= 12, $"interface text as small as {smallest} px at 1280 x 720");
         _notes.Add($"page='{day}' smallest={smallest}px");
+        await LabelsInside("1280x720");
+    }
+
+    /// <summary>
+    /// In the whole-book view and in the play view: every visible label lies inside its page (at least
+    /// ChapterPage.MinInset px from the page's edges, or inside the slip when the page is folded) or inside the panel
+    /// or tab that holds it, and on screen.
+    /// </summary>
+    private async Task LabelsInside(string size)
+    {
+        foreach (bool book in new[] { true, false })
+        {
+            if (book) _main.Rig.FrameBook(instant: true); else _main.Rig.FramePlay(instant: true);
+            await TestInput.Frames(this, 40); // the page refits a step a frame; the fps plate shows after half a second
+            var vp = GetViewport().GetVisibleRect();
+            var ch = _main.Ui.Chapter;
+            var page = ch.Slip ? ch.GetGlobalRect() : ch.PageRect.Grow(-ChapterPage.MinInset);
+            int n = 0;
+            foreach (var l in Labels(_main.Ui))
+            {
+                var r = l.GetGlobalRect();
+                Control? holder = null;
+                for (var a = l.GetParent(); a != null && holder == null; a = a.GetParent())
+                    if (a == ch) break;
+                    else if (a is Button or PanelContainer && a is Control ac) holder = ac;
+                bool onPage = holder == null && IsUnder(l, ch);
+                var room = onPage ? page : holder?.GetGlobalRect() ?? vp;
+                string where = onPage ? (ch.Slip ? "the chapter slip" : "the chapter page") : holder?.Name ?? "the window";
+                Check(room.Grow(0.5f).Encloses(r), $"{size} {(book ? "book" : "play")} view: label {l.GetPath()} '{Short(l.Text)}' at {r} is not inside {where} {room}");
+                Check(vp.Grow(0.5f).Encloses(r), $"{size} {(book ? "book" : "play")} view: label {l.GetPath()} '{Short(l.Text)}' at {r} is off screen");
+                n++;
+            }
+            _notes.Add($"{size}-{(book ? "book" : "play")}: {n} labels inside (folded {ch.Folded})");
+        }
+    }
+
+    private static bool IsUnder(Node n, Node ancestor)
+    {
+        for (var a = n.GetParent(); a != null; a = a.GetParent()) if (a == ancestor) return true;
+        return false;
+    }
+
+    private static string Short(string t) => t.Length > 24 ? t.Substring(0, 24) + "..." : t;
+
+    private static List<Label> Labels(Node n, List<Label>? into = null)
+    {
+        into ??= new List<Label>();
+        if (n is Label l && l.IsVisibleInTree() && l.Text.Length > 0) into.Add(l);
+        foreach (var c in n.GetChildren()) Labels(c, into);
+        return into;
     }
 
     private static int SmallestFont(Node n)
@@ -249,6 +299,7 @@ public partial class UiTest : Node
         int body = _main.Ui.Chapter.GetNode<Label>("Column/Date/Value").GetThemeFontSize("font_size");
         Check(body >= 16, $"body text is {body} px at 1080p (UX tab: 16 px)");
         _notes.Add($"1080p smallest={smallest}px");
+        await LabelsInside("1920x1080");
     }
 
     private static void Check(bool ok, string why)

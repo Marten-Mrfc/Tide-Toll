@@ -24,8 +24,7 @@ uniform float cells = 128.0;
 uniform float half_w = 5.0;          // river half width, metres
 uniform float tile1 = 28.0;          // metres per texture tile, scale A
 uniform float tile2 = 11.3;          // scale B (rotated, not a multiple of A, so no visible repeat)
-uniform float ramp_mix = 0.25;
-uniform float noise_amp = 0.05;      // ragged trail edges (wear units)
+uniform float ramp_mix = 0.2;       // the wear ramp's colour laid lightly over bare earth
 uniform float grain = 0.07;
 uniform float time_s = 0.0;          // animation seconds from C#: a paused game freezes the water
 uniform float overlay = 0.0;         // 0..1: wear heat map laid over the page like a tracing-paper sheet
@@ -58,23 +57,61 @@ vec3 heat(float w) {
 
 void vertex() { lp = VERTEX.xz + vec2(map_size * 0.5); }
 
+// Value noise in map space (no texture, so it never repeats and never swims): 0..1.
+float hash12(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+float vnoise(vec2 p) {
+	vec2 i = floor(p), f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float wear_at(vec2 m) { return texture(wear_tex, m / map_size).r; }
+
 void fragment() {
 	vec2 uv = lp / map_size;
-	float n = texture(paper_tex, lp / 17.0).r;                    // paper_tex red: 0.876 +- 0.027 in linear light
 	vec2 wh = texture(wear_tex, uv).rg;
-	float w = clamp(wh.r + (n - 0.876) * noise_amp * 4.0, 0.0, 1.0);
-	float s = 0.035;
-	float w1 = smoothstep(0.10 - s, 0.10 + s, w);   // trampled
-	float w2 = smoothstep(0.25 - s, 0.25 + s, w);   // trail
-	float w3 = smoothstep(0.50 - s, 0.50 + s, w);   // track
-	// hollow way: the sim's flag (held for a long time once wear passes 85), only where the ground is still a track
-	float w4 = w3 * smoothstep(0.3, 0.7, wh.g);
-	vec3 c = two(g0, lp);
-	c = mix(c, two(g1, lp), w1);
-	c = mix(c, two(g2, lp), w2);
-	c = mix(c, two(g3, lp), w3);
+	// "The paths are the art" (Art tab): the trail is ground worn by feet, not a road. The wear grid itself is never
+	// changed here; only how it is drawn. All lengths in metres (one cell is 2 m).
+	// 1. Edges that wander: the lookup is warped by low-frequency noise (under half a cell), so cell squares and
+	//    straight vector strokes never show.
+	float cm = map_size / cells;
+	vec2 warp = vec2(vnoise(lp / 9.0), vnoise(lp / 9.0 + 31.7)) - 0.5;
+	warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
+	vec2 m = lp + warp * cm * 0.9;
+	// 2. Three readings of the same wear: the core (softened over under a cell), a wide spread (the trampled fringe
+	//    walkers leave beside a trail) and a broad average (only wide, busy trunks stay high in it).
+	float core = wear_at(m) * 0.4;
+	float spread = 0.0, broad = 0.0;
+	for (int k = 0; k < 6; k++) {
+		float a = float(k) * 1.0471976 + 0.35;
+		vec2 d = vec2(cos(a), sin(a));
+		core += wear_at(m + d * cm * 0.55) * 0.1;
+		spread += wear_at(m + d * cm * 2.2) + wear_at(m + d * cm * 1.2);
+		broad += wear_at(m + d * cm * 1.0);
+	}
+	spread /= 12.0;
+	broad = (broad + wear_at(m) * 2.0) / 8.0;
+	float n1 = vnoise(lp / 2.2), n2 = vnoise(lp / 0.8), n3 = vnoise(lp / 5.5 + 3.1);
+	// The sim's own thresholds still drive the stages (10 trampled, 25 trail, 50 track, hollow flag), read through
+	// the softened core; noise moves each edge by a little, so it frays.
+	float fringe = smoothstep(0.03, 0.20, max(spread * 1.25, core)) * (0.75 + 0.25 * n3);
+	float bare = smoothstep(0.24, 0.40, core + (n1 - 0.5) * 0.16 + (n2 - 0.5) * 0.08);
+	// Dark packed earth only where a trail is both well worn and wide (a trunk) or the sim marked a hollow way.
+	float packed = smoothstep(0.78, 0.95, broad + (n1 - 0.5) * 0.10) * smoothstep(0.50, 0.65, core);
+	float w4 = smoothstep(0.3, 0.7, wh.g) * smoothstep(0.50, 0.65, core);
+	// Meadow, then flattened grass: paler and yellower, a lighter sheen where blades lie flat.
+	vec3 grass = two(g0, lp);
+	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.25) * (1.04 + 0.06 * n2);
+	vec3 c = mix(grass, flattened, fringe);
+	// Bare earth: the trail texture lifted toward paper, mottled, with tufts of grass left standing near its edges.
+	vec3 earth = mix(two(g2, lp), paper.rgb, 0.16) * (0.93 + 0.12 * n2);
+	float tufts = smoothstep(0.62, 0.80, n2) * (1.0 - smoothstep(0.42, 0.70, core));
+	earth = mix(earth, flattened, tufts * 0.7);
+	c = mix(c, earth, bare);
+	// Packed track, then hollow way: the darker browns, kept for the busiest ground.
+	c = mix(c, mix(two(g3, lp), earth, 0.25 * n1), packed * 0.85);
 	c = mix(c, two(g4, lp), w4);
-	c = mix(c, texture(ramp_tex, vec2(w, 0.5)).rgb, ramp_mix * (1.0 - w4 * 0.6));
+	c = mix(c, texture(ramp_tex, vec2(core, 0.5)).rgb, ramp_mix * bare * (1.0 - w4));
+	float w = core;
 
 	// field: rows of ripe crop running east-west, trampled to earth where trails cross, with an ink edge
 	vec2 mask = texture(mask_tex, uv).rg;
