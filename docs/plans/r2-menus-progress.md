@@ -19,7 +19,7 @@ Started 2026-11-25 22:01 UTC. Time box about 40 minutes.
 
 - 22:31 first full ./check --export PASSED (all 16 steps). AGENTS.md and README.md updated.
 - After it: MenuTest gained "Esc in Pave mode only leaves Pave mode" (first try failed because the test had no
-  pavable road; the bot now plays until one exists). Final ./check --export re-run at 22:35.
+  pavable road; the bot now plays until one exists). Final ./check --export re-run 22:35-22:44: CHECK PASSED (16 steps). FINISHED.
 
 ## Decisions
 - The cover lettering is 2D (gilt Labels/Buttons, tooled frame drawn) laid over the 3D board's screen rect each frame;
