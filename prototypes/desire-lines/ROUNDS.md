@@ -177,4 +177,12 @@ Left as they are, for the owner to judge:
 - A first fence often shows "No change to routes", which can look as if nothing happened.
 - At 8x with 500 walkers on a processor slowed 4 times it runs at about 35 fps.
 
-Small bugs found by the last bug hunt, not fixed in version 5: mud is drawn drying over a full day while its slowdown ends after half a day; when the step budget is hit, the same map areas lose their footsteps every time; the dawn mark is not reset by Reset or New map; with reduced motion the dawn underline stays on all day; the drying order follows wear as it changes during the day. They go into the next round as a short fix list.
+Small bugs found by the last bug hunt, not fixed in version 5 (fixed in version 6, see below): mud is drawn drying over a full day while its slowdown ends after half a day; when the step budget is hit, the same map areas lose their footsteps every time; the dawn mark is not reset by Reset or New map; with reduced motion the dawn underline stays on all day; the drying order follows wear as it changes during the day. They go into the next round as a short fix list.
+
+## Fix list after round 5 (2026-11-25)
+
+**Built:** the short list only, with a test for each: mud is drawn drying on the simulation's own clock and in an order fixed when drying starts; every map area gets its share of footstep sounds; Reset and New map clear the dawn mark's day count; with reduced motion the dawn underline ends after 1.6 seconds; place labels are drawn over the walkers; the time and weather lines update at once after a jump; nothing scheduled before a mute or a hidden tab sounds after it. Simulation results did not change.
+
+**Independent check:** the build should replace the published one. `npm run check` 89 of 89 with the five old gate sets bit-identical; seeds 601 to 620 with rain and growth on give the same numbers as before (lowest 35.3%, highest 56.5%); smoke 3 of 3 (121 checks each); the 10-minute sound soak passes; each fix checked at 1280 and 360 px in both themes; no test weakened. The speed test fails some rows while other builds load the machine and passes when it is quiet; the build before the fixes behaves the same.
+
+**Lead's decision: republished as version 6 at the same link. The toy is finished and waits for the owner's playtest.**
