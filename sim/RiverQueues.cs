@@ -18,6 +18,9 @@ public sealed partial class World
         var x = CrossingById(id);
         if (x == null || x.Type == CrossingType.Ford || _frozen) return false; // on ice every crossing is open ground
         if (w.Pass && w.HoldAt == id) { w.Pass = false; return false; }     // its turn came in the queue
+        // A walker only clipping the end of an open bridge on its way along the bank (its line cuts the corner of an end
+        // cell) is not queued for it: it would be released at its first route check and queue again, for ever.
+        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) return false;
         WalkerQueue q = SideOf(w.Cell) < 0 ? x.West! : x.East!;
         // Straight on when nobody is queued on either bank and the bridge has room; otherwise to the back of the queue.
         if (x.Type != CrossingType.Ferry && BridgeOpen(x) && x.Tokens >= 1 && !QueueHasWalker(x, x.West!) && !QueueHasWalker(x, x.East!))

@@ -111,10 +111,12 @@ public sealed partial class World
     {
         double s = _p.WalkSpeedCellsPerSec;
         if (_bridgeAt[c] >= 0) s *= _p.BridgeSpeedMul;
+        else if (_river != null && _frozen && _map.Water[c] != 0) s *= _river.IceSpeedMul;
         else
         {
             s *= _stateSpeedMul[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
             if (_map.Ford[c] != 0) s *= _p.FordSpeedMul;
+            if (_river != null && _flooded && _band[c] != 0) s *= _river.FloodWadeSpeedMul;
         }
         double rho = _here[c] / _p.CellAreaM2;
         if (rho > 0.3) s *= Math.Max(0.1, 1 - Math.Exp(-_p.WeidmannGamma * (1 / rho - 1 / _p.WeidmannRhoMax)));
@@ -124,7 +126,8 @@ public sealed partial class World
     /// <summary>Wear for entering cell c at point (x, y) while heading (dx, dy) / d.</summary>
     private void Footstep(int c, double x, double y, double dx, double dy, double d)
     {
-        if (_land[c] != 0 && _bridgeAt[c] < 0)
+        if (_river != null && (_flooded || _frozen) && RiverFootstep(c, x, y, dx, dy, d)) { }
+        else if (_land[c] != 0 && _bridgeAt[c] < 0)
         {
             double I = _p.WearPerStep;
             _wear[c] = (float)(_wear[c] + I * (1 - _wear[c] / 100.0));
@@ -138,6 +141,7 @@ public sealed partial class World
                     if (!_g.Inside(sx, sy)) continue;
                     int si = sy * _n + sx;
                     if (si == c || _land[si] == 0 || _fence[si] != 0) continue;
+                    if (_river != null && _flooded && _band[si] != 0) continue; // flood water does not wear
                     _wear[si] = (float)(_wear[si] + I * _p.SideShare * (1 - _wear[si] / 100.0));
                 }
             }

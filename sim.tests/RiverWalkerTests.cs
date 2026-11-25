@@ -96,20 +96,16 @@ public class RiverWalkerTests
             foreach (var k in w.Walkers) if (k.Hold == WalkerHold.Waiting && k.HoldAt == x.Id) waiting.Add(k.Id);
             int queued = waiting.Count;
             double perTick = w.River!.Rules.DrawbridgeWalkersPerDay / w.Params.DaySimSec / w.Params.TickHz;
-            var span = new HashSet<int>(x.Cells);
-            var onSpan = new HashSet<int>();
-            foreach (var k in w.Walkers) if (span.Contains(k.Cell)) onSpan.Add(k.Id);
-            int ticks = 0, entered = 0;
+            // Walkers reaching the far bank in the first T ticks stepped on in those ticks or in the 2 s before.
+            int crossed0 = x.WalkersCrossed, ticks = 0;
+            double transit = 2 * w.Params.TickHz;
             while (ticks < Math.Ceiling(queued / perTick) + 2)
             {
                 w.Tick(); ticks++;
                 foreach (var k in w.Walkers)
-                {
-                    if (span.Contains(k.Cell)) { if (onSpan.Add(k.Id)) entered++; }
-                    else onSpan.Remove(k.Id);
                     if (!(k.Hold == WalkerHold.Waiting && k.HoldAt == x.Id)) waiting.Remove(k.Id); // its turn came (it may queue again later)
-                }
-                Assert.True(entered <= perTick * (ticks + w.Params.TickHz * w.River.Rules.BridgeBurstSec) + 1, $"{entered} walkers stepped on in {ticks} ticks: faster than the bridge's capacity");
+                int crossed = x.WalkersCrossed - crossed0;
+                Assert.True(crossed <= perTick * (ticks + transit + w.Params.TickHz * w.River.Rules.BridgeBurstSec) + 1, $"{crossed} walkers crossed in {ticks} ticks: faster than the bridge's capacity");
             }
             Assert.True(waiting.Count == 0, $"{waiting.Count} walkers still wait at a lowered bridge {ticks} ticks after it came down ({queued} queued)");
             AssertRiverInvariants(w, $"cycle {cycle}");

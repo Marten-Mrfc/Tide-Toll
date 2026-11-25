@@ -23,6 +23,8 @@ public sealed partial class World
     /// <summary>Hook of CellCost for cells with a crossing: NaN when the cell is not special.</summary>
     private double RiverCellCost(int c, CostOverride ov)
     {
+        if (_flooded && _map.Ford[c] != 0 && ov != CostOverride.Bridge && !_frozen) return double.PositiveInfinity; // closed in the flood
+        if (_frozen && _bridgeAt[c] < 0) return double.NaN; // ice, ferry water included
         int id = _crossAt[c];
         if (id < 0 || ov == CostOverride.Block || ov == CostOverride.CloseBridge || ov == CostOverride.Bridge) return double.NaN;
         var x = CrossingById(id);
@@ -87,7 +89,7 @@ public sealed partial class World
         {
             case BridgeState.Closed:
                 x.Progress = 0;
-                if (x.Keeper && MastedBoatNear(x, r.KeeperSeeRows))
+                if (x.Keeper && !_frozen && MastedBoatNear(x, r.KeeperSeeRows))
                 {
                     // The keeper sees the boat this tick and raises KeeperDelaySec later.
                     x.KeeperT = x.KeeperT < 0 ? 0 : x.KeeperT + dt;
@@ -117,7 +119,8 @@ public sealed partial class World
             case BridgeState.Raised:
                 x.StateT += dt;
                 bool near = MastedBoatNear(x, r.HoldRowsBelow) || BoatPassing(x);
-                if (!near && (x.PassedThisRaise > 0 || x.Keeper || x.StateT >= r.ManualMaxRaisedSec - 1e-9)) StartLower(x);
+                // On the ice no boat moves, so a raised leaf comes down at once (walkers cross the span on the ice).
+                if (_frozen || (!near && (x.PassedThisRaise > 0 || x.Keeper || x.StateT >= r.ManualMaxRaisedSec - 1e-9))) StartLower(x);
                 break;
             case BridgeState.Lowering:
                 x.StateT += dt;
@@ -137,6 +140,7 @@ public sealed partial class World
 
     private void StepFerry(Crossing x, double dt)
     {
+        if (_frozen) return; // frozen in at its stage
         var r = _river!;
         int n = _n;
         if (x.Sailing)
@@ -182,6 +186,7 @@ public sealed partial class World
             RecordWait(x, w.WaitT);
             w.Hold = WalkerHold.Riding;
             w.WaitT = 0;
+            w.Via = (short)x.Id;
             x.PassengerIdx[x._passengers] = idx;
             x.PassengerTicket[x._passengers] = ticket;
             x._passengers++;

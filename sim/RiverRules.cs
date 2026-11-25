@@ -89,6 +89,35 @@ public sealed record RiverRules
     /// <summary>A walker that has waited this long gives up and goes home (a safety net; queues normally clear long before).</summary>
     public double MaxWalkerWaitSec { get; init; } = 40;
 
+    // Spring high water (doc, "Spring high water" and "Seasons and weather"). On with the river rules.
+    public bool SpringFlood { get; init; } = true;
+    /// <summary>Chance of a flood on the first day of each spring (doc: Riverbend 70%; Delta Islands 90%, Mere 40%).</summary>
+    public double FloodChance { get; init; } = 0.7;
+    /// <summary>The band is under water for 1 or 2 days (doc), drawn evenly.</summary>
+    public int FloodMinDays { get; init; } = 1;
+    public int FloodMaxDays { get; init; } = 2;
+    /// <summary>Width of the flood band beyond the water's edge on each bank, in cells (chosen: it stops one cell short of the nearest building the map generator allows).</summary>
+    public double FloodBandCells { get; init; } = 4;
+    /// <summary>Walking through the flooded band, as through the ford (chosen: the doc's ford speed 0.4 and the sim's ford cost x3).</summary>
+    public double FloodWadeSpeedMul { get; init; } = 0.4;
+    public double FloodWadeCostMul { get; init; } = 3;
+    /// <summary>Mud on the band after the flood, by ground state (doc, starting numbers: trail x1.6, track x1.7, hollow way x1.8).</summary>
+    public double MudTrailMul { get; init; } = 1.6;
+    public double MudTrackMul { get; init; } = 1.7;
+    public double MudHollowMul { get; init; } = 1.8;
+    /// <summary>Repairs per building in the band per flood (doc, Costs: 10c per building per flood). The landing is exempt.</summary>
+    public double FloodRepairCost { get; init; } = 10;
+
+    // Winter ice (doc, "Winter ice").
+    public bool WinterIce { get; init; } = true;
+    /// <summary>Chance per winter that the river freezes on its second day, until the first day of spring (doc: Hamlet 50%).</summary>
+    public double IceChance { get; init; } = 0.5;
+    /// <summary>Ice-wear gain per footstep relative to the wear grid's (doc: double).</summary>
+    public double IceWearMul { get; init; } = 2;
+    /// <summary>Cost and speed on the ice (chosen: like grass; the doc's snow, +20% in winter, is weather and not built).</summary>
+    public double IceCostMul { get; init; } = 1;
+    public double IceSpeedMul { get; init; } = 1;
+
     // Money.
     public double StartMoney { get; init; } = 120;
     /// <summary>Upkeep may take the purse down to this; purchases need the full price in hand.</summary>
@@ -158,9 +187,14 @@ public enum RiverEventKind : byte
     BridgeRaising, BridgeRaised, BridgeLowering, BridgeLowered,
     FerryDeparted, FerryLanded,
     CannotAfford, SeasonSettled, KeeperHired, CrossingBuilt, CrossingRemoved,
+    FloodRising, FordClosed, FloodReceded, FordOpen, FloodRepairs, RiverFrozen, Thaw,
 }
 
-/// <summary>One thing that happened on the river this tick. Value is coin for BoatSold, CannotAfford and SeasonSettled (net), passengers for the ferry.</summary>
+/// <summary>
+/// One thing that happened on the river this tick. Value is coin for BoatSold, CannotAfford, SeasonSettled (net) and
+/// FloodRepairs, passengers for the ferry, the flood's length in days for FloodRising. FordClosed and FordOpen name the
+/// ford (crossing 0).
+/// </summary>
 public readonly struct RiverEvent
 {
     public readonly RiverEventKind Kind;

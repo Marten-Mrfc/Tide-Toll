@@ -69,6 +69,7 @@ public sealed partial class World
         _crossings.Add(new Crossing(_nextCrossingId++, CrossingType.Ford, _map.FordY, cells.ToArray(), -1, -1, -1, r, _p.MaxWalkers));
         // First arrivals: within one gap of the start.
         for (int k = 0; k < 2; k++) _nextArrival[k] = ArrivalGap((BoatKind)k) * _riverRng.NextDouble();
+        InitSeasons(seed);
         _riverView = new RiverView(this);
     }
 
@@ -98,7 +99,9 @@ public sealed partial class World
     private void RiverSettle()
     {
         var rs = _rs!;
-        if (_ticks % _p.TicksPerDay == 0)
+        bool dayEnds = _ticks % _p.TicksPerDay == 0;
+        if (dayEnds || _flooded) SeasonBoundary(_ticks / _p.TicksPerDay, dayEnds);
+        if (dayEnds)
         {
             rs.IncomeYesterday = rs.IncomeDay;
             rs.IncomeDay = 0; rs.ServedToday = 0; rs.TurnedBackToday = 0; rs.MarketToday = 0;
@@ -251,6 +254,21 @@ public sealed class RiverView
     public double NextArrival(BoatKind k) => _w.NextArrival(k);
     /// <summary>Expected boat arrivals per day now, of one kind.</summary>
     public double ArrivalsPerDay(BoatKind k) => Rules.ArrivalsPerDay(k, Reputation, _w.Params.DaySimSec);
+
+    /// <summary>Spring high water: the flood band is under water and the ford is closed.</summary>
+    public bool Flooded => _w.FloodedValue;
+    /// <summary>Winter ice: boats are stopped, trade with boats is paused and walkers cross anywhere.</summary>
+    public bool Frozen => _w.FrozenValue;
+    /// <summary>The rest of spring after a flood: worn paths in the flood band are mud.</summary>
+    public bool Muddy => _w.MuddyValue;
+    /// <summary>Walkers may use the ford (closed while the flood band is under water).</summary>
+    public bool FordOpen => !_w.FloodedValue;
+    /// <summary>Sim time the flood band dries (becomes mud), -1 when not flooded.</summary>
+    public double FloodEndsAt => _w.FloodEndsAt;
+    /// <summary>1 on the cells of the flood band (land beside the river that floods in spring), per cell; fixed for the map.</summary>
+    public ReadOnlySpan<byte> FloodBand => _w.BandSpan;
+    /// <summary>Wear of paths across the ice (0 to 100, per cell; only on water cells while frozen, wiped at the thaw). Never part of World.Wear.</summary>
+    public ReadOnlySpan<float> IceWear => _w.IceWearSpan;
 
     /// <summary>Moves the events since the last call into <paramref name="into"/> (oldest first). Allocates nothing once the list has room.</summary>
     public void DrainEvents(List<RiverEvent> into) => _w.DrainRiverEvents(into);

@@ -21,7 +21,7 @@ The lead's log of each build round: what was built, what the review found, and w
 | G3 | Gate: no collapse or smear in 20 seeds, trunk share stays between 30% and 70% |
 | G4 | Gate: 200 agents at 60 fps in a desktop browser |
 | F11 | Gravel and gate tools (added in round 3) |
-| F12 | Rain and mud, house growth, sound made in code (planned for round 4) |
+| F12 | Rain and mud, house growth, sound made in code (added in round 4) |
 
 ## Round 1 (2026-11-24)
 
@@ -119,3 +119,32 @@ Footbridges: every bridge that saves 8% or more of the walk takes at least half 
 3. From the bug hunt: a second finger must not disturb a drag or a press; a fence over gravel; a gate on a lone post; the phone test must run at a real phone layout.
 4. Polish: diagonal fences as straight rails, gravel as a clearer strip, trunks darker than side trails, 40 px speed buttons on phones, small wording fixes, and smoother frames at 8x on slow machines.
 5. From round 4 on, the gate is also judged with rain and house growth switched on, on seeds nobody has looked at (601 to 620).
+
+## Round 4 (2026-11-25)
+
+**Built:** gates on fences at any angle, gravel that pulls a trail from several cells away, rain and mud, house growth by the frontage rules (one cottage every 2 days up to 16 houses and 248 villagers), sound made in code and silent until the Sound button is pressed (footsteps by ground type, river, rain, a dawn bell, tool sounds, the 8-bar theme), each touch gesture bound to its own finger, a phone test that runs at a true 400 and 360 px layout, straight rails for diagonal fences, darker trunks and lighter side trails. Two container restarts interrupted the builders; the work was picked up from the tree each time.
+
+**Review result:**
+
+| Id | Status | Evidence |
+| --- | --- | --- |
+| F1 | Pass | 216 KB page, page contract checks pass, no audio before the Sound press |
+| F2 to F10 | Pass | `npm run check` (84 checks), smoke 3 of 3, perf 3 of 3 on an idle machine |
+| F11 | Pass | A gate carries walkers at 0, 30, 45, 60 and 90 degrees. Gravel 3 cells from a trunk pulls footsteps on 16 of 16 sites; at 5 cells on 4 of 17. The gravel preview said "No change to routes" on 4 sites where gravel did pull walkers |
+| F12 | Partial | Rain, mud, growth and sound all work. But mud is on screen 45% of the time and every worn cell turns to mud and dries at once, so rain reads as a slowdown and hides the worn-ground colours. Sound levels are unheard; the river bed measures very quiet |
+| G1 | Needs people | Stand-in: first trail in 8 to 12 s; trunk about 3 cells wide; darker trunks, lighter side trails, pale fringes |
+| G2 | Needs people | Stand-in: reroute and preview isolation tests pass, also with rain and growth on |
+| G3 | Pass | The five old seed sets are bit-identical to round 3 with rain and growth off (lowest 34.0%). With rain and growth on: seeds 601 to 620 lowest 35.1%, and the reviewer's own seeds 701 to 720 lowest 36.8%, highest 59.0%, mean 46.0% |
+| G4 | Pass | 60 fps at 200 walkers, also in rain with sound on |
+
+Not smooth yet: 500 walkers at 8x on a CPU throttled 4 times gives 33 fps with stalls up to 133 ms. On an unthrottled machine it holds 60 fps.
+
+**Lead's decision: accepted and republished (version 4). One last polish round.**
+
+1. Mud: the design doc gives two lengths for autumn mud (3 days in "Weather and mud", 2 days in the season table). Use 2. Keep the doc's rain chances. Make mud read as wet trail rather than a different ground, and let it dry visibly from the least-worn cells first (drawing only).
+2. Bugs: audio nodes are never released (a leak over a long session); a stray bell when sound is switched back on after a day change; mud should update at once after a tool is used.
+3. Sound levels: raise the river and rain beds, which measure far below the footsteps; keep the step voices to the stated 8 a beat.
+4. The dawn flash must not make the Time line unreadable in the dark theme.
+5. The gravel preview must not say "No change" where gravel does pull walkers; the README should say gravel reaches about 3 cells, sometimes 5.
+6. Smoother frames at 8x with 500 walkers on slow machines, without changing results.
+7. A last look at both themes and phone width, and a last full check.

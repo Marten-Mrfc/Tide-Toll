@@ -12,11 +12,12 @@ public class RiverDeterminismTests
     [Fact]
     public void RiverOnWithoutGoodsOrCrossingsLeavesWalkersAndWearUntouched()
     {
-        // Boats come and go on their own stream; walkers, wear and the walker stream must not notice.
+        // Boats come and go on their own stream; walkers, wear and the walker stream must not notice. (The spring flood
+        // and winter ice do change walkers' routes, on purpose: they are off here; RiverSeasonTests covers them.)
         for (int seed = 1; seed <= 2; seed++)
         {
             var plain = new World(seed, 200);
-            var river = new World(seed, 200, SimParams.Default with { River = RiverRules.Default with { HaulGoods = false } });
+            var river = new World(seed, 200, SimParams.Default with { River = RiverRules.Default with { HaulGoods = false, SpringFlood = false, WinterIce = false } });
             ToyHarness.Run(plain, 20);
             ToyHarness.Run(river, 20);
             Assert.Equal((ToyHarness.Fnv(plain.Wear), plain.RngState), (ToyHarness.Fnv(river.Wear), river.RngState));

@@ -13,6 +13,7 @@ public sealed partial class World
     {
         for (int k = 0; k < 2; k++)
         {
+            if (_frozen) { _nextArrival[k] += _dt; continue; } // the schedule waits for the thaw
             if (_time < _nextArrival[k]) continue;
             var kind = (BoatKind)k;
             _nextArrival[k] += ArrivalGap(kind);
@@ -78,6 +79,12 @@ public sealed partial class World
     {
         var r = _river!;
         double step = r.SailRowsPerSec * dt, landY = _landingRow + 0.5;
+        if (_frozen)
+        {
+            // Held fast in the ice: nothing moves and no clock runs (patience, mooring).
+            for (int i = 0; i < _boatCount; i++) _boats[i].PrevY = _boats[i].Y;
+            return;
+        }
         for (int i = 0; i < _boatCount; i++)
         {
             ref Boat b = ref _boats[i];
@@ -242,7 +249,7 @@ public sealed partial class World
     private void SellGrain()
     {
         var r = _river!;
-        for (int j = 0; j < _berth.Length; j++)
+        for (int j = 0; j < _berth.Length && !_frozen; j++) // trade with boats pauses on the ice
         {
             int id = _berth[j];
             if (id < 0) continue;

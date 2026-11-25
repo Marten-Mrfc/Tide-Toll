@@ -33,6 +33,17 @@ public class PerfTests
     }
 
     [ReleaseFact]
+    public void TickAt500WalkersWithTheRiverFloodAndIceIsWithinBudgetAndAllocationFree()
+    {
+        var r = TickBench.Measure(1, 500, weather: true);
+        _out.WriteLine(TickBench.Line(r));
+        Console.WriteLine(TickBench.Line(r));
+        Assert.Equal(0, r.AllocatedBytes);
+        Assert.True(r.MeanMs < 5, TickBench.Line(r));
+        Assert.True(r.P99Ms < 25, TickBench.Line(r));
+    }
+
+    [ReleaseFact]
     public void TickAt500WalkersWithTheRiverRulesIsWithinBudgetAndAllocationFree()
     {
         var r = TickBench.Measure(1, 500, river: true);

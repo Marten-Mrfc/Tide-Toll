@@ -128,6 +128,7 @@ public sealed partial class World
         if (x == null || x.Type != CrossingType.Drawbridge) return Refuse("That is not a drawbridge");
         if (raise)
         {
+            if (_frozen) return Refuse("The river is frozen: no boat can pass");
             if (x.State == BridgeState.Closed || x.State == BridgeState.Lowering) StartRaise(x);
         }
         else

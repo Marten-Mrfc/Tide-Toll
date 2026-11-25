@@ -13,9 +13,11 @@ namespace TideToll.Tools;
 ///   bench [--seed 1] [--budget-ms 5] [--p99-budget-ms 25]      ms per tick at 200 and 500 walkers (build in Release)
 ///   gate  [--quick] [--threads 3] [--golden path]              the toy's gate tables, gate checks and the comparison with the toy
 ///   checks                                                      the toy's reroute, bridge, robustness, determinism and preview checks
-///   river [--seeds 20] [--first 101] [--days 12] [--walkers 200] [--sweep] [--threads 3] [--brief]
-///         [--only S5,S6] [--set KeeperPrice=15,BoatValueMul=3]    (--set overrides RiverRules values for tuning runs)
-///                                                               the river strategy experiment: S1 to S6, a table per strategy
+///   river [--seeds 20] [--first 101] [--seed-sets 101-120,201-220] [--days 30 | 12,30] [--walkers 200] [--sweep]
+///         [--threads 3] [--brief] [--only S1,S2,S5-30,S6] [--set KeeperPrice=15,BoatValueMul=3]
+///                                                               the river strategy experiment: S1 to S4, S5 missing 10%, 30% and
+///                                                               50% of boats, S6; --sweep runs 12 and 30 days and S2, S5-10, S6 at 60
+///                                                               walkers too; --set overrides RiverRules values for tuning runs
 /// Exit code 1 when a check fails or a budget is exceeded.
 /// </summary>
 public static class Program
@@ -78,9 +80,9 @@ public static class Program
         double budget = Dbl(o, "budget-ms", 5), p99Budget = Dbl(o, "p99-budget-ms", 25);
         Console.WriteLine($"tick benchmark, seed {seed}, 600 warm-up ticks then 600 timed ({(TickBench.IsRelease ? "Release" : "Debug: numbers are not representative")}, {Environment.ProcessorCount} cores, shared machine)");
         bool ok = true;
-        foreach (var (walkers, river) in new[] { (200, false), (500, false), (500, true) })
+        foreach (var (walkers, river, weather) in new[] { (200, false, false), (500, false, false), (500, true, false), (500, true, true) })
         {
-            var r = TickBench.Measure(seed, walkers, river: river);
+            var r = TickBench.Measure(seed, walkers, river: river, weather: weather);
             Console.WriteLine(TickBench.Line(r));
             if (r.MeanMs > budget || r.P99Ms > p99Budget || r.AllocatedBytes != 0) ok = false;
         }
@@ -122,10 +124,12 @@ public static class Program
 
     private static int River(Dictionary<string, string> o)
     {
-        int seeds = Int(o, "seeds", 20), first = Int(o, "first", 101), days = Int(o, "days", 12), walkers = Int(o, "walkers", 200);
+        int seeds = Int(o, "seeds", 20), first = Int(o, "first", 101), walkers = Int(o, "walkers", 200);
         int threads = Int(o, "threads", Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1)));
+        bool sweep = o.ContainsKey("sweep");
+        var dayList = (o.TryGetValue("days", out var ds) ? ds : sweep ? "12,30" : "30").Split(',').Select(int.Parse).ToArray();
         var sw = Stopwatch.StartNew();
-        var all = Enum.GetValues<RiverStrategy>().Where(s => !o.TryGetValue("only", out var only) || only.Split(',').Any(k => s.ToString().StartsWith(k))).ToArray();
+        var players = RiverPlayer.All.Where(p => !o.TryGetValue("only", out var only) || only.Split(',').Any(k => p.Key == k || (k.Length == 2 && p.Key.StartsWith(k)))).ToArray();
         var rules = RiverRules.Default;
         if (o.TryGetValue("set", out var set))
         {
@@ -138,18 +142,36 @@ public static class Program
                 Console.WriteLine($"set {parts[0]} = {parts[1]}");
             }
         }
-        var rows = RiverBot.RunAll(Enumerable.Range(first, seeds), all, walkers, days, threads, rules);
-        if (o.ContainsKey("sweep"))
-            rows.AddRange(RiverBot.RunAll(Enumerable.Range(first, seeds), new[] { RiverStrategy.S5DrawbridgeManual, RiverStrategy.S6DrawbridgeKeeper }, 60, days, threads, rules));
-        Console.WriteLine($"RIVER EXPERIMENT: seeds {first} to {first + seeds - 1}, {days} days, {walkers} walkers{(o.ContainsKey("sweep") ? " (S5 and S6 also at 60)" : "")}");
+        // Seed ranges: --first/--seeds, or --seed-sets 101-120,201-220.
+        var seedList = o.TryGetValue("seed-sets", out var sets)
+            ? sets.Split(',').SelectMany(r => { var ab = r.Split('-').Select(int.Parse).ToArray(); return Enumerable.Range(ab[0], ab[1] - ab[0] + 1); }).ToList()
+            : Enumerable.Range(first, seeds).ToList();
+        var at60 = players.Where(p => p == RiverPlayer.S2 || p == RiverPlayer.S5Miss10 || p == RiverPlayer.S6).ToArray();
+        var rows = new List<RiverRunResult>();
+        foreach (int days in dayList)
+        {
+            rows.AddRange(RiverBot.RunAll(seedList, players, walkers, days, threads, rules));
+            if (sweep && walkers != 60) rows.AddRange(RiverBot.RunAll(seedList, at60, 60, days, threads, rules));
+        }
+        Console.WriteLine($"RIVER EXPERIMENT: seeds {string.Join(",", Ranges(seedList))}, {string.Join(" and ", dayList)} days, {walkers} walkers{(sweep ? " (S2, S5 missing 10% and S6 also at 60)" : "")}");
         RiverBot.Print(Console.Out, rows, !o.ContainsKey("brief"));
         var log = new CheckLog();
         RiverGateChecks.Check(rows, log);
-        Console.WriteLine("\nRIVER TRADE-OFF CHECKS");
         Console.WriteLine(log);
         int failed = log.Checks.Count(c => !c.Ok);
-        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads)");
+        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} of {log.Checks.Count} check(s)" : $"ALL {log.Checks.Count} CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads)");
         return failed > 0 ? 1 : 0;
+    }
+
+    private static IEnumerable<string> Ranges(List<int> s)
+    {
+        for (int i = 0; i < s.Count;)
+        {
+            int j = i;
+            while (j + 1 < s.Count && s[j + 1] == s[j] + 1) j++;
+            yield return s[i] == s[j] ? $"{s[i]}" : $"{s[i]}-{s[j]}";
+            i = j + 1;
+        }
     }
 
     private static int Checks()

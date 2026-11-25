@@ -103,8 +103,8 @@ public sealed partial class World
     public bool IsBlocked(int c)
     {
         if (_fence[c] != 0 || _map.Footprint[c] != 0) return true;
-        if (_map.Water[c] == 1 && _map.Ford[c] == 0 && _bridgeAt[c] < 0) return true;
-        return _river != null && RiverSpanBlocked(c);
+        if (_river != null) return RiverBlocked(c); // also the ice, the ford in a flood and a raised span
+        return _map.Water[c] == 1 && _map.Ford[c] == 0 && _bridgeAt[c] < 0;
     }
 
     /// <summary>Routing cost multiplier of a cell's ground: worn and busy ground is cheaper.</summary>
@@ -129,15 +129,18 @@ public sealed partial class World
             if (!double.IsNaN(rc)) return rc;
         }
         bool bridge = ov == CostOverride.Bridge || (_bridgeAt[c] >= 0 && ov != CostOverride.CloseBridge);
-        if (m.Water[c] != 0 && m.Ford[c] == 0 && !bridge) return double.PositiveInfinity;
+        bool ice = _river != null && _frozen && m.Water[c] != 0 && !bridge;
+        if (m.Water[c] != 0 && m.Ford[c] == 0 && !bridge && !ice) return double.PositiveInfinity;
         double k;
         if (bridge) k = _p.BridgeCost;
+        else if (ice) k = IceCost(c);
         else
         {
             // The ford never wears and is not made easier by traffic: only land is discounted.
             k = (m.Water[c] != 0 ? 1 : Surf(c)) * (1 + _p.StaticNoise * m.Noise[c]);
             if (m.Crop[c] != 0) k += _p.CropPenalty;
             if (m.Ford[c] != 0) k *= _p.FordCostMul;
+            else if (_river != null) k *= BandCostMul(c); // the flood band: wading, then mud
         }
         double rho = _occ[c] / _p.CellAreaM2;
         if (rho > 0.05)
