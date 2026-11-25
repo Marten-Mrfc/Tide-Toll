@@ -81,16 +81,20 @@ public partial class ToolController
                     Say(ToolTargets.BridgeReason(W, cx, cy));
                 }
                 break;
+            case Tool.Gravel or Tool.Gate:
+                PathsHover(x, y, cx, cy);
+                break;
             case Tool.Erase:
-                ToolTargets.EraseTargets(W, cx, cy, _fenceT, _bridgeT);
+                ToolTargets.EraseTargets(W, cx, cy, _fenceT, _bridgeT, _gravelT);
                 Ghost.Ring(x, y, 3.2f);
                 foreach (int c in _fenceT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
                 foreach (int c in _bridgeT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
+                foreach (int c in _gravelT) Ghost.Cell(c % n, c / n, ToolGhost.Remove, ToolGhost.BadColour);
                 if (_bridgeT.Count > 0 && RiverOn) Say(ToolTargets.EraseCost(W, _bridgeT));
-                else if (_fenceT.Count > 0) Say(Hints[3]);
-                if (_fenceT.Count + _bridgeT.Count > 0)
-                    Previewer.Request(new WhatIf { Open = _fenceT.ToArray(), CloseBridge = _bridgeT.ToArray() },
-                        FlowPreviewer.Key('e', CollectionsMarshal.AsSpan(_fenceT), CollectionsMarshal.AsSpan(_bridgeT)));
+                else if (_fenceT.Count + _gravelT.Count > 0) Say(Hints[3]);
+                if (_fenceT.Count + _bridgeT.Count + _gravelT.Count > 0)
+                    Previewer.Request(new WhatIf { Open = _fenceT.ToArray(), CloseBridge = _bridgeT.ToArray(), Ungravel = _gravelT.ToArray() },
+                        FlowPreviewer.Key('e', CollectionsMarshal.AsSpan(_fenceT), CollectionsMarshal.AsSpan(_bridgeT)) ^ FlowPreviewer.Key('v', CollectionsMarshal.AsSpan(_gravelT)));
                 else Previewer.Clear();
                 break;
         }
@@ -108,9 +112,10 @@ public partial class ToolController
         _cells.Clear();
         foreach (int p in _line)
         {
-            ToolTargets.EraseTargets(W, p % n, p / n, _fenceT, _bridgeT);
+            ToolTargets.EraseTargets(W, p % n, p / n, _fenceT, _bridgeT, _gravelT);
             _cells.AddRange(_fenceT);
             _cells.AddRange(_bridgeT);
+            _cells.AddRange(_gravelT);
         }
         if (_cells.Count > 0 && Sim.Erase(CollectionsMarshal.AsSpan(_cells)) > 0) { Say("Removed."); Erased?.Invoke(); }
         Hover(pos, force: true);

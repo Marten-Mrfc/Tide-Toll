@@ -12,6 +12,9 @@ namespace TideToll.Tools;
 ///   run   [--seed 1] [--walkers 200] [--days 30] [--every 5] [--off | --legacy]   run a town (SimParams.Default; --off:
 ///                                                               rain and growth off, SimParams.Toy; --legacy: the round-2 model)
 ///   bench [--seed 1] [--budget-ms 5] [--p99-budget-ms 25]      ms per tick at 200 and 500 walkers (build in Release)
+///   ticks [--seed 1] [--walkers 200] [--days 20] [--preset default|toy|river] [--repeat 1] [--top 12]
+///                                                               every tick of a long run timed: mean, p99, p99.9, max and the
+///                                                               worst ticks with what ran in them (route searches, decay, a new house)
 ///   gate  [--quick] [--threads 3] [--golden path] [--legacy]   the toy's gate tables, gate checks and the comparison with the toy
 ///                                                               (SimParams.Toy against toy-golden-v2.json; --legacy: round 2)
 ///   checks                                                      the round-2 toy's reroute, bridge, robustness, determinism and preview
@@ -33,6 +36,7 @@ public static class Program
         {
             case "run": return RunTown(opt);
             case "bench": return Bench(opt);
+            case "ticks": return Ticks(opt);
             case "gate": return Gate(opt);
             case "checks": return Checks();
             case "river": return River(opt);
@@ -91,6 +95,19 @@ public static class Program
         }
         Console.WriteLine(ok ? $"BENCH PASS (budget: mean under {budget} ms, p99 under {p99Budget} ms, 0 bytes allocated)" : $"BENCH FAIL (budget: mean under {budget} ms, p99 under {p99Budget} ms, 0 bytes allocated)");
         return ok ? 0 : 1;
+    }
+
+    private static int Ticks(Dictionary<string, string> o)
+    {
+        int seed = Int(o, "seed", 1), walkers = Int(o, "walkers", 200), days = Int(o, "days", 20), top = Int(o, "top", 12), repeat = Int(o, "repeat", 1);
+        string preset = o.TryGetValue("preset", out var pr) ? pr : "default";
+        for (int rep = 0; rep < repeat; rep++)
+        {
+            var r = TickProfile.Run(seed, walkers, days, preset);
+            Console.WriteLine(TickProfile.Summary(r));
+            if (rep == repeat - 1) foreach (var line in TickProfile.Worst(r, top)) Console.WriteLine(line);
+        }
+        return 0;
     }
 
     private static int Gate(Dictionary<string, string> o)
@@ -165,7 +182,7 @@ public static class Program
         Console.WriteLine($"RIVER EXPERIMENT: seeds {string.Join(",", Ranges(seedList))}, {string.Join(" and ", dayList)} days, {walkers} walkers{(sweep ? " (S2, S5 missing 10% and S6 also at 60)" : "")}");
         RiverBot.Print(Console.Out, rows, !o.ContainsKey("brief"));
         var log = new CheckLog();
-        RiverGateChecks.Check(rows, log);
+        RiverGateChecks.Check(rows, log, rules);
         Console.WriteLine(log);
         int failed = log.Checks.Count(c => !c.Ok);
         Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} of {log.Checks.Count} check(s)" : $"ALL {log.Checks.Count} CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads)");

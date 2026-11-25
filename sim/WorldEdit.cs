@@ -140,7 +140,8 @@ public sealed partial class World
     {
         var cells = GateCellsFor(c);
         if (cells == null) return false;
-        foreach (int g in cells) { _gate[g] = 1; _gatePair[g] = (byte)(cells.Length == 2 ? 1 : 0); }
+        foreach (int g in cells) { _gate[g] = 1; _gatePair[g] = (byte)(cells.Length == 2 ? 1 : 0); _gatePartner[g] = -1; }
+        if (cells.Length == 2) { _gatePartner[cells[0]] = cells[1]; _gatePartner[cells[1]] = cells[0]; }
         Edited();
         return true;
     }
@@ -149,7 +150,10 @@ public sealed partial class World
     public bool RemoveGate(int c)
     {
         if (c < 0 || c >= _nc || _gate[c] == 0) return false;
-        foreach (int g in _gatePair[c] != 0 ? FenceGates.GateGroup(this, c) : new[] { c }) { _gate[g] = 0; _gatePair[g] = 0; }
+        // The stored partner, never a neighbour found by adjacency: a one-cell gate beside this one stays (river pass 3).
+        int p = _gatePartner[c];
+        _gate[c] = 0; _gatePair[c] = 0; _gatePartner[c] = -1;
+        if (p >= 0) { _gate[p] = 0; _gatePair[p] = 0; _gatePartner[p] = -1; }
         Edited();
         return true;
     }
@@ -234,8 +238,9 @@ public sealed partial class World
             if (_fence[c] != 0)
             {
                 // Half of a two-cell gate: its partner stays a gate on its own.
-                if (_gatePair[c] != 0) foreach (int g in FenceGates.GateGroup(this, c)) _gatePair[g] = 0;
-                _fence[c] = 0; _gate[c] = 0; n++;
+                int p = _gatePartner[c];
+                if (p >= 0) { _gatePair[p] = 0; _gatePartner[p] = -1; }
+                _fence[c] = 0; _gate[c] = 0; _gatePair[c] = 0; _gatePartner[c] = -1; n++;
             }
             if (_gravel[c] != 0) { _gravel[c] = 0; n++; }
             if (_river != null) n += RiverEraseAt(c);

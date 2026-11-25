@@ -23,8 +23,16 @@ public partial class Perf : Node
     // gated: each finished preview builds its result and route mesh (a few kilobytes), which is not steady state.
     // Two more runs at 8x with the river's seasons on (World.StartFlood, then World.Freeze), under the 8x budgets and the
     // allocation gate: the flood wash and mud, the closed-ford mark and tag, then the ice and its ice-wear uploads.
-    private static readonly (int speed, double budgetMs, bool preview, char weather)[] Runs =
-        { (1, 6.0, false, ' '), (8, 10.0, false, ' '), (8, 10.0, true, ' '), (8, 10.0, false, 'f'), (8, 10.0, false, 'i') };
+    // Then Chapter I, The Hamlet (the river rules off, rain and growth on), on the same seed and walkers: 1x and 8x, 8x in
+    // a long forced shower ('r': rain over the map, wet ground, mud uploads, wet footsteps and the rain bed), and 8x at
+    // 200 walkers with the town growing ('g': cottages arriving during the measure, each rising and marked), all under
+    // the same budgets and allocation gate.
+    private static readonly (int chapter, int speed, double budgetMs, bool preview, char weather)[] Runs =
+    {
+        (2, 1, 6.0, false, ' '), (2, 8, 10.0, false, ' '), (2, 8, 10.0, true, ' '), (2, 8, 10.0, false, 'f'), (2, 8, 10.0, false, 'i'),
+        (1, 1, 6.0, false, ' '), (1, 8, 10.0, false, ' '), (1, 8, 10.0, false, 'r'), (1, 8, 10.0, false, 'g'),
+    };
+    private int _houses0;
     private const int Warmup = 240;
     private const double AllocBudget = 64;
     /// <summary>Preview run: no frame above this (the simulation and a preview step must never stack up).</summary>
@@ -89,7 +97,7 @@ public partial class Perf : Node
         // The river rules on (as the game plays) with a purse for every crossing: a ferry north of the landing and a
         // drawbridge with its keeper south of it, so boats, queues, the raft and the leaf all run during the measure.
         var rules = TideToll.Sim.RiverRules.Default; // prices from the rules, so a retuned price never breaks the set-up
-        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 290 };
+        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 290, KeeperUnlockRaises = 0 }; // the keeper is hired at once here; the unlock has its own test
         AddChild(_main);
         if (_noHud) _main.GetNode("Hud").Free(); // to see what the HUD's text costs
         _main.Sim.StepTicks(6 * _main.Params.TicksPerDay);
@@ -125,15 +133,36 @@ public partial class Perf : Node
     {
         _run++;
         _frame = -Warmup;
+        if (_run < Runs.Length && Runs[_run].chapter != _main.Chapter) ToHamlet();
         if (_run < Runs.Length) _main.Sim.SetSpeed(Runs[_run].speed);
         if (_run < Runs.Length && Runs[_run].preview) StartDrag();
         if (_run < Runs.Length) Weather(Runs[_run].weather);
     }
 
-    /// <summary>Sets the river's season for a run: 'f' a long flood, 'i' the river frozen, ' ' as it is.</summary>
+    /// <summary>Turns to Chapter I with the same seed and walkers and fast-forwards 12 days, as the river's set-up does.</summary>
+    private void ToHamlet()
+    {
+        if (_dragging) EndDrag();
+        _main.SwitchChapter(1);
+        _main.Sim.StepTicks(12 * _main.Params.TicksPerDay);
+        var w = _main.Sim.World;
+        GD.Print($"PERF hamlet: chapter {_main.Chapter}, rain {w.RainOn}, growth {w.GrowthOn}, {w.WalkerCount} walkers, {w.Houses.Length} houses, day {w.Stats().Day}");
+    }
+
+    /// <summary>Sets the river's season for a run: 'f' a long flood, 'i' the river frozen, ' ' as it is; in Chapter I 'r' a long shower, 'g' a growing town.</summary>
     private void Weather(char w)
     {
         var world = _main.Sim.World;
+        if (w == 'r') { world.StartRain(10 * _main.Params.DaySimSec); GD.Print($"PERF weather 'r': raining {world.Weather.Raining}, mud cells {world.MudCells}"); return; }
+        if (w == 'g')
+        {
+            world.StopRain(dry: true);
+            _main.Sim.SetWalkers(200);
+            _main.Sim.StepTicks(2 * _main.Params.TicksPerDay); // below the hamlet's target again: a cottage every 30 s
+            _houses0 = world.Grown.Length;
+            GD.Print($"PERF weather 'g': {world.WalkerCount} walkers, {world.Houses.Length} houses, next house at {world.NextHouseTime:F0} s (now {world.Time:F0} s)");
+            return;
+        }
         if (world.River == null || w == ' ') return;
         if (_dragging) { EndDrag(); }
         if (w == 'f') { if (world.River.Frozen) world.Thaw(); world.StartFlood(7); } // longer than the run (800 ticks at 8x)
@@ -217,6 +246,7 @@ public partial class Perf : Node
         _frame++;
         if (_frame == 0)
         {
+            _houses0 = _main.Sim.World.Grown.Length;
             _simMs = 0; _alloc0 = GC.GetAllocatedBytesForCurrentThread(); _gc0 = GC.CollectionCount(0);
             _worstMs = 0; _worstSim = 0; _worstPreview = 0; _worstTicks = 0;
             var t = _main.Tools;
@@ -237,7 +267,7 @@ public partial class Perf : Node
 
     private void Report(long bytes, int gcs)
     {
-        var (speed, budget, preview, weather) = Runs[_run];
+        var (chapter, speed, budget, preview, weather) = Runs[_run];
         var sorted = (double[])_ms.Clone();
         Array.Sort(sorted);
         double sum = 0;
@@ -247,7 +277,9 @@ public partial class Perf : Node
         var s = _main.Sim;
         bool ok = mean <= budget && (preview || perFrame <= AllocBudget);
         _failed |= !ok;
-        string what = preview ? $"{speed}x+preview" : weather == 'f' ? $"{speed}x+flood" : weather == 'i' ? $"{speed}x+ice" : $"{speed}x";
+        string what = (chapter == 1 ? "I " : "") + (preview ? $"{speed}x+preview" : weather == 'f' ? $"{speed}x+flood" : weather == 'i' ? $"{speed}x+ice"
+            : weather == 'r' ? $"{speed}x+rain" : weather == 'g' ? $"{speed}x+growth" : $"{speed}x");
+        int walkers = _main.Sim.World.WalkerCount;
         if (preview)
         {
             // The preview run's own gates: the worst frame, and bytes per finished preview (so they cannot grow unseen).
@@ -267,9 +299,17 @@ public partial class Perf : Node
             if (done < 3) { ok = false; GD.Print("PERF preview did not run"); }
         }
         _failed |= !ok;
-        GD.Print($"PERF {_walkers} walkers {what}: cpu ms/frame mean {mean:F3} p95 {p95:F3} worst {worst:F3} (budget mean {budget}; of which sim {_simMs / _frames:F3}) | " +
+        GD.Print($"PERF {walkers} walkers {what}: cpu ms/frame mean {mean:F3} p95 {p95:F3} worst {worst:F3} (budget mean {budget}; of which sim {_simMs / _frames:F3}) | " +
                  $"alloc {perFrame:F1} B/frame, gen0 GCs {gcs} | sim {s.MsPerTick:F3} ms/tick, budget hits {s.BudgetHits}, " +
                  $"walkers drawn {_main.Walkers.Drawn}, wear uploads {_main.Ground.Uploads}, frame delta {_delta * 1000:F2} ms | {(ok ? "ok" : "OVER BUDGET")}");
+        if (chapter == 1)
+        {
+            var w = _main.Sim.World;
+            GD.Print($"PERF hamlet {what}: houses built in the measure {w.Grown.Length - _houses0} (drawn {_main.Town.Grown}, rising now {_main.Town.Rising}, marks {_main.Ui.Houses.Showing}), " +
+                     $"rain {_main.Ui.Rain.Level:F2}, wet {_main.Ground.Wet:F2}, mud cells {w.MudCells}, mud uploads {_main.Ground.MudUploads}, wet steps {_main.Audio.MudSteps}, rain bed {_main.Audio.RainDb:F0} dB");
+            if (weather == 'g' && w.Grown.Length - _houses0 < 1) { _failed = true; GD.Print("PERF growth run built no house"); }
+            if (weather == 'r' && (_main.Ui.Rain.Level <= 0 || w.MudCells == 0)) { _failed = true; GD.Print("PERF rain run had no rain or mud"); }
+        }
         if (_main.Sim.World.River is { } r)
             GD.Print($"PERF river {what}: boats drawn {_main.Boats.Drawn}, rings {_main.Boats.Rings}, crossings drawn {_main.Crossings.Count}, " +
                      $"events {_main.Feed.Drained}, served {r.Stats.Served[0] + r.Stats.Served[1]}, turned back {r.Stats.TurnedBack[0] + r.Stats.TurnedBack[1]}, " +

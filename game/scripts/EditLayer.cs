@@ -18,8 +18,11 @@ public partial class EditLayer : Node3D
 {
     private SimDriver _sim = null!;
     private Node3D _fences = null!, _bridges = null!;
-    private MultiMeshInstance3D _wattle = null!, _posts = null!;
-    private readonly List<Transform3D> _w = new(), _p = new();
+    private MultiMeshInstance3D _wattle = null!, _posts = null!, _gates = null!;
+    private readonly List<Transform3D> _w = new(), _p = new(), _g = new();
+    private readonly List<FenceLines.GateMark> _marks = new();
+    /// <summary>A gate's leaf stands ajar by this angle from the rail (the toy's 0.32 rad), so it reads as a gate from above.</summary>
+    private const float Ajar = 0.32f;
     // From straight above a 0.22 m wattle is a hairline. Fences are drawn thicker than life, as people are drawn
     // 1.5x, so a fence reads as a firm line at play zoom; posts likewise.
     private const float Thick = 2.4f, Height = 1.2f;
@@ -29,6 +32,8 @@ public partial class EditLayer : Node3D
     public int Rebuilds { get; private set; }
     public int WattlePieces => _wattle.Multimesh.VisibleInstanceCount;
     public int PostPieces => _posts.Multimesh.VisibleInstanceCount;
+    /// <summary>Gates drawn (each a leaf standing ajar between two gate posts cut into the rail).</summary>
+    public int GatePieces => _gates.Multimesh.VisibleInstanceCount;
     public Node3D BridgesNode => _bridges;
 
     public void Init(SimDriver sim)
@@ -41,8 +46,10 @@ public partial class EditLayer : Node3D
         AddChild(_bridges);
         _wattle = ModelLib.Multi("fence-wattle", "Wattle", 512);
         _posts = ModelLib.Multi("fence-post", "Posts", 512);
+        _gates = ModelLib.Multi("fence-gate", "Gates", 64);
         _fences.AddChild(_wattle);
         _fences.AddChild(_posts);
+        _fences.AddChild(_gates);
         sim.Edited += OnEdited;
         sim.WorldReplaced += Rebuild;
         Rebuild();
@@ -68,35 +75,66 @@ public partial class EditLayer : Node3D
     private void BuildFences(World w)
     {
         float cell = (float)w.Params.CellMeters;
-        _w.Clear(); _p.Clear();
-        foreach (var line in FenceLines.Build(w.Fence, w.Grid.Width))
+        int n = w.Grid.Width;
+        _w.Clear(); _p.Clear(); _g.Clear(); _marks.Clear();
+        // Every gate once: a cell and its stored partner (a stair corner's two-cell gate), never found by adjacency.
+        var gate = w.Gate;
+        for (int c = 0; c < gate.Length; c++)
         {
-            if (line.Count == 2)
+            if (gate[c] == 0) continue;
+            int p = w.GatePartner(c);
+            if (p >= 0 && p < c) continue;
+            _marks.Add(FenceLines.Mark(w.Fence, n, c, p));
+        }
+        foreach (var line0 in FenceLines.Build(w.Fence, n))
+        {
+            if (line0.Count == 2)
             {
                 // A lone fenced cell: a post with a short hurdle across it.
-                var c = new Vector3(line[0] * cell, 0, line[1] * cell);
+                var c = new Vector3(line0[0] * cell, 0, line0[1] * cell);
                 _p.Add(new Transform3D(Basis.FromScale(PostScale), c));
                 _w.Add(new Transform3D(Basis.FromScale(new Vector3(0.75f, Height, Thick)), c));
                 continue;
             }
-            for (int i = 0; i + 3 < line.Count; i += 2)
+            foreach (var (line, aGate, bGate) in FenceLines.Cut(line0, _marks))
             {
-                var a = new Vector3(line[i] * cell, 0, line[i + 1] * cell);
-                var b = new Vector3(line[i + 2] * cell, 0, line[i + 3] * cell);
-                var d = b - a;
-                float len = d.Length();
-                if (len < 1e-3f) continue;
-                int k = Math.Max(1, (int)MathF.Round(len / 2f));
-                float piece = len / k;
-                // Local X runs along the fence: stretch X to the piece length, thicken it, then yaw X toward d.
-                var basis = new Basis(Vector3.Up, MathF.Atan2(-d.Z, d.X)) * Basis.FromScale(new Vector3(piece / 2f, Height, Thick));
-                for (int j = 0; j < k; j++) _w.Add(new Transform3D(basis, a + d * ((j + 0.5f) / k)));
+                for (int i = 0; i + 3 < line.Count; i += 2)
+                {
+                    var a = new Vector3(line[i] * cell, 0, line[i + 1] * cell);
+                    var b = new Vector3(line[i + 2] * cell, 0, line[i + 3] * cell);
+                    var d = b - a;
+                    float len = d.Length();
+                    if (len < 1e-3f) continue;
+                    int k = Math.Max(1, (int)MathF.Round(len / 2f));
+                    float piece = len / k;
+                    // Local X runs along the fence: stretch X to the piece length, thicken it, then yaw X toward d.
+                    var basis = new Basis(Vector3.Up, MathF.Atan2(-d.Z, d.X)) * Basis.FromScale(new Vector3(piece / 2f, Height, Thick));
+                    for (int j = 0; j < k; j++) _w.Add(new Transform3D(basis, a + d * ((j + 0.5f) / k)));
+                }
+                int last = line.Count - 2;
+                for (int i = 0; i < line.Count; i += 2)
+                {
+                    if ((i == 0 && aGate) || (i == last && bGate)) continue; // the gate's own posts stand there
+                    _p.Add(new Transform3D(Basis.FromScale(PostScale), new Vector3(line[i] * cell, 0, line[i + 1] * cell)));
+                }
             }
-            for (int i = 0; i < line.Count; i += 2)
-                _p.Add(new Transform3D(Basis.FromScale(PostScale), new Vector3(line[i] * cell, 0, line[i + 1] * cell)));
+        }
+        // Each gate: a taller post at either side of the opening, and the leaf hung on the first, standing ajar.
+        foreach (var m in _marks)
+        {
+            var hinge = new Vector3((m.X - m.Ux * m.Half) * cell, 0, (m.Y - m.Uy * m.Half) * cell);
+            var latch = new Vector3((m.X + m.Ux * m.Half) * cell, 0, (m.Y + m.Uy * m.Half) * cell);
+            _p.Add(new Transform3D(Basis.FromScale(PostScale * 1.15f), hinge));
+            _p.Add(new Transform3D(Basis.FromScale(PostScale * 1.15f), latch));
+            float co = MathF.Cos(Ajar), sn = MathF.Sin(Ajar);
+            var dir = new Vector3(m.Ux * co - m.Uy * sn, 0, m.Ux * sn + m.Uy * co);
+            float len = 2f * m.Half * cell * 0.96f;
+            var basis = new Basis(Vector3.Up, MathF.Atan2(-dir.Z, dir.X)) * Basis.FromScale(new Vector3(len / 2f, 1f, 2.2f));
+            _g.Add(new Transform3D(basis, hinge + dir * (len / 2f)));
         }
         Fill(_wattle, _w);
         Fill(_posts, _p);
+        Fill(_gates, _g);
     }
 
     private static void Fill(MultiMeshInstance3D mmi, List<Transform3D> xfs)

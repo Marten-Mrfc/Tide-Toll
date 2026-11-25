@@ -26,6 +26,8 @@ public sealed partial class World
     private int _version;
     private readonly float[] _wear, _hollowHold, _cost, _costX, _occ, _flow, _tripRate;
     private readonly byte[] _hollow, _fence, _land, _gravel, _gate, _gatePair;
+    /// <summary>The other cell of a two-cell gate, -1 for none (river pass 3: pairs are stored, not found by adjacency).</summary>
+    private readonly int[] _gatePartner;
     /// <summary>Whether walkers ever use the frugal view (SimParams.UseFrugal): otherwise costX and fieldsX are empty.</summary>
     private readonly bool _useFrugal;
     private readonly short[] _bridgeAt;
@@ -92,12 +94,15 @@ public sealed partial class World
         _occ = new float[_nc]; _flow = new float[_nc];
         _hollow = new byte[_nc]; _fence = new byte[_nc]; _land = new byte[_nc];
         _gravel = new byte[_nc]; _gate = new byte[_nc]; _gatePair = new byte[_nc];
+        _gatePartner = new int[_nc];
+        Array.Fill(_gatePartner, -1);
         _bridgeAt = new short[_nc];
         Array.Fill(_bridgeAt, (short)-1);
         _here = new ushort[_nc];
         _tripRate = new float[_bs * _bs];
         _metrics = new Metrics(_p);
         _heap = new BinaryHeap(_nc * 4);
+        _bq = new BucketQueue(_nc);
         _walkers = new Walker[_p.MaxWalkers];
         _aimPath = new int[_p.Lookahead];
         _nextDecay = _p.DecayStepSimSec;
@@ -126,14 +131,23 @@ public sealed partial class World
         if (_growthOn) InitGrowth(seed);
         for (int t = 0; t < _nb; t++) RefreshField(t);
         SetWalkerCount(walkers ?? _p.DefaultWalkers);
+        // Run the plot search once now, so the first household's tick is not also the search's first compile (river pass 3:
+        // that tick took 10 ms against 1.7 ms for every later one). It only fills scratch that every search rebuilds.
+        if (_growthOn) ChoosePlot(out _);
     }
 
     // ---------------------------------------------------------------- fields
 
+    private readonly BucketQueue _bq;
+    private long _fieldSearches;
+    /// <summary>Route searches (one Dijkstra over the map each) run for the live fields so far: for profiling tools.</summary>
+    public long FieldSearches => _fieldSearches;
+
     private void RefreshField(int t)
     {
-        CostField.Dijkstra(_g, _b[t].Door, _cost, _fields[t], _heap);
-        if (_useFrugal) CostField.Dijkstra(_g, _b[t].Door, _costX, _fieldsX[t], _heap);
+        CostField.Dijkstra(_g, _b[t].Door, _cost, _fields[t], _heap, _bq);
+        if (_useFrugal) CostField.Dijkstra(_g, _b[t].Door, _costX, _fieldsX[t], _heap, _bq);
+        _fieldSearches += _useFrugal ? 2 : 1;
         _fieldTime[t] = _time;
         _urgent[t] = false;
     }

@@ -110,18 +110,15 @@ public static class FenceGates
         return false;
     }
 
-    /// <summary>The gate an existing gate cell belongs to: it and any 4-adjacent gate cell.</summary>
+    /// <summary>
+    /// The gate an existing gate cell belongs to: the cell and its stored partner, if it is half of a two-cell gate. The
+    /// toy found the partner by adjacency (any 4-adjacent gate cell), which took in a neighbouring gate; river pass 3
+    /// stores each cell's partner (World.GatePartner) instead, so removing one gate never removes or orphans another.
+    /// </summary>
     public static int[] GateGroup(World w, int c)
     {
-        int n = w.Grid.Width, x = c % n, y = c / n;
-        var gate = w.Gate;
-        var o = new List<int> { c };
-        for (int k = 0; k < 4; k++)
-        {
-            int vx = x + Grid.DX[k], vy = y + Grid.DY[k];
-            if (vx >= 0 && vy >= 0 && vx < n && vy < n && gate[vy * n + vx] != 0) o.Add(vy * n + vx);
-        }
-        return o.ToArray();
+        int p = w.GatePartner(c);
+        return p >= 0 ? new[] { c, p } : new[] { c };
     }
 
     /// <summary>

@@ -9,6 +9,8 @@ namespace TideToll.Sim;
 /// not the design doc's. Times are sim seconds at 1x (1 day = 15 s).
 /// Tuned 25 Nov 2026 with the strategy bot (README "Tuning"): BoatValueMul 2 to 3, StartMoney 120 to 0, DrawbridgePrice 240 to 200,
 /// KeeperPrice 30 to 120, FerryCapacity 6 to 5, FerryTurnSec 0.5 to 0.75, FerryUpkeep 2 to 5, FerryWage 3 to 15.
+/// River pass 3 (lead's decisions B, C, D, 25 Nov 2026): StartMoney 0 to 50, FerryUpkeep 5 to 2 and FerryWage 15 to 3 (the doc's
+/// numbers again); new WetGrainValueShare, LoadedWadeSpeedMul and KeeperUnlockRaises.
 /// </summary>
 public sealed record RiverRules
 {
@@ -48,6 +50,16 @@ public sealed record RiverRules
     public double MarketShare { get; init; } = 0.7;
     /// <summary>The village market buys at most this many units per household per day (doc, Income sources); the rest goes unsold.</summary>
     public double MarketUnitsPerHouseDay { get; init; } = 1;
+    /// <summary>
+    /// Grain carried through the ford gets wet and sells for this share of its value, at a boat and at the market (lead's
+    /// decision B, 25 Nov 2026: the free ford costs trade; chosen starting number, for the tuner).
+    /// </summary>
+    public double WetGrainValueShare { get; init; } = 0.5;
+    /// <summary>
+    /// A walker carrying grain wades the ford at this share of an unloaded walker's speed (decision B; chosen starting
+    /// number). On top of SimParams.FordSpeedMul; the routing cost is not changed.
+    /// </summary>
+    public double LoadedWadeSpeedMul { get; init; } = 0.7;
 
     // Crossings.
     public double FootbridgePrice { get; init; } = 50;
@@ -55,8 +67,16 @@ public sealed record RiverRules
     /// <summary>200c + 40 stone, with the stone folded into coin (chosen).</summary>
     public double DrawbridgePrice { get; init; } = 200;
     public double KeeperPrice { get; init; } = 120;              // chosen (tuned 25 Nov: doc has none)
-    public double FerryUpkeep { get; init; } = 5;               // per season
-    public double FerryWage { get; init; } = 15;
+    /// <summary>
+    /// The keeper can be hired only after the player has raised that drawbridge by hand this many times (lead's decision C,
+    /// 25 Nov 2026: start at 10; the doc wants about 3 minutes of raising by hand first, and a hand-raising player raises
+    /// about once an in-game day of 15 s). 0: hired at once.
+    /// </summary>
+    public int KeeperUnlockRaises { get; init; } = 10;
+    /// <summary>Per season (doc's number; was 5 after the 25 Nov tuning, back to the doc by the lead's decision D).</summary>
+    public double FerryUpkeep { get; init; } = 2;
+    /// <summary>The ferryman's wage per season (doc's number; was 15 after the 25 Nov tuning, back to the doc by decision D).</summary>
+    public double FerryWage { get; init; } = 3;
     public double DrawbridgeUpkeep { get; init; } = 4;
     public double KeeperWage { get; init; } = 5;
     public int FootbridgeClearance { get; init; } = 1;
@@ -123,7 +143,8 @@ public sealed record RiverRules
     public double IceSpeedMul { get; init; } = 1;
 
     // Money.
-    public double StartMoney { get; init; } = 0;
+    /// <summary>The starting purse: enough for a ferry (40c) or a footbridge (50c), so there is something to buy in the first minute (lead's decision D, 25 Nov 2026; was 0).</summary>
+    public double StartMoney { get; init; } = 50;
     /// <summary>Upkeep may take the purse down to this; purchases need the full price in hand.</summary>
     public double DebtLimit { get; init; } = -100;
     public double DebtInterest { get; init; } = 0.1;            // per season on a negative purse
@@ -192,6 +213,8 @@ public enum RiverEventKind : byte
     FerryDeparted, FerryLanded,
     CannotAfford, SeasonSettled, KeeperHired, CrossingBuilt, CrossingRemoved,
     FloodRising, FordClosed, FloodReceded, FordOpen, FloodRepairs, RiverFrozen, Thaw,
+    /// <summary>A drawbridge has been raised by hand often enough (RiverRules.KeeperUnlockRaises): a keeper can be hired for it now. Crossing names it.</summary>
+    KeeperUnlocked,
 }
 
 /// <summary>

@@ -42,6 +42,12 @@ public sealed class Crossing
     /// <summary>Drawbridge leaf from 0 (down) to 1 (up); ferry position from 0 (west stage) to 1 (east stage).</summary>
     public double Progress { get; internal set; }
     public bool Keeper { get; internal set; }
+    /// <summary>Drawbridge: times the player has raised it by hand (a raise the keeper makes does not count).</summary>
+    public int HandRaises { get; internal set; }
+    /// <summary>Drawbridge: hand raises still to go before a keeper can be hired (RiverRules.KeeperUnlockRaises); 0 when unlocked, and for other types.</summary>
+    public int RaisesToKeeper => Type == CrossingType.Drawbridge ? Math.Max(0, _rules.KeeperUnlockRaises - HandRaises) : 0;
+    /// <summary>Drawbridge: a keeper can be hired for it (it has been raised by hand often enough).</summary>
+    public bool KeeperUnlocked => Type == CrossingType.Drawbridge && RaisesToKeeper == 0;
     /// <summary>Walkers waiting on each bank (as of the last tick).</summary>
     public int QueueWest { get; internal set; }
     public int QueueEast { get; internal set; }

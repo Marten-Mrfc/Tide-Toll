@@ -31,13 +31,19 @@ public partial class GroundMarks : MeshInstance3D
         _mat.SetShaderParameter("ink", Palette.Ink);
         MaterialOverride = _mat;
         sim.WorldReplaced += Rebuild;
+        sim.HouseBuilt += OnHouseBuilt;
         Rebuild();
     }
 
     public override void _ExitTree()
     {
-        if (_sim != null) _sim.WorldReplaced -= Rebuild;
+        if (_sim == null) return;
+        _sim.WorldReplaced -= Rebuild;
+        _sim.HouseBuilt -= OnHouseBuilt;
     }
+
+    // A new cottage gets its drop shadow and inked yard like the first houses (the mesh is rebuilt: once per house).
+    private void OnHouseBuilt(int index) => Rebuild();
 
     /// <summary>Metres per screen pixel, so the yard lines stay about 1.3 px wide (Main calls this each frame).</summary>
     public void SetMetresPerPixel(float mpp)

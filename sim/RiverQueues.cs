@@ -8,43 +8,37 @@ namespace TideToll.Sim;
 // fills at that rate. Also the count of walkers crossing the river, by crossing.
 public sealed partial class World
 {
-    internal static int DiagClips, DiagClipCrossed, DiagTokenOn, DiagPassOn; // DIAG
-    internal static System.Collections.Generic.List<string>? DiagLog; // DIAG
-    private string DiagDescribe(ref Walker w, int c, Crossing x) // DIAG
-    {
-        bool fr = w.Frugal;
-        float[] f = fr ? _fieldsX[w.Target] : _fields[w.Target], cost = fr ? _costX : _cost;
-        var sb = new System.Text.StringBuilder();
-        sb.Append($"t={_ticks} w{w.Id} fr={fr} taste={w.Taste:F2} at ({w.Cell % _n},{w.Cell / _n}) f={f[w.Cell]:F1} -> ({c % _n},{c / _n}) f={f[c]:F1} pos=({w.X:F2},{w.Y:F2}) aim=({w.AimX:F2},{w.AimY:F2}) deck row {x.Row} cells {x.Cells[0] % _n}..{x.Cells[x.Cells.Count-1] % _n} state={x.State} path:");
-        int u = w.Cell;
-        for (int s = 0; s < 8; s++) { u = DescendStep(f, cost, u, fr ? 0 : w.Taste, true, w.Id); if (u < 0) break; sb.Append($" ({u % _n},{u / _n}){(_crossAt[u] >= 0 ? "*" : "")}"); }
-        return sb.ToString();
-    }
     private int _curWalker; // index of the walker being stepped (for the queues)
 
-    /// <summary>Hook of the walker's step, before it enters cell c: true when it must stop and wait on its bank.</summary>
-    private bool RiverGate(ref Walker w, int c)
+    /// <summary>What the gate hook decides about a walker's next cell.</summary>
+    private enum GateStep : byte { Go, Wait, TurnAside }
+
+    /// <summary>Hook of the walker's step, before it enters cell c: go on, stop and wait on its bank, or turn aside.</summary>
+    private GateStep RiverGate(ref Walker w, int c)
     {
         int id = _crossAt[c];
-        if (id < 0 || _crossAt[w.Cell] == id) return false;
+        if (id < 0 || _crossAt[w.Cell] == id) return GateStep.Go;
         var x = CrossingById(id);
-        if (x == null || x.Type == CrossingType.Ford || _frozen) return false; // on ice every crossing is open ground
+        if (x == null || x.Type == CrossingType.Ford || _frozen) return GateStep.Go; // on ice every crossing is open ground
         if (w.Pass && w.HoldAt == id)
         {
             w.Pass = false;
             // Its turn came in the queue. A pass for a bridge that has been raised since is spent: it queues again
             // (a walker let on while the bridge was down whose route then went elsewhere kept a stale pass).
-            if (x.Type == CrossingType.Ferry || BridgeOpen(x)) { DiagPassOn++; w.DiagClip = false; return false; } // DIAG
+            if (x.Type == CrossingType.Ferry || BridgeOpen(x)) return GateStep.Go;
         }
-        // A walker only clipping the end of an open bridge on its way along the bank (its line cuts the corner of an end
-        // cell) is not queued for it: it would be released at its first route check and queue again, for ever.
-        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) { DiagClips++; w.DiagClip = true; if (DiagLog != null) DiagLog.Add(DiagDescribe(ref w, c, x)); return false; } // DIAG
+        // A walker whose route does not use this open bridge never steps onto its deck: every walker on a deck was let
+        // on through the gate (river pass 3). Its straight line only cut the corner of an end cell on its way along the
+        // bank, or it aimed across before the route changed (a drawbridge's learned wait, a new crossing). Queueing it
+        // would release it at its first route check and queue it again, for ever; letting it on free leaked past the
+        // bridge's capacity (25 crossings a day on a 20-a-day drawbridge). It turns aside to the next cell of its route.
+        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !RouteUses(ref w, id)) return GateStep.TurnAside;
         WalkerQueue q = SideOf(w.Cell) < 0 ? x.West! : x.East!;
         // Straight on when nobody is queued on either bank and the bridge has room; otherwise to the back of the queue.
         if (x.Type != CrossingType.Ferry && BridgeOpen(x) && x.Tokens >= 1 && !QueueHasWalker(x, x.West!) && !QueueHasWalker(x, x.East!))
         {
-            x.Tokens -= 1; DiagTokenOn++; w.DiagClip = false; // DIAG
-            return false;
+            x.Tokens -= 1;
+            return GateStep.Go;
         }
         w.Hold = WalkerHold.Waiting;
         w.HoldAt = (short)id;
@@ -52,6 +46,20 @@ public sealed partial class World
         w.Waited = true;
         w.Ticket = ++_ticketSeq;
         q.Push(_curWalker, w.Ticket);
+        return GateStep.Wait;
+    }
+
+    /// <summary>
+    /// A walker turned aside at a bridge it is not using: it aims at the centre of the next cell down its own field.
+    /// That cell is an 8-neighbour reached without cutting a corner, and a deck's sides are water, so the line from
+    /// anywhere in its cell to that centre never touches the deck. False when it has no step (it waits a tick).
+    /// </summary>
+    private bool AimAside(ref Walker w)
+    {
+        bool fr = w.Frugal;
+        int v = DescendStep(fr ? _fieldsX[w.Target] : _fields[w.Target], fr ? _costX : _cost, w.Cell, fr ? 0 : w.Taste, true, w.Id);
+        if (v < 0 || _crossAt[v] >= 0) { w.HasAim = false; return false; }
+        w.AimX = v % _n + 0.5; w.AimY = v / _n + 0.5; w.HasAim = true;
         return true;
     }
 
@@ -190,7 +198,12 @@ public sealed partial class World
     {
         int id = _crossAt[c];
         if (id >= 0) w.Via = (short)id;
-        else if (_map.Water[c] != 0) w.Via = (short)(_frozen ? IceVia : _map.Ford[c] != 0 ? 0 : -1);
+        else if (_map.Water[c] != 0)
+        {
+            w.Via = (short)(_frozen ? IceVia : _map.Ford[c] != 0 ? 0 : -1);
+            // Grain carried through the ford gets wet (decision B); over the ice it stays dry.
+            if (w.Cargo != 0 && !_frozen && _map.Ford[c] != 0) w.CargoWet = true;
+        }
         int bank = _map.Bank[c];
         if (bank == 0) return;
         if (w.Side != 0 && bank != w.Side) CountCrossing(ref w);
@@ -212,12 +225,10 @@ public sealed partial class World
             if (x != null)
             {
                 x.WalkersCrossed++;
-                if (w.DiagClip) DiagClipCrossed++; // DIAG
                 if (w.Waited) x.WalkersWaited++;
             }
         }
         w.Waited = false;
-        w.DiagClip = false; // DIAG
     }
 
     /// <summary>The walker was moved without walking (sent home, set down off a span): note its bank without counting a crossing.</summary>

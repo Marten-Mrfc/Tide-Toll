@@ -18,7 +18,7 @@ namespace TideToll.Game.Tests;
 public partial class Screenshot : Node
 {
     private string _dir = "user://";
-    private bool _uiOnly, _groundOnly, _riverOnly;
+    private bool _uiOnly, _groundOnly, _riverOnly, _hamletOnly;
     private string _suffix = "";
     private Main _main = null!;
     private bool _failed;
@@ -31,6 +31,7 @@ public partial class Screenshot : Node
             if (a == "--ui-only") _uiOnly = true;
             if (a == "--ground-only") _groundOnly = true;
             if (a == "--river-only") _riverOnly = true;
+            if (a == "--hamlet-only") _hamletOnly = true;
         }
         Input.UseAccumulatedInput = false;
         _main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
@@ -49,6 +50,7 @@ public partial class Screenshot : Node
             await Frames(4);
             if (_groundOnly) { await GroundShots(); return; }
             if (_riverOnly) { await RiverShots(); Done(RiverNames); return; }
+            if (_hamletOnly) { await HamletShots(); Done(HamletNames); return; }
             _main.Rig.FrameBook(instant: true);
             await Frames(20);
             Check(await Snap("book", true), "book");

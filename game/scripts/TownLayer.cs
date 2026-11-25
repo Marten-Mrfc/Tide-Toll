@@ -18,27 +18,97 @@ namespace TideToll.Game;
 public partial class TownLayer : Node3D
 {
     private static readonly string[] Cottages = { "cottage-01", "cottage-02", "cottage-03" };
+    /// <summary>Real seconds a new cottage takes to rise out of its plot (the toy's RAISE_MS).</summary>
+    public const double RaiseSec = 1.1;
     private SimDriver _sim = null!;
+    // Cottages still rising: node and the real time it started (a small fixed pool, so growing allocates nothing per frame).
+    private readonly Node3D?[] _rising = new Node3D?[8];
+    private readonly double[] _risingAt = new double[8];
+    private double _now;
+    private ulong _lastFrame = ulong.MaxValue;
+
+    // Real time each grown house was first drawn, by its index in World.Grown (pre-sized: growth never allocates here).
+    private double[] _seenAt = Array.Empty<double>();
+    /// <summary>Real seconds since the game started (the clock the raising and the marks use).</summary>
+    public double Now => _now;
+    /// <summary>When grown house i (World.Grown order) was first drawn, in <see cref="Now"/>'s seconds; -1 if not yet.</summary>
+    public double SeenAt(int i) => i < _seenAt.Length ? _seenAt[i] : -1;
+
+    /// <summary>Cottages added by growth and drawn so far (tests), and how many are still rising.</summary>
+    public int Grown { get; private set; }
+    public int Rising { get; private set; }
 
     public void Init(SimDriver sim)
     {
         _sim = sim;
         Name = "Town";
+        _seenAt = new double[sim.World.Params.MaxGrownHouses + 1];
         sim.WorldReplaced += Rebuild;
+        sim.HouseBuilt += OnHouseBuilt;
         Rebuild();
     }
 
     public override void _ExitTree()
     {
-        if (_sim != null) _sim.WorldReplaced -= Rebuild;
+        if (_sim == null) return;
+        _sim.WorldReplaced -= Rebuild;
+        _sim.HouseBuilt -= OnHouseBuilt;
     }
 
     public void Rebuild()
     {
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
+        Array.Clear(_rising);
+        Grown = Rising = 0;
+        Array.Fill(_seenAt, -1.0);
         var w = _sim.World;
+        for (int i = 0; i < w.Buildings.Length; i++) AddBuilding(w, i);
+    }
+
+    /// <summary>A cottage the library just built: drawn like the first houses, rising out of its plot over RaiseSec.</summary>
+    private void OnHouseBuilt(int index)
+    {
+        var node = AddBuilding(_sim.World, index);
+        // Several houses in one frame (a fast-forward): only the newest is raised and marked; the others simply stand.
+        ulong frame = Engine.GetProcessFrames();
+        if (frame == _lastFrame && Grown > 0)
+        {
+            if (Grown - 1 < _seenAt.Length) _seenAt[Grown - 1] = -1e9;
+            for (int i = 0; i < _rising.Length; i++)
+                if (_rising[i] != null) { _rising[i]!.Scale = Vector3.One; _rising[i] = null; Rising--; }
+        }
+        _lastFrame = frame;
+        if (Grown < _seenAt.Length) _seenAt[Grown] = _now;
+        Grown++;
+        int slot = -1;
+        for (int i = 0; i < _rising.Length && slot < 0; i++) if (_rising[i] == null) slot = i;
+        if (slot < 0) return; // more than eight at once (a long fast-forward): the rest simply stand
+        _rising[slot] = node;
+        _risingAt[slot] = _now;
+        node.Scale = new Vector3(1, 0.02f, 1);
+        Rising++;
+    }
+
+    public override void _Process(double delta)
+    {
+        _now += delta;
+        if (Rising == 0) return;
+        for (int i = 0; i < _rising.Length; i++)
+        {
+            var node = _rising[i];
+            if (node == null) continue;
+            double t = (_now - _risingAt[i]) / RaiseSec;
+            if (t >= 1) { node.Scale = Vector3.One; _rising[i] = null; Rising--; continue; }
+            float e = 1f - (1f - (float)t) * (1f - (float)t) * (1f - (float)t); // ease out
+            // Up from the ground with a little overshoot of the walls' width, as if the frame is being raised.
+            node.Scale = new Vector3(1f + 0.06f * MathF.Sin((float)t * MathF.PI), MathF.Max(0.02f, e), 1f + 0.06f * MathF.Sin((float)t * MathF.PI));
+        }
+    }
+
+    private Node3D AddBuilding(World w, int index)
+    {
         float cell = (float)w.Params.CellMeters;
-        foreach (var b in w.Buildings)
+        var b = w.Buildings[index];
         {
             var node = new Node3D { Name = $"{b.Kind}{b.Id}" };
             AddChild(node);
@@ -57,6 +127,7 @@ public partial class TownLayer : Node3D
                 case BuildingKind.Market: AddMarket(node, width, depth); break;
                 case BuildingKind.Field: AddFieldPosts(node, b.W * cell, b.H * cell, yaw); break;
             }
+            return node;
         }
     }
 

@@ -16,20 +16,32 @@ namespace TideToll.Game;
 public partial class ChapterPage : PanelContainer
 {
     private static readonly string[] Seasons = { "Spring", "Summer", "Autumn", "Winter" };
+    /// <summary>Chapter I's "How to play", in the book's words: every tool with its key, the rain and the growing town.</summary>
     public const string HowTo =
-        "Villagers walk from their houses to the well, the field and the market, and wear the grass into trails. " +
-        "Draw fences to push the trails aside, or lay a footbridge across the river; paths nobody uses grow back. " +
-        "With the flow preview on, a tool shows the routes that would change: dashed is now, solid is after.";
+        "Villagers walk from their houses to the well, the field and the market, and wear the grass into trails; paths " +
+        "nobody uses grow back. You never draw a road: you steer the walkers. A fence (F) is a line they cannot cross, and a " +
+        "gate (T) in it lets them through, slowly. Gravel (G) is a strip where you want a trail: it draws walkers from about " +
+        "three cells away and never grows back or turns to mud. A footbridge (B) crosses the river, and erase (E) takes " +
+        "fences, gates, gravel and bridges away. Rain turns worn trails to mud for that day and the next, and walkers step " +
+        "round it; new families build cottages beside busy trails, so the hamlet grows where you steer the paths. With the " +
+        "flow preview on (P), a tool shows the typical routes that would change: dashed is now, solid is after.";
+    /// <summary>Chapter II's "How to play": the same paths, then the river's trade.</summary>
     public const string RiverHowTo =
-        " Boats come up the river to buy grain at the landing: a low footbridge turns masted barges back, a ferry lets every " +
-        "boat by, and a drawbridge must be raised for them (click it, or L) unless you hire a keeper.";
+        "Villagers wear trails from their houses to the well, the field and the market, and carry grain to the landing. " +
+        "Fences (F), gates (T), gravel (G) and erase (E) work as in Chapter I and cost nothing. Boats come up the river to buy " +
+        "the grain: a low footbridge (B) turns masted barges back, a ferry (Y) lets every boat by, and a drawbridge (D) must " +
+        "be raised for them (click it, or L) unless you hire a keeper (K). With the flow preview on (P), a tool shows the " +
+        "routes that would change: dashed is now, solid is after.";
     public const string Keys =
-        "Each bookmark shows its key. Esc or a right-click puts a tool down; Home turns between the book and the map; " +
-        "the arrows or a middle-drag pan, the wheel zooms.";
+        "Space pauses, 1 to 4 set the speed; W lays the wear overlay over the page and M turns the sound on or off; R starts " +
+        "this map again and N draws a new one; C turns the page to the other chapter. Esc or a right-click puts a tool down; " +
+        "Home turns between the book and the map; the arrows or a middle-drag pan, the wheel zooms.";
 
     private float _s;
     private Label _day = null!, _walkers = null!, _seed = null!, _detour = null!, _detourNote = null!, _cover = null!, _coverNote = null!;
     private Label _trunk = null!, _trunkNote = null!, _status = null!, _preview = null!;
+    private Label? _houses, _housesNote, _weather;
+    private int _lastHouses = -1, _lastNewest = -2, _lastWeather = -1, _lastWeatherDay = -1;
     private Control _title = null!, _howTo = null!, _ground = null!, _heat = null!, _legendHead = null!, _legend = null!;
     private BandGauge _gauge = null!;
     private VBoxContainer _col = null!;
@@ -78,7 +90,7 @@ public partial class ChapterPage : PanelContainer
         _title = title;
 
         var how = new VBoxContainer { Name = "HowTo", MouseFilter = MouseFilterEnum.Ignore };
-        _howPara = Para(river ? HowTo + RiverHowTo : HowTo, 16, UiKit.Serif, UiKit.Ink);
+        _howPara = Para(river ? RiverHowTo : HowTo, 16, UiKit.Serif, UiKit.Ink);
         _howPara.Name = "HowToText";
         _keysPara = Para(Keys, 13, UiKit.UiFont, UiKit.FadedInk.Darkened(0.35f));
         _keysPara.Name = "KeysText";
@@ -90,6 +102,13 @@ public partial class ChapterPage : PanelContainer
         col.AddChild(Heading("The village"));
         _day = Entry(col, "Date", out _, false);
         _walkers = Entry(col, "Walkers", out _, false);
+        if (!river)
+        {
+            // Chapter I's town grows and its weather turns trails to mud (the toy's village panel).
+            _houses = Entry(col, "Houses", out var hn);
+            _housesNote = hn;
+            _weather = Entry(col, "Weather", out _, false);
+        }
         _seed = Entry(col, "Map", out _, false);
 
         if (river) BuildLedger(col);
@@ -106,7 +125,7 @@ public partial class ChapterPage : PanelContainer
         _legend = legend;
         _legendHead = Heading("The ground");
         legend.AddChild(_legendHead);
-        _ground = GroundLegend();
+        _ground = GroundLegend(!river);
         legend.AddChild(_ground);
         _heat = new HeatBar { Name = "HeatLegend", CustomMinimumSize = new Vector2(0, UiKit.Px(s, 34)), Scale1 = s, Visible = false };
         legend.AddChild(_heat);
@@ -122,7 +141,7 @@ public partial class ChapterPage : PanelContainer
         col.AddChild(_preview);
         // With the river the page holds more, so the ground legend folds away too (the overlay key W still names it),
         // and then the older margin notes.
-        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2], _repNote, _notes[1] } : new Control[] { _keysPara, _howPara };
+        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2], _repNote, _notes[1] } : new Control[] { _keysPara, _howPara, _legend };
         Folded = 0;
     }
 
@@ -167,7 +186,7 @@ public partial class ChapterPage : PanelContainer
         return v;
     }
 
-    private Control GroundLegend()
+    private Control GroundLegend(bool hamlet)
     {
         var grid = new GridContainer { Name = "GroundLegend", Columns = 2, MouseFilter = MouseFilterEnum.Ignore };
         grid.AddThemeConstantOverride("h_separation", UiKit.Px(_s, 14));
@@ -194,7 +213,53 @@ public partial class ChapterPage : PanelContainer
         rrow.AddChild(Framed(river));
         rrow.AddChild(UiKit.Text("River", _s, 14));
         grid.AddChild(rrow);
+        if (!hamlet) return grid;
+        // Chapter I's ground also has gravel, rain's mud and new cottages (the toy's legend).
+        grid.AddChild(Swatch(new Swatches { Kind = 0, Scale1 = _s }, "Gravel"));
+        grid.AddChild(Swatch(new Swatches { Kind = 1, Scale1 = _s }, "Mud, after rain"));
+        grid.AddChild(Swatch(new Swatches { Kind = 2, Scale1 = _s }, "New house"));
         return grid;
+    }
+
+    private Control Swatch(Control sw, string name)
+    {
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", UiKit.Px(_s, 6));
+        sw.CustomMinimumSize = new Vector2(UiKit.Px(_s, 30), UiKit.Px(_s, 16));
+        sw.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(Framed(sw));
+        row.AddChild(UiKit.Text(name, _s, 14));
+        return row;
+    }
+
+    /// <summary>Legend swatches drawn as the map draws them: 0 gravel (wash, stones, rim), 1 mud (wet trail, a glint), 2 a new house's mark.</summary>
+    public partial class Swatches : Control
+    {
+        public int Kind;
+        public float Scale1 = 1;
+        public override void _Draw()
+        {
+            var r = new Rect2(Vector2.Zero, Size);
+            float s = Scale1;
+            switch (Kind)
+            {
+                case 0:
+                    DrawRect(r, Color.FromHtml("#EEEADC"));
+                    for (int i = 0; i < 7; i++)
+                        DrawCircle(new Vector2(r.Size.X * ((i * 0.37f + 0.12f) % 1f), r.Size.Y * ((i * 0.61f + 0.2f) % 1f)), 1.3f * s, Color.FromHtml("#77796F"));
+                    DrawRect(r.Grow(-1), Color.FromHtml("#5A5C55"), false, Mathf.Max(1, s));
+                    break;
+                case 1:
+                    DrawRect(r, Palette.TrailEarth.Lerp(Color.FromHtml("#4F3E2F"), 0.45f).Darkened(0.12f));
+                    DrawCircle(new Vector2(r.Size.X * 0.7f, r.Size.Y * 0.4f), 1.6f * s, Color.FromHtml("#D5E2E8"));
+                    break;
+                default:
+                    DrawRect(r, Palette.Meadow);
+                    DrawCircle(r.GetCenter(), 4.5f * s + 2f * s, UiKit.Paper);
+                    DrawCircle(r.GetCenter(), 4.5f * s, NewHouses.Mark);
+                    break;
+            }
+        }
     }
 
     private Control Framed(Control c)
@@ -269,6 +334,36 @@ public partial class ChapterPage : PanelContainer
             _gauge.QueueRedraw();
         }
     }
+
+    /// <summary>
+    /// Chapter I's houses and weather in the toy's words: "Houses: 11" with "newest on day 7" (or "none new yet"), and
+    /// "Rain, day N", "Mud until day N" or "Dry". Text is rebuilt only when a value changed.
+    /// </summary>
+    public void RefreshTown(World w)
+    {
+        if (_houses == null) return;
+        int houses = w.Houses.Length;
+        var g = w.Grown;
+        int newest = !w.GrowthOn ? -1 : g.Length > 0 ? g[g.Length - 1].Day : 0;
+        if (houses != _lastHouses || newest != _lastNewest)
+        {
+            _lastHouses = houses; _lastNewest = newest;
+            _houses.Text = houses.ToString();
+            _housesNote!.Text = newest < 0 ? "no growth on this map" : newest == 0 ? "none new yet" : $"newest on day {newest}";
+        }
+        var wx = w.Weather;
+        double day = w.Params.DaySimSec;
+        int state = !w.RainOn ? 0 : wx.Raining ? 1 : wx.Wetness > 0 ? 2 : 3;
+        int d = state == 1 ? (int)System.Math.Floor(wx.RainStart / day) + 1 : state == 2 ? (int)System.Math.Floor(wx.MudUntil / day) + 1 : 0;
+        if (state != _lastWeather || d != _lastWeatherDay)
+        {
+            _lastWeather = state; _lastWeatherDay = d;
+            _weather!.Text = state switch { 0 => "Off (no rain on this map)", 1 => $"Rain, day {d}", 2 => $"Mud until day {d}", _ => "Dry" };
+        }
+    }
+
+    /// <summary>The weather line as shown (tests).</summary>
+    public string WeatherText => _weather?.Text ?? "";
 
     // In words, so the band never relies on colour alone.
     private static string Band(bool settled, double v, double lo, double hi)

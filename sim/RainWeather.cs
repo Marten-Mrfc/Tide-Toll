@@ -34,8 +34,13 @@ public sealed class RainWeather
     /// <summary>Rain days so far (rolled or forced).</summary>
     public int RainDays { get; private set; }
 
-    /// <summary>The stream's seed: <c>((seed * 2654435761) ^ 0x5eed) &gt;&gt;&gt; 0</c> (the toy multiplies in doubles, exact for these seeds).</summary>
-    public static uint StreamSeed(int seed) => unchecked((uint)((long)seed * 2654435761L) ^ 0x5eedu);
+    /// <summary>
+    /// The stream's seed: <c>((seed * 2654435761) ^ 0x5eed) &gt;&gt;&gt; 0</c> with the toy's arithmetic. The toy multiplies in
+    /// doubles, so above about 3.39 million (2^53 / 2654435761) the product is rounded to the nearest double before
+    /// <c>^</c> takes its low 32 bits (ToInt32). The same here: the rounded product is an integer below 2^63, so the
+    /// conversion to long is exact. Below that bound this equals the exact integer product.
+    /// </summary>
+    public static uint StreamSeed(int seed) => unchecked((uint)(long)((double)seed * 2654435761.0) ^ 0x5eedu);
 
     public RainWeather(int seed, SimParams p)
     {

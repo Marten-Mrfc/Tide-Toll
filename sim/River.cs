@@ -59,7 +59,7 @@ public sealed partial class World
         _berth = new int[r.Berths];
         Array.Fill(_berth, -1);
         _events = new RiverEvent[256];
-        _riverRng = new Mulberry32(unchecked((uint)(seed * 7919 + 13)));
+        _riverRng = new Mulberry32(RiverStreamSeed(seed));
         _money = r.StartMoney;
         _rep = r.ReputationStart;
         _rs = new RiverStats();
@@ -72,6 +72,12 @@ public sealed partial class World
         InitSeasons(seed);
         _riverView = new RiverView(this);
     }
+
+    /// <summary>
+    /// The boat schedule's own stream: <c>seed * 7919 + 211</c>. Until river pass 3 it was <c>seed * 7919 + 13</c>, the map
+    /// generator's start state, so the first boat gaps were the map's first draws. The spring-and-ice stream is + 101.
+    /// </summary>
+    internal static uint RiverStreamSeed(int seed) => unchecked((uint)(seed * 7919 + 211));
 
     private double ArrivalGap(BoatKind k)
     {
@@ -209,6 +215,11 @@ public sealed class RiverStats
     public int GrainLost { get; internal set; }
     /// <summary>Grain that reached the landing (to a boat, to the market, or unsold).</summary>
     public int GrainDelivered => GrainToBoats + GrainToMarket + GrainUnsold;
+    /// <summary>Of the grain delivered, units that came through the ford wet (river pass 3, decision B), and those that came dry.</summary>
+    public int GrainDeliveredWet { get; internal set; }
+    public int GrainDeliveredDry => GrainDelivered - GrainDeliveredWet;
+    /// <summary>Coin wet grain did not fetch: what it would have sold for dry less what it sold for (boats' share booked as sold).</summary>
+    public double WetValueLost { get; internal set; }
     public int Trips { get; internal set; }
     public double TripTimeSum { get; internal set; }
 

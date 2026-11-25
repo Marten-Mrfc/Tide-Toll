@@ -103,6 +103,7 @@ public sealed partial class World
         w.Hold = WalkerHold.None;
         if (w.Cargo != 0 && _river != null) _rs!.GrainLost += w.Cargo;
         w.Cargo = 0;
+        w.CargoWet = false;
         w.Cell = _b[w.Home].Door;
         w.State = WalkState.Home;
         w.Timer = _p.RetrySimSec;
@@ -121,7 +122,8 @@ public sealed partial class World
         return ok;
     }
 
-    private double SpeedOn(int c)
+    /// <summary>Walking speed on cell c in cells a second; <paramref name="loaded"/>: carrying grain (river rules: slower in the ford).</summary>
+    internal double SpeedOn(int c, bool loaded = false)
     {
         double s = _p.WalkSpeedCellsPerSec;
         if (_bridgeAt[c] >= 0) s *= _p.BridgeSpeedMul;
@@ -129,7 +131,11 @@ public sealed partial class World
         else
         {
             s *= _gravel[c] != 0 ? _p.GravelSpeedMul : _stateSpeedMul[(int)_p.GroundOf(_wear[c], _hollow[c] == 1)];
-            if (_map.Ford[c] != 0) s *= _p.FordSpeedMul;
+            if (_map.Ford[c] != 0)
+            {
+                s *= _p.FordSpeedMul;
+                if (loaded && _river != null) s *= _river.LoadedWadeSpeedMul; // grain on the back, in the water (decision B)
+            }
             if (_gate[c] != 0) s *= _gatePair[c] != 0 ? 1 / (1 + (1 / _p.GateSpeedMul - 1) / 2) : _p.GateSpeedMul;
             if (_rainOn) s *= MudSpeed(c);
             if (_river != null && _flooded && _band[c] != 0) s *= _river.FloodWadeSpeedMul;
@@ -207,7 +213,7 @@ public sealed partial class World
         w.Stuck = 0;
         // A runaway trip (should not happen) is ended rather than left wandering.
         if (w.TripLen > 4 * _n) { SendHome(ref w); return; }
-        double dist = SpeedOn(w.Cell) * dt;
+        double dist = SpeedOn(w.Cell, w.Cargo != 0) * dt;
         for (int guard = 0; dist > 0 && guard < 4; guard++)
         {
             double dx = w.AimX - w.X, dy = w.AimY - w.Y, d = JsMath.Hypot(dx, dy);
@@ -220,11 +226,17 @@ public sealed partial class World
             }
             dist -= move;
             int c = (int)Math.Floor(w.Y) * _n + (int)Math.Floor(w.X);
-            if (c != w.Cell && _river != null && RiverGate(ref w, c))
+            if (c != w.Cell && _river != null)
             {
-                // A drawbridge that is not down, or a ferry stage: stop on this bank and wait.
-                w.X = ox; w.Y = oy; w.TripLen = olen;
-                break;
+                var g = RiverGate(ref w, c);
+                if (g != GateStep.Go)
+                {
+                    // A drawbridge that is not down, a ferry stage or a full bridge: stop on this bank and wait.
+                    // Or a bridge it is not using: stop short of the deck and aim along its route instead.
+                    w.X = ox; w.Y = oy; w.TripLen = olen;
+                    if (g == GateStep.Wait || !AimAside(ref w)) break;
+                    continue;
+                }
             }
             if (c != w.Cell)
             {

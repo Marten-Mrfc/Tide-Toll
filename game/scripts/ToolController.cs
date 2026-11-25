@@ -113,7 +113,7 @@ public partial class ToolController : Node
     private void OnEdited(int v)
     {
         CheckSelection();
-        if (_dragStart == null && !_eraseDown) Refresh();
+        if (_dragStart == null && !_eraseDown && !_brushing) Refresh();
     }
 
     public void SetTool(Tool t)
@@ -180,7 +180,7 @@ public partial class ToolController : Node
         }
     }
 
-    public bool Gesturing => _dragStart != null || _bridgeDownCell >= 0 || _eraseDown;
+    public bool Gesturing => _dragStart != null || _bridgeDownCell >= 0 || _eraseDown || _brushing || _gateDown >= 0;
 
     private bool OverUi() => GetViewport().GuiGetHoveredControl() != null;
 
@@ -189,10 +189,15 @@ public partial class ToolController : Node
         Pointer = pos;
         PointerKnown = true;
         PointerOverUi = OverUi();
+        if (_main.Turn.Busy) return;
         if (Tool == Tool.Fence && _dragStart != null)
         {
             var c = ClampedCell(pos);
             if (c != _dragEnd) { _dragEnd = c; FenceGhost(); }
+        }
+        else if (Tool == Tool.Gravel && _brushing)
+        {
+            if (!OverUi()) { var c = ClampedCell(pos); BrushTo(c.Item1, c.Item2); }
         }
         else if (Tool == Tool.Erase && _eraseDown) EraseAt(pos);
         else Hover(pos);
@@ -201,6 +206,7 @@ public partial class ToolController : Node
     private bool Down(Vector2 pos)
     {
         if (!_main.Rig.PickCell(pos, out int cx, out int cy)) return false;
+        if (PathsDown(pos, cx, cy)) return true;
         switch (Tool)
         {
             case Tool.Fence:
@@ -229,7 +235,9 @@ public partial class ToolController : Node
 
     private void Up(Vector2 pos)
     {
-        if (Tool == Tool.Fence && _dragStart != null)
+        string? pathResult = null;
+        if (PathsUp(pos)) pathResult = LastMessage;
+        else if (Tool == Tool.Fence && _dragStart != null)
         {
             int n = 0;
             if (PointerOverUi) Say("Fence cancelled.");
@@ -263,10 +271,12 @@ public partial class ToolController : Node
         Previewer.Clear();
         _hoverCell = (-999, -999);
         Hover(pos);
+        SayAfterUp();
     }
 
     private void CancelGesture()
     {
+        CancelPaths();
         _dragStart = null;
         _bridgeDownCell = -1;
         _eraseDown = false;

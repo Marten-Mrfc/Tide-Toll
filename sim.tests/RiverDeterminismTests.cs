@@ -28,7 +28,8 @@ public class RiverDeterminismTests
 
     private static (uint Wear, uint Rng, double Money, double Rep, string Boats, string Events) Scripted(int seed, int raiseAt)
     {
-        var w = new World(seed, 250, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 600 } });
+        // The keeper is hired at tick 700 whatever the raises so far (its unlock is RiverRules3Tests').
+        var w = new World(seed, 250, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 600, KeeperUnlockRaises = 0 } });
         var events = new List<RiverEvent>();
         var log = new System.Text.StringBuilder();
         int draw = -1;
@@ -62,7 +63,7 @@ public class RiverDeterminismTests
     [Fact]
     public void TickWithTheRiverOnAllocatesNothing()
     {
-        var w = new World(3, 500, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 1000 } });
+        var w = new World(3, 500, RiverTestRules.Trail with { River = RiverRules.Default with { StartMoney = 1000, KeeperUnlockRaises = 0 } });
         Build(w, CrossingType.Ferry);
         int d = Build(w, CrossingType.Drawbridge, 9).Id;
         w.HireKeeper(d);

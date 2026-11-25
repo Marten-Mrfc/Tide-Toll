@@ -19,7 +19,7 @@ public static class TickBench
     public static Result Measure(int seed, int walkers, int warmup = 600, int ticks = 600, bool river = false, bool weather = false, bool toy = false)
     {
         river |= weather;
-        var w = river ? new World(seed, walkers, SimParams.Default with { River = RiverRules.Default with { StartMoney = 1000 } })
+        var w = river ? new World(seed, walkers, SimParams.Default with { River = RiverRules.Default with { StartMoney = 1000, KeeperUnlockRaises = 0 } })
             : new World(seed, walkers, toy ? SimParams.Toy : null);
         int draw = -1;
         if (river)

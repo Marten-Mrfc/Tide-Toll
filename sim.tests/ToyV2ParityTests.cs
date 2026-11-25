@@ -154,8 +154,8 @@ public class ToyV2ParityTests
         foreach (var e in Golden2.Root.GetProperty("streams").EnumerateArray())
         {
             int seed = e.GetProperty("seed").GetInt32();
-            // The toy multiplies in doubles and converts with ToInt32; exact for seeds below about 3.4 million.
-            uint ws = unchecked((uint)((long)seed * 2654435761L) ^ 0x5eedu), gs = unchecked((uint)(seed * 40503) ^ 0x6f7du);
+            // The library's own seed functions (the toy multiplies in doubles and converts with ToInt32).
+            uint ws = RainWeather.StreamSeed(seed), gs = World.GrowthStreamSeed(seed);
             Assert.Equal(e.GetProperty("weatherSeed").GetUInt32(), ws);
             Assert.Equal(e.GetProperty("growthSeed").GetUInt32(), gs);
             var a = new Mulberry32(ws); var b = new Mulberry32(gs);
@@ -169,6 +169,25 @@ public class ToyV2ParityTests
         for (int i = 0; i < 64; i++) Assert.Equal(ex[w.Walkers[i].Id] < Toy.ExplorerShare, w.Walkers[i].Explorer);
     }
 
+    /// <summary>
+    /// Seeds above about 3.39 million, where the toy's seed * 2654435761 is rounded to a double before ToInt32 (river pass 3,
+    /// bug: the stream's seed differed for odd seeds there). The toy's own Weather class drew the numbers.
+    /// </summary>
+    [Fact]
+    public void TheWeatherStreamOfLargeSeedsMatchesTheToy()
+    {
+        var rows = Golden2.Root.GetProperty("streamsLarge").EnumerateArray().ToList();
+        Assert.Contains(rows, e => e.GetProperty("seed").GetInt32() % 2 == 1 && e.GetProperty("seed").GetInt32() > 3_390_000);
+        foreach (var e in rows)
+        {
+            int seed = e.GetProperty("seed").GetInt32();
+            Assert.Equal(e.GetProperty("weatherSeed").GetUInt32(), RainWeather.StreamSeed(seed));
+            Assert.Equal(e.GetProperty("growthSeed").GetUInt32(), World.GrowthStreamSeed(seed));
+            var a = new Mulberry32(RainWeather.StreamSeed(seed));
+            foreach (var v in e.GetProperty("weather").EnumerateArray()) Assert.Equal(v.GetDouble(), a.NextDouble());
+        }
+    }
+
     [Fact]
     public void TheBucketQueueFieldRouteLengthAndLineCostMatchTheToy()
     {
@@ -180,8 +199,11 @@ public class ToyV2ParityTests
         for (int x = 0; x < 100; x++) cost[70 * 128 + x] = float.PositiveInfinity;
         var field = new float[grid.Count];
         CostField.Dijkstra(grid, 100 * 128 + 20, cost, field, new BinaryHeap(1024));
-        // The toy's bucket queue settles in a different order but must give exactly the heap's values.
+        // The toy's bucket queue settles in a different order but must give exactly the heap's values; so must ours.
         Assert.Equal(g.GetProperty("fieldFnv").GetUInt32(), Fnv<float>(field));
+        var fieldB = new float[grid.Count];
+        CostField.Dijkstra(grid, 100 * 128 + 20, cost, fieldB, new BinaryHeap(1024), new BucketQueue(grid.Count));
+        Assert.Equal(g.GetProperty("fieldFnv").GetUInt32(), Fnv<float>(fieldB));
         Assert.Equal(g.GetProperty("infCount").GetInt32(), field.Count(float.IsPositiveInfinity));
         foreach (var e in g.GetProperty("probes").EnumerateArray())
             Assert.Equal(Golden2.D(e.GetProperty("value")), field[e.GetProperty("y").GetInt32() * 128 + e.GetProperty("x").GetInt32()]);

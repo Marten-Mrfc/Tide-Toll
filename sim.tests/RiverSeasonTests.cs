@@ -243,10 +243,10 @@ public class RiverSeasonTests
     [Fact]
     public void ATickWithTheFloodAndTheIceAllocatesNothing()
     {
-        var w = Make(3, 500, Rich with { HaulGoods = true });
+        var w = Make(3, 500, Rich with { HaulGoods = true, KeeperUnlockRaises = 0 });
         Build(w, CrossingType.Ferry);
         int d = Build(w, CrossingType.Drawbridge, 9).Id;
-        w.HireKeeper(d);
+        Assert.True(w.HireKeeper(d).Ok);
         var events = new List<RiverEvent>(1024);
         for (int i = 0; i < 300; i++) { w.Tick(); w.River!.DrainEvents(events); events.Clear(); }
         w.StartFlood(1); w.Freeze();

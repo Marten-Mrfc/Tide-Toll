@@ -24,6 +24,10 @@ public partial class GameUi : CanvasLayer
     /// <summary>A badge by every drawbridge (state, queues, lever, keeper), and the notes that float up from the river.</summary>
     public BridgeBadges Badges { get; private set; } = null!;
     public RiverFloats Floats { get; private set; } = null!;
+    /// <summary>Rain over the map page (Chapter I).</summary>
+    public RainLayer Rain { get; private set; } = null!;
+    /// <summary>The rings and badges that mark new cottages (Chapter I).</summary>
+    public NewHouses Houses { get; private set; } = null!;
     private PanelContainer _tip = null!, _fpsPlate = null!;
     private Label _tipText = null!, _fps = null!;
     private ToolTabs.PageLip _lip = null!;
@@ -91,10 +95,19 @@ public partial class GameUi : CanvasLayer
         _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_root);
 
+        // First, so everything else lies over it: rain on the map page (Chapter I).
+        Rain = new RainLayer();
+        Rain.Build(_main, _s);
+        _root.AddChild(Rain);
+
         // First, so the chapter page and the tabs lie over them.
         Tags = new MapTags();
         Tags.Build(_main, _s);
         _root.AddChild(Tags);
+
+        Houses = new NewHouses();
+        Houses.Build(_main, _s);
+        _root.AddChild(Houses);
 
         Floats = new RiverFloats();
         Floats.Build(_main, _s);
@@ -288,6 +301,7 @@ public partial class GameUi : CanvasLayer
         var sim = _main.Sim;
         var w = sim.World;
         Chapter.Refresh(w.Stats(), w.WalkersOut(), sim.Seed, _now);
+        Chapter.RefreshTown(w);
         if (w.River is { } river)
         {
             Chapter.RefreshRiver(river, w.Time, w.Params.DaySimSec, _main.Feed);
@@ -306,6 +320,9 @@ public partial class GameUi : CanvasLayer
         var at = new Vector2(Mathf.Round(vp.X - _fpsPlate.Size.X - m), Mathf.Round(vp.Y - _fpsPlate.Size.Y - m));
         if (_fpsPlate.Position != at) _fpsPlate.Position = at;
     }
+
+    /// <summary>Lays the page and the tabs over the book at once (a new chapter's book, before its first frame).</summary>
+    public void PlaceNow() => Place(GetViewport().GetVisibleRect().Size);
 
     /// <summary>The chapter column over the left page, the tabs out of the right page's outer edge.</summary>
     private void Place(Vector2 vp)

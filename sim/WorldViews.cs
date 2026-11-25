@@ -31,6 +31,8 @@ public sealed partial class World
     public ReadOnlySpan<byte> Gate => _gate;
     /// <summary>1 on the two cells of a two-cell (stair-corner) gate.</summary>
     public ReadOnlySpan<byte> GatePair => _gatePair;
+    /// <summary>The other cell of the two-cell gate at cell c, or -1 (a one-cell gate, no gate, or outside the map).</summary>
+    public int GatePartner(int c) => c < 0 || c >= _nc ? -1 : _gatePartner[c];
     /// <summary>The wear and traffic discount lookup tables (for the probes that compare them with the toy's).</summary>
     public ReadOnlySpan<float> WearLookup => _wearLut;
     public ReadOnlySpan<float> FlowLookup => _flowLut;

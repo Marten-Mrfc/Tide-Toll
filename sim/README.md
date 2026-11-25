@@ -14,7 +14,7 @@ It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/
 | `Rng.cs` | rng.ts | `Mulberry32`, `Hash.Hash2` |
 | `JsMath.cs` | (V8) | `Hypot` (V8's algorithm) and `Round` (JavaScript rounding) |
 | `Grid.cs` | grid.ts | grid shape, neighbour tables, `Line4` |
-| `BinaryHeap.cs`, `CostField.cs` | path.ts | the heap, Dijkstra cost-to-go fields, `CanStep`; `DijkstraRun` (the same field in bounded slices) |
+| `BinaryHeap.cs`, `BucketQueue.cs`, `CostField.cs` | path.ts | the heap, the toy's bucket queue (the live fields; exactly the heap's values), Dijkstra cost-to-go fields, `CanStep`; `DijkstraRun` (the same field in bounded slices) |
 | `MapData.cs`, `MapGen.cs` | mapgen.ts | `Building`, `MapData`, `MapGen.Generate(seed)` |
 | `Walker.cs` | world.ts | `Walker` struct, `WalkState`, `Bridge` |
 | `World.cs` | world.ts | state, field refresh schedule (both views), `Tick`, decay (gravel floor) |
@@ -57,8 +57,11 @@ Ground GroundAt(int cell); bool IsBlocked(int cell); bool CanFence(int cell)
 double CellCost(int cell, CostOverride ov = None, bool frugal = false); double TripRatePerDay(int home, int dest); int WalkersOut()
 ReadOnlySpan<float>  CostX; ReadOnlySpan<float> FieldX(int building)   // the frugal walkers' view (empty unless Params.UseFrugal)
 ReadOnlySpan<byte>   Gravel, Gate, GatePair                // Walker.Explorer, Walker.Frugal
+int GatePartner(int cell)                               // the other cell of a two-cell gate, -1 (stored per cell, never found by adjacency)
 ReadOnlySpan<byte>   Mud; int MudCells; RainWeather Weather // Rain, Wetness, Raining, RainStart, RainEnd, MudUntil, RainDays; bool RainOn
 ReadOnlySpan<GrownHouse> Grown; ReadOnlySpan<byte> Fronted; double NextHouseTime; bool GrowthOn   // houses added by growth
+bool GrowthRoomFull; int GrowthRoomLeft                 // growth's pre-sized house slots used up (say so: no more houses come)
+long FieldSearches                                      // route searches run for the live fields (profiling)
 int TripRateStride                                      // TripRate row length (room for grown houses; TripRatePerDay hides it)
 SimStats Stats()       // DetourRatio, TrailCoverage, TrunkShare, TrunkShareD, TripsInWindow, TrailCells,
                        // Walkers, SimTime, Day, Season, Year, FirstTrailTime; allocation-free
@@ -93,7 +96,8 @@ With `SimParams.Default` houses grow: `Buildings`, `Houses` and the walker count
 30 s while the town is below 250 people; the toy's frontage rules). Building indices never change; the game should
 watch `Buildings.Length` (or `Grown`) and draw new cottages. The world pre-sizes room for `SimParams.MaxGrownHouses`
 houses (84 at the defaults, about 10 MB of fields), so growth allocates nothing; if the walker count is lowered by hand
-again and again that room can run out, and then no more houses come (the toy has no such limit).
+again and again that room can run out, and then no more houses come (the toy has no such limit): `GrowthRoomFull`
+says so, so the game can tell the player instead of growth stopping silently.
 
 ### Presets
 
@@ -106,7 +110,7 @@ again and again that room can run out, and then no more houses come (the toy has
 The river rules turn rain and growth off whatever the preset says (a river town's prices assume a village of fixed
 size, and the river has its own flood mud).
 
-## River rules (Prototype 1, step 2; second pass 25 November 2026)
+## River rules (Prototype 1, step 2; second pass and third pass 25 November 2026)
 
 Off by default: `SimParams.River` is null, nothing is allocated and no river code runs, so every result above is
 unchanged (`RiverOffBaselineTests` holds wear and random-stream hashes recorded before the river code existed).
@@ -116,7 +120,8 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
 
 - **Boats** enter at the south edge on a schedule (rowboat, mast 0, 12 units, 1 per 2 days; barge, mast 2, 40 units,
   1 per day), gap = base / (0.5 + reputation / 100) with +-25% jitter, drawn from the river's own stream
-  (`Mulberry32(seed * 7919 + 13)`; the walkers' stream is never touched). They sail north at 10 rows/s to the
+  (`Mulberry32(seed * 7919 + 211)`, `World.RiverStreamSeed`; until the third pass it was `+ 13`, the map generator's
+  start state; the walkers' stream is never touched). They sail north at 10 rows/s to the
   landing (row = market door row clamped to 14..108, on the market bank), moor 15 s at one of 2 berths, buy grain,
   then leave by the north edge. A boat stops 2 rows below a crossing its mast cannot pass and keeps 2 rows behind
   the boat ahead (it overtakes a boat held at a crossing it can pass itself). Waiting costs patience (15 s); at 0 it
@@ -124,19 +129,32 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
 - **Goods**: with `HaulGoods` (default) a Landing building is appended after the map's buildings (ids unchanged).
   A walker leaving the field takes 1 grain to the landing, then goes home. A moored boat with room buys it at
   2c x `BoatValueMul` (3) = 6c, booked when the boat leaves; otherwise the village market pays 70% of 2c, at most
-  1 unit per house per day (the design doc's limit); the rest goes unsold.
+  1 unit per house per day (the design doc's limit); the rest goes unsold. **Wet grain** (third pass, the lead's
+  decision B): grain carried through the ford gets wet (`Walker.CargoWet`; not over the ice) and sells for
+  `WetGrainValueShare` (0.5, chosen) of its value at a boat and at the market; a walker carrying grain wades the ford at
+  `LoadedWadeSpeedMul` (0.7, chosen) of an unloaded walker's speed (routing costs are unchanged). Counted:
+  `RiverStats.GrainDeliveredWet`, `GrainDeliveredDry`, `WetValueLost` (coin the wet grain did not fetch). The flood
+  still closes the ford.
 - **Crossings** (`Crossing.Clearance` is the highest mast class that passes): the ford (free, all boats); footbridge
-  (50c, class 1, walker speed 1.2); ferry (40c, 5c upkeep + 15c ferryman a season, never blocks, 5 walkers per trip,
+  (50c, class 1, walker speed 1.2); ferry (40c, 2c upkeep + 3c ferryman a season, the doc's numbers (third pass; tuned to 5c + 15c before), never blocks, 5 walkers per trip,
   leaves 0.5 s after the first boards or when full, 1.0 s across); drawbridge (200c, 4c upkeep, class 1 closed and
   all boats raised; raise 1.0 s, one boat per 1.5 s, lower 1.0 s). A raised bridge lowers itself once the boats
   within 4 rows below are through, or after 8 s with no boat. The keeper (120c, 5c a season) raises 1 s after a
-  masted boat is within 6 rows and lowers once it is through.
+  masted boat is within 6 rows and lowers once it is through. **The keeper is unlocked by use** (third pass, decision C):
+  it can be hired for a drawbridge only once the player has raised that bridge by hand `KeeperUnlockRaises` (10) times
+  (`Crossing.HandRaises`, `RaisesToKeeper`, `KeeperUnlocked`; a press while it is already going up, and the keeper's
+  own raises, do not count). Until then `HireKeeper` is refused in words, e.g. "No keeper will take this bridge on yet:
+  raise it by hand six times more first (four of ten raises done)"; the `KeeperUnlocked` event names the bridge when
+  it unlocks.
 - **Capacity** (doc, crossing table "Walker capacity per day"): every crossing but the ford has a first come, first
   served queue on each bank. A footbridge lets on at most `FootbridgeWalkersPerDay` (120, doc "about 120, 1 cell wide")
   and a closed drawbridge `DrawbridgeWalkersPerDay` (250, doc "about 250 while closed") walkers a day, as a token bucket
   holding `BridgeBurstSec` (1 s, chosen) of capacity; a walker arriving goes straight on only when nobody queues on
-  either bank and the bucket has room. A walker only clipping the corner of an open bridge's end cell (its route runs
-  along the bank) is not queued. The ferry turns round for `FerryTurnSec` (0.75 s, tuned) at each stage before
+  either bank and the bucket has room. Every walker on a deck was let on through the gate (third pass): a walker whose
+  route does not use an open bridge (its line only cuts the corner of an end cell, or it aimed across before the route
+  changed, as a drawbridge's learned wait changes its cost) is neither queued nor let on; it stops short of the deck
+  and aims at the next cell down its own field. (Before, such walkers were let on free and some walked across
+  uncounted: 25.5 crossings a day on a 20-a-day drawbridge.) The ferry turns round for `FerryTurnSec` (0.75 s, tuned) at each stage before
   boarding, so a full ferry carries 5 per 1.0 + 0.75 s leg, about 21 each way a day (the doc says about 30; tuned down so the ferry's capacity bites at 200 walkers). The ford
   has no limit, only its slow speed (`SimParams.FordSpeedMul` 0.4, doc "walker speed 0.4") and cost (x3). A walker
   who waited delivers its grain later (boats leave after their mooring window, so late grain goes to the market at
@@ -177,7 +195,8 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   served; riders are drawn moving with the boat (`Hold = Riding`, counted on their boarding cell until they land).
   A walker still on the span when a leaf is fully up is set down on the nearer bank. Erasing a crossing releases
   its queue and lands its riders. A walker that waits 40 s (a safety net) goes home.
-- **Money** starts at 0c (tuned from 120c). Each season: hearth tax 1c per house, minus upkeep and wages, and 10% interest
+- **Money** starts at 50c (third pass, decision D: enough for a ferry or a footbridge in the first minute; it was
+  tuned from 120c to 0c before). Each season: hearth tax 1c per house, minus upkeep and wages, and 10% interest
   on a negative purse. Erasing a crossing costs half its price (chosen; the doc's 2x would stop testers trying several
   crossings). **The money rule, in one place:** a purchase (a crossing, a keeper) needs the full price in hand and never
   goes into debt; demolition (erasing a crossing) may take the purse down to `DebtLimit` (-100c) and no further, and is
@@ -195,7 +214,8 @@ ReadOnlySpan<Boat> boats = r.Boats;                      // Id, Kind, State, Mas
 IReadOnlyList<Crossing> xs = r.Crossings;                // ford first: Id, Type, Row, Cells, WestEnd, EastEnd, BridgeId, Clearance, State,
                                                          // StateT, Progress (leaf 0..1 or ferry 0 west..1 east), Keeper, QueueWest, QueueEast,
                                                          // BoatsWaiting, AvgWait, FerrySide, Passengers, WalkersServed, BoatsPassed,
-                                                         // WalkersCrossed, WalkersWaited, Tokens (a bridge's room now)
+                                                         // WalkersCrossed, WalkersWaited, Tokens (a bridge's room now),
+                                                         // HandRaises, RaisesToKeeper, KeeperUnlocked (drawbridge)
 bool flood = r.Flooded, ford = r.FordOpen, mud = r.Muddy, ice = r.Frozen; double dries = r.FloodEndsAt;
 ReadOnlySpan<byte> band = r.FloodBand;                   // 1 on flood-band cells (fixed for the map)
 ReadOnlySpan<float> iceWear = r.IceWear;                 // paths across the ice, 0..100 (draw like wear; never in World.Wear)
@@ -206,8 +226,9 @@ r.DrainEvents(list);                                     // since the last call;
 // RiverEventKind: BoatArrived, BoatWaiting, BoatPassed, BoatMoored, BoatSold (coin), BoatTurnedBack, BoatLeft, BridgeRaising,
 // BridgeRaised, BridgeLowering, BridgeLowered, FerryDeparted (riders), FerryLanded (riders), CannotAfford (price),
 // SeasonSettled (net coin), KeeperHired, CrossingBuilt, CrossingRemoved, FloodRising (days), FordClosed, FloodReceded,
-// FordOpen, FloodRepairs (coin), RiverFrozen, Thaw
-// Walker: Hold (None, Waiting, Riding), HoldAt (crossing id), Cargo, WaitT
+// FordOpen, FloodRepairs (coin), RiverFrozen, Thaw, KeeperUnlocked (crossing; value = hand raises)
+// Walker: Hold (None, Waiting, Riding), HoldAt (crossing id), Cargo, CargoWet, WaitT
+// RiverStats also: GrainDeliveredWet, GrainDeliveredDry, WetValueLost (coin)
 
 // Commands: RiverResult { Ok, Reason (words, e.g. "Not enough coin: the drawbridge costs 200c, you have 118c"), Id }
 world.CheckCrossing(CrossingType.Drawbridge, x, y);      // what PlaceCrossing would say, without building

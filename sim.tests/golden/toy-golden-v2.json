@@ -3,7 +3,7 @@
  "toyCommit": "6982009",
  "command": "node sim.tests/golden/export.mjs <final-toy-dir>",
  "note": "FNV-1a hashes are over the little-endian bytes of the toy's typed arrays (f64 lists: over their float64 bytes). Non-finite numbers are written as strings. Regenerate with the command; never edit by hand.",
- "seconds": 661,
+ "seconds": 609,
  "params": {
   "gridSize": 128,
   "tickHz": 10,
@@ -6221,6 +6221,50 @@
    "days": 20,
    "wearFnv": 739640260,
    "next": [0.9387343004345894,0.9862052020616829,0.6705271638929844]
+  }
+ ],
+ "streamsLarge": [
+  {
+   "seed": 3390001,
+   "weatherSeed": 3578509836,
+   "weather": [0.40286423079669476,0.028257789323106408,0.9354299614205956,0.2770489673130214],
+   "growthSeed": 4161229306
+  },
+  {
+   "seed": 3390003,
+   "weatherSeed": 297436846,
+   "weather": [0.34914295515045524,0.3870675109792501,0.8966170940548182,0.07173744379542768],
+   "growthSeed": 4161279368
+  },
+  {
+   "seed": 3400001,
+   "weatherSeed": 743254045,
+   "weather": [0.3200607290491462,0.7242991467937827,0.39568535471335053,0.043123175390064716],
+   "growthSeed": 271314314
+  },
+  {
+   "seed": 3400002,
+   "weatherSeed": 3397693007,
+   "weather": [0.15182811836712062,0.4315669347997755,0.8857708289287984,0.2714451760984957],
+   "growthSeed": 271339091
+  },
+  {
+   "seed": 12345679,
+   "weatherSeed": 909557837,
+   "weather": [0.9745780201628804,0.5066409930586815,0.5315056564286351,0.6764254483859986],
+   "growthSeed": 1820837508
+  },
+  {
+   "seed": 99999999,
+   "weatherSeed": 253905325,
+   "weather": [0.4411226643715054,0.826486332109198,0.22900193324312568,0.7113321260549128],
+   "growthSeed": 145807284
+  },
+  {
+   "seed": 2147483647,
+   "weatherSeed": 3788035821,
+   "weather": [0.3829544857144356,0.9175756655167788,0.7421243158169091,0.9934010363649577],
+   "growthSeed": 2147421876
   }
  ]
 }

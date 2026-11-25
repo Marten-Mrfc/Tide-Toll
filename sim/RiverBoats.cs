@@ -230,6 +230,7 @@ public sealed partial class World
         if (_landingB < 0 || w.Cargo != 0 || _b[w.Target].Kind != BuildingKind.Field) return false;
         if (!(_fields[_landingB][w.Cell] < float.PositiveInfinity)) return false;
         w.Cargo = 1;
+        w.CargoWet = false;
         Depart(ref w, _landingB, WalkState.Out);
         return true;
     }
@@ -241,14 +242,21 @@ public sealed partial class World
         rs.Trips++;
         rs.TripTimeSum += _time - w.TripT0;
         if (w.Cargo == 0) return;
-        if (w.Target == _landingB && w.State == WalkState.Out) SellGrain();
+        if (w.Target == _landingB && w.State == WalkState.Out) SellGrain(w.CargoWet);
         w.Cargo = 0;
+        w.CargoWet = false;
     }
 
-    /// <summary>A walker with grain at the landing: a moored boat with room buys it, otherwise the village market.</summary>
-    private void SellGrain()
+    /// <summary>
+    /// A walker with grain at the landing: a moored boat with room buys it, otherwise the village market. Wet grain (it
+    /// came through the ford) sells for RiverRules.WetGrainValueShare of its value at either.
+    /// </summary>
+    private void SellGrain(bool wet)
     {
         var r = _river!;
+        double share = wet ? r.WetGrainValueShare : 1;
+        var st = _rs!;
+        if (wet) st.GrainDeliveredWet++;
         for (int j = 0; j < _berth.Length && !_frozen; j++) // trade with boats pauses on the ice
         {
             int id = _berth[j];
@@ -258,15 +266,17 @@ public sealed partial class World
                 ref Boat b = ref _boats[i];
                 if (b.Id != id || b.Cargo >= b.Capacity) continue;
                 b.Cargo++;
-                b.Earned += r.GrainPrice * r.BoatValueMul;
-                _rs!.GrainToBoats++;
+                b.Earned += r.GrainPrice * r.BoatValueMul * share;
+                if (wet) st.WetValueLost += r.GrainPrice * r.BoatValueMul * (1 - share);
+                st.GrainToBoats++;
                 return;
             }
         }
         var rs = _rs!;
         if (rs.MarketToday >= r.MarketUnitsPerHouseDay * _houseCount) { rs.GrainUnsold++; return; }
         rs.MarketToday++;
-        Earn(r.GrainPrice * r.MarketShare, false);
+        Earn(r.GrainPrice * r.MarketShare * share, false);
+        if (wet) rs.WetValueLost += r.GrainPrice * r.MarketShare * (1 - share);
         rs.GrainToMarket++;
     }
 }

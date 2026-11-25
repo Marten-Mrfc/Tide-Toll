@@ -17,11 +17,18 @@ public partial class UiTest : Node
 {
     private Main _main = null!;
     private readonly List<string> _notes = new();
-    private static readonly string[] Names =
+    // Chapter I, The Hamlet: the path tools only; Chapter II, The River, adds the ferry and the drawbridge.
+    private static readonly string[] Names1 =
     {
-        "Pause", "Speed1", "Speed2", "Speed4", "Speed8", "Fence", "Footbridge", "Ferry", "Drawbridge", "Erase", "FlowPreview", "WearOverlay",
+        "Chapter", "Pause", "Speed1", "Speed2", "Speed4", "Speed8", "Fence", "Gate", "Gravel", "Footbridge", "Erase", "FlowPreview", "WearOverlay",
         "Sound", "Volume", "Reset", "NewMap", "Walkers",
     };
+    private static readonly string[] Names2 =
+    {
+        "Chapter", "Pause", "Speed1", "Speed2", "Speed4", "Speed8", "Fence", "Gate", "Gravel", "Footbridge", "Ferry", "Drawbridge", "Erase",
+        "FlowPreview", "WearOverlay", "Sound", "Volume", "Reset", "NewMap", "Walkers",
+    };
+    private string[] Names => _main.Chapter == 2 ? Names2 : Names1;
 
     public override void _Ready()
     {
@@ -43,6 +50,7 @@ public partial class UiTest : Node
             await Focus();
             await Page();
             await Resize();
+            await RiverChapter();
             GD.Print("UI PASS " + string.Join(" ", _notes));
             GetTree().Quit(0);
         }
@@ -105,7 +113,7 @@ public partial class UiTest : Node
         }
         await Click(C("Speed1"));
         Check(sim.Speed == 1 && ((Button)C("Speed1")).ButtonPressed, "clicking the current speed turned it off");
-        (string, Tool)[] tools = { ("Fence", Tool.Fence), ("Footbridge", Tool.Bridge), ("Erase", Tool.Erase) };
+        (string, Tool)[] tools = { ("Fence", Tool.Fence), ("Gate", Tool.Gate), ("Gravel", Tool.Gravel), ("Footbridge", Tool.Bridge), ("Erase", Tool.Erase) };
         foreach (var (n, t) in tools)
         {
             await Click(C(n));
@@ -173,8 +181,11 @@ public partial class UiTest : Node
         for (int i = 3; i >= 0; i--) { await Key(ks[i]); Check(sim.Speed == sp[i], $"key {i + 1} set speed {sim.Speed}"); }
         await Key(Godot.Key.F); Check(_main.Tools.Tool == Tool.Fence, "F");
         await Key(Godot.Key.B); Check(_main.Tools.Tool == Tool.Bridge, "B");
-        await Key(Godot.Key.Y); Check(_main.Tools.Tool == Tool.Ferry, "Y (ferry)");
-        await Key(Godot.Key.D); Check(_main.Tools.Tool == Tool.Drawbridge, "D (drawbridge)");
+        await Key(Godot.Key.G); Check(_main.Tools.Tool == Tool.Gravel, "G (gravel)");
+        await Key(Godot.Key.T); Check(_main.Tools.Tool == Tool.Gate, "T (gate)");
+        // No crossings to buy in Chapter I: Y and D pick up nothing.
+        await Key(Godot.Key.Y); Check(_main.Tools.Tool == Tool.Gate, "Y picked up a tool in Chapter I");
+        await Key(Godot.Key.D); Check(_main.Tools.Tool == Tool.Gate, "D picked up a tool in Chapter I");
         await Key(Godot.Key.E); Check(_main.Tools.Tool == Tool.Erase, "E");
         await Key(Godot.Key.E); Check(_main.Tools.Tool == Tool.None, "E again should put the eraser down");
         await Key(Godot.Key.F); await Key(Godot.Key.Escape); Check(_main.Tools.Tool == Tool.None, "Escape");
@@ -305,6 +316,26 @@ public partial class UiTest : Node
         Check(body >= 16, $"body text is {body} px at 1080p (UX tab: 16 px)");
         _notes.Add($"1080p smallest={smallest}px");
         await LabelsInside("1920x1080");
+    }
+
+    /// <summary>Chapter II at 1920 x 1080 then 1280 x 720: its controls, the crossing keys, the page and its labels.</summary>
+    private async Task RiverChapter()
+    {
+        _main.SwitchChapter(2);
+        await TestInput.Frames(this, 6);
+        Check(_main.Chapter == 2 && _main.Sim.World.River != null, "Chapter II did not open");
+        Controls();
+        TestInput.Motion(_main.Rig.LocalToScreen(new Vector3(128, 0, 128)));
+        await Key(Godot.Key.Y); Check(_main.Tools.Tool == Tool.Ferry, "Y (ferry)");
+        await Key(Godot.Key.D); Check(_main.Tools.Tool == Tool.Drawbridge, "D (drawbridge)");
+        await Key(Godot.Key.G); Check(_main.Tools.Tool == Tool.Gravel, "G (gravel) in Chapter II");
+        await Key(Godot.Key.Escape);
+        await LabelsInside("1920x1080-II");
+        GetWindow().Size = new Vector2I(1280, 720);
+        await TestInput.Frames(this, 6);
+        Controls();
+        await LabelsInside("1280x720-II");
+        _notes.Add("chapter2=ok");
     }
 
     private static void Check(bool ok, string why)

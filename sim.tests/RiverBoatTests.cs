@@ -167,7 +167,9 @@ public class RiverBoatTests
     [Fact]
     public void BoatsBuyGrainAtTwiceBaseAndTheMarketTakesTheRestUpToItsDailyLimit()
     {
-        var w = Make(2, 200, NoSchedule with { HaulGoods = true });
+        // Every unit at full value: wet grain from the ford (river pass 3, decision B) sells for less, which is
+        // RiverRules3Tests' subject. (Restated in pass 3: this test checked the prices assuming every unit was dry.)
+        var w = Make(2, 200, NoSchedule with { HaulGoods = true, WetGrainValueShare = 1 });
         var r = w.River!;
         Assert.True(r.LandingBuilding >= 0);
         Assert.Equal(BuildingKind.Landing, w.Buildings[r.LandingBuilding].Kind);
@@ -181,7 +183,7 @@ public class RiverBoatTests
         Assert.Equal(s.GrainToMarket * rules.MarketShare * rules.GrainPrice, s.MarketIncome, 6);
         Assert.True(s.GrainToMarket <= 4 * w.Houses.Length, $"{s.GrainToMarket} sold to the market");
         // With a smaller market the rest goes unsold.
-        var small = Make(2, 200, NoSchedule with { HaulGoods = true, MarketUnitsPerHouseDay = 0.25 });
+        var small = Make(2, 200, NoSchedule with { HaulGoods = true, MarketUnitsPerHouseDay = 0.25, WetGrainValueShare = 1 });
         ToyHarness.Run(small, 4);
         Assert.True(small.River!.Stats.GrainToMarket <= Math.Ceiling(0.25 * w.Houses.Length) * 4);
         Assert.True(small.River.Stats.GrainUnsold > 0);

@@ -81,6 +81,7 @@ public class RiverWalkerTests
         var x = Build(w, CrossingType.Drawbridge);
         ToyHarness.Run(w, 1);
         int maxQueue = 0;
+        var learned = new List<double>(); // the crossing's learned wait once each raise's queue has gone over
         for (int cycle = 0; cycle < 5; cycle++)
         {
             w.SetBridge(x.Id, true);
@@ -108,11 +109,18 @@ public class RiverWalkerTests
                 Assert.True(crossed <= perTick * (ticks + transit + w.Params.TickHz * w.River.Rules.BridgeBurstSec) + 1, $"{crossed} walkers crossed in {ticks} ticks: faster than the bridge's capacity");
             }
             Assert.True(waiting.Count == 0, $"{waiting.Count} walkers still wait at a lowered bridge {ticks} ticks after it came down ({queued} queued)");
+            learned.Add(x.AvgWait);
             AssertRiverInvariants(w, $"cycle {cycle}");
             for (int t = 0; t < 100; t++) w.Tick();
         }
         Assert.True(maxQueue >= 2, $"queue never formed ({maxQueue})");
-        Assert.True(x.AvgWait > 0.5, $"avg wait {x.AvgWait}, served {x.WalkersServed}, mean {w.River!.Stats.MeanWalkerWait}, worst {w.River.Stats.WalkerWaitMax}");
+        // The learned wait reflects the raises: once a raise's queue has gone over it is above 0.5 s every time. (Restated in
+        // river pass 3: this was the learned wait at the very end, 100 ticks after the last queue cleared. The learned wait
+        // is a moving average over the last walkers served, and once the bridge is down those are walkers who queued a tick
+        // or two for the bridge's capacity, so its value then depended on how many of those there happened to be. With
+        // walkers no longer let onto the deck free past the gate (step 1) more of them queue briefly, and on the round-2
+        // trail model it ended at 0.28 s although every raise's queue had taught it a wait of seconds.)
+        Assert.True(learned.Min() > 0.5, $"learned wait after each raise {string.Join(", ", learned.Select(v => v.ToString("F2")))}; at the end {x.AvgWait:F2}, served {x.WalkersServed}, mean {w.River!.Stats.MeanWalkerWait}, worst {w.River.Stats.WalkerWaitMax}");
         // 1 s up, 8 s held, 1 s down at most, then the queue's turn at the bridge's capacity.
         double drain = 2 * maxQueue / (w.River!.Rules.DrawbridgeWalkersPerDay / w.Params.DaySimSec);
         Assert.True(w.River!.Stats.WalkerWaitMax <= 10.2 + drain, $"worst wait {w.River.Stats.WalkerWaitMax}");

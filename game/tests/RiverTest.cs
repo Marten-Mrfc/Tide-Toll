@@ -39,7 +39,7 @@ public partial class RiverTest : Node
         _main.StartSeed = 1;
         _main.StartChapter = 2; // the river's chapter
         var rules = RiverRules.Default;
-        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 20 };
+        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 20, KeeperUnlockRaises = 0 }; // the keeper is hired at once here; the unlock has its own test
         AddChild(_main);
         Run();
     }

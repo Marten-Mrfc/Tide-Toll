@@ -20,6 +20,30 @@ public sealed partial class World
 
     private static string Coin(double c) => Math.Floor(c + 1e-9).ToString("0", CultureInfo.InvariantCulture) + "c";
 
+    /// <summary>Why a keeper cannot be hired yet, with the hand raises still to go, in words.</summary>
+    private string KeeperLockedReason(Crossing x)
+    {
+        int left = x.RaisesToKeeper, all = _river!.KeeperUnlockRaises;
+        return $"No keeper will take this bridge on yet: raise it by hand {Times(left)} more first ({CountWord(x.HandRaises)} of {CountWord(all)} raises done)";
+    }
+
+    private static readonly string[] Words =
+    {
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+        "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+    };
+
+    private static string CountWord(int n) => n >= 0 && n < Words.Length ? Words[n] : n.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>"once", "twice", "three times".</summary>
+    internal static string Times(int n) => n switch
+    {
+        0 => "no times",
+        1 => "once",
+        2 => "twice",
+        _ => CountWord(n) + " times",
+    };
+
     public static string CrossingName(CrossingType t) => t switch
     {
         CrossingType.Footbridge => "footbridge",
@@ -129,7 +153,13 @@ public sealed partial class World
         if (raise)
         {
             if (_frozen) return Refuse("The river is frozen: no boat can pass");
-            if (x.State == BridgeState.Closed || x.State == BridgeState.Lowering) StartRaise(x);
+            if (x.State == BridgeState.Closed || x.State == BridgeState.Lowering)
+            {
+                StartRaise(x);
+                // Raising by hand teaches the town the boats: after KeeperUnlockRaises of them a keeper will take the bridge on.
+                x.HandRaises++;
+                if (x.HandRaises == _river.KeeperUnlockRaises) Emit(RiverEventKind.KeeperUnlocked, -1, x.Id, x.HandRaises);
+            }
         }
         else
         {
@@ -147,6 +177,7 @@ public sealed partial class World
         var x = CrossingById(id);
         if (x == null || x.Type != CrossingType.Drawbridge) return Refuse("Only a drawbridge has a keeper");
         if (x.Keeper) return Refuse("This drawbridge already has a keeper");
+        if (x.RaisesToKeeper > 0) return Refuse(KeeperLockedReason(x));
         double price = _river.KeeperPrice;
         if (_money < price - 1e-9)
         {

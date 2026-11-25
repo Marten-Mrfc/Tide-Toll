@@ -171,6 +171,7 @@ public partial class Main : Node3D
         AddChild(Ui);              // sets Rig.PlayRoomPx for the tabs, so frame afterwards
         if (keep is { Overlay: true }) Ui.SetOverlay(true);
         if (keep is { PlayView: false }) Rig.FrameBook(instant: true); else Rig.FramePlay(instant: true);
+        Ui.PlaceNow();
         MoveChild(Turn, GetChildCount() - 1);
         ChapterBuilds++;
         ChapterChanged?.Invoke(Chapter);

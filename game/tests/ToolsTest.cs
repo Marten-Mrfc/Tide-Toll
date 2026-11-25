@@ -47,6 +47,8 @@ public partial class ToolsTest : Node
             await Fence();
             await Bridge();
             await Erase();
+            await Gravel();
+            await Gate();
             await Toolbar();
             await Isolation();
             GD.Print("TOOLS PASS " + string.Join(" ", _notes));

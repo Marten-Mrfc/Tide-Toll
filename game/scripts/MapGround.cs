@@ -41,6 +41,13 @@ public partial class MapGround : MeshInstance3D
     private ImageTexture? _seasonTex;
     private bool _iceShown;
     private float _flood, _ice, _mud;
+    private byte[] _gravelTexels = Array.Empty<byte>(), _gravelSeen = Array.Empty<byte>();
+    private Image? _gravelImg;
+    private ImageTexture? _gravelTex;
+
+    /// <summary>Gravel cells drawn, and uploads of the gravel strip (tests).</summary>
+    public int GravelCells { get; private set; }
+    public int GravelUploads { get; private set; }
 
     private static readonly StringName TimeS = new("time_s"), Overlay = new("overlay"), FloodS = new("flood"), IceS = new("ice"), MudS = new("mud");
 
@@ -70,12 +77,43 @@ public partial class MapGround : MeshInstance3D
         Material.SetShaderParameter("paper", Palette.Paper);
         MaterialOverride = Material;
         _sim.WorldReplaced += Rebuild;
+        _sim.Edited += OnEdited;
         Rebuild();
     }
 
     public override void _ExitTree()
     {
-        if (_sim != null) _sim.WorldReplaced -= Rebuild;
+        if (_sim == null) return;
+        _sim.WorldReplaced -= Rebuild;
+        _sim.Edited -= OnEdited;
+    }
+
+    private void OnEdited(int version) => UploadGravel(false);
+
+    /// <summary>
+    /// The gravel strip (GravelStrip) into its own linear texture at two texels a cell, when the gravel grid changed
+    /// (a brush, an erase, a fence laid over gravel). Edits only, never per frame.
+    /// </summary>
+    public void UploadGravel(bool force)
+    {
+        var gravel = _sim.World.Gravel;
+        int size = _n * GravelStrip.Res;
+        if (_gravelTexels.Length != size * size)
+        {
+            _gravelTexels = new byte[size * size];
+            _gravelSeen = new byte[_n * _n];
+            _gravelImg = Image.CreateFromData(size, size, false, Image.Format.R8, _gravelTexels);
+            _gravelTex = ImageTexture.CreateFromImage(_gravelImg);
+            Material.SetShaderParameter("gravel_tex", _gravelTex);
+            force = true;
+        }
+        if (!force && gravel.SequenceEqual(_gravelSeen)) return;
+        gravel.CopyTo(_gravelSeen);
+        GravelCells = GravelStrip.Rasterise(gravel, _n, _gravelTexels);
+        _gravelImg!.SetData(size, size, false, Image.Format.R8, _gravelTexels);
+        _gravelTex!.Update(_gravelImg);
+        Material.SetShaderParameter("gravel_on", GravelCells > 0 ? 1f : 0f);
+        GravelUploads++;
     }
 
     /// <summary>Show or hide the wear heat map (eased over a quarter second). The UI's wear-overlay button calls this.</summary>
@@ -140,10 +178,13 @@ public partial class MapGround : MeshInstance3D
         }
         _seasonImg!.SetData(_n, _n, false, Image.Format.Rg8, _season);
         _seasonTex!.Update(_seasonImg);
+        if (_wetMud.Length != _n * _n) InitRain();
+        else { Array.Clear(_wetMud); _mudShown = true; _dryFor = double.NaN; _wet = -1; }
         _iceShown = false;
         _flood = _ice = _mud = -1; // set at once on the next frame
         _snap = true;
         Upload();
+        UploadGravel(true);
     }
 
     public override void _Process(double delta)
@@ -155,6 +196,7 @@ public partial class MapGround : MeshInstance3D
             Material.SetShaderParameter(Overlay, _overlay);
         }
         Seasons((float)delta);
+        RainFrame((float)delta);
         _sinceUpload += delta;
         if (_sinceUpload >= 1.0 / UploadsPerSecond && !_sim.Paused) Upload();
     }
@@ -198,6 +240,7 @@ public partial class MapGround : MeshInstance3D
         _wearTex!.Update(_wearImg);
         Uploads++;
         UploadIce();
+        UploadMud();
     }
 
     /// <summary>The ice-wear layer into the seasons texture while frozen, and once more (cleared) after the thaw.</summary>

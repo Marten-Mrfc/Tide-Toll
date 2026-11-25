@@ -53,6 +53,101 @@ public static class CostField
     }
 
     /// <summary>
+    /// The same field as <see cref="Dijkstra(in Grid, int, float[], float[], BinaryHeap, ReadOnlySpan{int})"/>, by the
+    /// finished toy's bucket queue (river pass 3, plan step A10): buckets 0.99 x the cheapest cell's cost wide, so a step
+    /// always lands in a later bucket and every cell of a bucket is final when the bucket is emptied. Each value is the
+    /// float32-rounded minimum over the same edges, so the field is exactly the heap's (proven on the comparison data and
+    /// on live towns in CostFieldTests). Falls back to the heap when some cell costs nothing or the ring would be wider
+    /// than the scratch allows.
+    /// </summary>
+    public static void Dijkstra(in Grid grid, int target, float[] cost, float[] field, BinaryHeap heap, BucketQueue bq)
+    {
+        if (cost.Length != grid.Count || field.Length != grid.Count || bq._stamp.Length != grid.Count)
+            throw new ArgumentException("cost, field and the bucket queue must have one entry per grid cell.");
+        float lo = float.PositiveInfinity, hi = 0;
+        for (int i = 0; i < cost.Length; i++)
+        {
+            float c = cost[i];
+            if (c < lo) lo = c;
+            if (c > hi && c < float.PositiveInfinity) hi = c;
+        }
+        double width = lo * 0.99;
+        // A step reaches at most this many buckets ahead, so a ring of buckets suffices.
+        double ringD = lo > 0 ? Math.Ceiling(hi * Math.Sqrt(2) / width) + 2 : double.PositiveInfinity;
+        if (!(lo > 0) || !(ringD <= bq._head.Length) || !(cost[target] < float.PositiveInfinity))
+        {
+            Dijkstra(grid, target, cost, field, heap);
+            return;
+        }
+        int ring = (int)ringD;
+        Array.Fill(field, float.PositiveInfinity);
+        int[] head = bq._head, next = bq._next, node = bq._node, stamp = bq._stamp;
+        if (++bq._run == int.MaxValue) { Array.Clear(stamp); bq._run = 1; }
+        int run = bq._run;
+        Array.Fill(head, -1, 0, ring);
+        field[target] = 0;
+        node[0] = target; next[0] = -1; head[0] = 0;
+        int free = 1, pending = 1;
+        int w = grid.Width, h = grid.Height;
+        for (long b = 0; pending > 0; b++)
+        {
+            int slot = (int)(b % ring);
+            int e = head[slot];
+            head[slot] = -1; // relaxations from this bucket land in later ones
+            while (e >= 0)
+            {
+                int u = node[e];
+                e = next[e];
+                pending--;
+                if (stamp[u] == run) continue; // already settled from an earlier entry
+                stamp[u] = run;
+                double du = field[u];
+                int ux = u % w, uy = u / w;
+                double cu = cost[u];
+                if (ux > 0 && uy > 0 && ux < w - 1 && uy < h - 1)
+                {
+                    // Inside the border: the same eight steps in the same order, without the bounds tests.
+                    float cE = cost[u + 1], cW = cost[u - 1], cS = cost[u + w], cN = cost[u - w];
+                    bool oE = cE < float.PositiveInfinity, oW = cW < float.PositiveInfinity, oS = cS < float.PositiveInfinity, oN = cN < float.PositiveInfinity;
+                    if (oE) Relax(u + 1, du + 0.5 * (cu + cE), field, head, next, node, width, ring, ref free, ref pending);
+                    if (oW) Relax(u - 1, du + 0.5 * (cu + cW), field, head, next, node, width, ring, ref free, ref pending);
+                    if (oS) Relax(u + w, du + 0.5 * (cu + cS), field, head, next, node, width, ring, ref free, ref pending);
+                    if (oN) Relax(u - w, du + 0.5 * (cu + cN), field, head, next, node, width, ring, ref free, ref pending);
+                    double d2 = Grid.DL[4] * 0.5;
+                    if (oE && oS) { float c = cost[u + w + 1]; if (c < float.PositiveInfinity) Relax(u + w + 1, du + d2 * (cu + c), field, head, next, node, width, ring, ref free, ref pending); }
+                    if (oE && oN) { float c = cost[u - w + 1]; if (c < float.PositiveInfinity) Relax(u - w + 1, du + d2 * (cu + c), field, head, next, node, width, ring, ref free, ref pending); }
+                    if (oW && oS) { float c = cost[u + w - 1]; if (c < float.PositiveInfinity) Relax(u + w - 1, du + d2 * (cu + c), field, head, next, node, width, ring, ref free, ref pending); }
+                    if (oW && oN) { float c = cost[u - w - 1]; if (c < float.PositiveInfinity) Relax(u - w - 1, du + d2 * (cu + c), field, head, next, node, width, ring, ref free, ref pending); }
+                    continue;
+                }
+                for (int k = 0; k < 8; k++)
+                {
+                    int vx = ux + Grid.DX[k], vy = uy + Grid.DY[k];
+                    if (vx < 0 || vy < 0 || vx >= w || vy >= h) continue;
+                    int v = vy * w + vx;
+                    float cv = cost[v];
+                    if (float.IsPositiveInfinity(cv)) continue;
+                    if (k >= 4 && (float.IsPositiveInfinity(cost[uy * w + vx]) || float.IsPositiveInfinity(cost[vy * w + ux]))) continue;
+                    Relax(v, du + Grid.DL[k] * 0.5 * (cu + cv), field, head, next, node, width, ring, ref free, ref pending);
+                }
+            }
+        }
+    }
+
+    /// <summary>One relaxation of the bucket queue: the sum rounded to float32 as the toy does, pushed when it improves.</summary>
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static void Relax(int v, double sum, float[] field, int[] head, int[] next, int[] node, double width, int ring, ref int free, ref int pending)
+    {
+        float nd = (float)sum;
+        if (nd < field[v])
+        {
+            field[v] = nd;
+            int to = (int)(Math.Floor(nd / width) % ring);
+            node[free] = v; next[free] = head[to]; head[to] = free; free++; pending++;
+        }
+    }
+
+    /// <summary>
     /// Cost of walking straight from (x0,y0) to (x1,y1), or +Infinity if the line crosses a blocked cell or cuts a blocked
     /// corner. With <paramref name="limit"/> it may stop early and return any value above it once the cost is sure to exceed it.
     /// </summary>

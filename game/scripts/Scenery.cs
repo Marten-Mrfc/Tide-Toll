@@ -42,7 +42,34 @@ public partial class Scenery : Node3D
         _boat = ModelLib.Instance("rowboat", "Rowboat"); AddChild(_boat);
         sim.WorldReplaced += Rebuild;
         sim.Edited += OnEdited;
+        sim.HouseBuilt += OnHouseBuilt;
         Rebuild();
+    }
+
+    private List<Transform3D>[] _treeLists = { new(), new(), new() };
+    /// <summary>Trees taken down for cottages the town grew (tests).</summary>
+    public int Felled { get; private set; }
+
+    /// <summary>
+    /// A cottage grew where trees stand (the simulation does not know the scenery): the trees on its plot and the cell
+    /// round it are taken down, so no house stands in a copse. Once per new house.
+    /// </summary>
+    private void OnHouseBuilt(int index)
+    {
+        var b = _sim.World.Buildings[index];
+        float cell = (float)_sim.World.Params.CellMeters;
+        float x0 = (b.X - 1.2f) * cell, x1 = (b.X + b.W + 1.2f) * cell, z0 = (b.Y - 1.2f) * cell, z1 = (b.Y + b.H + 2.2f) * cell;
+        for (int k = 0; k < 3; k++)
+        {
+            var list = _treeLists[k];
+            int before = list.Count;
+            list.RemoveAll(t => t.Origin.X > x0 && t.Origin.X < x1 && t.Origin.Z > z0 && t.Origin.Z < z1);
+            if (list.Count == before) continue;
+            Felled += before - list.Count;
+            Fill(_trees[k], list);
+        }
+        int n = _sim.World.Grid.Width;
+        TreeCells.RemoveAll(t => t.cell % n >= b.X - 1 && t.cell % n < b.X + b.W + 1 && t.cell / n >= b.Y - 1 && t.cell / n < b.Y + b.H + 1);
     }
 
     // Crown centre and the height the crown starts, per model (assets/src/models/tree.py), for the round shading.
@@ -72,6 +99,7 @@ public partial class Scenery : Node3D
         if (_sim == null) return;
         _sim.WorldReplaced -= Rebuild;
         _sim.Edited -= OnEdited;
+        _sim.HouseBuilt -= OnHouseBuilt;
     }
 
     public void Rebuild()
@@ -132,6 +160,7 @@ public partial class Scenery : Node3D
             if (TryTree(w, x, y, clear, lists, ref rng)) made++;
         }
         for (int i = 0; i < 3; i++) Fill(_trees[i], lists[i]);
+        _treeLists = lists;
     }
 
     /// <summary>Copses placed for the current map (tests and stats).</summary>

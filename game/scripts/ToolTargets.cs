@@ -76,12 +76,13 @@ public static class ToolTargets
         return $"Erase: taking down the {what} costs {RiverFeed.Coin(cost)} (no refund). Click to remove it.";
     }
 
-    /// <summary>Fence cells in the 3 x 3 round a cell, and every cell of any bridge touched (the toy's brush).</summary>
-    public static void EraseTargets(World w, int x, int y, List<int> fenceT, List<int> bridgeT)
+    /// <summary>Fence (with its gates) and gravel cells in the 3 x 3 round a cell, and every cell of any bridge touched (the toy's brush).</summary>
+    public static void EraseTargets(World w, int x, int y, List<int> fenceT, List<int> bridgeT, List<int> gravelT)
     {
         int n = w.Grid.Width;
-        fenceT.Clear(); bridgeT.Clear();
+        fenceT.Clear(); bridgeT.Clear(); gravelT.Clear();
         var fence = w.Fence;
+        var gravel = w.Gravel;
         var bridgeAt = w.BridgeAt;
         for (int dy = -1; dy <= 1; dy++)
             for (int dx = -1; dx <= 1; dx++)
@@ -90,6 +91,7 @@ public static class ToolTargets
                 if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
                 int c = yy * n + xx;
                 if (fence[c] != 0) fenceT.Add(c);
+                if (gravel[c] != 0) gravelT.Add(c);
                 // A ferry is no bridge: its water cells are found through the river's crossing map.
                 if (w.River != null && bridgeAt[c] < 0 && w.CrossingAt(c) >= 0 && !bridgeT.Contains(c))
                 {

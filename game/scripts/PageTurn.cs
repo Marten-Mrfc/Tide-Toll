@@ -26,6 +26,8 @@ public partial class PageTurn : CanvasLayer
     /// <summary>Page turns finished so far, and the chapter being turned to (tests).</summary>
     public int Turns { get; private set; }
     public int Target => _to;
+    /// <summary>Screenshots: the turn stops at this many seconds in until set back to a negative value.</summary>
+    public double PinAt = -1;
     /// <summary>How much of the book the leaf covers now, 0..1 (tests and screenshots).</summary>
     public float Cover { get; private set; }
 
@@ -58,6 +60,7 @@ public partial class PageTurn : CanvasLayer
     private void Step(double dt)
     {
         _t += dt;
+        if (PinAt >= 0 && _t > PinAt) _t = PinAt;
         // The book's spread on screen (the rig is the new chapter's once it is built; the framing is kept).
         var cam = _main.Rig.Camera;
         var l = _main.LeftPageRect;
@@ -79,6 +82,7 @@ public partial class PageTurn : CanvasLayer
             {
                 _switched = true;
                 _main.SwitchChapter(_to); // the frame this takes is hidden under the leaf
+                _main.Sim.Held = true;    // the new town waits on day one until the page is open
             }
             _leaf.From = lx; _leaf.To = rx; _leaf.HeadingAlpha = 1;
             Cover = 1;
@@ -94,6 +98,7 @@ public partial class PageTurn : CanvasLayer
         {
             _t = -1;
             Cover = 0;
+            _main.Sim.Held = false;
             Turns++;
             _leaf.Visible = false;
             SetProcess(false);

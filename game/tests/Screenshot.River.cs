@@ -29,7 +29,7 @@ public partial class Screenshot
     private async Task RiverShots()
     {
         var rules = _main.River ?? RiverRules.Default; // every crossing affordable, whatever the prices are
-        _main.River = rules with { StartMoney = rules.FootbridgePrice + rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 870 };
+        _main.River = rules with { StartMoney = rules.FootbridgePrice + rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 870, KeeperUnlockRaises = 0 }; // keeper hired at once; the unlock has its own test
         _main.SwitchChapter(2); // Chapter II, The River: the book is built again with the river rules on
         await Frames(2);
         var sim = _main.Sim;

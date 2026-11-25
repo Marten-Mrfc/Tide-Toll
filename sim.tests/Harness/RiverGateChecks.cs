@@ -6,8 +6,9 @@ namespace TideToll.Sim.Testing;
 
 /// <summary>
 /// The river experiment's checks, on the bot's runs (seeds x players x 60 and 200 walkers, over the longest run
-/// length given, normally 30 days). (a) to (f) are the lead's trade-off criteria for this round; the spec's earlier
-/// checks follow; the old keeper check is printed as report only. "Most towns" means more than half of the seeds.
+/// length given, normally 30 days). (a) to (g) are the lead's "real choices" (decision E, river pass 3, 25 Nov 2026);
+/// the spec's earlier checks follow; the old keeper check and the old form of (b) ("the ford is clearly the slowest")
+/// are printed as report only, with their result. "Most towns" means more than half of the seeds.
 /// They are reported as measured; a failing check is a finding for the tuner, never a test to bend.
 /// </summary>
 public static class RiverGateChecks
@@ -15,8 +16,9 @@ public static class RiverGateChecks
     /// <summary>A large ford detour: the ford at least this many rows from the landing.</summary>
     public const double LargeDetourRows = 15;
 
-    public static void Check(IReadOnlyList<RiverRunResult> all, CheckLog log)
+    public static void Check(IReadOnlyList<RiverRunResult> all, CheckLog log, RiverRules? rulesUsed = null)
     {
+        var rules = rulesUsed ?? RiverRules.Default;
         int days = all.Max(r => r.Days);
         var rows = all.Where(r => r.Days == days).ToList();
         List<RiverRunResult> Of(RiverPlayer p, int walkers = 200) => rows.Where(r => r.Player == p && r.Walkers == walkers).ToList();
@@ -46,13 +48,33 @@ public static class RiverGateChecks
         log.Check(nextTrade.Key != default && trade.GetValueOrDefault(S3) <= 0.8 * nextTrade.Value,
             $"(a) footbridge has clearly the worst trade: at most 80% of every other player's but the never-raised drawbridge (S3 {trade.GetValueOrDefault(S3):F0}c, next lowest {nextTrade.Key.Key} {nextTrade.Value:F0}c; S4 {trade.GetValueOrDefault(S4):F0}c)");
 
-        // (b) The ford is free but clearly the slowest way across where it is far from the landing, and closed in the flood.
+        // (b) The free ford costs trade: at 200 walkers the ford-only town ends with clearly less money than the best purchase
+        // in most towns (the lead's aim: 15% less at the median), and it is the richest strategy in at most a quarter of towns.
+        var buyers = players200.Where(p => p != S1).ToList();
+        var shortfall = new List<double>();
+        int s1Richest = 0, s1Behind = 0;
+        foreach (var r1 in Of(S1))
+        {
+            var others = buyers.SelectMany(p => Of(p).Where(r => r.Seed == r1.Seed)).ToList();
+            if (others.Count == 0) continue;
+            double top = others.Max(r => r.Money);
+            double sf = (top - r1.Money) / Math.Max(1, Math.Abs(top));
+            shortfall.Add(sf);
+            if (sf >= 0.05) s1Behind++;
+            if (r1.Money >= top) s1Richest++;
+        }
+        double medShort = RiverBot.Median(shortfall);
+        log.Check(shortfall.Count > 0 && 2 * s1Behind > shortfall.Count && medShort >= 0.15,
+            $"(b) the free ford costs trade: at 200 walkers ford only ends with clearly less money (5%+) than the best purchase in most towns ({s1Behind} of {shortfall.Count}) and 15%+ less at the median (median shortfall {P(medShort)}; wet grain lost, median {Med(S1, r => r.WetLost):F0}c, {P(Med(S1, r => r.WetShare))} of its grain delivered wet)");
+        log.Check(shortfall.Count > 0 && 4 * s1Richest <= shortfall.Count,
+            $"(b) ford only is the richest strategy at 200 walkers in at most a quarter of towns ({s1Richest} of {shortfall.Count})");
+        // The old form of (b), report only.
         var far = Of(S1).Where(r => r.FordDetourRows >= LargeDetourRows).Select(r => r.Seed).ToHashSet();
         double TripFar(RiverPlayer p) => RiverBot.Median(Of(p).Where(r => far.Contains(r.Seed)).Select(r => r.MeanTrip));
         var farTrip = players200.ToDictionary(p => p, TripFar);
         var nextSlow = farTrip.Where(kv => kv.Key != S1).OrderByDescending(kv => kv.Value).FirstOrDefault();
-        log.Check(far.Count > 0 && farTrip[S1] >= 1.1 * nextSlow.Value,
-            $"(b) ford only is clearly the slowest (10%+ over every other player) on the {far.Count} towns with the ford {LargeDetourRows}+ rows from the landing (S1 {farTrip.GetValueOrDefault(S1):F2} s, next slowest {nextSlow.Key.Key} {nextSlow.Value:F2} s)");
+        bool oldB = far.Count > 0 && farTrip[S1] >= 1.1 * nextSlow.Value;
+        log.Log($"  report only  (b, old form) ford only is clearly the slowest (10%+ over every other player) on the {far.Count} towns with the ford {LargeDetourRows}+ rows from the landing: {(oldB ? "yes" : "no")} (S1 {farTrip.GetValueOrDefault(S1):F2} s, next slowest {nextSlow.Key.Key} {nextSlow.Value:F2} s)");
         int floodDays = rows.Sum(r => r.FloodDays), fordInFlood = rows.Sum(r => r.FordCrossingsInFlood);
         log.Check(floodDays > 0 && fordInFlood == 0, $"(b) nobody crosses the ford while the flood band is under water ({fordInFlood} crossings over {floodDays} flood days in all runs)");
 
@@ -78,6 +100,10 @@ public static class RiverGateChecks
         log.Check(Most(e30), $"(e) at 200 walkers the keeper ends with more net money than the player missing 30% of boats in most towns ({Of2(e30)}; medians S6 {Med(S6, money):F0}c, S5-30 {Med(S5b, money):F0}c)");
         log.Check(Most(e50), $"(e) at 200 walkers the keeper ends with more net money than the player missing 50% of boats in most towns ({Of2(e50)}; S5-50 {Med(S5c, money):F0}c)");
         log.Log($"  info  (e) against the player missing 10% (need not win): {Of2(e10)}; S5-10 {Med(S5a, money):F0}c");
+        var hired = rows.Where(r => r.Player == S6 && r.KeeperDay >= 0).ToList();
+        int unlockRaises = rules.KeeperUnlockRaises;
+        bool early = hired.Any(r => r.KeeperUnlockDay < 0 || r.KeeperDay < r.KeeperUnlockDay || r.HandRaisesAtHire < unlockRaises);
+        log.Check(!early, $"(e) the keeper is never hired before its unlock ({unlockRaises} hand raises): {hired.Count} hires over {rows.Count(r => r.Player == S6)} keeper runs, all after the unlock: {(early ? "no" : "yes")}");
 
         // (f) No strategy is best at trade income, trip time and net money at once.
         var best = new Dictionary<string, RiverPlayer>
@@ -87,6 +113,20 @@ public static class RiverGateChecks
             ["net money"] = players200.OrderByDescending(p => Med(p, money)).First(),
         };
         log.Check(best.Values.Distinct().Count() > 1, "(f) no strategy is best at trade income, trip time and net money at once (" + string.Join(", ", best.Select(kv => $"{kv.Key}: {kv.Value.Key}")) + ")");
+
+        // (g) Pacing: a crossing is affordable on the first in-game day; the drawbridge after roughly 6 to 10 days at 200
+        // walkers; the keeper no sooner than its unlock (about 10 hand raises) after that.
+        double cheapest = Math.Min(rules.FerryPrice, rules.FootbridgePrice);
+        var firstBuys = rows.Where(r => r.Player == S2 || r.Player == S3).ToList();
+        int lateFirst = firstBuys.Count(r => r.BuiltDay < 0 || r.BuiltDay > 1);
+        log.Check(rules.StartMoney >= cheapest && firstBuys.Count > 0 && lateFirst == 0,
+            $"(g) one crossing is affordable in the first in-game day: purse {rules.StartMoney:F0}c, ferry {rules.FerryPrice:F0}c, footbridge {rules.FootbridgePrice:F0}c; {firstBuys.Count - lateFirst} of {firstBuys.Count} ferry and footbridge runs built by day 1");
+        double drawDay = Med(S5a, r => r.BuiltDay);
+        log.Check(drawDay >= 6 && drawDay <= 10, $"(g) at 200 walkers the drawbridge is bought after 6 to 10 in-game days (median S5-10 {drawDay:F1}; S6 {Med(S6, r => r.BuiltDay):F1})");
+        var s6 = Of(S6).Where(r => r.BuiltDay >= 0).ToList();
+        double unlockAfter = RiverBot.Median(s6.Where(r => r.KeeperUnlockDay >= 0).Select(r => r.KeeperUnlockDay - r.BuiltDay));
+        double hireAfter = RiverBot.Median(s6.Where(r => r.KeeperDay >= 0).Select(r => r.KeeperDay - r.BuiltDay));
+        log.Check(hired.Count > 0 && !early, $"(g) the keeper comes no sooner than its unlock after the drawbridge: unlocked a median {unlockAfter:F1} days and hired {hireAfter:F1} days after the drawbridge at 200 walkers ({s6.Count(r => r.KeeperUnlockDay >= 0)} of {s6.Count} unlocked, {s6.Count(r => r.KeeperDay >= 0)} hired)");
 
         // The spec's earlier checks.
         double b3 = Med(S3, r => r.TurnBackBarge), t1 = Med(S1, r => r.TurnBack);

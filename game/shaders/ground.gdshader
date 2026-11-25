@@ -16,7 +16,9 @@ uniform sampler2D g1 : source_color, filter_linear_mipmap, repeat_enable;   // t
 uniform sampler2D g2 : source_color, filter_linear_mipmap, repeat_enable;   // trail
 uniform sampler2D g3 : source_color, filter_linear_mipmap, repeat_enable;   // track
 uniform sampler2D g4 : source_color, filter_linear_mipmap, repeat_enable;   // hollow way
-uniform sampler2D season_tex : filter_linear, repeat_disable;              // RG8 128x128: R = ice wear/100, G = flood band
+uniform sampler2D season_tex : filter_linear, repeat_disable;
+uniform sampler2D wetmud_tex : filter_linear, repeat_disable;              // R8 128x128: how wet each mud cell is drawn (rain, Chapter I)
+uniform sampler2D gravel_tex : filter_linear, repeat_disable;              // R8 256x256: the gravel strip's edge ramp (0.5 = edge)              // RG8 128x128: R = ice wear/100, G = flood band
 uniform sampler2D paper_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D water_tex : source_color, filter_linear_mipmap, repeat_enable;
 
@@ -46,6 +48,15 @@ uniform vec4 heat3 : source_color = vec4(0.690, 0.165, 0.180, 1.0);
 uniform vec4 heat4 : source_color = vec4(0.298, 0.063, 0.212, 1.0);
 uniform vec4 ice_col : source_color = vec4(0.686, 0.769, 0.808, 1.0);   // pale ice, #AFC4CE
 uniform vec4 mud_col : source_color = vec4(0.369, 0.290, 0.212, 1.0);   // #5E4A36
+uniform float rain_wet = 0.0;        // 0..1, eased: the ground's wetness after rain (Chapter I)
+uniform float mud_on = 0.0;          // any mud from rain to draw
+uniform vec4 rain_mud_col : source_color = vec4(0.310, 0.243, 0.184, 1.0); // #4F3E2F, the toy's mud
+uniform vec4 wet_col : source_color = vec4(0.498, 0.561, 0.600, 1.0);      // #7F8F99, the toy's wet multiply
+uniform vec4 glint_col : source_color = vec4(0.835, 0.886, 0.910, 1.0);    // #D5E2E8, puddle glints
+uniform float gravel_on = 0.0;       // any gravel on the map
+uniform vec4 gravel_wash : source_color = vec4(0.933, 0.918, 0.863, 1.0);  // #EEEADC, the toy's wash
+uniform vec4 gravel_stone : source_color = vec4(0.467, 0.475, 0.435, 1.0); // #77796F
+uniform vec4 gravel_rim : source_color = vec4(0.353, 0.361, 0.333, 1.0);   // #5A5C55
 uniform vec3 shadow_tint = vec3(0.70, 0.74, 0.86);
 uniform float bank_px = 1.6;         // ink bank line width in screen pixels
 
@@ -132,6 +143,21 @@ void fragment() {
 	c = mix(c, two(g4, lp), w4);
 	c = mix(c, texture(ramp_tex, vec2(core, 0.5)).rgb, ramp_mix * bare * (1.0 - w4));
 	float w = core;
+	// Rain's mud: wet trail, the same worn ground pulled toward wet earth and darkened, a little more solid over the
+	// trail's grassy edges, with a few still puddle glints on the busiest cells. It dries cell by cell (the C# side).
+	if (mud_on > 0.0) {
+		float mu = texture(wetmud_tex, m / map_size).r * smoothstep(0.17, 0.30, core);
+		if (mu > 0.002) {
+			float solid = mu * (0.45 + 0.55 * bare);
+			c = mix(c, mix(c, rain_mud_col.rgb, 0.34), solid);
+			c *= vec3(1.0 - 0.14 * solid, 1.0 - 0.14 * solid, 1.0 - 0.10 * solid);
+			// Few and small: still puddles only in the wettest middle of busy trails.
+			float glint = smoothstep(0.86, 0.90, vnoise(lp / 0.75 + 17.0)) * smoothstep(0.55, 0.75, core) * smoothstep(0.7, 1.0, mu);
+			c = mix(c, glint_col.rgb, glint * 0.45);
+		}
+	}
+	// Wet ground is darker everywhere on land: multiplied toward a cool grey with the wetness (the toy's 0.4).
+	c *= mix(vec3(1.0), wet_col.rgb, 0.4 * rain_wet);
 
 	// field: rows of ripe crop running east-west, trampled to earth where trails cross, with an ink edge
 	vec2 mask = texture(mask_tex, uv).rg;
@@ -150,6 +176,26 @@ void fragment() {
 		e += abs(texture(mask_tex, uv + o.yx).g - mask.g);
 		e += abs(texture(mask_tex, uv - o.yx).g - mask.g);
 		c = mix(c, mix(c, ink.rgb, 0.6), clamp(e, 0.0, 1.0) * mask.g);
+	}
+
+	// Gravel: a pale stony strip with a thin dark rim (a pixel or two at any zoom), stones scattered on it that fade to
+	// their mean when they would be smaller than a pixel. It never shows wear: walkers keep it a trail, not a scar.
+	if (gravel_on > 0.0) {
+		float gv = texture(gravel_tex, (lp + warp * cm * 0.18) / map_size).r - 0.5;
+		float ga = max(fwidth(gv), 1e-4);
+		float strip = smoothstep(-ga, ga, gv);
+		float rim = 1.0 - smoothstep(ga * 0.6, ga * 2.2, abs(gv));
+		vec2 sp = lp / 0.62;
+		vec2 si = floor(sp);
+		vec2 so = vec2(hash12(si + 3.1), hash12(si + 7.7)) - 0.5;
+		float sd = length(fract(sp) - 0.5 - so * 0.45);
+		float sr = 0.16 + 0.12 * hash12(si + 1.9);
+		float stone = (1.0 - smoothstep(sr - 0.06, sr + 0.06, sd)) * step(0.3, hash12(si));
+		float fine = 1.0 - smoothstep(0.08, 0.30, fwidth(lp.x));   // stones show from about 3 px a metre
+		vec3 wash = gravel_wash.rgb * (0.95 + 0.08 * n2);
+		vec3 gc = mix(mix(wash, gravel_stone.rgb, 0.18), mix(wash, gravel_stone.rgb, stone * 0.85), fine);
+		c = mix(c, gc, strip);
+		c = mix(c, gravel_rim.rgb, rim * 0.9);
 	}
 
 	// river: signed distance to the bank from the per-row centre line

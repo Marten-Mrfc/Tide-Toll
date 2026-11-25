@@ -28,6 +28,8 @@ public partial class SimDriver : Node
     public int Seed { get; private set; } = 1;
     public int WalkerCount { get; private set; }
     public bool Paused { get; private set; }
+    /// <summary>Time held without pausing (the page turn: the new chapter's town waits for the page to open).</summary>
+    public bool Held;
     public int Speed { get; private set; } = 1;
 
     /// <summary>Fraction of the way from the previous tick to the current one, for drawing walkers between ticks.</summary>
@@ -50,6 +52,14 @@ public partial class SimDriver : Node
     public event Action<int>? Edited;
     /// <summary>Pause or speed changed.</summary>
     public event Action? TimeChanged;
+    /// <summary>
+    /// The library built a new cottage during a tick (house growth, Chapter I): the building's index, raised once per house
+    /// in build order, after the ticks and before <see cref="Edited"/>. Never allocates.
+    /// </summary>
+    public event Action<int>? HouseBuilt;
+    /// <summary>Grown houses announced so far (World.Grown.Length once the frame's ticks are told).</summary>
+    public int HousesSeen => _grownSeen;
+    private int _grownSeen;
 
     private double _acc;
     private int _seenVersion = -1;
@@ -99,6 +109,7 @@ public partial class SimDriver : Node
         Alpha = 1f;
         BudgetHits = 0;
         _seenVersion = World.Version;
+        _grownSeen = World.Grown.Length;
         WorldReplaced?.Invoke();
     }
 
@@ -106,7 +117,7 @@ public partial class SimDriver : Node
     {
         TicksThisFrame = 0;
         SimMsThisFrame = 0;
-        if (!Paused)
+        if (!Paused && !Held)
         {
             double dt = Math.Min(0.25, delta);
             AnimTime += dt * Speed;
@@ -135,7 +146,15 @@ public partial class SimDriver : Node
         }
         else Alpha = 1f;
         if (delta > 0) TicksPerSecond = TicksPerSecond * 0.95 + TicksThisFrame / delta * 0.05;
+        CheckGrowth();
         CheckVersion();
+    }
+
+    /// <summary>Raises <see cref="HouseBuilt"/> for every cottage the library added since the last call.</summary>
+    public void CheckGrowth()
+    {
+        var grown = World.Grown;
+        while (_grownSeen < grown.Length) HouseBuilt?.Invoke(grown[_grownSeen++].Building);
     }
 
     /// <summary>Raises <see cref="Edited"/> when the world's edit version moved (from a command here or anywhere).</summary>
@@ -153,6 +172,7 @@ public partial class SimDriver : Node
     {
         for (int i = 0; i < ticks; i++) World.Tick();
         Alpha = 1f;
+        CheckGrowth();
         CheckVersion();
     }
 
@@ -202,6 +222,30 @@ public partial class SimDriver : Node
         var r = World.HireKeeper(id);
         CheckVersion();
         return r;
+    }
+
+    /// <summary>Lays gravel on these cells (free in both chapters); returns how many were new.</summary>
+    public int PlaceGravel(ReadOnlySpan<int> cells)
+    {
+        int n = World.PlaceGravel(cells);
+        CheckVersion();
+        return n;
+    }
+
+    /// <summary>Puts a gate in the fence at a cell (and its stair partner when it needs one); false if none fits there.</summary>
+    public bool PlaceGate(int cell)
+    {
+        bool ok = World.PlaceGate(cell);
+        CheckVersion();
+        return ok;
+    }
+
+    /// <summary>Turns a gate (both cells of a two-cell gate) back into plain fence.</summary>
+    public bool RemoveGate(int cell)
+    {
+        bool ok = World.RemoveGate(cell);
+        CheckVersion();
+        return ok;
     }
 
     public int Erase(ReadOnlySpan<int> cells)

@@ -174,7 +174,7 @@ public partial class ToolTabs : VBoxContainer
         key.AddThemeColorOverride("font_color", UiKit.Paper);
         ((StyleBoxFlat)key.GetThemeStylebox("normal")).BorderColor = new Color(UiKit.Paper, 0.7f);
         row.AddChild(key);
-        Place(b, row, 44);
+        Place(b, row, 52);
         var ribbon = Palette.Brick;
         b.AddThemeStyleboxOverride("normal", UiKit.Tab(_s, ribbon, 1.5f, 0));
         b.AddThemeStyleboxOverride("hover", UiKit.Tab(_s, ribbon.Lightened(0.1f), 1.5f, 4));

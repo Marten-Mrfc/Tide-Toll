@@ -119,6 +119,14 @@ if have_godot; then
   # both erased; then four in-game days with boats (events, chronicle, ledger, coins, sound cues).
   step game-river tools/godot-test.sh 'RIVER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/river.tscn --quit-after 20000
   note "$(grep -o 'RIVER PASS.*' "$LOGS/game-river.log" | head -1 | cut -c1-90)"
+  # The two chapters: the game opens on Chapter I (no river), the chapter bookmark and C turn the page (the leaf covers
+  # the book while it is built again), Chapter II has the river rules, reset and new map stay inside the chapter.
+  step game-chapter tools/godot-test.sh 'CHAPTER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/chapter.tscn --quit-after 8000
+  note "$(grep -o 'CHAPTER PASS.*' "$LOGS/game-chapter.log" | head -1 | cut -c1-90)"
+  # Chapter I's living town: the first cottage the library builds is drawn (rising, then standing), gets its yard and
+  # its mark, the chapter page counts it, and its household walks.
+  step game-hamlet tools/godot-test.sh 'HAMLET PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/hamlet.tscn --quit-after 20000
+  note "$(grep -o 'HAMLET PASS.*' "$LOGS/game-hamlet.log" | head -1 | cut -c1-90)"
   # Every control exists, has a tooltip and label, toggles its state by mouse; every shortcut; focus; text sizes.
   step game-ui tools/godot-test.sh 'UI PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/ui.tscn --quit-after 4000
   note "$(grep -o 'UI PASS.*' "$LOGS/game-ui.log" | head -1 | cut -c1-90)"
@@ -142,7 +150,7 @@ if have_godot; then
     note "build/screenshots/{book,map,wear,preview,river-*}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-tools game-river game-ui game-perf screenshot; do
+  for s in game-build game-smoke game-tools game-river game-chapter game-hamlet game-ui game-perf screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

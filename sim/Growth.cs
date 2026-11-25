@@ -71,10 +71,19 @@ public sealed partial class World
     public ReadOnlySpan<GrownHouse> Grown => new(_grown, 0, _grownCount);
     /// <summary>Per cell, how many standing grown houses front it (all zero with growth off).</summary>
     public ReadOnlySpan<byte> Fronted => _fronted;
+    /// <summary>
+    /// Growth has used every house slot the world pre-sized (SimParams.MaxGrownHouses): no more households come, whatever
+    /// the population. The slots cover a town growing to its Hamlet target; only lowering the walker count by hand while
+    /// the town grows can use them up (the toy has no such limit). Shown so the game can say so instead of growth
+    /// stopping silently (river pass 3).
+    /// </summary>
+    public bool GrowthRoomFull => _growthOn && _nb == _bs;
+    /// <summary>Houses growth may still add before <see cref="GrowthRoomFull"/> (0 with growth off).</summary>
+    public int GrowthRoomLeft => _growthOn ? _bs - _nb : 0;
     /// <summary>Sim time of the next household's arrival check.</summary>
     public double NextHouseTime => _nextHouseTime;
 
-    /// <summary>The growth stream's seed: <c>((seed * 40503) ^ 0x6f7d) &gt;&gt;&gt; 0</c>.</summary>
+    /// <summary>The growth stream's seed: <c>((seed * 40503) ^ 0x6f7d) &gt;&gt;&gt; 0</c>. Exact in the toy's doubles for every int seed (|seed * 40503| &lt; 2^47).</summary>
     public static uint GrowthStreamSeed(int seed) => unchecked((uint)((long)seed * 40503L) ^ 0x6f7du);
 
     private void InitGrowth(int seed)
@@ -93,7 +102,7 @@ public sealed partial class World
     private void GrowHouse()
     {
         if (_walkerCount + _p.HouseholdSize > Math.Min(_p.HamletTarget, _p.MaxWalkers)) return;
-        if (_nb == _bs) return; // only after the walker count was lowered by hand many times: no room was kept
+        if (_nb == _bs) return; // GrowthRoomFull: only after the walker count was lowered by hand many times
         if (ChoosePlot(out Plot plot)) AddHouse(plot);
     }
 

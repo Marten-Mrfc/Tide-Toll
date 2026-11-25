@@ -84,7 +84,8 @@ public class RiverCrossingTests
     [Fact]
     public void KeeperRaisesOneSecondAfterABargeIsWithinSixRowsAndLowersOnceItIsThrough()
     {
-        var w = Make(1, 0, Rich);
+        // The keeper's timing, hired at once (its unlock by hand raises, river pass 3, is RiverRules3Tests').
+        var w = Make(1, 0, Rich with { KeeperUnlockRaises = 0 });
         var x = Build(w, CrossingType.Drawbridge);
         Assert.True(w.HireKeeper(x.Id).Ok);
         Assert.True(x.Keeper);

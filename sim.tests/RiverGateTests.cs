@@ -23,7 +23,7 @@ public sealed class RiverRunsFixture
 
 /// <summary>
 /// Automated stand-in for the river playtest: the crossing choices are real trade-offs (the lead's criteria (a) to
-/// (f)), and the spec's earlier checks. Each check is one test, so the report shows exactly which hold. Category=Gate.
+/// (g), decision E of river pass 3), and the spec's earlier checks. Each check is one test, so the report shows exactly which hold. Category=Gate.
 /// </summary>
 [Trait("Category", "Gate")]
 public class RiverGateTests : IClassFixture<RiverRunsFixture>
@@ -46,7 +46,9 @@ public class RiverGateTests : IClassFixture<RiverRunsFixture>
 
     [Fact] public void A_FootbridgeGivesTheFastestTrips() => Check("(a) footbridge gives the fastest");
     [Fact] public void A_FootbridgeHasClearlyTheWorstTrade() => Check("(a) footbridge has clearly the worst trade");
-    [Fact] public void B_FordIsClearlyTheSlowestWhenFar() => Check("(b) ford only is clearly the slowest");
+    // (b) in the lead's new form (decision E, river pass 3); the old form ("the ford is clearly the slowest") is printed as report only.
+    [Fact] public void B_TheFreeFordCostsTrade() => Check("(b) the free ford costs trade");
+    [Fact] public void B_FordOnlyIsRarelyTheRichest() => Check("(b) ford only is the richest strategy");
     [Fact] public void B_NobodyCrossesTheFordInTheFlood() => Check("(b) nobody crosses the ford");
     [Fact] public void C_FerryIsTheBetterBuyInASmallVillage() => Check("(c) at 60 walkers the ferry");
     [Fact] public void C_FerryCapacityBitesAt200() => Check("(c) at 200 walkers the ferry's capacity bites");
@@ -54,7 +56,11 @@ public class RiverGateTests : IClassFixture<RiverRunsFixture>
     [Fact] public void D_DrawbridgeDoesNotPayBackAt60() => Check("(d) at 60 walkers it does not");
     [Fact] public void E_KeeperBeatsThePlayerMissing30() => Check("(e) at 200 walkers the keeper ends with more net money than the player missing 30%");
     [Fact] public void E_KeeperBeatsThePlayerMissing50() => Check("(e) at 200 walkers the keeper ends with more net money than the player missing 50%");
+    [Fact] public void E_KeeperIsNeverHiredBeforeItsUnlock() => Check("(e) the keeper is never hired before its unlock");
     [Fact] public void F_NoStrategyDominates() => Check("(f) no strategy is best");
+    [Fact] public void G_ACrossingIsAffordableOnTheFirstDay() => Check("(g) one crossing is affordable in the first in-game day");
+    [Fact] public void G_TheDrawbridgeComesAfterSixToTenDays() => Check("(g) at 200 walkers the drawbridge is bought after 6 to 10");
+    [Fact] public void G_TheKeeperComesNoSoonerThanItsUnlock() => Check("(g) the keeper comes no sooner than its unlock");
     [Fact] public void FootbridgeTurnsBackBarges() => Check("footbridge turns back more than 60%");
     [Fact] public void FordTurnsBackAlmostNobody() => Check("ford only turns back fewer than 10%");
     [Fact] public void NeverRaisedDrawbridgeIsNoBetterThanAFootbridge() => Check("never-raised drawbridge earns no more");

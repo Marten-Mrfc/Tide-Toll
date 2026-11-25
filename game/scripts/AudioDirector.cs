@@ -85,6 +85,7 @@ public partial class AudioDirector : Node2D
         _main.Sim.TimeChanged += OnTimeChanged;
         _main.Sim.WorldReplaced += OnWorldReplaced;
         InitRiver();
+        InitRain();
         if (!Silent) _riverPlayer.Play();
         SetVolume(Volume);
     }
@@ -166,7 +167,7 @@ public partial class AudioDirector : Node2D
         Theme();
         RiverPending();
         _riverAcc += delta;
-        if (_riverAcc >= 0.25) { _riverAcc = 0; River(sim.World); }
+        if (_riverAcc >= 0.25) { _riverAcc = 0; River(sim.World); RainBed(sim.World); }
         if (sim.Paused) return;
         _beatAcc += delta;
         if (_beatAcc < BeatSec) return;
@@ -237,7 +238,7 @@ public partial class AudioDirector : Node2D
         float size = rig.Camera.Size;
         float zoom = Mathf.Clamp((380f - size) / 250f, 0f, 1f);  // full at play zoom and closer, gone at the whole book
         if (zoom <= 0.02f) return;
-        Array.Clear(_count); Array.Clear(_dirtN); Array.Clear(_fordN); Array.Clear(_sx); Array.Clear(_sy);
+        Array.Clear(_count); Array.Clear(_dirtN); Array.Clear(_fordN); Array.Clear(_mudN); Array.Clear(_sx); Array.Clear(_sy);
         int n = w.Grid.Width, per = n / Chunk;
         var wear = w.Wear;
         var ford = w.Ford;
@@ -251,6 +252,7 @@ public partial class AudioDirector : Node2D
             int cell = cy * n + cx;
             if (wear[cell] >= 25) _dirtN[ch]++;
             if (ford[cell] != 0) _fordN[ch]++;
+            if (OnMud(w, cell)) _mudN[ch]++;
         }
         // The busiest chunks whose centre is on screen.
         var vp = GetViewport().GetVisibleRect().Size;
@@ -276,13 +278,15 @@ public partial class AudioDirector : Node2D
             int ch = _pick[i];
             int c = _count[ch];
             bool splash = _fordN[ch] > 0 && (_beatIndex & 3) == 0;
-            var set = splash ? _ford : _dirtN[ch] * 2 >= c ? _dirt : _grass;
+            bool wet = !splash && _mudN[ch] * 2 >= c;
+            var set = splash || wet ? _ford : _dirtN[ch] * 2 >= c ? _dirt : _grass;
             float db = -18 + 3.5f * MathF.Log2(c) + Mathf.LinearToDb(zoom) - (weak ? 3 : 0) + (float)(_rng.NextDouble() * 4 - 2) - i * 2;
             var v = Voice();
             v.Position = rig.LocalToScreen(new Vector3(_sx[ch] / c * cellM, 0, _sy[ch] / c * cellM));
             v.MaxDistance = vp.X * 1.2f;
             int slot = splash ? 2 : set == _dirt ? 1 : 0;
             if (splash) Play2D(v, set, slot, Math.Min(-6, db), ref Splashes);
+            else if (wet) { Play2D(v, set, 2, Math.Min(-10, db - 5), ref MudSteps); v.PitchScale *= 0.8f; } // squelch: softer, lower
             else Play2D(v, set, slot, Math.Min(-4, db), ref Steps);
         }
     }
