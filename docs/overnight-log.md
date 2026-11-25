@@ -44,7 +44,7 @@ Stop when all of it is done, after 20 rounds, or when nothing can progress witho
 2. In `prototypes/desire-lines`, run `npm install` and `npm run build`. Playwright is pre-installed in the container; never install it.
 3. Agents read the design doc from plain-text exports in the session scratchpad (`spec/gameplay-1.txt` and so on). After a restart those are gone: read each tab with the Claude Docs tools again (`view`, following the `next` cursor) and convert it to text before starting a round.
 4. The Godot toolchain (the .NET SDK and the Godot editor binary) is installed in the container, not in the repository. Re-run `tools/setup-linux.sh` once it exists.
-5. A workflow that was running when the container stopped is lost. Check `git status`, keep what builds and passes, and re-run the round.
+5. A workflow that was running when the container stopped is lost, but its finished agents are not. The container restarted once tonight (about 00:20 UTC on 25 November); the files, the toolchain and the old scratchpad (`/tmp/claude-0/-home-user/<session>/scratchpad`, where the `spec/` exports live) all survived. To resume a round: commit the working tree as a snapshot, copy the round's script from `/root/.claude/projects/-home-user*/<session>/workflows/scripts/` into `build/wf/` (ignored by git), and start the workflow again with that script path and the same run id. Finished agents come back from the journal; the interrupted ones run again and find their half-done work in the tree. `AGENTS.md` has a temporary "Interrupted work" section that tells them so: remove it when rounds 8 and 9 are done.
 6. To republish an Artifact from a new container, pass its URL from the table above.
 
 ## Rounds
@@ -60,8 +60,8 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 | 5 | Toy | Round 3 of the toy: trunk-share headroom with working bridges (gate on fresh seeds 401 to 420), phone-width input fix, gravel and gate tools, polish | Done 00:15 UTC and republished (version 3, same link). G3 now passes on all five seed sets with every daily reading counted (lowest 34.0%), and on the reviewer's own seeds 501 to 520 (lowest 33.5%). Touch works at phone width; the map no longer moves. Open: a gate cannot go on most of a diagonal fence; gravel only pulls a trail within about 2 cells; a second finger disturbs a drag; mature trails still read a little like roads |
 | 6 | Assets | Fixes from the asset review; gallery rebuilt and republished to the same link | Done 21:36 UTC. 10 of 12 findings fixed, 2 partly (ground tiles still repeat a little; soft ink on trees). Now 99 asset files, 125 ledger rows; `./check` passes. Left for later: stiff willow fronds, a few icons lose detail on ink, tile repetition |
 | 7 | Godot | Phase 2: Prototype 1 on the map page of the book: wear shader, river, buildings, 500 walkers, ink outline, camera, tools, flow preview, interface, sound, headless tests, Windows build | Done 23:49 UTC. Review: phase 2's automated checks pass. `./check`, `./check --bench` and `./check --export` pass. The game gives the toy's town and wear exactly (seeds 1, 2, 7, with edits, at 1x and 8x). Picking was right on 205 of 205 clicks. The game's own work per frame at 500 walkers: 0.3 ms at 1x, 1.6 ms at 8x, 10 to 17 bytes allocated. Windows build: 184 MB, every asset in the pack, never started. Open: at 1280 x 720 the last line of the chapter page is clipped and the fps readout is unreadable (major); preview hitches of about 20 ms at 8x; trails read as roads; buildings have no labels at overview zoom; six small bugs from the bug hunt |
-| 8 | River | Polish the Godot game after its review (clipped text, trails that read as worn ground, villagers, labels, trees, bookmarks, six bugs), then start phase 3: river assets, river rules in the simulation (boats, ferry, low footbridge, drawbridge with keeper, trade, reputation, money) with a strategy bot, the river in the game, review | Running since 23:58 UTC (workflow run `wf_6e0a829d-c37`) |
-| 9 | Toy | Round 4 of the toy: gate and gravel fixes, rain and mud, house growth, sound made in code (off until the Sound button), two-finger and phone fixes, worn-ground look | Running since 00:30 UTC (workflow run `wf_70be681e-d06`) |
+| 8 | River | Polish the Godot game after its review (clipped text, trails that read as worn ground, villagers, labels, trees, bookmarks, six bugs), then start phase 3: river assets, river rules in the simulation (boats, ferry, low footbridge, drawbridge with keeper, trade, reputation, money) with a strategy bot, the river in the game, review | Running (workflow run `wf_6e0a829d-c37`). Started about 23:55 UTC; stopped by a container restart at about 00:20 and resumed at 00:25. Already done: the river rules spec, the look and sound spec, and the river asset set (10 models, 8 icons, 30 sounds, 48 new ledger rows, gallery republished as version 3). Running again: the game polish (it was nearly finished) and the river rules in the simulation |
+| 9 | Toy | Round 4 of the toy: gate and gravel fixes, rain and mud, house growth, sound made in code (off until the Sound button), two-finger and phone fixes, worn-ground look | Running (workflow run `wf_70be681e-d06`). Started about 00:19 UTC; stopped by the container restart and resumed at 00:26 with its two spec sheets kept |
 
 ## Next steps
 
@@ -126,7 +126,9 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 ## Assets
 
-The Hamlet set, 99 files after the fix round (four long bell variants were added). Every row is in `assets/LEDGER.csv`; the gallery shows each one with its source and licence.
+Two sets so far. Every file has a row in `assets/LEDGER.csv` (173 rows); the gallery shows each one with its source and licence.
+
+**The Hamlet set** (99 files)
 
 | Kind | Count | What | Source |
 | --- | --- | --- | --- |
@@ -134,7 +136,15 @@ The Hamlet set, 99 files after the fix round (four long bell variants were added
 | Textures | 9 | Grass, trampled, trail, track, hollow way, river water, paper page, wear ramp, palette atlas | Generated by `assets/src/2d/` and `assets/src/common/`; self-made |
 | Icons (`.svg`) | 14 | Fence, footbridge, erase, gravel, gate, pause, play, speed, wear overlay, flow preview, sound on and off, reset, new map | Generated by `assets/src/2d/icons.py`; self-made |
 | Fonts | 4 | Atkinson Hyperlegible Regular and Bold (interface), Alegreya (headings), Uncial Antiqua (Hamlet titles) | The google/fonts repository on GitHub; SIL Open Font License 1.1, licence texts in `assets/licences/` |
-| Sound effects | 40 | Footsteps on grass (8) and dirt (8), ford water (6), bell (6), place (6), erase (6) | Synthesised by `assets/src/audio/`; self-made |
+| Sound effects | 44 | Footsteps on grass (8) and dirt (8), ford water (6), bell (6), long bell (4), place (6), erase (6) | Synthesised by `assets/src/audio/`; self-made |
 | Music and ambience | 4 | The 8-bar Hamlet theme draft (D Dorian, 3/4, 64 BPM) as Ogg, WAV and a score file; a 10 s river loop | Synthesised by `assets/src/audio/`; self-made |
 
-Nothing came from the six blocked asset sites. No AI image, sound or music service was used: every generated asset is produced by code in the repository. The audio has been measured (length, loudness, spectrum) but nobody has listened to it yet.
+**The River set** (48 files, round 8)
+
+| Kind | Count | What | Source |
+| --- | --- | --- | --- |
+| Models (`.glb`) | 10 | Masted barge (mast and cargo as separate parts), ferry raft, ferry post and rope, drawbridge with a lifting leaf, drawbridge span and end, landing jetty, keeper's hut | Generated by scripts in `assets/src/models/`; self-made |
+| Icons (`.svg`) | 8 | Ferry, drawbridge, raise the bridge, lower the bridge, hire the keeper, coin, boat, reputation | Generated by `assets/src/2d/`; self-made |
+| Sound effects | 30 | Drawbridge raising (3) and lowering (3), boat calls by hand bell and horn (6), coins (6), ferry rope (4), oar and wake (6), a boat turning away (3) | Synthesised by `assets/src/audio/`; self-made |
+
+Nothing came from the six blocked asset sites. No AI image, sound or music service was used: every generated asset is produced by code in the repository. The audio has been measured (length, loudness, spectrum) but nobody has listened to it yet. Known weak spots: the drawbridge tool icon reads poorly at 20 px; the drawbridge creaks may sound more like hiss than timber; the drawbridge has one leaf, not the Art tab's double leaf, so that a barge fits through.
