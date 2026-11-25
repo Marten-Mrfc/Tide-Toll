@@ -547,8 +547,8 @@ export class World {
   /**
    * Mud follows the rain: while it rains, every unpaved worn cell (wear 25 or
    * more, not gravel, not a bridge or the ford) is mud; the mud stays (on
-   * cells still worn to trail) until the ground is dry. Runs once a sim second
-   * and when a shower starts.
+   * cells still worn to trail) until the ground is dry. A fence (not a gate)
+   * is never mud. Runs once a sim second, when a shower starts and after every edit.
    */
   private updateMud(): void {
     const wx = this.weather, mud = this.mud;
@@ -559,7 +559,7 @@ export class World {
     const thr = PARAMS.stateThresholds[1], wear = this.wear;
     let n = 0;
     for (let c = 0; c < NC; c++) {
-      const worn = wear[c] >= thr && this.land[c] === 1 && this.gravel[c] === 0 && this.bridgeAt[c] < 0;
+      const worn = wear[c] >= thr && this.land[c] === 1 && this.gravel[c] === 0 && this.bridgeAt[c] < 0 && (this.fence[c] === 0 || this.gate[c] === 1);
       mud[c] = worn && (wx.raining || mud[c] === 1) ? 1 : 0;
       n += mud[c];
     }
@@ -652,6 +652,9 @@ export class World {
   private edited() {
     this.version++;
     for (let t = 0; t < this.urgent.length; t++) this.urgent[t] = true;
+    // Mud follows a tool at once (gravel erased in rain turns to mud, gravel laid or a fence
+    // set down clears it), before the costs are rebuilt from it. Rain off: never runs.
+    if (this.rainOn) this.updateMud();
     // Rebuild costs now so walkers stop stepping onto new fences this tick.
     this.rebuildCosts();
     // Walkers standing on a cell that just became blocked are moved off it.

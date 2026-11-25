@@ -103,10 +103,10 @@ export const PARAMS = {
   // weather"). A weather stream of its own (seeded from the map seed, never the
   // walkers' RNG) rolls once per in-game day for rain. While it rains, every
   // unpaved land cell at wear 25 or more turns to mud; the mud lasts for that
-  // day plus one more (plus two in autumn), drying out over the last part of it.
+  // day plus one more in every season, drying out over the last part of it.
   rainOn: true, // the player's default; the old gate sets run with it off
   rainChance: [0.3, 0.15, 0.4, 0] as const, // per day by season; winter: snow only in the spec (left out)
-  mudDays: [2, 2, 3, 2] as const, // days of mud counting the rain day (autumn "two more"; see README for the conflict)
+  mudDays: [2, 2, 2, 2] as const, // days of mud counting the rain day; autumn too (the lead's decision, round 5: the season table's "mud lasts 2 days")
   rainRampSimSec: 2, // rain fades in and out over this long (drawing and sound only)
   wetUpSimSec: 3, // the ground goes from dry to fully wet over this long once rain starts
   drySimSec: 7.5, // mud dries out over the last half day of its run (the spec gives no drying rate)
