@@ -29,6 +29,7 @@ public sealed partial class Town
         };
         double c = Math.Max(TownRules.MinComfort, Plan.Roads[r].Length * per);
         if (S.RoadSurface[r] != Surface.Track) c *= 1 + TownRules.PavePerkComfort * (S.Paved / TownRules.PerkEvery);
+        if (S.Boons[(int)Boon.WiderLanes]) c *= 1 + TownRules.BoonLanes;
         return c;
     }
 
@@ -41,8 +42,13 @@ public sealed partial class Town
         return Math.Max(TownRules.CrowdMinFactor, 1 / (1 + TownRules.CrowdSlowdown * excess / c));
     }
 
-    internal double PaceFactor => PaceFactorAt(S.PaceLevel);
-    public static double PaceFactorAt(int level) => 1 + TownRules.PaceStep * Math.Min(level, TownRules.PaceMax);
+    internal double PaceFactor => PaceFactorAt(S.PaceLevel) * (S.Boons[(int)Boon.StrongerBacks] ? 1 + TownRules.BoonWalk : 1);
+    /// <summary>Pace walking factor at a level (rules v3: plus TownRules.PaceMilestone at every fifth step; no boons).</summary>
+    public static double PaceFactorAt(int level)
+    {
+        int l = Math.Min(level, TownRules.PaceMax);
+        return 1 + TownRules.PaceStep * l + TownRules.PaceMilestone * (l / TownRules.MilestoneEvery);
+    }
     public bool BellRinging => Time < S.BellUntil;
 
     /// <summary>Walking speed on a road now, cells per second, for one more walker than are on it.</summary>

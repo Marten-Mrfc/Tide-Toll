@@ -24,6 +24,14 @@ public static class TownCommand
         int minutes = o.TryGetValue("minutes", out var m) ? int.Parse(m, Inv) : TownTargets.RunMinutes;
         bool md = o.ContainsKey("markdown");
         if (o.TryGetValue("set", out var sets)) ApplySets(sets);
+        if (o.ContainsKey("river"))
+        {
+            var rb = new List<BotKind>();
+            string rw = o.TryGetValue("bot", out var rbs) ? rbs : "all";
+            foreach (var k in new[] { BotKind.Cheapest, BotKind.Payback, BotKind.Random, BotKind.Saver })
+                if (rw == "all" || TownBot.Name(k).StartsWith(rw, StringComparison.Ordinal) || k.ToString().Equals(rw, StringComparison.OrdinalIgnoreCase)) rb.Add(k);
+            return TownRiverCommand.Run(o, rb, seed);
+        }
         if (o.ContainsKey("plan")) { Console.WriteLine(DrawPlan(TownPlanner.Build(seed))); return 0; }
         if (o.ContainsKey("detail")) return Detail(seed, o.TryGetValue("bot", out var db) && db == "random" ? BotKind.Random : db == "payback" ? BotKind.Payback : BotKind.Cheapest);
         var bots = new List<BotKind>();
@@ -49,7 +57,7 @@ public static class TownCommand
                 var plan = TownPlanner.Build(sd);
                 var res = new List<PacingResult>();
                 var row = new StringBuilder($"{sd,4}");
-                foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}"); }
+                foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}" + (o.ContainsKey("v3") ? $" ; {string.Concat(r.Boons.Select(x => x < 0 ? "-" : (x % 2 == 0 ? "A" : "B")))} ; gap {r.LastGap:F1}/{r.LongestEarlierGap:F1} ; hands {r.ByKind[(int)ShopItemKind.Hand]}" + (o.ContainsKey("worth") && k == BotKind.Payback ? " ; " + string.Join(" ", r.ChoiceWorth.Select(x => x.ToString("F0", Inv))) : "") : "")); }
                 seedRuns[sd - a] = res;
                 all[sd - a] = TownPacing.Misses(res); rows[sd - a] = row.ToString();
             });
@@ -109,7 +117,7 @@ public static class TownCommand
         foreach (var kv in sets.Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
             var p = kv.Split('=');
-            var f = typeof(TownRules).GetField(p[0]) ?? throw new ArgumentException($"no TownRules.{p[0]}");
+            var f = (p[0].StartsWith("River.", StringComparison.Ordinal) ? typeof(TownRulesRiver).GetField(p[0][6..]) : typeof(TownRules).GetField(p[0]) ?? typeof(TownRulesRiver).GetField(p[0])) ?? throw new ArgumentException($"no TownRules or TownRulesRiver field {p[0]}");
             if (f.FieldType == typeof(double[]))
             {
                 var arr = (double[])f.GetValue(null)!;

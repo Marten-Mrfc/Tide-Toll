@@ -20,6 +20,8 @@ public sealed class TownBot
     public BotKind Kind { get; }
     /// <summary>Test switches: never ring the bell; never pave.</summary>
     public bool NoBell, NoPave;
+    /// <summary>The second age: ring in the next age at the charter and play on (off by default: the bots stop at the charter, as before).</summary>
+    public bool PlayOn;
     private Mulberry32 _rng;
     private readonly List<ShopItem> _items = new();
 
@@ -35,12 +37,28 @@ public sealed class TownBot
     {
         if (t.Tick % ThinkTicks != 0) return false;
         if (t.BellReady && !NoBell) t.RingBell();
+        if (t.CanRingNextAge && PlayOn) t.RingNextAge();
         if (t.CanRingNextAge) return false; // the age is done; the bots stop at the charter
+        if (t.HasSeal) return false;        // the second age is done
+        if (t.ChoiceOpen) ChooseBoon(t);   // rules v3: a choice of two is decided by the bot's nature
         t.ShopItems(_items);
         if (NoPave)
             for (int i = _items.Count - 1; i >= 0; i--) if (_items[i].Kind == ShopItemKind.Pave) _items.RemoveAt(i);
         int pick = Kind switch { BotKind.Cheapest => Cheapest(), BotKind.Payback => Payback(t, SaveSeconds), BotKind.Saver => Payback(t, SaverSeconds), _ => RandomPick() };
         return pick >= 0 && t.Buy(_items[pick]);
+    }
+
+    /// <summary>Rules v3: payback and saver take the boon with the higher estimated worth, cheapest the first, random at random.</summary>
+    private void ChooseBoon(Town t)
+    {
+        var c = t.Choice;
+        int side = Kind switch
+        {
+            BotKind.Cheapest => 0,
+            BotKind.Random => _rng.NextDouble() < 0.5 ? 0 : 1,
+            _ => c.BWorth > c.AWorth ? 1 : 0,
+        };
+        t.ChooseSide(side);
     }
 
     private int Cheapest()
@@ -65,28 +83,11 @@ public sealed class TownBot
     /// <summary>Estimated extra coin per minute an item buys (rough, from the town's own numbers).</summary>
     public static double Gain(Town t, ShopItem it, double rate)
     {
-        int n = Math.Max(1, t.VillagerCount);
-        double earned = Math.Max(1, t.CoinEarned);
-        switch (it.Kind)
-        {
-            case ShopItemKind.Villager: return rate / n * 0.9;
-            case ShopItemKind.Pace: return rate * 0.55 * (Town.PaceFactorAt(t.PaceLevel + 1) / Town.PaceFactorAt(t.PaceLevel) - 1) + 0.002 * it.Price;
-            case ShopItemKind.Load: return rate / (TownRules.BaseLoad + t.LoadLevel);
-            case ShopItemKind.Pave: return rate * 0.05;
-            case ShopItemKind.Building: return rate * 0.3;
-            case ShopItemKind.Tools: return rate * 0.3 * (TownRules.ToolsStep / (1 + TownRules.ToolsStep * t.ToolsLevel)) + 0.002 * it.Price;
-            case ShopItemKind.Value:
-            {
-                var g = (Good)it.Index;
-                double share = Math.Max(0.15, t.EarnedBy(g) / earned);
-                return rate * share * TownRules.ValueStep / (1 + TownRules.ValueStep * t.ValueLevel(g));
-            }
-            case ShopItemKind.Extend:
-                // Room for one more villager: worth a villager, at the price of both.
-                return t.HousingRoom > 0 ? 0 : rate / n * 0.9 * it.Price / (it.Price + t.VillagerPrice);
-            case ShopItemKind.BellTrack: return rate * 0.025;
-            default: return 0;
-        }
+        // Rules v3: the honest part is Town's own estimate (ShopItem.Worth); the bot adds a small pull towards the cheap
+        // many-step tracks, as before.
+        double w = t.WorthAt(it.Kind, it.Index, rate);
+        if (it.Kind is ShopItemKind.Pace or ShopItemKind.Tools) w += 0.002 * it.Price;
+        return w;
     }
 
     /// <summary>Best extra coin per minute per coin; buys the best when affordable, saves for it when it is less than

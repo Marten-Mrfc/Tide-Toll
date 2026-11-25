@@ -51,7 +51,7 @@ public sealed partial class Town
     public double CoinEarned => S.CoinEarned;
     public double Renown => S.Renown;
     public int Level => S.Level;
-    public int MaxLevel => Plan.MaxLevel;
+    public int MaxLevel => S.River != null ? Plan.MaxLevel + TownRulesRiver.LevelRenown.Length : Plan.MaxLevel;
     public bool HasCharter => S.Charter;
     public bool NextAgeRung => S.NextAgeRung;
     public long Trips => S.Trips;
@@ -64,13 +64,19 @@ public sealed partial class Town
     public double FirstPurchaseTime => S.FirstPurchaseTime;
 
     /// <summary>Renown needed for the next level (the current level's when at the last one).</summary>
-    public double NextLevelRenown => S.Level < Plan.MaxLevel ? Plan.Level(S.Level + 1).Renown : Plan.Level(S.Level).Renown;
+    public double NextLevelRenown => S.River != null ? RiverLevelRenown(Math.Min(S.Level + 1, MaxLevel)) : S.Level < Plan.MaxLevel ? Plan.Level(S.Level + 1).Renown : Plan.Level(S.Level).Renown;
 
     /// <summary>Fill of the level bar, 0..1 (1 at the last level).</summary>
     public double LevelBar
     {
         get
         {
+            if (S.River != null)
+            {
+                if (S.Level >= MaxLevel) return 1;
+                double ra = S.Level == Plan.MaxLevel ? S.River.RenownBase : RiverLevelRenown(S.Level), rb = RiverLevelRenown(S.Level + 1);
+                return Math.Clamp((S.Renown - ra) / (rb - ra), 0, 1);
+            }
             if (S.Level >= Plan.MaxLevel) return 1;
             double a = Plan.Level(S.Level).Renown, b = Plan.Level(S.Level + 1).Renown;
             return Math.Clamp((S.Renown - a) / (b - a), 0, 1);
@@ -78,7 +84,8 @@ public sealed partial class Town
     }
 
     /// <summary>"Next: ..." in words, or the next-age line once the charter is in.</summary>
-    public string NextGift => S.Level < Plan.MaxLevel ? "Next: " + Plan.Level(S.Level + 1).Gift : S.NextAgeRung ? "The next age is coming" : "Ring in the next age";
+    public string NextGift => S.River != null ? (S.Level < MaxLevel ? "Next: " + RiverPlan!.Levels[S.Level - Plan.MaxLevel].Gift : "The borough seal is yours")
+        : S.Level < Plan.MaxLevel ? "Next: " + Plan.Level(S.Level + 1).Gift : S.NextAgeRung ? "The next age is coming" : "Ring in the next age";
 
     public bool PlotGiven(int plot) => S.PlotGiven[plot];
     /// <summary>Given and, when it is a building offer, bought.</summary>

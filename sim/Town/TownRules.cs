@@ -27,10 +27,12 @@ public static class TownRules
     public static double QueueSpacing = 0.8;         // cells between people waiting at a workplace
 
     // ---- Goods and jobs ----
-    public static double WaterValue = 2;
-    public static double GrainHomeValue = 3;
-    public static double GrainMarketValue = 4;
-    public static double FlourValue = 10;
+    // Rules v3: goods pay less (were 2, 3, 4, 10) and the first prices are lower (Villager 4.5, Pace 1.8; were 5 and 2), because
+    // boons, milestones, extra hands and the drive made the town faster.
+    public static double WaterValue = 1.8;
+    public static double GrainHomeValue = 2.4;
+    public static double GrainMarketValue = 3.2;
+    public static double FlourValue = 6.5;
     public static double WellWork = 1.5;             // seconds at the well
     public static double FieldWork = 3.0;
     public static double MillWork = 3.0;
@@ -44,11 +46,11 @@ public static class TownRules
     public static int BaseLoad = 2;                 // units carried per trip before any Load upgrade
 
     // ---- Shop: price = base * growth ^ level ----
-    public static double VillagerBase = 5, VillagerGrowth = 1.3;
-    public static double PaceBase = 2, PaceGrowth = 1.36;
+    public static double VillagerBase = 4.5, VillagerGrowth = 1.32;   // rules v3: was 1.3
+    public static double PaceBase = 1.8, PaceGrowth = 1.4;   // rules v3: was 1.36
     public static double PaceStep = 0.03;          // rules v2.2: each Pace level adds 3 % walking speed (v2.1: 4 %, v2: 5 %) (factor = 1 + step * level)
     public static int PaceMax = 25;                // rules v2.1: Pace is finished after 25 levels (v2: 20)
-    public static readonly double[] LoadPrices = { 250, 1600, 4000 };   // rules v2.2: Basket 250 (was 300), so the payback bot's wait for it no longer empties minutes 8 to 9
+    public static readonly double[] LoadPrices = { 200, 1600, 4000 };   // rules v3: Basket 200 (was 250)   // rules v2.2: Basket 250 (was 300), so the payback bot's wait for it no longer empties minutes 8 to 9
     public static readonly string[] LoadNames = { "Basket", "Yoke", "Handcart" };
     public static readonly int[] LoadLevels = { 3, 7, 11 };   // town level that unlocks each Load step
     public static double GravelPerCell = 2.0;
@@ -62,7 +64,7 @@ public static class TownRules
     public static double MillPrice = 3000;
 
     // ---- Rules v2 tracks: price = base * growth ^ level ----
-    public static double ToolsBase = 30, ToolsGrowth = 1.33;
+    public static double ToolsBase = 30, ToolsGrowth = 1.38;   // rules v3: was 1.33
     public static int ToolsMax = 18, ToolsFromLevel = 3;
     public static double ToolsStep = 0.03;          // work time = base / (1 + step * level)
     // Value tracks, by Good (index 0 unused): Water, Grain, Flour pay ValueStep more per unit per level.
@@ -83,7 +85,7 @@ public static class TownRules
     // out early and every level-up brings new steps. A step not yet on sale is listed with "Unlocks at level N". ----
     public static readonly int[] PaceAt = { 4, 6, 8, 10, 12, 13, 14, 15, 16, 17, 18, 20, 21, 23, 25, 25 };
     public static readonly int[] ToolsAt = { 0, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 18 };
-    public static readonly int[] ValueAt = { 2, 3, 4, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 14, 14 };
+    public static readonly int[] ValueAt = { 2, 3, 4, 5, 6, 7, 8, 9, 9, 10, 10, 11, 11, 12, 14, 14 };   // rules v3: one more step at levels 7 to 13
     public static readonly int[] FlourValueAt = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 9, 14, 14 };
     public static readonly int[] BellTrackAt = { 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 };
     public static readonly int[] ExtendAt = { 0, 0, 0, 0, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 14, 14 };   // extensions in all (7 cottages: 14 at most)
@@ -114,7 +116,7 @@ public static class TownRules
     /// <summary>Renown needed to reach level i+1 (index 0 is level 1, always 0). Sixteen levels (rules v2); the last grants the charter.</summary>
     // Rules v2.2: the last two levels need more (62000 and 102000, were 59000 and 84000), so the saver reaches the charter after
     // 25 minutes on every seed (the lead's decision); more than about 104000 empties the shop before the charter.
-    public static readonly double[] LevelRenown = { 0, 20, 100, 300, 700, 1300, 2200, 3500, 5500, 9000, 13500, 20000, 29000, 42000, 66000, 102000 };
+    public static readonly double[] LevelRenown = { 0, 20, 100, 300, 700, 1300, 2200, 3500, 5700, 9500, 15000, 22500, 33000, 48000, 74000, 140000 };   // rules v3: levels 9 to 16 need more; the charter drive pays 65 % of what is left at level 15
 
     // ---- The bell ----
     // Rules v2.2: a stronger, longer ring (were 1.17 and 6 s). Measured on frozen towns (TownPacing.BellWorth) the old bell was
@@ -131,6 +133,29 @@ public static class TownRules
 
     // ---- Coin per minute ----
     public const int RateWindowSeconds = 60;
+
+    // ---- Rules v3 (docs/plans/town-rules3-progress.md) ----
+    // Choices of two: at each of these levels the town picks one of two boons for good (Boon pairs 0/1, 2/3, 4/5, 6/7: lanes or backs, well or rows, room or hands, market or guild).
+    public static readonly int[] ChoiceLevels = { 4, 7, 10, 13 };
+    public static double BoonWellWork = 0.2;       // Deeper well: well work this much faster (time / (1 + x))
+    public static double BoonFieldWork = 0.6;       // Longer field rows: field work this much faster
+    public static double BoonLanes = 0.5;           // Wider lanes: every road carries this much more before crowding
+    public static double BoonWalk = 0.045;           // Stronger backs: everyone walks this much faster
+    public static int BoonRoom = 1;                 // A third room: every cottage houses this many more
+    public static double BoonHands = 0.4;           // Faster hands: all work this much faster
+    public static double BoonGrain = 0.12;          // Market right: Grain pays this much more
+    public static double BoonFlour = 0.2;         // Miller's guild: Flour pays this much more
+    // Milestones: every MilestoneEvery-th step of Pace, Tools and each value track adds this on top of the step.
+    public const int MilestoneEvery = 5;
+    public static double PaceMilestone = 0.02, ToolsMilestone = 0.04, ValueMilestone = 0.04;
+    // The charter drive: asked when level MaxLevel - 1 is reached. Amount = the town's whole coin rate for DriveMinutes,
+    // in units of its best good (at most DriveCapacityShare of what its workplaces can make in that time); reward = DriveShare
+    // of the renown still needed for the charter, paid in parts as units arrive. The good pays DriveBonus more while it runs.
+    public static double DriveMinutes = 1.0, DriveCapacityShare = 0.8, DriveShare = 0.65, DriveBonus = 1.25;
+    // Extra hands: a queue of HandQueueLength or more for HandQueueSeconds offers one more place there, HandMax per workplace.
+    public static int HandQueueLength = 2, HandMax = 2;
+    public static double HandQueueSeconds = 30;
+    public static double HandWellBase = 150, HandFieldBase = 600, HandMillBase = 4000, HandGrowth = 2.5;
 }
 
 /// <summary>The design brief's pacing targets (docs/plans/incremental-design.md), read by the pacing tests and the 'town' tool.</summary>
