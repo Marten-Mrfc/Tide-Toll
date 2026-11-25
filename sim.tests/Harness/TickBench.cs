@@ -36,6 +36,7 @@ public static class TickBench
             for (int i = 0; i < 20; i++) w.Tick(); // the fields catch up with the new ground first
         }
         var ms = new double[ticks];
+        CpuClock.NowMs(); // the clock's own first call (its static set-up and P/Invoke stub allocate) is not the tick's
         long a0 = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < ticks; i++)
         {
