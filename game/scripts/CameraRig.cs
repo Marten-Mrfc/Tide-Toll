@@ -84,6 +84,8 @@ public partial class CameraRig : Node3D
     private Vector2 _leftFrom;
     /// <summary>The player moved the view (drag, keys or wheel): the town game stops following the town until Home.</summary>
     public bool UserMoved;
+    /// <summary>While the book is closed (the pause menu) the camera ignores the player's keys, wheel and drags.</summary>
+    public bool InputLocked;
     /// <summary>The last left press turned into a drag (so its release is not a click).</summary>
     public bool LeftDragged { get; private set; }
     /// <summary>Left-button drag pans too (the town game: there is no drawing tool on the left button).</summary>
@@ -195,6 +197,15 @@ public partial class CameraRig : Node3D
         Finish(instant);
     }
 
+    /// <summary>Look at a point without the pan limits (the closed book: its cover is off the open book's centre).</summary>
+    public void LookAtFree(Vector3 local, float size, bool instant = false)
+    {
+        _anchored = false;
+        _targetSize = Mathf.Clamp(size, MinSize, MaxSize);
+        _target = new Vector3(local.X, 0, local.Z);
+        if (instant) { Camera.Size = _targetSize; ApplyPitch(); SetPivotLocal(_target); }
+    }
+
     private void Finish(bool instant)
     {
         _anchored = false;
@@ -277,7 +288,7 @@ public partial class CameraRig : Node3D
     {
         if (MapOrigin == null) return;
         float dt = (float)Math.Min(delta, 0.1);
-        KeyboardPan(dt);
+        if (!InputLocked) KeyboardPan(dt);
         float k = 1f - MathF.Exp(-Smoothing * dt);
         if (MathF.Abs(Camera.Size - _targetSize) > 1e-3f) Camera.Size = Mathf.Lerp(Camera.Size, _targetSize, k);
         else Camera.Size = _targetSize;
@@ -331,7 +342,7 @@ public partial class CameraRig : Node3D
 
     public override void _UnhandledInput(InputEvent e)
     {
-        if (MapOrigin == null) return;
+        if (MapOrigin == null || InputLocked) return;
         switch (e)
         {
             case InputEventMouseButton mb when mb.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown:

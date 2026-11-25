@@ -230,7 +230,7 @@ public partial class TownHud
             else if (Is(e, "tt_buy_5")) ActivateKind(ShopItemKind.Building);
             else if (Is(e, "tt_bell")) RingBell();
             else if (k.Keycode == Key.N && _drv.Town.CanRingNextAge) _drv.Town.RingNextAge();
-            else if (k.Keycode == Key.Escape && PaveMode) SetPaveMode(false);
+            else if ((Is(e, "tt_pause") || k.Keycode == Key.Escape) && PaveMode) SetPaveMode(false);
             else handled = false;
             if (handled) GetViewport().SetInputAsHandled();
             return;

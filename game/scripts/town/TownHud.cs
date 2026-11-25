@@ -43,6 +43,8 @@ public partial class TownHud : CanvasLayer
     public string CoinText => _coin.Text;
     public string NextText => _next.Text;
     public float Scale => _s;
+    /// <summary>The small pause control (bottom right): closes the book like Esc.</summary>
+    public Button PauseMark { get; private set; } = null!;
 
     public static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     public static string Money(double c) => Math.Floor(c).ToString("N0", Inv);
@@ -71,7 +73,9 @@ public partial class TownHud : CanvasLayer
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
         var vp = GetViewport().GetVisibleRect().Size;
         _built = vp;
-        _s = UiKit.ScaleFor(vp.Y);
+        // The interface size setting is the window's content scale (applied by the settings); build in canvas units from
+        // the window's real height, so the size is not counted twice.
+        _s = UiKit.ScaleFor(GetWindow().Size.Y);
         _root = new Control { Name = "Root", MouseFilter = Control.MouseFilterEnum.Ignore, Theme = UiKit.MakeTheme(_s) };
         _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_root);
@@ -99,6 +103,12 @@ public partial class TownHud : CanvasLayer
         BuildShop();
         BuildPave();
         BuildSlim();
+        PauseMark = new Button { Name = "PauseMark", Text = "Pause  [Esc]", FocusMode = Control.FocusModeEnum.None, TooltipText = "Close the book: the menu" };
+        _root.AddChild(PauseMark);
+        PauseMark.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomRight, Control.LayoutPresetMode.Minsize, UiKit.Px(_s, 16));
+        PauseMark.GrowHorizontal = Control.GrowDirection.Begin;
+        PauseMark.GrowVertical = Control.GrowDirection.Begin;
+        PauseMark.Pressed += () => _main.Menu.Pause();
         _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer };
         _fullA = -1f;
         Refresh();
@@ -307,7 +317,7 @@ public partial class TownHud : CanvasLayer
         var t = _drv.Town;
         switch (e.Kind)
         {
-            case TownEventKind.Delivery: Float(e.X, e.Y, e.Coin); break;
+            case TownEventKind.Delivery: if (Settings.GameSettings.Current?.ShowCoinNumbers ?? true) Float(e.X, e.Y, e.Coin); break;
             case TownEventKind.LevelReached:
                 if (e.Level > 1) Note($"Level {e.Level}: {Upper(e.Text)}.", true);
                 break;

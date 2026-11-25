@@ -21,6 +21,11 @@ public abstract partial class TownTestBase : Node
     public override void _Ready()
     {
         GetWindow().Size = WindowSize;
+        // Each test plays in a folder of its own (settings and save), emptied first: the player's own user:// files
+        // never reach a test, and no test continues another's town.
+        Main.Profile = ProfileFor(Marker);
+        Main.KeepWindow = true;
+        WipeProfile();
         Main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         AddChild(Main);
         Go();
@@ -44,6 +49,15 @@ public abstract partial class TownTestBase : Node
     }
 
     protected abstract string Marker { get; }
+
+    public static string ProfileFor(string marker) => "user://tests/" + marker.Replace(' ', '-').ToLowerInvariant() + "/";
+
+    protected static void WipeProfile()
+    {
+        var dir = DirAccess.Open(Main.Profile);
+        if (dir != null) foreach (var f in dir.GetFiles()) dir.Remove(f);
+        DirAccess.MakeDirRecursiveAbsolute(Main.Profile);
+    }
     protected abstract Task Run();
 
     protected static void Check(bool ok, string what)

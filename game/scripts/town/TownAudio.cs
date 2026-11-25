@@ -24,7 +24,7 @@ public partial class TownAudio : Node
     public int Paves, Achievements;
     private AudioStreamPlayer _fx = null!, _ui = null!, _bellP = null!, _steps = null!, _theme = null!, _river = null!;
     private readonly Random _rng = new(11);
-    private readonly int[] _last = { -1, -1, -1, -1, -1, -1 };
+    private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1 };
     private double _now, _lastCoin = -1, _beat, _nextTheme = 8;
 
     public void Init(TownDriver drv)
@@ -32,14 +32,8 @@ public partial class TownAudio : Node
         _drv = drv;
         Name = "Audio";
         Silent = DisplayServer.GetName() == "headless" || Array.IndexOf(OS.GetCmdlineArgs(), "Dummy") >= 0;
-        foreach (var name in new[] { "Music", "Ambience", "Effects", "Interface" })
-        {
-            if (AudioServer.GetBusIndex(name) >= 0) continue;
-            int i = AudioServer.BusCount;
-            AudioServer.AddBus(i);
-            AudioServer.SetBusName(i, name);
-            AudioServer.SetBusSend(i, "Master");
-        }
+        // The buses and their volumes belong to the settings (SettingsApplier); this only makes sure they exist.
+        Settings.SettingsApplier.EnsureBuses();
         _coin = Load("sfx/coin-0", 6); _place = Load("sfx/place-0", 6); _bell = Load("sfx/bell-0", 6);
         _grass = Load("sfx/step-grass-0", 8); _dirt = Load("sfx/step-dirt-0", 8);
         string[] notes = { "a4", "d4", "e4", "g4" };
@@ -58,9 +52,38 @@ public partial class TownAudio : Node
         _theme.Stream = themeStream;
         var riverStream = GD.Load<AudioStream>("res://assets/audio/ambience/water-river-loop.ogg");
         if (riverStream is AudioStreamOggVorbis ogg) ogg.Loop = true;
+        _hover = Load("sfx/ui-hover-0", 2); _press = Load("sfx/ui-press-0", 4);
+        _open = Load("sfx/book-open-0", 2); _close = Load("sfx/book-close-0", 2);
+        _menu = Player("Menu", "Interface", -8, 3);
+        _book = Player("Book", "Interface", -4, 2);
+        _pause = Player("Pause", "Music", -12, 1);
+        var still = GD.Load<AudioStream>("res://assets/audio/music/music-still-pages.ogg");
+        if (still is AudioStreamOggVorbis sp) sp.Loop = true;
+        _pause.Stream = still;
         _river = Player("River", "Ambience", -24, 1);
         _river.Stream = riverStream;
         if (!Silent) _river.Play();
+    }
+
+    private AudioStream[] _hover = null!, _press = null!, _open = null!, _close = null!;
+    private AudioStreamPlayer _menu = null!, _book = null!, _pause = null!;
+    public int UiSounds, BookSounds;
+    /// <summary>The pause piece ("Still Pages") is on instead of the rotation.</summary>
+    public bool PauseMusic { get; private set; }
+
+    public void UiHover() => Play(_menu, _hover, 6, -10, ref UiSounds);
+    public void UiPress() => Play(_menu, _press, 6, -6, ref UiSounds);
+    public void BookOpen() => Play(_book, _open, 7, -4, ref BookSounds);
+    public void BookClose() => Play(_book, _close, 7, -4, ref BookSounds);
+
+    /// <summary>While the book is closed: the rotation waits and the pause piece plays; on resume the rotation goes on.</summary>
+    public void SetPauseMusic(bool on)
+    {
+        if (PauseMusic == on) return;
+        PauseMusic = on;
+        if (Silent) return;
+        _theme.StreamPaused = on;
+        if (on) _pause.Play(); else _pause.Stop();
     }
 
     private AudioStreamPlayer Player(string name, string bus, float db, int poly)
@@ -134,7 +157,7 @@ public partial class TownAudio : Node
             if (walking > 0 && !_drv.Paused) Play(_steps, t.RoadsPaved > 0 || t.Level > 3 ? _dirt : _grass, 4, -20 + Math.Min(6, walking), ref Steps);
         }
         // The theme now and then, with long silences between.
-        if (_now >= _nextTheme)
+        if (_now >= _nextTheme && !PauseMusic)
         {
             _nextTheme = _now + 150 + _rng.Next(60);
             Themes++;

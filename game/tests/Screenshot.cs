@@ -24,6 +24,8 @@ public partial class Screenshot : TownTestBase
         foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--out-dir=")) _dir = a.Substring(10);
         System.IO.Directory.CreateDirectory(_dir);
         var bot = new TownBot(BotKind.Payback, 1);
+        // --menu-only: a short town, then only the pause menu's shots (quick look while working on the menu).
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--menu-only") >= 0) { Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 10); await MenuShots(); return; }
 
         // The first minute, as a player sees it.
         Main.Driver.Advance(58);
@@ -84,7 +86,45 @@ public partial class Screenshot : TownTestBase
         Main.Rig.LookAt(left, Main.Rig.PlaySize * 1.08f, instant: true);
         await Frames(40);
         await Shot("summary");
+
+        await MenuShots();
         Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
+    }
+
+    private async Task MenuShots()
+    {
+        // The pause menu: the book half closed, the cover menu, the four settings pages opened from the cover, the
+        // New town question.
+        Main.Rig.UserMoved = false;
+        Main.Follow(instant: true);
+        await Frames(10);
+        Main.Menu.Pause();
+        Main.Cover.Hold(0.3f);
+        var t1 = Time.GetTicksMsec();
+        while (Time.GetTicksMsec() - t1 < 1500) await Frames(1);
+        await Shot("book-half-closed");
+        Main.Cover.Close();
+        await Until(() => Main.Menu.CoverShown, 2000, "the cover menu");
+        await Frames(5);
+        await Shot("cover-menu");
+        foreach (var section in Settings.SettingsPages.Sections)
+        {
+            Main.Menu.SettingsButton.GrabFocus();
+            Main.Menu.OpenSettings();
+            await Frames(3);
+            Main.Menu.Pages!.ShowSection(section);
+            await Frames(10);
+            await Shot("settings-" + section.ToLowerInvariant());
+            Main.Menu.Pages!.Close();
+            await Frames(5);
+        }
+        Main.Menu.NewTownButton.GrabFocus();
+        await Key(Godot.Key.Enter);
+        await Frames(5);
+        Check(Main.Menu.QuestionShown, "the New town question");
+        await Shot("new-town-question");
+        await Key(Godot.Key.Escape);
+        await Frames(3);
     }
 
     /// <summary>Waits until new roads have drawn themselves in, new buildings have popped in and the camera has eased.</summary>

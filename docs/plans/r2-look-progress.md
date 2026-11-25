@@ -22,7 +22,7 @@ Started 2026-11-25 21:36 UTC. Time box about 40 minutes.
 - AGENTS.md, README.md updated.
 
 ## Next
-- ./check running at the end; report.
+- Finished 22:01 UTC: ./check PASSED (all 11 steps). Nothing left in this round's scope.
 
 ## Known gaps for a successor
 - Road ends: only paved strips reach the doors; a track's worn earth still stops at the door cell.

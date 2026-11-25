@@ -28,6 +28,18 @@ public partial class Main : Node3D
     public TownAudio Audio { get; private set; } = null!;
     public TownHud Hud { get; private set; } = null!;
     public TownSummary Summary { get; private set; } = null!;
+    public SettingsRuntime Settings { get; private set; } = null!;
+    public TownSaver Saver { get; private set; } = null!;
+    public PauseMenu Menu { get; private set; } = null!;
+    public BookCover Cover { get; private set; } = null!;
+    public Node3D Book { get; private set; } = null!;
+    /// <summary>Folder for the settings and the save: user:// in the game; each test sets a folder of its own first.</summary>
+    public static string Profile = "user://";
+    /// <summary>Tests own the window's size (--resolution, WindowSize): the stored window mode and size are not applied.</summary>
+    public static bool KeepWindow;
+    /// <summary>A note for the margin from start-up (a damaged save), shown once the interface exists.</summary>
+    public string StartNote { get; private set; } = "";
+    private Node3D? _trees;
     /// <summary>The camera follows the town's extent (false once the player moves the view, true again on Home or a gift).</summary>
     public bool Following => !Rig.UserMoved;
     /// <summary>The town's extent in map-local metres (x, z), as followed.</summary>
@@ -55,13 +67,23 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
-        GameInput.Register();
+        // Settings first: the actions, the stored settings loaded and applied (sound buses, window, keys).
+        Settings = new SettingsRuntime
+        {
+            Name = "Settings", SettingsPath = Profile + "settings.cfg", Display = KeepWindow ? new FixedWindowSeam() : null,
+        };
+        AddChild(Settings);
+        GetTree().AutoAcceptQuit = false; // the window's close button saves first (_Notification)
         var args = OS.GetCmdlineUserArgs();
-        foreach (var a in args) if (a.StartsWith("--seed=") && int.TryParse(a.Substring(7), out int sd)) StartSeed = sd;
+        bool seedGiven = false;
+        foreach (var a in args) if (a.StartsWith("--seed=") && int.TryParse(a.Substring(7), out int sd)) { StartSeed = sd; seedGiven = true; }
         AddChild(MakeEnvironment());
         AddChild(MakeSun());
         BookBuilder.Build(this, SimParams.Default, 1);
         MapOrigin = GetNode<Node3D>("Book/RightPage/MapOrigin");
+        Book = GetNode<Node3D>("Book");
+        Cover = new BookCover();
+        Cover.Init(Book, MapOrigin);
 
         Driver = new TownDriver { Name = "Driver", ProcessPriority = -100 };
         AddChild(Driver);
@@ -69,7 +91,8 @@ public partial class Main : Node3D
 
         Ground = new TownGround(); MapOrigin.AddChild(Ground); Ground.Init(Driver);
         Buildings = new TownBuildings(); MapOrigin.AddChild(Buildings); Buildings.Init(Driver);
-        MapOrigin.AddChild(TownTrees.Make(Driver.Town.Plan));
+        PlantTrees();
+        Driver.Replaced += PlantTrees;
         Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
 
         Rig = new CameraRig
@@ -89,7 +112,69 @@ public partial class Main : Node3D
         Audio = new TownAudio(); AddChild(Audio); Audio.Init(Driver);
         Summary = new TownSummary(); Summary.Init(GetNode<Node3D>("Book/LeftPage"), Driver);
         Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
+        Saver = new TownSaver(); AddChild(Saver); Saver.Init(this);
+        Menu = new PauseMenu(); AddChild(Menu); Menu.Init(this);
         Follow(instant: true);
+        // Continue the saved town (camera included); a damaged one is set aside and a note says so.
+        if (!seedGiven && !Saver.TryContinue(out string note) && note != "") { StartNote = note; Hud.Note(note, strong: true); }
+    }
+
+    private void PlantTrees()
+    {
+        _trees?.QueueFree();
+        _trees = TownTrees.Make(Driver.Town.Plan);
+        MapOrigin.AddChild(_trees);
+    }
+
+    /// <summary>Starts a town from a new seed at level 1 (the settings are not touched).</summary>
+    public void NewTown()
+    {
+        int seed = Driver.Seed;
+        var rng = new Random();
+        while (seed == Driver.Seed) seed = rng.Next(1, int.MaxValue);
+        Driver.Reset(seed);
+        Rig.UserMoved = false;
+        Follow(instant: true);
+        Saver.SaveNow();
+    }
+
+    /// <summary>The camera as it should be saved: where the player left it, also while the book is closed.</summary>
+    public (Vector3 pivot, float size, bool moved) ViewToKeep()
+        => Menu != null && Menu.IsPaused ? Menu.Kept : (Rig.PivotLocal, Rig.TargetSize, Rig.UserMoved);
+
+    public void RestoreView(Vector3 pivot, float size, bool moved)
+    {
+        Rig.UserMoved = moved;
+        if (moved) Rig.LookAt(pivot, size, instant: true);
+        else Follow(instant: true);
+    }
+
+    /// <summary>The camera for the closed book: the cover centred, with a little table round it.</summary>
+    public (Vector3 centre, float size) ClosedBookView()
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        float aspect = vp.X / Math.Max(1f, vp.Y);
+        var sz = BookCover.ClosedSize;
+        float size = Math.Max(sz.Y * 1.08f, sz.X * 1.15f / Math.Max(0.3f, aspect));
+        var local = MapOrigin.GlobalTransform.AffineInverse() * (Book.GlobalTransform * BookCover.ClosedCentre);
+        return (new Vector3(local.X, 0, local.Z), size);
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest) QuitGame();
+    }
+
+    /// <summary>Tests set this to see the quit path without ending the run.</summary>
+    public bool HoldQuit;
+    public int QuitRequests { get; private set; }
+
+    /// <summary>Quit (the menu or the window's close button): save, then quit.</summary>
+    public void QuitGame()
+    {
+        Saver?.SaveNow();
+        QuitRequests++;
+        if (!HoldQuit) GetTree().Quit();
     }
 
     /// <summary>The bounding box of every given plot and open road, in map-local metres.</summary>
@@ -129,7 +214,7 @@ public partial class Main : Node3D
         if (vp.Y < 1) return;
         var ext = TownExtent();
         Extent = ext;
-        float s = UiKit.ScaleFor(vp.Y);
+        float s = UiKit.ScaleFor(GetWindow().Size.Y); // as the interface: built from the window's real height
         float left = 362f * s, right = 300f * s, top = 10f * s, bottom = 10f * s;
         float usableW = Math.Max(200f, vp.X - left - right), usableH = Math.Max(200f, vp.Y - top - bottom);
         float pad = 5f, rise = 7f; // metres of room round the town; height of the tallest building
@@ -151,10 +236,12 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
-        foreach (var e in Driver.Events)
-            if (e.Kind == TownEventKind.LevelReached && e.Level > 1) Rig.UserMoved = false; // the gift makes room
+        bool follow = (GameSettings.Current?.FollowTown ?? true) && !Menu.IsPaused;
+        if (follow)
+            foreach (var e in Driver.Events)
+                if (e.Kind == TownEventKind.LevelReached && e.Level > 1) Rig.UserMoved = false; // the gift makes room
         _followClock += delta;
-        if (!Rig.UserMoved && _followClock >= 0.25) { _followClock = 0; Follow(instant: false); }
+        if (follow && !Rig.UserMoved && _followClock >= 0.25) { _followClock = 0; Follow(instant: false); }
         var vp = GetViewport().GetVisibleRect().Size;
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
         if (vp != _limitsFor) SetZoomLimits();
@@ -194,4 +281,10 @@ public partial class Main : Node3D
         };
         return new WorldEnvironment { Name = "Environment", Environment = env };
     }
+}
+
+/// <summary>The settings' display seam without the window mode and size (tests keep the window they set).</summary>
+public sealed class FixedWindowSeam : DisplaySeam
+{
+    public override void ApplyWindow(Window w, WindowMode mode, Vector2I size) { }
 }
