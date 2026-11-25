@@ -90,6 +90,7 @@ Stopping
 | 2a | Main checkout, one agent after the other: (1) look and camera; (2) pause closes the book, the cover menu, settings joined, saving | `wf_c7da1efb-015`, script `build/wf/r2a.js` | 21:36 | | Part 1 DONE 22:01, `./check` passed with the new `game-book` step: villagers 37 px tall and in six colours, view tilted 56 degrees when zoomed in and flat by the full page, cobbles 0.6 of a cell, one continuous zoom to the book, summary page with the town's name. Part 2 (menus, saving) running |
 | 2b | Rules v2.1 in `build/wt/sim2`, then balancing; and a real-input play-test of round 1 in `build/pt/r1` | `wf_364eac87-5f9`, script `build/wf/r2b.js` | 21:36 | 22:15 | Play-test DONE (`docs/plans/r1-playtest.md`). Rules v2.1 built (steps unlock with levels, adaptive requests, smooth roads) but 4 pacing tests still red (16 misses, down from 96), so the balancer was skipped; committed on `wt/sim2` as `1c98fbe`; continued as 2c |
 | 2c | Rules v2.2 in `build/wt/sim2`: the saver bot gets its own checks instead of the purchase-rate floor, the bell is measured on frozen towns, requests start easy; then the balancer | `wf_952633fe-0b0`, script `build/wf/r2c.js` | 22:17 | | |
+| 2d | Art and sounds for the second age (`docs/plans/age2-design.md`): pasture, sheep, weaver's cottage, crane, seal stone, tide post, 14 icons; then mooring, tide, loom, sheep, crane, toll and seal sounds. Main checkout, `assets/` only | `wf_cccbed52-22a`, script `build/wf/age2-assets.js` | 22:20 | | |
 
 ## Next steps
 
@@ -123,6 +124,7 @@ Stopping
 | 19 | The worth of the bell and the share of requests met are measured as averages over ten towns, with wide limits for any single town | A single run has only about a dozen requests, so one run is too noisy to hold to a narrow band |
 | 20 | The purchase-rate target (4 a minute early, 2 a minute later) is checked on the three players the design brief names (cheapest, best payback, random). The saving bot, added later, waits on purpose, so it gets its own checks instead: it buys every kind of thing, finishes in 25 to 40 minutes, and never goes 90 seconds without buying | A floor on purchases per minute measures nothing for a player whose plan is to wait; the three original players must still meet it on every town with no exceptions |
 | 21 | The bell's worth is measured on frozen towns (same town, five minutes, no purchases, with and without ringing) | Two whole games with and without the bell buy different things, and that noise was larger than the bell |
+| 22 | The second age is designed (`docs/plans/age2-design.md`): a landing where boats buy goods, a tide that decides when boats come and when the ford can be walked, wool and cloth from the far bank, and crossings that arrive in order (ford, ferry, footbridge, drawbridge with a toll), ending with the borough seal | You asked for the river, boats and crossings to come back as the second age; this is how they fit a game where things are given by levels |
 | 11 | The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2 | It does not depend on the new simulation, so it need not wait |
 
 ## Needs you

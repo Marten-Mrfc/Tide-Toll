@@ -184,6 +184,13 @@ public partial class PauseMenu : CanvasLayer
         Now = State.Opening;
     }
 
+    /// <summary>While the book is closed, a load or a new town sets where Resume goes (moved false: follow the town).</summary>
+    public void KeepView(Vector3 pivot, float size, bool moved)
+    {
+        _keptPivot = pivot; _keptSize = size; _keptMoved = moved;
+        _followAfter = !moved;
+    }
+
     /// <summary>Where the camera was when the book closed (what Resume returns to): pivot, view height, moved by hand.</summary>
     public (Vector3 pivot, float size, bool moved) Kept => (_keptPivot, _keptSize, _keptMoved);
 

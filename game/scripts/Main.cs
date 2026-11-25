@@ -133,8 +133,8 @@ public partial class Main : Node3D
         var rng = new Random();
         while (seed == Driver.Seed) seed = rng.Next(1, int.MaxValue);
         Driver.Reset(seed);
-        Rig.UserMoved = false;
-        Follow(instant: true);
+        if (Menu.IsPaused) Menu.KeepView(Rig.PivotLocal, Rig.TargetSize, moved: false);
+        else { Rig.UserMoved = false; Follow(instant: true); }
         Saver.SaveNow();
     }
 
@@ -144,6 +144,7 @@ public partial class Main : Node3D
 
     public void RestoreView(Vector3 pivot, float size, bool moved)
     {
+        if (Menu != null && Menu.IsPaused) { Menu.KeepView(pivot, size, moved); return; }
         Rig.UserMoved = moved;
         if (moved) Rig.LookAt(pivot, size, instant: true);
         else Follow(instant: true);

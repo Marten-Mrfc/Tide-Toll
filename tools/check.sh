@@ -126,6 +126,17 @@ if have_godot; then
   # against the simulation, Home), a Pave click while tilted and a villager's height on screen, at 1920 x 1080.
   step game-book tools/godot-test.sh 'BOOK PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/book.tscn --quit-after 100000
   note "$(grep -o 'BOOK PASS.*' "$LOGS/game-book.log" | head -1 | sed 's/BOOK PASS //' | cut -c1-90)"
+  # The settings pages alone (their own test: store, applier, pages, keys, saving page with a fake, keyboard only).
+  step game-settings tools/godot-test.sh 'SETTINGS PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/settings.tscn --quit-after 20000
+  # The pause menu with real input at 1920 x 1080: Esc closes the book and stops the tick, the cover menu by keyboard,
+  # the settings pages and Back, Resume puts the camera back, settings take effect in the game (interface size, a
+  # volume, coin numbers, a rebound key), New town asks and gives a new seed at level 1, the interface's pause control.
+  step game-menu tools/godot-test.sh 'MENU PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/menu.tscn --quit-after 100000
+  note "$(grep -o 'MENU PASS.*' "$LOGS/game-menu.log" | head -1 | sed 's/MENU PASS //' | cut -c1-90)"
+  # Saving: the town at level 2+ with a paved road saved and the scene loaded again (same state, camera, runs on), a
+  # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
+  step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
+  note "$(grep -o 'SAVE PASS.*' "$LOGS/game-save.log" | head -1 | sed 's/SAVE PASS //' | cut -c1-90)"
   if [ "$SHOT" = 0 ]; then
     skip screenshot "--no-screenshot"
   elif ! command -v xvfb-run >/dev/null 2>&1; then
@@ -134,10 +145,10 @@ if have_godot; then
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display, at 1920 x 1080: the first
     # minute, the first purchase, level 3, Pave mode and the end of the age (build/screenshots/town-*-1920x1080.png).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
-    note "build/screenshots/town-{first-minute,first-purchase,level-3,pave,level-6,end-of-age,zoom-1..4,summary}-1920x1080.png"
+    note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-perf game-book screenshot; do
+  for s in game-build game-smoke game-town game-perf game-book game-settings game-menu game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done
