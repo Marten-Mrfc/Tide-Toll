@@ -477,6 +477,40 @@ _tw = LEDGER["assets/icons/ui-bell.svg"]
 town_icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_tw["source"])}</dd><dt>Licence</dt><dd>{E(_tw["licence"])}</dd>'
                    f'<dt>Verified</dt><dd>{E(_tw["verified"])}, {E(_tw["date_checked"])}</dd></dl>')
 
+AGE2_MODELS = [
+    ("pasture", "Sheep pasture", 500,
+     "16 x 16 m like a field: low wattle fence with a hurdle gate in the south side, trough, hay rack, worn patches "
+     "and grass tufts. Empty: the game scatters sheep inside (x, z within -6.6..6.6).", {}),
+    ("sheep", "Sheep", 150, "One sheep, 1.5x like the villagers: white fleece, dark head and legs, head to +Z.",
+     {"Head": "dips about its local X for grazing"}),
+    ("weaver-cottage", "Weaver's cottage", 500,
+     "8 x 6 m like cottage-02: plank walls and hipped thatch, an open lean-to on the east holding a floor loom with "
+     "red cloth, a bench, wool and bolts of cloth.", {}),
+    ("crane", "Treadwheel crane", 500, "Small treadwheel crane for the landing, post 4.4 m.",
+     {"Jib": "turns about its local Y at the post top; at rest the arm points +Z"}),
+    ("seal-stone", "Borough seal stone", 600,
+     "The borough seal on a carved plinth on a two-step platform, 4 x 4 m: a red disc with a ship in relief, "
+     "tilted back so it reads from above and from the front.", {}),
+    ("tide-post", "Tide post", 200,
+     "A marked oak post in the shallows: bands every 0.5 m, collars at whole metres; origin on the mean water level, "
+     "the post reaches 1.25 m below it.", {}),
+]
+age2_cards, age2_tris = [], 0
+for _n, _t, _b, _w, _no in AGE2_MODELS:
+    _tr, _c = town_card(_n, _t, _b, _w, _no)
+    age2_tris += _tr
+    age2_cards.append(_c)
+AGE2_ICONS = [("good-wool", "Wool"), ("good-cloth", "Cloth"), ("ui-tide-high", "Tide high"), ("ui-tide-low", "Tide low"),
+              ("ui-boat-berth", "Berth"), ("ui-crane", "Crane"), ("ui-ferry", "Ferry"), ("ui-bridge", "Bridge"),
+              ("ui-toll", "Toll"), ("ui-request", "Request"), ("ui-hint", "Hint"), ("ui-extend", "Extend"),
+              ("ui-tools", "Tools"), ("ui-value", "Value")]
+age2_icon_rows = [icon_row(n, l, "icons-age2.py") for n, l in AGE2_ICONS]
+age2_icon_prev = put("assets/src/2d/previews/icons-age2-preview.png", "icons/icons-age2-preview.png")
+_a2 = LEDGER["assets/icons/good-wool.svg"]
+age2_icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_a2["source"])}</dd><dt>Licence</dt><dd>{E(_a2["licence"])}</dd>'
+                   f'<dt>Verified</dt><dd>{E(_a2["verified"])}, {E(_a2["date_checked"])}</dd></dl>')
+
+
 def sfx_card(stem, count, title, what, fmax):
     global n_audio
     rows = []
@@ -672,10 +706,20 @@ PAGE = f"""<title>Tide &amp; Toll Asset Gallery</title>
   <h1>The Hamlet asset set</h1>
   <p class="lead">Every model, texture, icon, font and sound made for the first era, now with the River set for the river prototype, with how each was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
   <ul class="counts"><li><b>{n_files}</b> files in the ledger</li><li>{count_line}</li></ul>
-  <nav class="toc" aria-label="Sections"><a href="#town">Town set</a><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <nav class="toc" aria-label="Sections"><a href="#age2">Second age</a><a href="#town">Town set</a><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
   <aside class="changes river-new" id="new-river"><h2>New: the River set</h2><p class="muted">Third round, 2026-11-25, for the river prototype (boats, crossings, trade).</p><ul><li>{len(RIVER_MODELS)} models ({river_tris:,} triangles): masted barge with a lowering mast and a cargo node, rope ferry (raft, posts, rope), Dutch drawbridge with a hinged leaf, balance beam, chains and signal arm, its span and ramp with a barrier, the landing and the keeper's hut.</li><li>{len(RIVER_ICONS)} icons in the house language; {sum(r[1] for r in RIVER_SFX)} sounds in {len(RIVER_SFX)} families.</li><li>The six free asset sites are blocked from the build container (checked 2026-11-25), so everything was made in code; every file has a ledger row.</li></ul></aside>
   <aside class="changes" id="changes"><h2>Changed since the first version</h2><p class="muted">Second round, after the art and audio review.</p><ul>{CHANGES_HTML}</ul></aside>
 </header>
+
+<section id="age2">
+  <header><h2>Second age: The River (town)</h2>
+  <p>New for the second age (2026-11-25, docs/plans/age2-design.md): the pasture and its sheep, the weaver's cottage, the landing's crane, the borough seal stone and the tide post, and {len(AGE2_ICONS)} icons. {len(AGE2_MODELS)} models, {age2_tris:,} triangles. Built by <code>assets/src/models/river-town.py</code> and <code>assets/src/2d/icons-age2.py</code>; the free asset sites are blocked from the build container, so all of it was made in code.</p></header>
+  <div class="grid">{"".join(age2_cards)}</div>
+  <h3 id="age2-icons">Icons</h3>
+  <ul class="icons">{"".join(age2_icon_rows)}</ul>
+  <figure class="wide"><img src="{age2_icon_prev}" alt="The second-age icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="1330" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
+  <article class="card"><div class="body"><h3>Ledger, the same for all second-age icons</h3>{age2_icon_facts}</div></article>
+</section>
 
 <section id="town">
   <header><h2>Town set</h2>

@@ -182,6 +182,14 @@ Keep every generator in `assets/src/`, deterministic (fixed seed, no clock), and
 - **Icons:** hand-written SVG (it is text; write it directly).
 - **Audio:** Python with `numpy` (and `scipy` if needed) writing WAV with the standard `wave` module: filtered noise bursts for footsteps (grass: soft, high-passed; dirt: drier, more low-mid), additive partials with slow decay for the bell, a short filtered click for place and a reversed one for erase, low-passed noise with a slow random wobble for water. Use `oggenc` or `ffmpeg` (apt) for Ogg. Record the seed per variation.
 
+## Second-age models and icons
+
+`assets/src/models/river-town.py` writes the second age's pieces (`pasture`, `sheep`, `weaver-cottage`, `crane`, `seal-stone`, `tide-post`; run `python3 assets/src/models/river-town.py [name ...]` for some of them) and `assets/src/2d/icons-age2.py` its 14 icons (`--no-preview` skips the Godot preview). Nodes the game moves: `sheep.glb` "Body" and "Head" (Head pivots at the neck), `crane.glb` "Base" and "Jib" (Jib turns about its local Y at the post top, (0, 4.1, 0)). `tide-post.glb` has its origin on the mean water level and reaches 1.25 m below it. The pasture is written with `ink="soft"` like the fields. Added 2026-11-25.
+
+## Second-age sounds
+
+`assets/src/audio/river-sfx.py` writes the second age's sound effects into `assets/audio/sfx/` (moor x3, cast-off x2, quay-drop x4, tide-turn x2, loom x3, sheep x3, crane x2, toll x3, seal x1; seeds 1001-1090), from voices in `assets/src/audio/_river2.py` (built on `_town.py` and `_river.py`, which stay unchanged). `assets/src/audio/river-zz-sounds-json.py` writes `assets/audio/sfx/river-sounds.json` in the form of `town-sounds.json` (volume against the coin; it fails if a file measures more than 1 dB off its table value). The older river sounds (oar-splash, boat-call, ferry-rope, drawbridge, water-ford) are not in that table. Added 2026-11-25.
+
 ## Contact sheet
 
 Before calling a model done, render it from the top, at 45 degrees, and from the side at yaws 0, 90, 180 and 270, on Paper, and save the sheet as `assets/src/contact-sheets/<name>.png`. Look at it. A Godot scene or Blender script that renders the sheet is fine; keep it in `assets/src/`.

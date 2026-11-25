@@ -1,0 +1,102 @@
+{
+  "about": "River (second age) sound events. Files are 48 kHz mono WAV one-shots. volume_db: intended loudness against the coin sound; the files are already rendered at it, so play them at the coin's bus gain. pitch_vary false: tuned in D Dorian, do not detune.",
+  "reference": "assets/audio/sfx/coin-01.wav",
+  "reference_loudness_lufs": -24.2,
+  "events": {
+    "boat-moored": {
+      "files": [
+        "assets/audio/sfx/moor-01.wav",
+        "assets/audio/sfx/moor-02.wav",
+        "assets/audio/sfx/moor-03.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "boat-cast-off": {
+      "files": [
+        "assets/audio/sfx/cast-off-01.wav",
+        "assets/audio/sfx/cast-off-02.wav"
+      ],
+      "volume_db": 2.0,
+      "measured_vs_coin_db": 2.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "cargo-on-quay": {
+      "files": [
+        "assets/audio/sfx/quay-drop-01.wav",
+        "assets/audio/sfx/quay-drop-02.wav",
+        "assets/audio/sfx/quay-drop-03.wav",
+        "assets/audio/sfx/quay-drop-04.wav"
+      ],
+      "volume_db": 0.0,
+      "measured_vs_coin_db": 0.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "tide-turned": {
+      "files": [
+        "assets/audio/sfx/tide-turn-01.wav",
+        "assets/audio/sfx/tide-turn-02.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "loom": {
+      "files": [
+        "assets/audio/sfx/loom-01.wav",
+        "assets/audio/sfx/loom-02.wav",
+        "assets/audio/sfx/loom-03.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -0.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "sheep": {
+      "files": [
+        "assets/audio/sfx/sheep-01.wav",
+        "assets/audio/sfx/sheep-02.wav",
+        "assets/audio/sfx/sheep-03.wav"
+      ],
+      "volume_db": -2.0,
+      "measured_vs_coin_db": -1.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "crane": {
+      "files": [
+        "assets/audio/sfx/crane-01.wav",
+        "assets/audio/sfx/crane-02.wav"
+      ],
+      "volume_db": 0.0,
+      "measured_vs_coin_db": 0.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "toll-paid": {
+      "files": [
+        "assets/audio/sfx/toll-01.wav",
+        "assets/audio/sfx/toll-02.wav",
+        "assets/audio/sfx/toll-03.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "seal-granted": {
+      "files": [
+        "assets/audio/sfx/seal-01.wav"
+      ],
+      "volume_db": 4.5,
+      "measured_vs_coin_db": 4.7,
+      "loop": false,
+      "pitch_vary": false
+    }
+  }
+}

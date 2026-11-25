@@ -53,6 +53,12 @@ public partial class MenuTest : TownTestBase
         await Frames(10);
         var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
+        // Esc in Pave mode leaves Pave mode first and does not pause.
+        Main.Hud.SetPaveMode(true);
+        await Frames(2);
+        await Key(Godot.Key.Escape);
+        Check(!Main.Hud.PaveMode && !M.IsPaused && !Main.Driver.Paused, "Esc in Pave mode should only leave Pave mode");
+
         // Esc pauses: the book closes, the tick stands still, the cover menu shows with Resume focused.
         int books0 = Main.Audio.BookSounds;
         await PauseByKey(Godot.Key.Escape);

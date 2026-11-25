@@ -106,11 +106,119 @@ footer p{margin:0}
   <p class="eyebrow">Tide &amp; Toll &middot; Hamlet era, about 1100 &middot; review copy, 2026-11-25</p>
   <h1>The Hamlet asset set</h1>
   <p class="lead">Every model, texture, icon, font and sound made for the first era, now with the River set for the river prototype, with how each was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
-  <ul class="counts"><li><b>170</b> files in the ledger</li><li>39 models, 9 textures, 39 icons, 4 fonts, 75 sound effects, 3 music files, 1 ambience loop</li></ul>
-  <nav class="toc" aria-label="Sections"><a href="#town">Town set</a><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <ul class="counts"><li><b>247</b> files in the ledger</li><li>45 models, 9 textures, 53 icons, 4 fonts, 120 sound effects, 14 music files, 2 ambience loop</li></ul>
+  <nav class="toc" aria-label="Sections"><a href="#age2">Second age</a><a href="#town">Town set</a><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
   <aside class="changes river-new" id="new-river"><h2>New: the River set</h2><p class="muted">Third round, 2026-11-25, for the river prototype (boats, crossings, trade).</p><ul><li>9 models (3,580 triangles): masted barge with a lowering mast and a cargo node, rope ferry (raft, posts, rope), Dutch drawbridge with a hinged leaf, balance beam, chains and signal arm, its span and ramp with a barrier, the landing and the keeper's hut.</li><li>8 icons in the house language; 31 sounds in 7 families.</li><li>The six free asset sites are blocked from the build container (checked 2026-11-25), so everything was made in code; every file has a ledger row.</li></ul></aside>
   <aside class="changes" id="changes"><h2>Changed since the first version</h2><p class="muted">Second round, after the art and audio review.</p><ul><li>Icons redrawn in one language: crisp closed shapes, Paper fill inside a 2-unit Ink outline, one stroke weight. The same files now read on Paper and on Ink; this page shows the real SVGs (no recolouring mask). The footbridge icon is a bold deck with a hand rail over water.</li><li>Weeping willow rebuilt with a curtain of hanging fronds (224 triangles).</li><li>Small hut (cottage-03) has a gabled roof with crossed gable horns, so it differs from the longhouses from above.</li><li>Footbridge rails end exactly 1.2 m above the deck; the pipeline table now says rails are measured from the deck.</li><li>Reeds rebuilt as thin upright stems with dark seed heads; villager has a pack on the back as a facing cue from above.</li><li>Trees, fields and reeds use a soft ink pass (creases inked only above 1.5 instead of 0.45, by stencil), so they carry no more ink than the houses; field furrows are low-pitched and no longer go near-black from the side.</li><li>Hollow way is now a dark wet lane with puddles and no ink specks; trampled grass is isotropic; grass has smaller patches so the 4 x 4 repeat is less obvious. The wear ramp&#x27;s blends are documented as intentional.</li><li>Bells: six 3 s gameplay strikes on D4, E4, G4 and A4 with 2 to 3 kHz strike partials (highest correlation between takes 0.53, was 0.89), plus four long 6 s strikes as named variants.</li><li>Place has 2 to 4 kHz content (13 to 17 % of its energy, was under 1 %); erase is about 0.3 s (was 0.5 s).</li><li>Theme: 45 s loop (the 8 bars twice, with a variation); the seam level step is 0.5 dB (was 9 dB).</li><li>Housekeeping: asset sync keeps Godot&#x27;s import files (rsync installed, and the fallback keeps them too); generators no longer rewrite tracked ledger files on every rebuild; this page has a jump list in each section.</li></ul></aside>
 </header>
+
+<section id="age2">
+  <header><h2>Second age: The River (town)</h2>
+  <p>New for the second age (2026-11-25, docs/plans/age2-design.md): the pasture and its sheep, the weaver's cottage, the landing's crane, the borough seal stone and the tide post, and 14 icons. 6 models, 2,024 triangles. Built by <code>assets/src/models/river-town.py</code> and <code>assets/src/2d/icons-age2.py</code>; the free asset sites are blocked from the build container, so all of it was made in code.</p></header>
+  <div class="grid">
+<article class="card model" id="pasture">
+  <figure><img src="media/models/pasture.png" alt="Contact sheet of Sheep pasture: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Sheep pasture <code>pasture.glb</code></h3>
+    <p>16 x 16 m like a field: low wattle fence with a hurdle gate in the south side, trough, hay rack, worn patches and grass tufts. Empty: the game scatters sheep inside (x, z within -6.6..6.6).</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>16 x 16 m (x by z)</dd>
+      <dt>Height</dt><dd>1.21 m</dd>
+      <dt>Triangles</dt><dd>493 <span class="muted">of 500</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py (seed 11); script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Far bank: sheep pasture (fenced, gate in the south side, trough, hay rack)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="sheep">
+  <figure><img src="media/models/sheep.png" alt="Contact sheet of Sheep: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Sheep <code>sheep.glb</code></h3>
+    <p>One sheep, 1.5x like the villagers: white fleece, dark head and legs, head to +Z.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.02 x 1.98 m (x by z)</dd>
+      <dt>Height</dt><dd>1 m</dd>
+      <dt>Triangles</dt><dd>144 <span class="muted">of 150</span></dd>
+    </dl>
+    <ul class="nodes"><li><code>Body</code> 96 tris, origin (0, 0, 0)</li><li><code>Head</code> 48 tris, origin (0, 0.78, 0.5); dips about its local X for grazing</li></ul>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py; script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Far bank: sheep scattered in the pasture (nodes Body and Head, Head dips about its local X at the neck)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="weaver-cottage">
+  <figure><img src="media/models/weaver-cottage.png" alt="Contact sheet of Weaver&#x27;s cottage: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Weaver&#x27;s cottage <code>weaver-cottage.glb</code></h3>
+    <p>8 x 6 m like cottage-02: plank walls and hipped thatch, an open lean-to on the east holding a floor loom with red cloth, a bench, wool and bolts of cloth.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>8.1 x 6 m (x by z)</dd>
+      <dt>Height</dt><dd>5.39 m</dd>
+      <dt>Triangles</dt><dd>486 <span class="muted">of 500</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py; script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Near bank: weaver&#x27;s cottage (Wool to Cloth; loom in the open lean-to)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="crane">
+  <figure><img src="media/models/crane.png" alt="Contact sheet of Treadwheel crane: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Treadwheel crane <code>crane.glb</code></h3>
+    <p>Small treadwheel crane for the landing, post 4.4 m.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>4.18 x 5.02 m (x by z)</dd>
+      <dt>Height</dt><dd>4.77 m, reaches 0.03 m below y = 0</dd>
+      <dt>Triangles</dt><dd>472 <span class="muted">of 500</span></dd>
+    </dl>
+    <ul class="nodes"><li><code>Base</code> 392 tris, origin (0, 0, 0)</li><li><code>Jib</code> 80 tris, origin (0, 4.1, 0); turns about its local Y at the post top; at rest the arm points +Z</li></ul>
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py; script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Landing: treadwheel crane upgrade (nodes Base and Jib, Jib turns about its local Y at the post top)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="seal-stone">
+  <figure><img src="media/models/seal-stone.png" alt="Contact sheet of Borough seal stone: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Borough seal stone <code>seal-stone.glb</code></h3>
+    <p>The borough seal on a carved plinth on a two-step platform, 4 x 4 m: a red disc with a ship in relief, tilted back so it reads from above and from the front.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>3.8 x 3.8 m (x by z)</dd>
+      <dt>Height</dt><dd>3.67 m</dd>
+      <dt>Triangles</dt><dd>248 <span class="muted">of 600</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py (seed 11); script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>Town green: borough seal stone (ends the second age)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article>
+<article class="card model" id="tide-post">
+  <figure><img src="media/models/tide-post.png" alt="Contact sheet of Tide post: top view, 45-degree views from south, east and north, and four side views" loading="lazy" width="1920" height="960"></figure>
+  <div class="body">
+    <h3>Tide post <code>tide-post.glb</code></h3>
+    <p>A marked oak post in the shallows: bands every 0.5 m, collars at whole metres; origin on the mean water level, the post reaches 1.25 m below it.</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>1.2 x 1.02 m (x by z)</dd>
+      <dt>Height</dt><dd>2.6 m, reaches 1.25 m below y = 0</dd>
+      <dt>Triangles</dt><dd>181 <span class="muted">of 200</span></dd>
+    </dl>
+    
+    <dl class="facts"><dt>Source</dt><dd>generated by assets/src/models/river-town.py (seed 11); script written by Claude Opus 5.5; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Used in</dt><dd>River: tide post in the shallows (painted level marks, water plane shows the tide)</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl>
+  </div>
+</article></div>
+  <h3 id="age2-icons">Icons</h3>
+  <ul class="icons"><li id="good-wool"><div class="pair" role="img" aria-label="Wool icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/good-wool.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/good-wool.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/good-wool.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/good-wool.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/good-wool.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/good-wool.svg" width="80" height="80" alt=""></div></div>
+<p><b>Wool</b> <code>good-wool.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="good-cloth"><div class="pair" role="img" aria-label="Cloth icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/good-cloth.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/good-cloth.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/good-cloth.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/good-cloth.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/good-cloth.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/good-cloth.svg" width="80" height="80" alt=""></div></div>
+<p><b>Cloth</b> <code>good-cloth.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-tide-high"><div class="pair" role="img" aria-label="Tide high icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-tide-high.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tide-high.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tide-high.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-tide-high.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tide-high.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tide-high.svg" width="80" height="80" alt=""></div></div>
+<p><b>Tide high</b> <code>ui-tide-high.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-tide-low"><div class="pair" role="img" aria-label="Tide low icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-tide-low.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tide-low.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tide-low.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-tide-low.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tide-low.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tide-low.svg" width="80" height="80" alt=""></div></div>
+<p><b>Tide low</b> <code>ui-tide-low.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-boat-berth"><div class="pair" role="img" aria-label="Berth icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-boat-berth.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-boat-berth.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-boat-berth.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-boat-berth.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-boat-berth.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-boat-berth.svg" width="80" height="80" alt=""></div></div>
+<p><b>Berth</b> <code>ui-boat-berth.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-crane"><div class="pair" role="img" aria-label="Crane icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-crane.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-crane.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-crane.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-crane.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-crane.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-crane.svg" width="80" height="80" alt=""></div></div>
+<p><b>Crane</b> <code>ui-crane.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-ferry"><div class="pair" role="img" aria-label="Ferry icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-ferry.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-ferry.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-ferry.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-ferry.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-ferry.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-ferry.svg" width="80" height="80" alt=""></div></div>
+<p><b>Ferry</b> <code>ui-ferry.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-bridge"><div class="pair" role="img" aria-label="Bridge icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-bridge.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-bridge.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-bridge.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-bridge.svg" width="80" height="80" alt=""></div></div>
+<p><b>Bridge</b> <code>ui-bridge.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-toll"><div class="pair" role="img" aria-label="Toll icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-toll.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-toll.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-toll.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-toll.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-toll.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-toll.svg" width="80" height="80" alt=""></div></div>
+<p><b>Toll</b> <code>ui-toll.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-request"><div class="pair" role="img" aria-label="Request icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-request.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-request.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-request.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-request.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-request.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-request.svg" width="80" height="80" alt=""></div></div>
+<p><b>Request</b> <code>ui-request.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-hint"><div class="pair" role="img" aria-label="Hint icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-hint.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-hint.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-hint.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-hint.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-hint.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-hint.svg" width="80" height="80" alt=""></div></div>
+<p><b>Hint</b> <code>ui-hint.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-extend"><div class="pair" role="img" aria-label="Extend icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-extend.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-extend.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-extend.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-extend.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-extend.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-extend.svg" width="80" height="80" alt=""></div></div>
+<p><b>Extend</b> <code>ui-extend.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-tools"><div class="pair" role="img" aria-label="Tools icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-tools.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tools.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tools.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-tools.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-tools.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-tools.svg" width="80" height="80" alt=""></div></div>
+<p><b>Tools</b> <code>ui-tools.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li><li id="ui-value"><div class="pair" role="img" aria-label="Value icon at 20, 40 and 80 px on Paper and on Ink"><div class="on-paper"><img class="ico" src="media/icons/ui-value.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-value.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-value.svg" width="80" height="80" alt=""></div><div class="on-ink"><img class="ico" src="media/icons/ui-value.svg" width="20" height="20" alt=""><img class="ico" src="media/icons/ui-value.svg" width="40" height="40" alt=""><img class="ico" src="media/icons/ui-value.svg" width="80" height="80" alt=""></div></div>
+<p><b>Value</b> <code>ui-value.svg</code> <span class="muted">self-made, icons-age2.py</span></p></li></ul>
+  <figure class="wide"><img src="media/icons/icons-age2-preview.png" alt="The second-age icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="1330" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
+  <article class="card"><div class="body"><h3>Ledger, the same for all second-age icons</h3><dl class="facts"><dt>Source</dt><dd>generated by assets/src/2d/icons-age2.py; script written by Claude Opus 5.5; SVG written as code: closed Paper shapes in a 2-unit Ink outline; free asset sites blocked from the build container (checked 2026-11-25)</dd><dt>Licence</dt><dd>self-made</dd><dt>Verified</dt><dd>yes, 2026-11-25</dd></dl></div></article>
+</section>
 
 <section id="town">
   <header><h2>Town set</h2>
