@@ -111,6 +111,7 @@ The footbridge row measures its rails from the deck people walk on (corrected 20
 - Loudness: peaks under -1 dBFS; aim the gameplay mix at about -20 LUFS. Leave headroom rather than normalising every file to the top.
 - Frequency lanes: drone 70 to 300 Hz; bells 300 Hz to 3 kHz; footfall 1 to 6 kHz; UI about 2 to 4 kHz.
 - The theme is in D. Music tempo never follows game speed. No stinger on every click, no alarms, no speech.
+- More music, same composer: `assets/src/audio/_music.py` is the shared engine (the theme's pipe, lyre, frame drum, drone, mix, reverb and -20 LUFS level, copied from `theme-hamlet.py`, which stays as it is). Each piece is a small `music-*.py` generator holding its notes; `playlist-music.py` writes `assets/audio/music/playlist.json` (roles `age1`, `age-change`, `pause`; rotation order, theme first). Pieces are Vorbis quality 7 (the theme is 5) so the encoder's error at the loop join stays under the seam check; WAV masters go to `build/audio-music/`. Measure everything beside the theme with `PYTHONPATH=assets/src python3 assets/src/audio/_check_music.py` (loudness, spectrum, seam, mode of every note, shared melody runs of at most 4 notes).
 
 ## Files and names
 
@@ -124,7 +125,7 @@ assets/
   icons/                  tool-fence.svg, tool-gate.svg, tool-gravel.svg, tool-erase.svg
   fonts/                  <FontName>-Regular.ttf
   audio/sfx/              step-grass-01.wav ... step-grass-08.wav, bell-01.wav, place-01.wav
-  audio/music/            theme-hamlet-draft.ogg
+  audio/music/            theme-hamlet-draft.ogg, music-*.ogg (+ -score.json), playlist.json
   audio/ambience/         water-river-loop.ogg
   licences/               saved licence texts and pages (OFL.txt copies, CC0 page PDFs)
   src/                    generator code, prompts and contact sheets (not shipped)

@@ -1,0 +1,601 @@
+{
+ "id": "music-low-meadow",
+ "title": "Low Meadow",
+ "role": "age1",
+ "generator": "assets/src/audio/music-low-meadow.py",
+ "key": "D",
+ "mode": "Aeolian (C D E F G A A#)",
+ "metre": "3/4",
+ "bpm": 60,
+ "bars": 24,
+ "loops": true,
+ "samples_48k": 3456000,
+ "seconds": 72.0,
+ "feel": "as the Hamlet theme: onsets humanised by +-12 ms, notes held 93% of their length",
+ "form": "A (1-8) B (9-16) A' (17-24); 72 s seamless loop",
+ "range": "G4-A#5",
+ "instruments": {
+  "pipe": "lead, wooden pipe",
+  "drone": "river drone D2 + D3 + A3",
+  "lyre": "open fifths, moving D Bb D F G D D Bb C",
+  "frame_drum": "answers bars 9-16 only"
+ },
+ "melody_by_bar": [
+  "F5:2 E5:1",
+  "D5:1 C5:1 D5:1",
+  "A4:3",
+  "A#4:1 C5:1 D5:1",
+  "E5:1 F5:2",
+  "G5:1 F5:1 E5:1",
+  "D5:2 C5:1",
+  "D5:3",
+  "D5:1 A5:2",
+  "G5:1 F5:1 G5:1",
+  "A#5:1 A5:1 G5:1",
+  "A5:3",
+  "F5:1 E5:1 D5:1",
+  "C5:2 D5:1",
+  "E5:1 C5:1 A4:1",
+  "D5:3",
+  "F5:2 E5:1",
+  "D5:1 C5:1 D5:1",
+  "A#4:2 A4:1",
+  "G4:1 A4:1 C5:1",
+  "D5:2 E5:1",
+  "F5:1 E5:1 C5:1",
+  "E5:2 C5:1",
+  "D5:3"
+ ],
+ "counter_by_bar": null,
+ "pipe": [
+  {
+   "bar": 1,
+   "beat": 1.0,
+   "note": "F5",
+   "beats": 2.0,
+   "midi": 77
+  },
+  {
+   "bar": 1,
+   "beat": 3.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 2,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 2,
+   "beat": 2.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 2,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 3,
+   "beat": 1.0,
+   "note": "A4",
+   "beats": 3.0,
+   "midi": 69
+  },
+  {
+   "bar": 4,
+   "beat": 1.0,
+   "note": "A#4",
+   "beats": 1.0,
+   "midi": 70
+  },
+  {
+   "bar": 4,
+   "beat": 2.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 4,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 5,
+   "beat": 1.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 5,
+   "beat": 2.0,
+   "note": "F5",
+   "beats": 2.0,
+   "midi": 77
+  },
+  {
+   "bar": 6,
+   "beat": 1.0,
+   "note": "G5",
+   "beats": 1.0,
+   "midi": 79
+  },
+  {
+   "bar": 6,
+   "beat": 2.0,
+   "note": "F5",
+   "beats": 1.0,
+   "midi": 77
+  },
+  {
+   "bar": 6,
+   "beat": 3.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 7,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 2.0,
+   "midi": 74
+  },
+  {
+   "bar": 7,
+   "beat": 3.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 8,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 3.0,
+   "midi": 74
+  },
+  {
+   "bar": 9,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 9,
+   "beat": 2.0,
+   "note": "A5",
+   "beats": 2.0,
+   "midi": 81
+  },
+  {
+   "bar": 10,
+   "beat": 1.0,
+   "note": "G5",
+   "beats": 1.0,
+   "midi": 79
+  },
+  {
+   "bar": 10,
+   "beat": 2.0,
+   "note": "F5",
+   "beats": 1.0,
+   "midi": 77
+  },
+  {
+   "bar": 10,
+   "beat": 3.0,
+   "note": "G5",
+   "beats": 1.0,
+   "midi": 79
+  },
+  {
+   "bar": 11,
+   "beat": 1.0,
+   "note": "A#5",
+   "beats": 1.0,
+   "midi": 82
+  },
+  {
+   "bar": 11,
+   "beat": 2.0,
+   "note": "A5",
+   "beats": 1.0,
+   "midi": 81
+  },
+  {
+   "bar": 11,
+   "beat": 3.0,
+   "note": "G5",
+   "beats": 1.0,
+   "midi": 79
+  },
+  {
+   "bar": 12,
+   "beat": 1.0,
+   "note": "A5",
+   "beats": 3.0,
+   "midi": 81
+  },
+  {
+   "bar": 13,
+   "beat": 1.0,
+   "note": "F5",
+   "beats": 1.0,
+   "midi": 77
+  },
+  {
+   "bar": 13,
+   "beat": 2.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 13,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 14,
+   "beat": 1.0,
+   "note": "C5",
+   "beats": 2.0,
+   "midi": 72
+  },
+  {
+   "bar": 14,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 15,
+   "beat": 1.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 15,
+   "beat": 2.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 15,
+   "beat": 3.0,
+   "note": "A4",
+   "beats": 1.0,
+   "midi": 69
+  },
+  {
+   "bar": 16,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 3.0,
+   "midi": 74
+  },
+  {
+   "bar": 17,
+   "beat": 1.0,
+   "note": "F5",
+   "beats": 2.0,
+   "midi": 77
+  },
+  {
+   "bar": 17,
+   "beat": 3.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 18,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 18,
+   "beat": 2.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 18,
+   "beat": 3.0,
+   "note": "D5",
+   "beats": 1.0,
+   "midi": 74
+  },
+  {
+   "bar": 19,
+   "beat": 1.0,
+   "note": "A#4",
+   "beats": 2.0,
+   "midi": 70
+  },
+  {
+   "bar": 19,
+   "beat": 3.0,
+   "note": "A4",
+   "beats": 1.0,
+   "midi": 69
+  },
+  {
+   "bar": 20,
+   "beat": 1.0,
+   "note": "G4",
+   "beats": 1.0,
+   "midi": 67
+  },
+  {
+   "bar": 20,
+   "beat": 2.0,
+   "note": "A4",
+   "beats": 1.0,
+   "midi": 69
+  },
+  {
+   "bar": 20,
+   "beat": 3.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 21,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 2.0,
+   "midi": 74
+  },
+  {
+   "bar": 21,
+   "beat": 3.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 22,
+   "beat": 1.0,
+   "note": "F5",
+   "beats": 1.0,
+   "midi": 77
+  },
+  {
+   "bar": 22,
+   "beat": 2.0,
+   "note": "E5",
+   "beats": 1.0,
+   "midi": 76
+  },
+  {
+   "bar": 22,
+   "beat": 3.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 23,
+   "beat": 1.0,
+   "note": "E5",
+   "beats": 2.0,
+   "midi": 76
+  },
+  {
+   "bar": 23,
+   "beat": 3.0,
+   "note": "C5",
+   "beats": 1.0,
+   "midi": 72
+  },
+  {
+   "bar": 24,
+   "beat": 1.0,
+   "note": "D5",
+   "beats": 3.0,
+   "midi": 74
+  }
+ ],
+ "counter_pipe": [],
+ "frame_drum": [
+  {
+   "bar": 9,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 9,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 10,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 10,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 11,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 11,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 12,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 12,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 13,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 13,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 14,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 14,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 15,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 15,
+   "beat": 3,
+   "stroke": "tek"
+  },
+  {
+   "bar": 16,
+   "beat": 1,
+   "stroke": "dum"
+  },
+  {
+   "bar": 16,
+   "beat": 2.5,
+   "stroke": "tek"
+  }
+ ],
+ "lyre": [
+  {
+   "bar": 1,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 4,
+   "beat": 1,
+   "notes": [
+    "A#2",
+    "F3"
+   ]
+  },
+  {
+   "bar": 5,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 9,
+   "beat": 1,
+   "notes": [
+    "F3",
+    "C4"
+   ]
+  },
+  {
+   "bar": 12,
+   "beat": 1,
+   "notes": [
+    "G2",
+    "D3"
+   ]
+  },
+  {
+   "bar": 13,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 17,
+   "beat": 1,
+   "notes": [
+    "D3",
+    "A3"
+   ]
+  },
+  {
+   "bar": 19,
+   "beat": 1,
+   "notes": [
+    "A#2",
+    "F3"
+   ]
+  },
+  {
+   "bar": 21,
+   "beat": 1,
+   "notes": [
+    "C3",
+    "G3"
+   ]
+  },
+  {
+   "bar": 23,
+   "beat": 1,
+   "notes": [
+    "A3"
+   ]
+  }
+ ],
+ "drone": [
+  {
+   "note": "D2",
+   "level": 0.45
+  },
+  {
+   "note": "D3",
+   "level": 1.0
+  },
+  {
+   "note": "A3",
+   "level": 0.6
+  }
+ ]
+}

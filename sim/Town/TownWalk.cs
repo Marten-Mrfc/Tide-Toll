@@ -41,7 +41,8 @@ public sealed partial class Town
         return Math.Max(TownRules.CrowdMinFactor, 1 / (1 + TownRules.CrowdSlowdown * excess / c));
     }
 
-    internal double PaceFactor => 1 + TownRules.PaceStep * S.PaceLevel;
+    internal double PaceFactor => PaceFactorAt(S.PaceLevel);
+    public static double PaceFactorAt(int level) => 1 + TownRules.PaceCap * (1 - Math.Pow(TownRules.PaceDecay, level));
     public bool BellRinging => Time < S.BellUntil;
 
     /// <summary>Walking speed on a road now, cells per second, for one more walker than are on it.</summary>

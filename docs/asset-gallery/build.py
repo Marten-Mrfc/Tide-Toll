@@ -409,6 +409,74 @@ river_icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_rr["source"])}</d
                     f'<dt>Verified</dt><dd>{E(_rr["verified"])}, {E(_rr["date_checked"])}</dd></dl>')
 
 
+# ------------------------------------------------------------------ Town set (incremental town, 2026-11-25)
+TOWN_MODELS = [
+    ("mill", "Post mill", 1500,
+     "Timber post mill on a trestle with stone piers; door, ladder and tail pole at the back. The sails are their own "
+     "node: it spins about its local Z axis at the hub.", {"Sails": "spins about local Z"}),
+    ("bell-post", "Bell post", 500,
+     "The town bell in a timber frame with a narrow thatch cap, for the green. The bell is its own node, pivoting at "
+     "its hanger.", {"Bell": "swings about local X"}),
+    ("plot-stakes", "Plot stakes", 300,
+     "Four stakes and a pale cord around an 8 x 6 m plot, a red tag on the south-west stake. Every stake and cord is "
+     "its own node, so the game moves the stakes to any plot and scales each cord along its own axis only.", {}),
+    ("charter-stone", "Charter stone", 300,
+     "A standing stone with a carved panel (a ring and three lines) on its front, on two footing stones.", {}),
+    ("villager-cargo-water", "Cargo: Water", 100,
+     "A yoke across the head with a bucket of water at each side. Attach at the top of the head like the other cargo; "
+     "the buckets hang below the origin, so the contact sheet's ground hides them.", {}),
+    ("villager-cargo-flour", "Cargo: Flour", 100, "A tall pale flour sack with a tied neck.", {}),
+]
+
+
+def town_card(name, title, bud, what, notes):
+    item = f"assets/models/{name}.glb"
+    tris, lo, hi, nodes = glb_stats(ROOT / item)
+    figs = ""
+    if (ROOT / f"assets/src/contact-sheets/{name}.png").exists():
+        img = put(f"assets/src/contact-sheets/{name}.png", f"models/{name}.png")
+        figs = (f'<figure><img src="{img}" alt="Contact sheet of {E(title)}: top view, 45-degree views from south, east '
+                f'and north, and four side views" loading="lazy" width="1920" height="960"></figure>')
+    w, h, d = hi[0] - lo[0], hi[1], hi[2] - lo[2]
+    below = f", reaches {m(-lo[1])} m below y = 0" if lo[1] < -0.01 else ""
+    rows = ""
+    for nn, nt, tr in node_info(ROOT / item):
+        org = f"origin ({', '.join(m(v) for v in tr)})" if tr else "origin (0, 0, 0)"
+        rows += f"<li><code>{E(nn)}</code> {nt} tris, {org}{'; ' + E(notes[nn]) if nn in notes else ''}</li>"
+    node_list = f'<ul class="nodes">{rows}</ul>' if len(nodes) > 1 else ""
+    return tris, f"""
+<article class="card model" id="{name}">
+  {figs}
+  <div class="body">
+    <h3>{E(title)} <code>{name}.glb</code></h3>
+    <p>{E(what)}</p>
+    <dl class="nums">
+      <dt>Footprint</dt><dd>{m(w)} x {m(d)} m (x by z)</dd>
+      <dt>Height</dt><dd>{m(h)} m{below}</dd>
+      <dt>Triangles</dt><dd>{tris} <span class="muted">of {bud}</span></dd>
+    </dl>
+    {node_list}
+    {ledger_facts(item)}
+  </div>
+</article>"""
+
+
+town_cards, town_tris = [], 0
+for _n, _t, _b, _w, _no in TOWN_MODELS:
+    _tr, _c = town_card(_n, _t, _b, _w, _no)
+    town_tris += _tr
+    town_cards.append(_c)
+TOWN_ICONS = [("up-villager", "Villager"), ("up-pace", "Pace"), ("up-load", "Load"), ("up-pave", "Pave"),
+              ("up-building", "Building"), ("ui-bell", "Bell"), ("ui-achievement", "Achievement"),
+              ("ui-settings", "Settings"), ("ui-display", "Display"), ("ui-keys", "Keys"), ("ui-save", "Save"),
+              ("ui-quit", "Quit"), ("ui-lock", "Locked"), ("ui-check", "Done"), ("good-water", "Water"),
+              ("good-grain", "Grain"), ("good-flour", "Flour")]
+town_icon_rows = [icon_row(n, l, "icons-town.py") for n, l in TOWN_ICONS]
+town_icon_prev = put("assets/src/2d/previews/icons-town-preview.png", "icons/icons-town-preview.png")
+_tw = LEDGER["assets/icons/ui-bell.svg"]
+town_icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_tw["source"])}</dd><dt>Licence</dt><dd>{E(_tw["licence"])}</dd>'
+                   f'<dt>Verified</dt><dd>{E(_tw["verified"])}, {E(_tw["date_checked"])}</dd></dl>')
+
 def sfx_card(stem, count, title, what, fmax):
     global n_audio
     rows = []
@@ -577,6 +645,7 @@ JUMP_TEX = jump([("tex-" + n, t) for n, t, _, _ in TEX] + [("wear-ramp", "Wear r
 JUMP_ICONS = jump([(n, t) for n, t in ICONS])
 JUMP_FONTS = jump([("font-" + fn.split(".")[0], lbl.split(" (")[0]) for fn, lbl, *_ in FONTS])
 JUMP_SFX = jump([(st, t) for st, _, t, _, _ in SFX])
+JUMP_TOWN = jump([(n, t) for n, t, *_ in TOWN_MODELS] + [("town-icons", "Icons")])
 JUMP_RIVER = jump([(n, t) for n, t, *_ in RIVER_MODELS] + [("river-icons", "Icons"), ("river-sfx", "Sounds")])
 JUMP_LOOPS = jump([(st, t) for _, st, t, _, _, _ in LOOPS] + [("score", "Score data")])
 CHANGES = [
@@ -603,10 +672,20 @@ PAGE = f"""<title>Tide &amp; Toll Asset Gallery</title>
   <h1>The Hamlet asset set</h1>
   <p class="lead">Every model, texture, icon, font and sound made for the first era, now with the River set for the river prototype, with how each was made and under what licence. Everything except the fonts was generated in code by scripts under <code>assets/src/</code>; nothing came from a paid or unclear source.</p>
   <ul class="counts"><li><b>{n_files}</b> files in the ledger</li><li>{count_line}</li></ul>
-  <nav class="toc" aria-label="Sections"><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
+  <nav class="toc" aria-label="Sections"><a href="#town">Town set</a><a href="#river">River set</a><a href="#models">Models</a><a href="#ground">Ground and textures</a><a href="#icons">Icons</a><a href="#fonts">Fonts</a><a href="#sfx">Sound effects</a><a href="#theme">Theme and river</a><a href="#review">For review</a></nav>
   <aside class="changes river-new" id="new-river"><h2>New: the River set</h2><p class="muted">Third round, 2026-11-25, for the river prototype (boats, crossings, trade).</p><ul><li>{len(RIVER_MODELS)} models ({river_tris:,} triangles): masted barge with a lowering mast and a cargo node, rope ferry (raft, posts, rope), Dutch drawbridge with a hinged leaf, balance beam, chains and signal arm, its span and ramp with a barrier, the landing and the keeper's hut.</li><li>{len(RIVER_ICONS)} icons in the house language; {sum(r[1] for r in RIVER_SFX)} sounds in {len(RIVER_SFX)} families.</li><li>The six free asset sites are blocked from the build container (checked 2026-11-25), so everything was made in code; every file has a ledger row.</li></ul></aside>
   <aside class="changes" id="changes"><h2>Changed since the first version</h2><p class="muted">Second round, after the art and audio review.</p><ul>{CHANGES_HTML}</ul></aside>
 </header>
+
+<section id="town">
+  <header><h2>Town set</h2>
+  <p>New for the incremental town (2026-11-25): the mill, the bell post, plot stakes, the charter stone, Water and Flour cargo, and {len(TOWN_ICONS)} icons for upgrades, the book's menus and the three goods. {len(TOWN_MODELS)} models, {town_tris:,} triangles. Built by <code>assets/src/models/town.py</code> and <code>assets/src/2d/icons-town.py</code>; the free asset sites are blocked from the build container, so all of it was made in code.</p>{JUMP_TOWN}</header>
+  <div class="grid">{"".join(town_cards)}</div>
+  <h3 id="town-icons">Icons</h3>
+  <ul class="icons">{"".join(town_icon_rows)}</ul>
+  <figure class="wide"><img src="{town_icon_prev}" alt="The town icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="1612" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
+  <article class="card"><div class="body"><h3>Ledger, the same for all town icons</h3>{town_icon_facts}</div></article>
+</section>
 
 <section id="river">
   <header><h2>River set</h2>

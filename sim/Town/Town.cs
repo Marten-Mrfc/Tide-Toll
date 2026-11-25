@@ -177,7 +177,7 @@ public sealed partial class Town
     // ---- Coin ----
 
     internal double CoinBonus => 1 + TownRules.VillagerPerkCoin * (S.VillagersBought / TownRules.PerkEvery);
-    internal int LoadUnits => 1 + S.LoadLevel;
+    internal int LoadUnits => TownRules.BaseLoad + S.LoadLevel;
 
     internal void Earn(double coin)
     {

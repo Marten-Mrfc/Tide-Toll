@@ -1,0 +1,78 @@
+{
+ "about": "Background music. role age1 = first-age rotation, age-change = played once when the age changes, pause = while the book is open. All 48 kHz stereo Ogg Vorbis; loops are sample-exact (loop the whole file, no crossfade). Integrated loudness -20 LUFS, except the pause piece at -22 on purpose.",
+ "rotation": [
+  "theme-hamlet-draft",
+  "music-ferry-morning",
+  "music-long-field",
+  "music-low-meadow"
+ ],
+ "rotation_note": "Play in this order and wrap round, the theme first. Suggested: each piece plays through once (the theme twice, it is 45 s), 0 to 2 s of silence between pieces. Tempo never follows game speed.",
+ "pieces": [
+  {
+   "id": "theme-hamlet-draft",
+   "file": "assets/audio/music/theme-hamlet-draft.ogg",
+   "score": "assets/audio/music/theme-hamlet-draft-score.json",
+   "title": "Tide and Toll",
+   "role": "age1",
+   "seconds": 45.0,
+   "loops": true,
+   "key": "D Dorian",
+   "bpm": 64
+  },
+  {
+   "id": "music-ferry-morning",
+   "file": "assets/audio/music/music-ferry-morning.ogg",
+   "score": "assets/audio/music/music-ferry-morning-score.json",
+   "title": "Ferry Morning",
+   "role": "age1",
+   "seconds": 74.118,
+   "loops": true,
+   "key": "D Mixolydian",
+   "bpm": 68
+  },
+  {
+   "id": "music-long-field",
+   "file": "assets/audio/music/music-long-field.ogg",
+   "score": "assets/audio/music/music-long-field-score.json",
+   "title": "The Long Field",
+   "role": "age1",
+   "seconds": 78.75,
+   "loops": true,
+   "key": "A Aeolian",
+   "bpm": 64
+  },
+  {
+   "id": "music-low-meadow",
+   "file": "assets/audio/music/music-low-meadow.ogg",
+   "score": "assets/audio/music/music-low-meadow-score.json",
+   "title": "Low Meadow",
+   "role": "age1",
+   "seconds": 72.0,
+   "loops": true,
+   "key": "D Aeolian",
+   "bpm": 60
+  },
+  {
+   "id": "music-theme-rising",
+   "file": "assets/audio/music/music-theme-rising.ogg",
+   "score": "assets/audio/music/music-theme-rising-score.json",
+   "title": "Tide and Toll, Rising",
+   "role": "age-change",
+   "seconds": 49.006,
+   "loops": false,
+   "key": "D Dorian",
+   "bpm": 64
+  },
+  {
+   "id": "music-still-pages",
+   "file": "assets/audio/music/music-still-pages.ogg",
+   "score": "assets/audio/music/music-still-pages-score.json",
+   "title": "Still Pages",
+   "role": "pause",
+   "seconds": 60.0,
+   "loops": true,
+   "key": "D Dorian",
+   "bpm": 60
+  }
+ ]
+}

@@ -26,6 +26,8 @@ namespace TideToll.Tools;
 ///                                                               the river strategy experiment: S1 to S4, S5 missing 10%, 30% and
 ///                                                               50% of boats, S6; --sweep runs 12 and 30 days and S2, S5-10, S6 at 60
 ///                                                               walkers too; --set overrides RiverRules values for tuning runs
+///   town  [--seed 1] [--bot cheapest|payback|random|all] [--minutes 60] [--seeds 1-10] [--markdown] [--plan]
+///                                                               the incremental town: a bot plays, pacing table (TownCommand.cs)
 /// Exit code 1 when a check fails or a budget is exceeded.
 /// </summary>
 public static class Program
@@ -42,6 +44,7 @@ public static class Program
             case "gate": return Gate(opt);
             case "checks": return Checks();
             case "river": return River(opt);
+            case "town": return TownCommand.Run(opt);
             default:
                 Console.WriteLine("usage: TideToll.Tools run|bench|gate|checks [options]  (see Program.cs)");
                 return cmd is "help" or "-h" or "--help" ? 0 : 2;

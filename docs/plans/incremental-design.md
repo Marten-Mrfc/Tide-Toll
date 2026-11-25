@@ -73,6 +73,10 @@ The terrain comes from the existing map generator (meadow and river, by seed). A
 - Goods are named Water, Grain and Flour everywhere (simulation, models, interface).
 - The browser toy is finished and is not touched.
 
+## Already built beside round 1: the settings pages
+
+The settings screen is finished and tested: `game/scripts/settings/**`, `game/tests/settings.tscn`, `game/tests/Settings*.cs`, `tools/settings-shots.sh`. How it is used is in `docs/plans/settings-handover.md`. It depends only on `UiKit.cs`, `Palette.cs`, the fonts and Godot. Round 1's game builder keeps it compiling (so `UiKit.cs` must keep compiling when old scripts are retired) and otherwise leaves it alone; round 2's builder joins it to the pause menu, adds its test to `./check`, and moves the game's keys onto the InputMap actions in `GameInput.cs`. If you write key handling before that, use those action names (tt_move_left, tt_bell and so on) rather than raw keys.
+
 ## How fun is judged after every round
 
 Play with real input. Count decisions per minute (purchases, pave clicks, bell rings that mattered). Time how long until nothing is left to do. Say plainly what is boring.

@@ -100,24 +100,25 @@ public static class TownPlanner
 
         var plan = new TownPlan { Seed = seed, Map = map, WindowX = ox, WindowY = oyy, WindowW = TemplateW, WindowH = TemplateH };
 
-        // Plots, with doors on the town side ("below" in the template).
+        // Plots, with doors facing the well.
         var plots = new List<Plot>();
         var names = new Dictionary<string, int>();
         foreach (var t in Template)
         {
             int ty = flip ? TemplateH - t.Y - t.H : t.Y;
             var p = new Plot { Id = plots.Count, Kind = t.Kind, X = ox + t.X, Y = oyy + ty, W = t.W, H = t.H, Level = t.Level, Offer = t.Offer };
-            SetDoor(p, flip);
             plots.Add(p);
             names[t.Name] = p.Id;
         }
+        var well = plots[names["well"]];
+        foreach (var p in plots) SetDoor(p, flip, well);
         // Nudge cottages by the seed when the nudge keeps every plot clear.
         foreach (var p in plots)
         {
             if (p.Kind != PlotKind.Cottage || p.Level == 1) continue;
             int dx = (int)Math.Floor(rng.NextDouble() * 3) - 1, dy = (int)Math.Floor(rng.NextDouble() * 3) - 1;
-            p.X += dx; p.Y += dy; SetDoor(p, flip);
-            if (!PlotFits(p, plots, blocked, n)) { p.X -= dx; p.Y -= dy; SetDoor(p, flip); }
+            p.X += dx; p.Y += dy; SetDoor(p, flip, well);
+            if (!PlotFits(p, plots, blocked, n)) { p.X -= dx; p.Y -= dy; SetDoor(p, flip, well); }
         }
         plan.Plots = plots.ToArray();
 
@@ -184,10 +185,25 @@ public static class TownPlanner
         return plan;
     }
 
-    private static void SetDoor(Plot p, bool flip)
+    /// <summary>The door sits in the middle of the side facing the well (the town's heart); the well's own door faces the town side.</summary>
+    private static void SetDoor(Plot p, bool flip, Plot? well)
     {
-        p.DoorX = p.X + p.W / 2;
-        p.DoorY = flip ? p.Y - 1 : p.Y + p.H;
+        double dx = 0, dy = flip ? -1 : 1;
+        if (well != null && well != p)
+        {
+            dx = (well.X + well.W / 2.0) - (p.X + p.W / 2.0);
+            dy = (well.Y + well.H / 2.0) - (p.Y + p.H / 2.0);
+        }
+        if (Math.Abs(dx) > Math.Abs(dy))
+        {
+            p.DoorX = dx > 0 ? p.X + p.W : p.X - 1;
+            p.DoorY = p.Y + p.H / 2;
+        }
+        else
+        {
+            p.DoorX = p.X + p.W / 2;
+            p.DoorY = dy > 0 ? p.Y + p.H : p.Y - 1;
+        }
     }
 
     private static bool PlotFits(Plot p, List<Plot> plots, byte[] blocked, int n)
