@@ -20,6 +20,8 @@ An incremental town on the right-hand page of an open book (the design: [docs/pl
 
 Run it with `godot --path game` (`-- --seed=N` for another town), or the Windows build (see below). The camera starts on the town and follows it as it grows until you move it: drag, WASD or the arrow keys to move, the wheel (or + and -) to zoom: close in the camera looks at the town at a slant, and zooming out it flattens to the whole page and then the whole open book, whose left page shows the town's summary. Home goes back to following the town. The old desire-line game (two chapters, fences, gates, gravel, crossings) is kept for reference in `game/legacy/` and is not built.
 
+Esc (or the Pause mark at the bottom right) closes the book: the town stops and the cover is the menu, in gilt: Resume, Settings, New town, Quit, with the mouse or the arrow keys and Enter (Esc resumes). Settings are the book's pages (Sound, Display, Keys, Saving); every key can be rebound there. The game saves itself (every 2 minutes by default, on pause and on quit) and continues the town where it stopped; a save it cannot read is set aside and a new town begins.
+
 Sound: coins, purchases, a long bell for a new level, the bell, footsteps, the river and the theme now and then.
 
 ## How to run the checks
@@ -34,7 +36,8 @@ Then, from the repository root:
 
 ```
 ./check                 # sim build + tests, Godot build, the town's smoke, play-through (real input) and perf tests,
-                        # the zoom to the book (game-book), screenshots at 1920x1080, ledger
+                        # the zoom to the book (game-book), the settings pages, the pause menu, saving,
+                        # screenshots at 1920x1080, ledger
 ./check --export        # also build the Windows x86_64 export into build/windows/ and check the pack holds every asset
 ./check --gate          # also the long statistical runs (gate tables, toy comparison, ~6 min)
 ./check --bench         # also the simulation tick benchmark
@@ -42,7 +45,7 @@ Then, from the repository root:
 ./check --no-screenshot # skip the rendered screenshots (no xvfb)
 ```
 
-It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`town-first-minute`, `town-first-purchase`, `town-level-3`, `town-pave`, `town-level-6`, `town-end-of-age`, `town-zoom-1` to `town-zoom-4`, `town-summary`, at 1920x1080).
+It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`town-first-minute`, `town-first-purchase`, `town-level-3`, `town-pave`, `town-level-6`, `town-end-of-age`, `town-zoom-1` to `town-zoom-4`, `town-summary`, `town-book-half-closed`, `town-cover-menu`, `town-settings-sound`, `-display`, `-keys`, `-saving`, `town-new-town-question`, at 1920x1080).
 
 | Step | What it proves |
 | --- | --- |
@@ -50,7 +53,10 @@ It prints a summary table and exits non-zero if anything fails. Logs go to `buil
 | `game-build`, `game-smoke` | the game builds; the town scene loads with all its pieces and runs 30 game seconds with no error line |
 | `game-town` | real mouse and key events buy the first upgrades, then fast play to level 3: every purchase changes the town, each gift arrives and is drawn, a road wears in visibly, a click in Pave mode paves a road, the bell rings by key and by click, villagers never jump or slide sideways |
 | `game-perf` | CPU per frame with the end-of-age town (played there by the simulation's bot) under 6 ms (1x) and 10 ms (8x) mean |
-| `screenshot` | the five rendered town views above |
+| `game-settings` | the settings pages alone: store, applier, every page, rebinding, the Saving page, keyboard only |
+| `game-menu` | Esc closes the book and stops the town; the cover menu by keyboard; settings and Back; Resume puts the camera back; settings changed there take effect in the game; New town asks first |
+| `game-save` | a saved town loads back the same (coin, level, villagers, roads, paving, camera) and runs on; a damaged save is set aside with a note; quitting saves |
+| `screenshot` | the rendered town views and the menu views above |
 | `ledger` | every asset has a ledger row |
 
 Retired steps of the old game and why: [docs/plans/retired-tests.md](docs/plans/retired-tests.md).

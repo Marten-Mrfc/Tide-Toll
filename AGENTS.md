@@ -61,11 +61,18 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 ## Game tests
 
-`game/tests/`: `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+`game/tests/`: `settings.tscn` (the settings pages alone), `menu.tscn` (pause, cover menu, settings joined, New town), `save.tscn` (save, reload, damaged save, quit paths), `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
 
 ## The view (round 2)
 
 The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, straight down from the whole page out); everything that maps screen to ground goes through `CameraRig.PickLocal` / `LocalToScreen` (ray to the ground plane), never through `Camera.Size` alone. `Main.Stage` (Town, Page, Book) drives the interface: full, slim strip, and the summary on the left page (`TownSummary`). Interface text is rebuilt only when its value changes; `game-perf` gates allocation per frame.
+
+## Menus, settings, saving (round 2)
+
+- `Main` adds `SettingsRuntime` first (loads and applies `settings.cfg`); buses and their volumes belong to the settings, so no other code sets bus volumes. Game keys are the InputMap actions of `settings/GameInput.cs` (`tt_*`), never raw keys. The interface size is the window's content scale only: build interface sizes from `UiKit.ScaleFor(GetWindow().Size.Y)`, lay out in the visible rect.
+- `PauseMenu` (tt_pause): camera to the closed book, `BookCover` swings shut, `TownDriver` paused, `TownAudio` pause piece; the cover lettering is 2D over the 3D board (`PauseMenu.CoverRect`). Settings open `SettingsPages` on the menu's layer.
+- `TownSaver`: `Main.Profile + town.json` (game version, camera, `TownSave` JSON), autosave from the settings, on pause and on quit (`Main.QuitGame`, also the window's close button); unreadable saves are renamed `town-unreadable-*.json`.
+- Tests: `TownTestBase` gives each test its own `Main.Profile` (`user://tests/<marker>/`, emptied first) and sets `Main.KeepWindow` (the stored window size is not applied), so the player's files never reach a test.
 
 ## Assets
 
