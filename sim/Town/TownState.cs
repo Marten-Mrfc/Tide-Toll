@@ -31,6 +31,7 @@ public sealed class VillagerState
     public Good Carry;
     public int Amount;
     public double WorkLeft;
+    public int Slot = -1;          // rules v2: work spot taken at the workplace (-1 none)
     public double X, Y, PrevX, PrevY, Heading;
 }
 
@@ -43,6 +44,7 @@ public sealed class WorkplaceState
     public int Busy;
     public int[] Queue = new int[64];
     public int QueueLen;
+    public int SlotMask;           // rules v2: work spots in use (bit i = spot i)
 }
 
 /// <summary>The whole mutable state of a town (the plan is rebuilt from the seed). Saved to JSON as is.</summary>
@@ -88,4 +90,21 @@ public sealed class TownState
     public bool[] PerkTaken = new bool[64];
     public bool[] Achieved = Array.Empty<bool>();
     public double MaxCoinPerMinute;
+
+    // ---- Rules v2 ----
+    public int ToolsLevel, BellTrackLevel;
+    public int[] ValueLevel = new int[4];               // by Good
+    public int[] Extensions = Array.Empty<int>();        // by plot id (cottages only)
+    public int ExtensionsBought;
+    public double[] EarnedBy = new double[4];            // coin earned by Good
+    public double[] LoadUnlockedAt = { -1, -1, -1 };     // time each Load step unlocked
+    // Requests: one at a time, deterministic from the seed and the request number.
+    public bool ReqActive;
+    public Good ReqGood;
+    public int ReqWho, ReqAmount, ReqDelivered;
+    public double ReqStart, ReqEnds, ReqRewardCoin;
+    public double ReqNextAt = -1;
+    public int ReqCount, ReqMet, ReqMissed;
+    public double ReqScale = 1;                          // rules v2.1: adapts to the player (met: bigger; missed: smaller)
+    public double RequestCoin;                           // coin paid as request rewards (not in CoinEarned)
 }

@@ -9,7 +9,7 @@ using TideToll.Sim.Town;
 var town = new Town(seed);                 // plans the town (about 3 ms) and starts level 1: one cottage, the well, one road, one villager
 town.Step();                               // one fixed step of TownRules.Dt = 0.1 game seconds (TownRules.TickHz = 10 per game second)
 town.DrainEvents(list);                    // List<TownEvent>, cleared then filled with everything since the last drain
-string json = TownSave.Save(town);         // whole state, System.Text.Json, field "Version" = TownSave.CurrentVersion (1)
+string json = TownSave.Save(town);         // whole state, System.Text.Json, field "Version" = TownSave.CurrentVersion (2 since rules v2)
 Town t2 = TownSave.Load(json);             // plan rebuilt from the saved seed; continues exactly as the original would
 Town t3 = TownSave.Load(json, town.Plan);  // same, reusing a plan already built for that seed
 ```
@@ -36,7 +36,7 @@ The town uses the existing 128 x 128 map from `MapGen.Generate(seed)` (`town.Pla
 - `LevelDef[] Levels` (`Plan.Level(n)`, n from 1): `Number, Renown` (needed), `Gift` (words), `Plots, Roads, Offers` (ids it gives), `Charter, UnlocksBell, UnlocksCobbles`.
 - `Offer[] Offers`: `Id, Kind (SecondBucket, MarketStall, SecondField, Mill), Name, Price, Level, Plot`.
 - Roads never cross water, plots or each other; later roads close loops (tested on seeds 1 to 100).
-- Levels (12): 1 start; 2 cottage, lane, bell green (the bell); 3 first field; 4 cottage, lane, second bucket offer; 5 market square, stall offer; 6 loop; 7 two cottages; 8 second field offer, two tracks, cobbles; 9 cottage, two lanes; 10 mill offer and road; 11 cottage, two lanes; 12 charter and a last lane.
+- Levels (12 in rules v1; **16 since rules v2**, see "Added in rules v2"): 1 start; 2 cottage, lane, bell green (the bell); 3 first field; 4 cottage, lane, second bucket offer; 5 market square, stall offer; 6 loop; 7 two cottages; 8 second field offer, two tracks, cobbles; 9 cottage, two lanes; 10 mill offer and road; 11 cottage, two lanes; 12 charter and a last lane.
 
 ## Views (read each frame)
 
@@ -102,3 +102,80 @@ A villager takes the job paying most coin per second (travel by current road spe
 ## Cost
 
 Building a plan takes about 3 ms. One game minute (600 steps) at the end of the age with 14 villagers costs 2 to 5 ms of CPU; `Step()` allocates nothing while events are drained regularly (tested in `OneGameMinuteAtTheEndOfTheAgeIsCheap`); the views that return strings (`NextGift`, `ShopItems`) are fine once a frame. The bots (`TownBot`) are for tests and the tool; the game does not need them.
+
+## Added in rules v2
+
+Everything above still works as written, except where this section says a number changed. Nothing was renamed or removed. Save version is now **2**; a version 1 save throws `InvalidOperationException` from `TownSave.Load` as any other version does.
+
+### Numbers that changed
+
+- 16 levels instead of 12 (`MaxLevel` = 16). Level 1 is still one cottage, the well, one road and one villager. Gifts: 1 start; 2 cottage, lane, bell green (the bell); 3 first field and track; 4 cottage, lane, second bucket offer; 5 market and stall offer; 6 loop; 7 cottage and lane; 8 cottage and lane; 9 second field offer, its track, cobbles; 10 track from the second field to the market; 11 cottage and lane; 12 lane joining the south cottages; 13 mill offer and road; 14 cottage and lane; 15 lane closing the east loop; 16 charter and a last lane. Plot and road ids and geometry are the same as before (only their `Level` changed). Offers: bucket level 4, stall 5, second field 9, mill 13.
+- Pace has 20 levels of +5 % each (`TownRules.PaceStep`, `PaceMax` = 20). At 20 the shop still lists Pace with `Reason` "Fastest pace reached", `Price` 0, not affordable.
+- Load steps unlock at levels 3 (Basket), 7 (Yoke), 11 (Handcart); `TownRules.LoadLevels`. A locked step is listed with `Reason` "Unlocks at level 7"; `BuyLoad()` returns false while locked. `town.LoadLockReason` gives the same text ("" when it can be bought).
+- Unpaved roads carry fewer walkers (`ComfortPerCellTrack` 0.1, `MinComfort` 1.5), so a town of 8 to 10 villagers crowds its busiest unpaved road.
+- `BellRung.Value` is now `town.BellDuration` (6 s plus the bell track).
+- Renown of a purchase rounds half up (2.5 gives 3); before it rounded half to even.
+- `OfferAvailable` events are also sent for `Item = Load` (Index = step 0..2, Text = its name, when its level is reached), `Item = Tools` (level 3) and `Item = Extend` (level 5).
+
+### New shop item kinds (appended to `ShopItemKind`; old values unchanged)
+
+`Tools = 7, Value = 8, Extend = 9, BellTrack = 10`. `ShopItems(list)` adds them after the building offers, in this order: Tools (always listed; locked before level 3 with "Unlocks at level 3"); one Value item per good that is shown (Water always; Grain once the first field works; Flour once the mill works) with `Index = (int)Good` and `Name` "Water price" / "Grain price" / "Flour price"; Extend (`Index` = suggested cottage plot, or -1 with a reason); BellTrack "Louder bell" (from level 2). `Buy(item)` buys any of them.
+
+| Track | Levels | Effect | Methods and views |
+| --- | --- | --- | --- |
+| Tools | 10 | work at the well, field and mill is 5 % faster per level (work time / (1 + 0.05 x level)) | `BuyTools()`, `ToolsLevel`, `ToolsPrice`, `ToolsLockReason` ("Unlocks at level 3", "Best tools reached") |
+| Value (per good) | 8 each | that good pays 6 % more per unit per level; villagers take the best-paying job, so it shifts what the town does | `BuyValue(Good)`, `ValueLevel(Good)`, `ValuePrice(Good)`, `ValueFactor(Good)`, `ValueTrackShown(Good)`, `ValueLockReason(Good)` ("Comes with the first field", "Comes with the mill", "Best price reached") |
+| Extend a cottage | 2 per cottage | the cottage houses one more villager | see below |
+| Bell track | 5 | each level: hurry +0.6 s, rest -2 s | `BuyBellTrack()`, `BellTrackLevel`, `BellTrackPrice`, `BellTrackLockReason` ("Comes with the bell", "The bell is at its best"), `BellDuration` |
+
+Every purchase still emits `Purchase` (`Item`, `Index` = good for Value, cottage plot for Extend, else -1; `Level` = new track level; for Extend the total extensions bought) and adds renown = price.
+
+### Extending cottages (a per-cottage click, like paving)
+
+- `CanExtend(plot, out reason)`: false with "Not a cottage", "No such cottage yet", "Unlocks at level 5" or "Already extended twice".
+- `ExtendPrice` (one price for any cottage; rises with every extension bought), `Extensions(plot)` (0, 1 or 2), `ExtensionsBought`.
+- `SuggestedExtend()`: a full cottage with fewest extensions (lowest id on a tie), else any that can be extended, else -1. The shop's Extend item carries it as `Index`.
+- `Extend(plot)`: returns true if it happened. Event `CottageExtended`: `Plot`, `Level` (its extensions now), `X, Y` (door, map cells).
+- `CottageRoom(plot)` (2 + extensions; 0 for anything else) and `Residents(plot)`. `Housing` counts extensions. A new villager moves into the cottage with most free room.
+
+### Requests
+
+From level 3, someone asks for an amount of one good within a time; one request at a time. Deterministic from the seed and the request number, saved with the town.
+
+- `town.Request` gives a `RequestView`: `Active`, `Who` (index into `Town.RequestWho`: 0 "The innkeeper" (Water), 1 "The miller" (Grain), 2 "The baker" (Flour)), `WhoName`, `Good`, `Amount`, `Delivered`, `SecondsLeft`, `Seconds` (allowed in all), `RewardCoin`, `RewardRenown`, `NextIn` (seconds to the next one when none runs, -1 if unknown).
+- `town.RequestText`: "The miller asks for 12 Grain within 90 seconds" ("" when none runs). Build card text from it or from the view.
+- While a request runs, its good pays `TownRules.RequestBonus` (1.5x), so villagers shift to it by themselves. Any delivery of that good counts (Grain home or to the market).
+- Met in time: `RewardCoin` is added to `Coin` (not to `CoinEarned`; summed in `RequestCoin`) and `RewardRenown` to renown; event `RequestMet`. The next comes 70 s later.
+- Missed: no penalty; event `RequestMissed`; the next comes 45 s later.
+- Counts: `RequestsAsked`, `RequestsMet`, `RequestsMissed`. No requests after the charter.
+- Events (`Index` = who, `Good` = the good): `RequestAsked` (`Amount` asked, `Coin` = reward, `Value` = seconds allowed), `RequestMet` (`Amount`, `Coin` paid, `Value` renown added), `RequestMissed` (`Amount` asked, `Level` = amount delivered). Their `Text` is null (Step allocates nothing); use `RequestText` or `Town.RequestWho`.
+
+### Hints
+
+`town.Hint`: one read-only line of advice, or "" when there is nothing to say. Read it once a frame; after reading, `HintRoad` (road to highlight, -1) and `HintPlot` (plot to highlight, -1) say what it is about. In order of priority: a Load step unlocked in the last 90 s ("The Yoke is ready. Every trip carries one more."); housing full with a cottage that can be extended ("Every cottage is full. Extend one for another villager.", HintPlot = the suggested cottage); a queue of 2 or more at a workplace that a building offer or Tools would fix ("A queue at the well. A second bucket would help.", HintPlot = the workplace); a crowded road that can be paved ("A road is crowded. Pave it so more can walk it.", HintRoad).
+
+### Where villagers stand
+
+Walking and queued villagers are as before. A working villager now stands at its own work spot in or beside the workplace (well: on the rim; field: along the rows; mill: inside beside the door), different for each worker at the same place; an idle villager at home stands at the door or in the yard. `X, Y, PrevX, PrevY, Heading` stay the fields to draw (map cells; the jump between a road and a spot happens in one step, so interpolation shows a short slide). `town.WorkSpot(plot, slot, out x, out y, out heading)` gives a spot if the game wants to place props.
+
+### Other new members
+
+- `EarnedBy(Good)`: coin earned by deliveries of each good. `RequestCoin`: coin paid as request rewards.
+- `BotKind.Saver = 3` (the saving bot), `TownBot.NoBell` / `NoPave` (test switches). The game does not need the bots.
+- `TownTargets` holds the v2 targets (`MaxTrackShare`, `EveryKind`, `MaxMapGap`, `BellMin/BellMax`, `NoPaveSlower`, `RequestsMetMin/Max`, `SeedFrom/SeedTo`).
+- Tool: `town --seed 1` now prints four bots with purchases by kind, map gaps and requests; `town --extras --seed 1` prints bell worth, never-paving slowdown and requests met; `town --shopat 25 --seed 1` prints the shop at a minute.
+
+### Rules v2.1 (2026-11-25, `docs/plans/town-rules21-progress.md`)
+
+Still compatible: nothing renamed or removed, save version still 2 (a v2 save without the new field loads with `ReqScale` 1).
+
+- **Steps unlock with town levels.** Pace, Tools, the value tracks, the bell track and cottage extensions put only some steps on sale at each town level (tables `TownRules.PaceAt`, `ToolsAt`, `ValueAt`, `FlourValueAt`, `BellTrackAt`, `ExtendAt`; index 0 = level 1, value = steps that can have been bought by then). Every level from 2 to 15 adds steps; the last ones come at level 15. A step not yet on sale is listed in `ShopItems` with `Reason` "Unlocks at level N" (not affordable) and its `Buy...` returns false. New views: `PaceLockReason`, `ExtendLockReason`; `ToolsLockReason`, `ValueLockReason(g)`, `BellTrackLockReason` and `CanExtend(plot, out reason)` can now also say "Unlocks at level N". When extensions are locked by level, the shop's Extend item has `Index` -1 and that reason.
+- **Numbers that changed:** Pace 25 steps of +4 % (was 20 of 5 %; "Fastest pace reached" after 25), growth 1.36; Tools 18 steps of 3 % (base 30, growth 1.33), Value 14 steps of 4 % per good (growth 1.55 / 1.43 / 1.17), Villager growth 1.3, Extend growth 1.33, `BaseSpeed` 1.6, `LevelRenown` up to 80000 for the charter.
+- **Requests adapt to the player.** Each request met multiplies the next amount by `TownRules.RequestGrowMet` (1.10), each missed by `RequestShrinkMissed` (0.84), within `RequestScaleMin..Max` (0.3..2.5); so any player settles near 65 % met. `town.RequestScale` reads it (1 at the start); it is saved (`TownState.ReqScale`) and deterministic.
+- **Roads are smooth curves.** `Road.Px, Py` (double, same units as `Xs, Ys`: draw at +0.5; first point = node A, last = node B exactly) and `Road.PCum` (distance at each curve point). The router's grid line is smoothed by corner cutting; every move is checked against water, plots and earlier roads. `Length` is the curve's length; `At(dist, ...)` follows the curve (binary search, no allocation); villagers walk the curve. `Xs, Ys` still hold the grid route (one entry per bend) and `Cum` still has one entry per grid point, rescaled so `Cum[^1] = Length`. `TownPlanner.RoadCells` now lists the cells under the curve. Games that draw roads should draw `Px, Py`.
+- **Targets:** `TownTargets.BellMin/Max` and `RequestsMetMin/Max` are now measured on the average over seeds 1 to 10 per bot, with single-run sanity bands `BellRunMin/Max` (5 to 35 %) and `RequestsRunMin/Max` (30 to 95 %). The lead decided this.
+- Tool: `town --seeds 1-10 --misses [--averages]` runs every bot on every seed in parallel and prints every miss with counts (and the bell averages); `--set` also takes int arrays (`PaceAt=4,6,...`).
+
+### Rules v2.2 (2026-11-25, `docs/plans/town-rules22-progress.md`)
+
+No API change for the game. Numbers: bell hurry 1.4 for 8 s (was 1.17 for 6 s), bell track +0.4 s hurry and -1 s rest per step (was 0.6 and 2), Pace +3 % per step (was 4 %), Basket 250 (was 300), extensions from 40 (was 60), request reward 0.4 (was 0.6), levels 15 and 16 need 62000 and 102000 renown (were 59000 and 84000). Requests start easy: the first three are scaled by `TownRules.RequestEaseIn` (0.4, 0.6, 0.8), then the adaptation alone. For tuning: `TownPacing.BellWorth(seed)` now returns one value per minute in `TownTargets.BellAtMinutes` (frozen payback towns), `PacingResult.LongestPurchaseGap`, tool option `town --seed N --bot B --buys A-B`.

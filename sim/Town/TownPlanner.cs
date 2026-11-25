@@ -32,11 +32,11 @@ public static class TownPlanner
         new("c3", PlotKind.Cottage, 11, 26, 3, 3, 4),
         new("market", PlotKind.Market, 27, 11, 5, 4, 5, 1),
         new("c4", PlotKind.Cottage, 22, 24, 3, 3, 7),
-        new("c5", PlotKind.Cottage, 2, 13, 3, 3, 7),
-        new("f2", PlotKind.Field, 13, 1, 9, 6, 8, 2),
-        new("c6", PlotKind.Cottage, 17, 31, 3, 3, 9),
-        new("mill", PlotKind.Mill, 25, 2, 4, 4, 10, 3),
-        new("c7", PlotKind.Cottage, 29, 20, 3, 3, 11),
+        new("c5", PlotKind.Cottage, 2, 13, 3, 3, 8),
+        new("f2", PlotKind.Field, 13, 1, 9, 6, 9, 2),
+        new("c6", PlotKind.Cottage, 17, 31, 3, 3, 11),
+        new("mill", PlotKind.Mill, 25, 2, 4, 4, 13, 3),
+        new("c7", PlotKind.Cottage, 29, 20, 3, 3, 14),
     };
 
     private static readonly (int Level, string A, string B)[] TemplateRoads =
@@ -47,12 +47,12 @@ public static class TownPlanner
         (4, "c3", "c2"),
         (5, "market", "bell"),
         (6, "c3", "well"),
-        (7, "c4", "well"), (7, "c5", "c1"),
-        (8, "f2", "f1"), (8, "f2", "market"),
-        (9, "c6", "c3"), (9, "c6", "c4"),
-        (10, "mill", "market"),
-        (11, "c7", "market"), (11, "c7", "c4"),
-        (12, "c5", "c2"),
+        (7, "c4", "well"), (8, "c5", "c1"),
+        (9, "f2", "f1"), (10, "f2", "market"),
+        (11, "c6", "c3"), (12, "c6", "c4"),
+        (13, "mill", "market"),
+        (14, "c7", "market"), (15, "c7", "c4"),
+        (16, "c5", "c2"),
     };
 
     private static readonly string[] Gifts =
@@ -63,11 +63,15 @@ public static class TownPlanner
         "A cottage, a lane and a second bucket for the well",
         "The market square, with a stall to buy",
         "A shortcut that closes a loop",
-        "Two cottages and their lanes",
-        "A second field to buy, two tracks and cobbles",
-        "A cottage and two lanes",
+        "A cottage and its lane",
+        "A cottage by the first field",
+        "A second field to buy, its track and cobbles",
+        "A track from the second field to the market",
+        "A cottage and its lane",
+        "A lane that joins the south cottages",
         "The mill to buy and its road",
-        "A cottage and two lanes",
+        "A cottage by the market",
+        "A lane that closes the east loop",
         "The town charter and a last lane",
     };
 
@@ -143,10 +147,13 @@ public static class TownPlanner
         foreach (var (lv, a, b) in TemplateRoads)
         {
             var na = nodes[plots[names[a]].Node]; var nb = nodes[plots[names[b]].Node];
+            int crossingsBefore = plan.RoadCrossings;
             var pts = router.Route(na.X, na.Y, nb.X, nb.Y, avoidRoads: true);
             if (pts == null) { pts = router.Route(na.X, na.Y, nb.X, nb.Y, avoidRoads: false); plan.RoadCrossings++; }
             if (pts == null) throw new InvalidOperationException($"town plan: no way for road {a}-{b} on seed {seed}");
-            var r = MakeRoad(roads.Count, na.Id, nb.Id, lv, pts);
+            bool avoid = plan.RoadCrossings == crossingsBefore;
+            router.Smooth(pts, avoid, out var cx, out var cy);
+            var r = MakeRoad(roads.Count, na.Id, nb.Id, lv, pts, cx, cy);
             roads.Add(r);
             router.Mark(r);
         }
@@ -163,8 +170,8 @@ public static class TownPlanner
         {
             new Offer { Id = 0, Kind = OfferKind.SecondBucket, Name = "Second bucket", Price = TownRules.SecondBucketPrice, Level = 4, Plot = names["well"] },
             new Offer { Id = 1, Kind = OfferKind.MarketStall, Name = "Market stall", Price = TownRules.MarketStallPrice, Level = 5, Plot = names["market"] },
-            new Offer { Id = 2, Kind = OfferKind.SecondField, Name = "Second field", Price = TownRules.SecondFieldPrice, Level = 8, Plot = names["f2"] },
-            new Offer { Id = 3, Kind = OfferKind.Mill, Name = "Mill", Price = TownRules.MillPrice, Level = 10, Plot = names["mill"] },
+            new Offer { Id = 2, Kind = OfferKind.SecondField, Name = "Second field", Price = TownRules.SecondFieldPrice, Level = 9, Plot = names["f2"] },
+            new Offer { Id = 3, Kind = OfferKind.Mill, Name = "Mill", Price = TownRules.MillPrice, Level = 13, Plot = names["mill"] },
         };
 
         int nl = TownRules.LevelRenown.Length;
@@ -222,24 +229,48 @@ public static class TownPlanner
         return true;
     }
 
-    private static Road MakeRoad(int id, int a, int b, int level, List<(int X, int Y)> pts)
+    private static Road MakeRoad(int id, int a, int b, int level, List<(int X, int Y)> pts, double[] cx, double[] cy)
     {
         var r = new Road { Id = id, A = a, B = b, Level = level, Xs = new int[pts.Count], Ys = new int[pts.Count], Cum = new double[pts.Count] };
+        r.Px = cx; r.Py = cy; r.PCum = new double[cx.Length];
+        for (int i = 1; i < cx.Length; i++) r.PCum[i] = r.PCum[i - 1] + Math.Sqrt((cx[i] - cx[i - 1]) * (cx[i] - cx[i - 1]) + (cy[i] - cy[i - 1]) * (cy[i] - cy[i - 1]));
+        r.Length = r.PCum[^1];
         for (int i = 0; i < pts.Count; i++)
         {
             r.Xs[i] = pts[i].X; r.Ys[i] = pts[i].Y;
             if (i > 0) r.Cum[i] = r.Cum[i - 1] + Math.Sqrt((double)(pts[i].X - pts[i - 1].X) * (pts[i].X - pts[i - 1].X) + (double)(pts[i].Y - pts[i - 1].Y) * (pts[i].Y - pts[i - 1].Y));
         }
-        r.Length = r.Cum[^1];
+        // Rules v2.1: Cum stays one entry per grid point, scaled so that Cum[^1] = Length (the curve's length).
+        double gl = r.Cum[^1];
+        if (gl > 0) for (int i = 0; i < r.Cum.Length; i++) r.Cum[i] *= r.Length / gl;
         return r;
     }
 
-    /// <summary>All grid cells a road covers (4-connected line per segment), for checks and for painting.</summary>
+    /// <summary>All grid cells a road covers (4-connected, along the drawn curve since rules v2.1), for checks and for painting.</summary>
     public static List<int> RoadCells(Road r, int size)
     {
         var cells = new List<int>();
-        var g = new Grid(size, size);
-        for (int i = 0; i + 1 < r.Xs.Length; i++) g.Line4(r.Xs[i], r.Ys[i], r.Xs[i + 1], r.Ys[i + 1], cells);
+        if (r.Px.Length < 2)
+        {
+            var g = new Grid(size, size);
+            for (int i = 0; i + 1 < r.Xs.Length; i++) g.Line4(r.Xs[i], r.Ys[i], r.Xs[i + 1], r.Ys[i + 1], cells);
+            return cells;
+        }
+        int ox = (int)Math.Floor(r.Px[0] + 0.5), oy = (int)Math.Floor(r.Py[0] + 0.5);
+        cells.Add(oy * size + ox);
+        for (int i = 0; i + 1 < r.Px.Length; i++)
+        {
+            double ax = r.Px[i], ay = r.Py[i], bx = r.Px[i + 1], by = r.Py[i + 1];
+            int k = Math.Max(1, (int)Math.Ceiling(Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) * 10));
+            for (int j = 1; j <= k; j++)
+            {
+                int cx = (int)Math.Floor(ax + (bx - ax) * j / k + 0.5), cy = (int)Math.Floor(ay + (by - ay) * j / k + 0.5);
+                if (cx == ox && cy == oy) continue;
+                if (cx != ox && cy != oy) cells.Add(oy * size + cx);
+                cells.Add(cy * size + cx);
+                ox = cx; oy = cy;
+            }
+        }
         return cells;
     }
 }

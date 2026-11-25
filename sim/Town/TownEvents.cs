@@ -15,6 +15,11 @@ public enum TownEventKind : byte
     BuildingOpened = 10,   // Index = offer id, Plot
     Charter = 11,          // the age is complete; RingNextAge() is now possible
     NextAge = 12,          // RingNextAge() was called (the second age is not built yet)
+    // Added in rules v2
+    RequestAsked = 13,     // Good, Amount (asked), Coin (reward), Value (seconds allowed), Index (who: TownRequests.Who), Text (the ask in words)
+    RequestMet = 14,       // Good, Amount, Coin (reward paid), Value (renown added), Text
+    RequestMissed = 15,    // Good, Amount (asked), Level (delivered by the end), Text
+    CottageExtended = 16,  // Plot (cottage), Level (its extensions now, 1 or 2), X, Y (door)
 }
 
 /// <summary>One thing that happened during a step. Drain them with Town.DrainEvents each frame.</summary>

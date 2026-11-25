@@ -115,6 +115,53 @@ internal sealed class Router
         return true;
     }
 
+    /// <summary>Rules v2.1: number of corner-cutting passes over the densified polyline.</summary>
+    public const int SmoothPasses = 24;
+
+    /// <summary>
+    /// Rules v2.1: turns the routed grid polyline into a gentle curve. The polyline is cut into steps of about half a cell,
+    /// then each inner point is moved halfway to the middle of its neighbours (a corner-cutting pass), SmoothPasses times.
+    /// The two ends stay at the doors. A move is kept only if both segments next to the point stay on open cells
+    /// (no water, plot or earlier road, as for the route itself), so the curve never leaves the ground the route was allowed on.
+    /// </summary>
+    public void Smooth(List<(int X, int Y)> pts, bool avoidRoads, out double[] px, out double[] py)
+    {
+        var xs = new List<double>(); var ys = new List<double>();
+        xs.Add(pts[0].X); ys.Add(pts[0].Y);
+        for (int i = 1; i < pts.Count; i++)
+        {
+            double ax = pts[i - 1].X, ay = pts[i - 1].Y, bx = pts[i].X, by = pts[i].Y;
+            int k = Math.Max(1, (int)Math.Ceiling(Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) * 2));
+            for (int j = 1; j <= k; j++) { xs.Add(ax + (bx - ax) * j / k); ys.Add(ay + (by - ay) * j / k); }
+        }
+        px = xs.ToArray(); py = ys.ToArray();
+        int m = px.Length;
+        for (int pass = 0; pass < SmoothPasses; pass++)
+            for (int i = 1; i < m - 1; i++)
+            {
+                double qx = 0.5 * px[i] + 0.25 * (px[i - 1] + px[i + 1]);
+                double qy = 0.5 * py[i] + 0.25 * (py[i - 1] + py[i + 1]);
+                if (SegOk(px[i - 1], py[i - 1], qx, qy, avoidRoads) && SegOk(qx, qy, px[i + 1], py[i + 1], avoidRoads)) { px[i] = qx; py[i] = qy; }
+            }
+    }
+
+    private bool SegOk(double ax, double ay, double bx, double by, bool avoidRoads)
+    {
+        double len = Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+        int k = Math.Max(1, (int)Math.Ceiling(len * 10));
+        int ox = (int)Math.Floor(ax + 0.5), oy = (int)Math.Floor(ay + 0.5);
+        if (!Open(ox, oy, avoidRoads)) return false;
+        for (int j = 1; j <= k; j++)
+        {
+            int cx = (int)Math.Floor(ax + (bx - ax) * j / k + 0.5), cy = (int)Math.Floor(ay + (by - ay) * j / k + 0.5);
+            if (cx == ox && cy == oy) continue;
+            if (!Open(cx, cy, avoidRoads)) return false;
+            if (cx != ox && cy != oy && (!Open(cx, oy, avoidRoads) || !Open(ox, cy, avoidRoads))) return false;
+            ox = cx; oy = cy;
+        }
+        return true;
+    }
+
     public void Mark(Road r)
     {
         foreach (int c in TownPlanner.RoadCells(r, _n)) _road[c] = 1;

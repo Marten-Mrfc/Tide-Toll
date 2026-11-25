@@ -40,19 +40,41 @@ public sealed class Road
     public double[] Cum = Array.Empty<double>();
     public double Length;
     public int Level;
+    /// <summary>Rules v2.1: the drawn road, a gentle curve through the grid route (same units as Xs/Ys: draw at +0.5).
+    /// First point = node A, last = node B exactly. Villagers walk it; <see cref="Length"/> is its length.</summary>
+    public double[] Px = Array.Empty<double>(), Py = Array.Empty<double>();
+    /// <summary>Distance along the curve at each curve point (PCum[0] = 0, PCum[^1] = Length).</summary>
+    public double[] PCum = Array.Empty<double>();
 
-    /// <summary>Map position (cell units, cell centres at +0.5) and heading (radians, atan2(dy, dx)) at distance d from A.</summary>
+    /// <summary>Map position (cell units, cell centres at +0.5) and heading (radians, atan2(dy, dx)) at distance d from A,
+    /// on the curve (rules v2.1). Binary search: cost grows with the log of the number of points, no allocation.</summary>
     public void At(double d, out double x, out double y, out double heading)
     {
         if (d <= 0) d = 0;
         if (d >= Length) d = Length;
-        int s = 0;
-        while (s < Cum.Length - 2 && Cum[s + 1] < d) s++;
-        double seg = Cum[s + 1] - Cum[s];
-        double t = seg > 0 ? (d - Cum[s]) / seg : 0;
-        double dx = Xs[s + 1] - Xs[s], dy = Ys[s + 1] - Ys[s];
-        x = Xs[s] + 0.5 + dx * t;
-        y = Ys[s] + 0.5 + dy * t;
+        if (Px.Length < 2)
+        {
+            int s0 = 0;
+            while (s0 < Cum.Length - 2 && Cum[s0 + 1] < d) s0++;
+            double seg0 = Cum[s0 + 1] - Cum[s0];
+            double t0 = seg0 > 0 ? (d - Cum[s0]) / seg0 : 0;
+            double ex = Xs[s0 + 1] - Xs[s0], ey = Ys[s0 + 1] - Ys[s0];
+            x = Xs[s0] + 0.5 + ex * t0; y = Ys[s0] + 0.5 + ey * t0; heading = Math.Atan2(ey, ex);
+            return;
+        }
+        // Largest s with PCum[s] <= d, at most Px.Length - 2.
+        int lo = 0, hi = PCum.Length - 2;
+        while (lo < hi)
+        {
+            int mid = (lo + hi + 1) >> 1;
+            if (PCum[mid] <= d) lo = mid; else hi = mid - 1;
+        }
+        int s = lo;
+        double seg = PCum[s + 1] - PCum[s];
+        double t = seg > 0 ? (d - PCum[s]) / seg : 0;
+        double dx = Px[s + 1] - Px[s], dy = Py[s + 1] - Py[s];
+        x = Px[s] + 0.5 + dx * t;
+        y = Py[s] + 0.5 + dy * t;
         heading = Math.Atan2(dy, dx);
     }
 }

@@ -42,7 +42,7 @@ public sealed partial class Town
     }
 
     internal double PaceFactor => PaceFactorAt(S.PaceLevel);
-    public static double PaceFactorAt(int level) => 1 + TownRules.PaceCap * (1 - Math.Pow(TownRules.PaceDecay, level));
+    public static double PaceFactorAt(int level) => 1 + TownRules.PaceStep * Math.Min(level, TownRules.PaceMax);
     public bool BellRinging => Time < S.BellUntil;
 
     /// <summary>Walking speed on a road now, cells per second, for one more walker than are on it.</summary>
@@ -186,8 +186,73 @@ public sealed partial class Town
             QueuePoint(v.Workplace, v.ArrivedRoad, pos, out v.X, out v.Y, out v.Heading);
             return;
         }
+        if (v.Phase == VillagerPhase.Working && v.Workplace >= 0)
+        {
+            WorkSpot(S.Workplaces[v.Workplace].Plot, v.Slot, out v.X, out v.Y, out v.Heading);
+            return;
+        }
+        if (v.Node == Plan.Plots[v.Home].Node)
+        {
+            WorkSpot(v.Home, v.Id, out v.X, out v.Y, out v.Heading);
+            return;
+        }
         var nd = Plan.Nodes[v.Node];
         v.X = nd.X + 0.5; v.Y = nd.Y + 0.5;
+    }
+
+    /// <summary>
+    /// Rules v2: where a villager stands while working at a plot or idle at home (map cells). Well: on its rim;
+    /// field: along its rows; mill: around the door inside the footprint; cottage: at the door and in the yard.
+    /// Spot <paramref name="slot"/> is a small number (work spot index, or villager id at home).
+    /// </summary>
+    public void WorkSpot(int plot, int slot, out double x, out double y, out double heading)
+    {
+        var p = Plan.Plots[plot];
+        if (slot < 0) slot = 0;
+        double cx = p.X + p.W / 2.0, cy = p.Y + p.H / 2.0;
+        double dx = p.DoorX + 0.5 - cx, dy = p.DoorY + 0.5 - cy;
+        double dl = Math.Sqrt(dx * dx + dy * dy);
+        if (dl < 1e-9) { dx = 0; dy = 1; dl = 1; }
+        dx /= dl; dy /= dl; // unit vector from the centre to the door
+        switch (p.Kind)
+        {
+            case PlotKind.Well:
+            {
+                // On the rim, first spot facing the door, then round the well.
+                double a0 = Math.Atan2(dy, dx), a = a0 + slot * 2.3;
+                double r = Math.Min(p.W, p.H) / 2.0 + 0.15;
+                x = cx + r * Math.Cos(a); y = cy + r * Math.Sin(a);
+                heading = NormAngle(a + Math.PI);
+                return;
+            }
+            case PlotKind.Field:
+            {
+                // Rows run east-west; one worker per row, staggered along it.
+                int rows = Math.Max(1, p.H - 1), cols = Math.Max(1, p.W - 2);
+                int row = slot % rows, col = (slot * 3 + 1) % cols;
+                x = p.X + 1 + col + 0.5; y = p.Y + 0.5 + row + 0.5 * (row % 2);
+                heading = row % 2 == 0 ? 0 : Math.PI;
+                return;
+            }
+            case PlotKind.Cottage:
+            {
+                // At the door first, then in the yard beside it.
+                double side = (slot % 2 == 0 ? 1 : -1) * (0.45 + 0.35 * (slot % 3));
+                double ex = p.DoorX + 0.5 - dx * 0.2, ey = p.DoorY + 0.5 - dy * 0.2;
+                x = ex - dy * side; y = ey + dx * side;
+                heading = Math.Atan2(-dy, -dx);
+                return;
+            }
+            default:
+            {
+                // Mill and others: inside, beside the door.
+                double side = (slot % 2 == 0 ? 1 : -1) * 0.6 * ((slot + 2) / 2);
+                double ex = p.DoorX + 0.5 - dx * 1.0, ey = p.DoorY + 0.5 - dy * 1.0;
+                x = ex - dy * side; y = ey + dx * side;
+                heading = Math.Atan2(dy, dx);
+                return;
+            }
+        }
     }
 
     /// <summary>The spot of place <paramref name="pos"/> (0 = first) in the queue of a workplace, along the road the person came in on.</summary>

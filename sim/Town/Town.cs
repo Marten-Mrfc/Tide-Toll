@@ -48,6 +48,7 @@ public sealed partial class Town
             OfferAvailable = new bool[plan.Offers.Length], OfferBought = new bool[plan.Offers.Length],
             Workplaces = wps.ToArray(),
             Achieved = new bool[TownAchievements.All.Length],
+            Extensions = new int[plan.Plots.Length],
         };
         ApplyLevel(1);
         AddVillager();
@@ -75,6 +76,7 @@ public sealed partial class Town
         for (int i = 0; i < vs.Length; i++) StepVillager(vs[i]);
         double cpm = CoinPerMinute;
         if (cpm > S.MaxCoinPerMinute) S.MaxCoinPerMinute = cpm;
+        StepRequests();
         if (S.Tick % TownRules.TickHz == 0) CheckAchievements();
     }
 
@@ -110,6 +112,15 @@ public sealed partial class Town
         }
         if (lv.UnlocksBell) { S.BellUnlocked = true; Emit(new TownEvent { Kind = TownEventKind.OfferAvailable, Item = ShopItemKind.Bell, Index = -1, Text = "The bell" }); }
         if (lv.UnlocksCobbles) { S.CobblesUnlocked = true; Emit(new TownEvent { Kind = TownEventKind.OfferAvailable, Item = ShopItemKind.Pave, Index = -1, Text = "Cobbles" }); }
+        for (int i = 0; i < TownRules.LoadLevels.Length; i++)
+            if (TownRules.LoadLevels[i] == n)
+            {
+                S.LoadUnlockedAt[i] = Time;
+                Emit(new TownEvent { Kind = TownEventKind.OfferAvailable, Item = ShopItemKind.Load, Index = i, Text = TownRules.LoadNames[i] });
+            }
+        if (n == TownRules.ToolsFromLevel) Emit(new TownEvent { Kind = TownEventKind.OfferAvailable, Item = ShopItemKind.Tools, Index = -1, Text = "Tools" });
+        if (n == TownRules.ExtendFromLevel) Emit(new TownEvent { Kind = TownEventKind.OfferAvailable, Item = ShopItemKind.Extend, Index = -1, Text = "Extend a cottage" });
+        if (n == TownRules.RequestFromLevel && S.ReqNextAt < 0) S.ReqNextAt = Time + TownRules.RequestFirstDelay;
         RefreshWorkplaces();
         Emit(new TownEvent { Kind = TownEventKind.LevelReached, Level = n, Text = lv.Gift });
         if (lv.Charter && !S.Charter)
@@ -131,12 +142,22 @@ public sealed partial class Town
         return o < 0 || S.OfferBought[o];
     }
 
+    /// <summary>Offer id of a kind (-1 if the plan has none); never a hard-coded id.</summary>
+    internal int OfferOf(OfferKind k)
+    {
+        for (int i = 0; i < Plan.Offers.Length; i++) if (Plan.Offers[i].Kind == k) return i;
+        return -1;
+    }
+
     private void RefreshWorkplaces()
     {
+        int bucket = OfferOf(OfferKind.SecondBucket);
         foreach (var w in S.Workplaces)
         {
             w.Open = PlotWorks(w.Plot);
-            if (Plan.Plots[w.Plot].Kind == PlotKind.Well) w.Places = TownRules.WellPlaces + (S.OfferBought[0] ? TownRules.SecondBucketPlaces : 0);
+            if (Plan.Plots[w.Plot].Kind == PlotKind.Well) w.Places = TownRules.WellPlaces + (bucket >= 0 && S.OfferBought[bucket] ? TownRules.SecondBucketPlaces : 0);
+            // A place that opens is taken at once by the head of the queue (r1 bug hunt, finding 1).
+            while (w.Open && w.Busy < w.Places && w.QueueLen > 0) StartWork(S.Villagers[PopQueue(w)]);
         }
     }
 
@@ -147,21 +168,31 @@ public sealed partial class Town
         get
         {
             int c = 0;
-            foreach (var p in Plan.Plots) if (p.Kind == PlotKind.Cottage && S.PlotGiven[p.Id]) c++;
-            return c * TownRules.PerCottage;
+            foreach (var p in Plan.Plots) if (p.Kind == PlotKind.Cottage && S.PlotGiven[p.Id]) c += TownRules.PerCottage + S.Extensions[p.Id];
+            return c;
         }
+    }
+
+    /// <summary>Villagers a given cottage houses (PerCottage plus its extensions); 0 for anything else.</summary>
+    public int CottageRoom(int plot) => Plan.Plots[plot].Kind == PlotKind.Cottage && S.PlotGiven[plot] ? TownRules.PerCottage + S.Extensions[plot] : 0;
+
+    /// <summary>Villagers living in a cottage now.</summary>
+    public int Residents(int plot)
+    {
+        int k = 0;
+        foreach (var v0 in S.Villagers) if (v0.Home == plot) k++;
+        return k;
     }
 
     private void AddVillager()
     {
-        // The given cottage with fewest residents (lowest id on a tie).
-        int best = -1, bestN = int.MaxValue;
+        // The given cottage with most free room (lowest id on a tie).
+        int best = -1, bestN = int.MinValue;
         foreach (var p in Plan.Plots)
         {
             if (p.Kind != PlotKind.Cottage || !S.PlotGiven[p.Id]) continue;
-            int k = 0;
-            foreach (var v0 in S.Villagers) if (v0.Home == p.Id) k++;
-            if (k < bestN) { bestN = k; best = p.Id; }
+            int free = CottageRoom(p.Id) - Residents(p.Id);
+            if (free > bestN) { bestN = free; best = p.Id; }
         }
         var home = Plan.Plots[best];
         var v = new VillagerState { Id = S.Villagers.Length, Home = best, Node = home.Node };
@@ -178,6 +209,12 @@ public sealed partial class Town
 
     internal double CoinBonus => 1 + TownRules.VillagerPerkCoin * (S.VillagersBought / TownRules.PerkEvery);
     internal int LoadUnits => TownRules.BaseLoad + S.LoadLevel;
+
+    internal void Earn(double coin, Good g)
+    {
+        S.EarnedBy[(int)g] += coin;
+        Earn(coin);
+    }
 
     internal void Earn(double coin)
     {

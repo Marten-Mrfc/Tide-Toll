@@ -6,7 +6,7 @@ namespace TideToll.Sim.Town;
 /// <summary>Saving: the whole TownState as JSON (the plan is rebuilt from the seed). Events not drained are not saved.</summary>
 public static class TownSave
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     private static readonly JsonSerializerOptions Options = new() { IncludeFields = true, WriteIndented = false };
 
