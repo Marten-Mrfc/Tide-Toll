@@ -40,10 +40,16 @@ public static class GravelStrip
     }
 
     /// <summary>A round-capped segment from (ax, ay) to (bx, by) in cells, merged into the ramp by maximum.</summary>
-    private static void Capsule(byte[] t, int n, float ax, float ay, float bx, float by)
+    private static void Capsule(byte[] t, int n, float ax, float ay, float bx, float by) => Segment(t, n, ax, ay, bx, by, Half);
+
+    /// <summary>
+    /// A round-capped strip of half width <paramref name="half"/> cells from (ax, ay) to (bx, by) (cell units, centres at
+    /// +0.5), merged into the edge ramp by maximum (the town's paved roads are drawn along their polylines with this).
+    /// </summary>
+    public static void Segment(byte[] t, int n, float ax, float ay, float bx, float by, float half)
     {
         int size = n * Res;
-        const float reach = Half + 0.6f; // the ramp runs half a cell outside the edge
+        float reach = half + 0.6f; // the ramp runs half a cell outside the edge
         int x0 = Math.Max(0, (int)MathF.Floor((MathF.Min(ax, bx) - reach) * Res));
         int x1 = Math.Min(size - 1, (int)MathF.Ceiling((MathF.Max(ax, bx) + reach) * Res));
         int y0 = Math.Max(0, (int)MathF.Floor((MathF.Min(ay, by) - reach) * Res));
@@ -57,7 +63,7 @@ public static class GravelStrip
                 float qx = ax + ex * tt - x, qy = ay + ey * tt - y;
                 float d = MathF.Sqrt(qx * qx + qy * qy);
                 // 0.5 on the edge, 1 a half-cell inside, 0 a half-cell outside.
-                float v = Math.Clamp(0.5f + (Half - d), 0f, 1f);
+                float v = Math.Clamp(0.5f + (half - d), 0f, 1f);
                 byte b = (byte)(v * 255f + 0.5f);
                 int i = py * size + px;
                 if (b > t[i]) t[i] = b;

@@ -123,8 +123,8 @@ public partial class Main : Node3D
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
         Ink.Update(Rig.Camera, vp);
         float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y;
-        // Villagers stay about 8 px wide when zoomed out; never smaller than the model.
-        Villagers.WalkerScale = Mathf.Clamp(8f / pxPerM, 1f, 1.8f);
+        // Villagers stay about 11 px wide when zoomed out; never smaller than the model.
+        Villagers.WalkerScale = Mathf.Clamp(11f / pxPerM, 1f, 2.4f);
     }
 
     /// <summary>World position of a map cell centre.</summary>

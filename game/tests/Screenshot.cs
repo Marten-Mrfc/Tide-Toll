@@ -25,10 +25,8 @@ public partial class Screenshot : TownTestBase
         var bot = new TownBot(BotKind.Payback, 1);
 
         // The first minute, as a player sees it.
-        Main.Driver.SetSpeed(8);
-        await Until(() => T.Time >= 60, 60 * 60, "the first minute");
-        Main.Driver.SetSpeed(1);
-        await Frames(30);
+        Main.Driver.Advance(58);
+        await Settle();
         await Shot("first-minute");
 
         // The first purchase, through its bookmark.
@@ -37,12 +35,12 @@ public partial class Screenshot : TownTestBase
         long p0 = T.Purchases;
         await Click(TestInput.Centre(mark));
         Check(T.Purchases == p0 + 1, "the first purchase");
-        await Frames(40);
+        await Frames(10);
         await Shot("first-purchase");
 
         // Level 3: the bot plays on; the drawing catches up (reveals and pops) before the shot.
         Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 10);
-        await Frames(150);
+        await Settle();
         await Shot("level-3");
 
         // Pave mode with the suggested road hovered.
@@ -61,9 +59,23 @@ public partial class Screenshot : TownTestBase
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);
         Check(T.HasCharter, "the bot reached the charter");
         Main.Rig.UserMoved = false;
-        await Frames(240);
+        await Settle();
         await Shot("end-of-age");
         Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
+    }
+
+    /// <summary>Waits until new roads have drawn themselves in, new buildings have popped in and the camera has eased.</summary>
+    private async Task Settle()
+    {
+        await Frames(3);
+        await Until(() =>
+        {
+            for (int r = 0; r < T.RoadCount; r++) if (T.RoadOpen(r) && Main.Ground.RoadReveal(r) < 1f) return false;
+            return Main.Buildings.Popping == 0;
+        }, 2000, "the drawing to catch up");
+        // The camera eases about 12 per second: a second of real time brings it within a few percent.
+        var t0 = Time.GetTicksMsec();
+        while (Time.GetTicksMsec() - t0 < 1500) await Frames(1);
     }
 
     private Button? FirstAffordable()

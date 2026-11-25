@@ -1,0 +1,204 @@
+{
+  "about": "Town sound events. Files are 48 kHz; one-shots mono WAV, the mill loop stereo Ogg (loop the whole file, sample-exact). volume_db: intended loudness against the coin sound; the files are already rendered at it, so play them at the coin's bus gain. pitch_vary false: tuned in D Dorian, do not detune.",
+  "reference": "assets/audio/sfx/coin-01.wav",
+  "reference_loudness_lufs": -24.2,
+  "events": {
+    "upgrade-bought": {
+      "files": [
+        "assets/audio/sfx/buy-01.wav",
+        "assets/audio/sfx/buy-02.wav",
+        "assets/audio/sfx/buy-03.wav",
+        "assets/audio/sfx/buy-04.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.1,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "cannot-afford": {
+      "files": [
+        "assets/audio/sfx/cannot-01.wav",
+        "assets/audio/sfx/cannot-02.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -0.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "level-reached": {
+      "files": [
+        "assets/audio/sfx/level-up-01.wav",
+        "assets/audio/sfx/level-up-02.wav"
+      ],
+      "volume_db": 3.0,
+      "measured_vs_coin_db": 3.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "gift-arrives": {
+      "files": [
+        "assets/audio/sfx/gift-01.wav",
+        "assets/audio/sfx/gift-02.wav",
+        "assets/audio/sfx/gift-03.wav"
+      ],
+      "volume_db": 2.0,
+      "measured_vs_coin_db": 2.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "road-paved-gravel": {
+      "files": [
+        "assets/audio/sfx/pave-gravel-01.wav",
+        "assets/audio/sfx/pave-gravel-02.wav",
+        "assets/audio/sfx/pave-gravel-03.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "road-paved-cobbles": {
+      "files": [
+        "assets/audio/sfx/pave-cobbles-01.wav",
+        "assets/audio/sfx/pave-cobbles-02.wav",
+        "assets/audio/sfx/pave-cobbles-03.wav"
+      ],
+      "volume_db": 1.0,
+      "measured_vs_coin_db": 1.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "cottage-extended": {
+      "files": [
+        "assets/audio/sfx/extend-01.wav",
+        "assets/audio/sfx/extend-02.wav",
+        "assets/audio/sfx/extend-03.wav"
+      ],
+      "volume_db": 2.0,
+      "measured_vs_coin_db": 2.2,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "achievement": {
+      "files": [
+        "assets/audio/sfx/achievement-01.wav",
+        "assets/audio/sfx/achievement-02.wav"
+      ],
+      "volume_db": 3.0,
+      "measured_vs_coin_db": 3.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "request-asked": {
+      "files": [
+        "assets/audio/sfx/request-asked-01.wav",
+        "assets/audio/sfx/request-asked-02.wav"
+      ],
+      "volume_db": 2.0,
+      "measured_vs_coin_db": 2.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "request-met": {
+      "files": [
+        "assets/audio/sfx/request-met-01.wav",
+        "assets/audio/sfx/request-met-02.wav"
+      ],
+      "volume_db": 2.0,
+      "measured_vs_coin_db": 2.2,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "request-missed": {
+      "files": [
+        "assets/audio/sfx/request-missed-01.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -0.8,
+      "loop": false,
+      "pitch_vary": false
+    },
+    "ui-press": {
+      "files": [
+        "assets/audio/sfx/ui-press-01.wav",
+        "assets/audio/sfx/ui-press-02.wav",
+        "assets/audio/sfx/ui-press-03.wav",
+        "assets/audio/sfx/ui-press-04.wav"
+      ],
+      "volume_db": -4.5,
+      "measured_vs_coin_db": -4.6,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "ui-hover": {
+      "files": [
+        "assets/audio/sfx/ui-hover-01.wav",
+        "assets/audio/sfx/ui-hover-02.wav"
+      ],
+      "volume_db": -9.0,
+      "measured_vs_coin_db": -8.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "ui-tab": {
+      "files": [
+        "assets/audio/sfx/ui-tab-01.wav",
+        "assets/audio/sfx/ui-tab-02.wav",
+        "assets/audio/sfx/ui-tab-03.wav"
+      ],
+      "volume_db": -4.0,
+      "measured_vs_coin_db": -3.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "book-close": {
+      "files": [
+        "assets/audio/sfx/book-close-01.wav",
+        "assets/audio/sfx/book-close-02.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -0.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "book-open": {
+      "files": [
+        "assets/audio/sfx/book-open-01.wav",
+        "assets/audio/sfx/book-open-02.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -0.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "page-turn": {
+      "files": [
+        "assets/audio/sfx/page-turn-01.wav",
+        "assets/audio/sfx/page-turn-02.wav",
+        "assets/audio/sfx/page-turn-03.wav"
+      ],
+      "volume_db": -3.0,
+      "measured_vs_coin_db": -2.8,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "mill": {
+      "files": [
+        "assets/audio/sfx/mill-loop.ogg"
+      ],
+      "volume_db": -6.0,
+      "measured_vs_coin_db": -5.8,
+      "loop": true,
+      "pitch_vary": false
+    },
+    "charter-granted": {
+      "files": [
+        "assets/audio/sfx/charter-01.wav"
+      ],
+      "volume_db": 4.0,
+      "measured_vs_coin_db": 4.2,
+      "loop": false,
+      "pitch_vary": false
+    }
+  }
+}

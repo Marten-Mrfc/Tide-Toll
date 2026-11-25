@@ -76,19 +76,18 @@ Stopping
 
 | Round | What | Workflow run | Started | Ended | Result |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | | Design doc rewritten 20:34 (proof-read: fine, UX part thin on settings detail). Models and icons 20:42. Music 20:55 (5 pieces). Simulation 20:56 (179 fast tests pass; all pacing targets met on seed 1). First balancing done about 21:05 (`docs/plans/town-balance-r1.md`). Game core and the simulation bug hunt still running at 21:11 |
+| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | 21:33 | DONE. `./check --export` passed at 21:32 (sim 179 tests, game-smoke, game-town with real input to level 4, game-perf 0.11 ms a frame, five screenshots, ledger 253 rows, Windows export). Design doc 20:34, models and icons 20:42, music 20:55, simulation 20:56, first balancing 21:05, bug hunt 21:20 (nothing serious), game core 21:32 |
 | 1b | Settings screen as pages of the book, built on its own in the separate checkout `build/wt/settings` (new files only; handover note `build/wt/settings/docs/plans/settings-handover.md`); round 2's builder copies it in | `wf_4a702972-214`, script `build/wf/settings.js` | 20:35 | 20:54 | Done, test passes three times in a row; copied into the main checkout at 20:55 (`game/scripts/settings/`, `game/tests/Settings*`), handover `docs/plans/settings-handover.md`. Not yet opened from a pause menu |
 | 1c | Research: how incremental games pace their loop, as checkable rules (`docs/plans/incremental-research.md`) | `wf_424f4e35-7c9`, script `build/wf/research.js` | 20:39 | 20:41 | Done. Search found nothing on Incremental Traffic itself; sourced facts are cost growth of about 1.07 to 1.15 per level with roughly linear income; four more checkable targets added to the design brief |
-| 1d | Rules v2 of the simulation in the separate checkout `build/wt/sim2` (local branch `wt/sim2`; the lead commits there and merges into `claude/prototype-1` when done), then a second balancing; beside it the missing sound effects (main checkout, `assets/` only) | `wf_ed8099c3-fab`, script `build/wf/rules2.js` | 21:11 | | |
+| 1d | Rules v2 of the simulation in the separate checkout `build/wt/sim2` (local branch `wt/sim2`, committed there by the lead), and the missing sound effects | `wf_ed8099c3-fab`, script `build/wf/rules2.js` | 21:10 | 21:32 | Sounds DONE (44 effects, a mill loop, `assets/audio/sfx/town-sounds.json`, 46 ledger rows). Rules v2 built and documented but NOT green: 6 of 10 pacing tests fail (late minutes with 1 purchase instead of 2; a few seeds a little outside the bell, request and age bands), so it is not merged and the second balancing was skipped. Round 2 continues it (v2.1) |
 
 ## Next steps
 
-0. The lead's plan for rounds 2 to 4 and the final review page is `docs/plans/lead-plan.md`.
-1. Round 1 workflow is running (see the table), and beside it the settings pages builder (1b). When it returns: read the reports in `docs/plans/`, look at the screenshots, run `./check`, write the result here, commit and push.
-2. Round 2: the book behaviour and menus (zoom out to the book, pause closes it, settings pages) by one Opus builder in `game/`; beside it a Sonnet play-test of round 1 in a worktree under `build/pt/`, then a Haiku bug hunt. The builder starts by fixing what round 1's reports list.
-3. Round 3: the full first age in the game (about 30 minutes, second field, market, mill, achievements page, saving and loading), the music playlist wired in, a screenshot tour scene for the final review.
-4. Round 4, only if started before 05:00 UTC: the second age with the river, or polish if the first age is not yet good.
-5. Stopping: full `./check`, a finished-round commit so GitHub builds the exe, at least 30 screenshots at 1920 x 1080, the review page as an Artifact, the report, cancel the scheduled check. Also update the README text inside `.github/workflows/windows-build.yml` (it still describes the two old chapters).
+0. The lead's plan for the rounds and the final review page is `docs/plans/lead-plan.md`.
+1. Round 2 is running as two workflows (see the table): 2a in the main checkout (look and camera, then menus and saving), 2b in `build/wt/sim2` (rules v2.1 until every pacing test passes, then balancing), and a real-input play-test of round 1 in `build/pt/r1`.
+2. When 2b is green: commit in `build/wt/sim2`, merge `wt/sim2` into `claude/prototype-1` (`git merge --no-ff wt/sim2`), run `./check`. Then round 3 in the main checkout: the game learns rules v2 (new shop kinds, extending a cottage by clicking it, requests, the one-line hint, work spots), the new sounds, the music playlist, the achievements page.
+3. Then: the second age (simulation first, in a separate checkout), the screenshot tour scene, play-test and fix rounds until 05:00 UTC.
+4. Stopping: full `./check --export`, a finished-round commit so GitHub builds the exe, at least 30 screenshots at 1920 x 1080, the review page as an Artifact, the report, cancel the scheduled check.
 
 ## Decisions made for you
 
@@ -107,6 +106,11 @@ Stopping
 | 12 | Rules v2 after the first balance report: walking speed and the other upgrade tracks are finite (about 20 clear steps, not 170 taps); new tracks for working speed, the value of each good, and the bell; cottages can be extended by clicking them; unpaved roads clog sooner; about 16 levels instead of 12; timed requests ("12 Grain within 90 seconds") as goals a minute or two away; one line of advice at a time | The first numbers made 80 percent of all purchases the same cheap speed upgrade: a tap-fest with one right answer |
 | 13 | New sound effects are made in code for buying, levels, gifts, paving, requests, the book and the interface, with ledger rows | The new loop had no sounds of its own, and feedback at the moment of earning is most of what makes such a game pleasant |
 | 14 | The pause piece "Still Pages" stays 2 dB quieter than the other music, as its composer chose | A paused book should be quieter |
+| 15 | Zoomed in, the camera tilts so buildings and villagers show their sides, and flattens to straight down as you zoom out to the page and the book | From straight above, villagers are dark dots and every cottage is the same square roof; the first screenshots showed it plainly. You can say no to this in the review |
+| 16 | Roads are smoothed into curves in the town plan, and paved roads are drawn narrower | The first plan's lanes had sharp zigzags and the cobbles looked as wide as the cottages |
+| 17 | Requests adapt: each one met makes the next a little harder, each one missed a little easier | A fixed difficulty was too easy on some towns and too hard on others |
+| 18 | Upgrade steps unlock with town levels (a few steps of each track per level) instead of all being for sale from the start | Otherwise the tracks are bought out by minute 15 and the last ten minutes have little to buy |
+| 19 | The worth of the bell and the share of requests met are measured as averages over ten towns, with wide limits for any single town | A single run has only about a dozen requests, so one run is too noisy to hold to a narrow band |
 | 11 | The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2 | It does not depend on the new simulation, so it need not wait |
 
 ## Needs you
@@ -115,7 +119,12 @@ Stopping
 
 ## Retired tests
 
-(filled in when round 1 retires the old game tests)
+Round 1 retired the game tests that only covered the old game, with their scenes (moved to `game/legacy/`, out of the build). The full table, test by test with the reason, is `docs/plans/retired-tests.md`. In short:
+
+- `game-smoke` (old), `game-tools`, `game-ui`: the old world view, the fence, footbridge and erase tools, the tool tabs. Gone because the player no longer draws or builds paths. Replaced by `game-smoke` and `game-town` on the new town.
+- `game-river`, `game-river-rules`, `game-chapter`, `game-hamlet`: the two chapters and the river rules in the game. Gone because there are no chapters; the river returns as the second age on the new town.
+- `game-perf` (old) and its re-run, and the four old screenshot steps: replaced by a new `game-perf` and new town screenshots. The old 64-bytes-per-frame allocation gate was NOT carried over (the new interface allocates about 2.5 KB a frame); that is a real loss of a check and is on the fix list.
+- All simulation tests of the old desire-line and river code still run in `./check` (159 tests) beside the new town tests.
 
 ## Music pieces
 
@@ -134,4 +143,13 @@ The game reads `assets/audio/music/playlist.json`. Not yet wired into the game (
 
 ## Fun, judged after each round
 
-(filled in after each round)
+### Round 1 (21:35 UTC)
+
+Honest verdict: it works and it is not yet fun.
+
+- Real input: the `game-town` test plays with injected mouse and key events through the interface, but only to level 4. The numbers for the whole age below come from bots playing the simulation directly, not from input through the game. A real-input play of the whole age is running as part of round 2.
+- Decisions a minute (the balancer's estimate from bot logs; a speed tap does not count as a decision): 1.5 to 2 in minutes 0 to 10, about 1 in minutes 10 to 20, about 0.5 in minutes 20 to 30.
+- Until nothing is left to do: the charter comes at 26 to 36 minutes; after it there is nothing but the speed upgrade.
+- What is dull: 80 percent of all purchases are the same cheap speed upgrade (172 levels of it by the end); choices have one right answer; the dear upgrades and the mill are hardly ever worth buying; crowding almost never happens; the last gifts are five minutes apart.
+- What looks wrong: villagers are tiny dark dots from above; cobbled roads are as wide as cottages; lanes have sharp zigzags; the finished town fills only the middle third of the screen.
+- What is good: the first minute is exactly one cottage, one well, one trail and one villager; the trail visibly wears in; staked plots show where the next gift will stand; the interface says what comes next.

@@ -10,8 +10,8 @@ namespace TideToll.Game;
 /// nothing plays when headless or with the Dummy driver, but cues are still counted for tests).
 /// Coin at a delivery (at most a few a second), a purchase knock, a long bell for a new level and a gift, the bell
 /// when rung, footsteps on a slow beat from the walking villagers, the river loop and the theme now and then.
-/// There are no dedicated purchase or level sounds in the assets: the purchase uses place-0N.wav and a level uses
-/// bell-long-*.wav (listed as missing in docs/plans/game-core-progress.md).
+/// The town's own cues (buy, level-up, gift, pave-gravel, pave-cobbles, achievement, charter) are used where their
+/// files exist, with Hamlet stand-ins otherwise (place-0N.wav, bell-long-*.wav, coin-0N.wav).
 /// </summary>
 public partial class TownAudio : Node
 {
@@ -20,6 +20,8 @@ public partial class TownAudio : Node
 
     private TownDriver _drv = null!;
     private AudioStream[] _coin = null!, _place = null!, _bell = null!, _long = null!, _grass = null!, _dirt = null!;
+    private AudioStream[] _buy = null!, _levelUp = null!, _gift = null!, _gravel = null!, _cobbles = null!, _achieve = null!, _charter = null!;
+    public int Paves, Achievements;
     private AudioStreamPlayer _fx = null!, _ui = null!, _bellP = null!, _steps = null!, _theme = null!, _river = null!;
     private readonly Random _rng = new(11);
     private readonly int[] _last = { -1, -1, -1, -1, -1, -1 };
@@ -43,6 +45,10 @@ public partial class TownAudio : Node
         string[] notes = { "a4", "d4", "e4", "g4" };
         _long = new AudioStream[notes.Length];
         for (int i = 0; i < notes.Length; i++) _long[i] = GD.Load<AudioStream>($"res://assets/audio/sfx/bell-long-{notes[i]}.wav");
+        // The town's own cues where their files are there (assets/audio/sfx), else the Hamlet stand-ins.
+        _buy = Find("buy-0", _place); _levelUp = Find("level-up-0", _long); _gift = Find("gift-0", _long);
+        _gravel = Find("pave-gravel-0", _place); _cobbles = Find("pave-cobbles-0", _place);
+        _achieve = Find("achievement-0", _coin); _charter = Find("charter-0", _long);
         _fx = Player("Fx", "Effects", -10, 4);
         _ui = Player("Ui", "Interface", -6, 2);
         _bellP = Player("BellP", "Effects", -6, 2);
@@ -62,6 +68,19 @@ public partial class TownAudio : Node
         var p = new AudioStreamPlayer { Name = name, Bus = bus, VolumeDb = db, MaxPolyphony = poly };
         AddChild(p);
         return p;
+    }
+
+    /// <summary>Every file prefix1.wav, prefix2.wav, ... that exists, or the stand-in set when there is none.</summary>
+    private static AudioStream[] Find(string prefix, AudioStream[] standIn)
+    {
+        var list = new System.Collections.Generic.List<AudioStream>();
+        for (int i = 1; i <= 9; i++)
+        {
+            string p = $"res://assets/audio/sfx/{prefix}{i}.wav";
+            if (!ResourceLoader.Exists(p)) break;
+            list.Add(GD.Load<AudioStream>(p));
+        }
+        return list.Count > 0 ? list.ToArray() : standIn;
     }
 
     private static AudioStream[] Load(string prefix, int n)
@@ -95,9 +114,12 @@ public partial class TownAudio : Node
                     // Never a wall of coins at high speed: at most one every 0.25 real seconds.
                     if (_now - _lastCoin >= 0.25) { _lastCoin = _now; Play(_fx, _coin, 0, -12, ref Coins); }
                     break;
-                case TownEventKind.Purchase: Play(_ui, _place, 1, -6, ref Purchases); break;
-                case TownEventKind.LevelReached: if (e.Level > 1) Play(_bellP, _long, 2, -8, ref Levels); break;
-                case TownEventKind.BuildingOpened: Play(_bellP, _long, 2, -10, ref Levels); break;
+                case TownEventKind.Purchase: if (e.Item != ShopItemKind.Pave) Play(_ui, _buy, 1, -6, ref Purchases); break;
+                case TownEventKind.RoadPaved: Play(_ui, e.Surface == Surface.Cobbles ? _cobbles : _gravel, 1, -6, ref Paves); break;
+                case TownEventKind.LevelReached: if (e.Level > 1) Play(_bellP, _levelUp, 2, -8, ref Levels); break;
+                case TownEventKind.BuildingOpened: Play(_bellP, _gift, 2, -8, ref Levels); break;
+                case TownEventKind.AchievementUnlocked: Play(_fx, _achieve, 5, -10, ref Achievements); break;
+                case TownEventKind.Charter: Play(_bellP, _charter, 2, -6, ref Levels); break;
                 case TownEventKind.BellRung: Play(_bellP, _bell, 3, -4, ref Bells); break;
             }
         }

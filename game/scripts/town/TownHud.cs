@@ -178,6 +178,9 @@ public partial class TownHud : CanvasLayer
     /// <summary>A margin note: a slip of paper on the left that fades after a few seconds.</summary>
     public void Note(string text, bool strong = false)
     {
+        // The same note again while it is still on the page: keep the one slip and give it its full time again.
+        for (int i = 0; i < _noteList.Count; i++)
+            if (IsInstanceValid(_noteList[i].label) && _noteList[i].label.Text == text) { _noteList[i] = (_noteList[i].label, 0f); NotesShown++; LastNote = text; NoteLog.Add(text); return; }
         var l = UiKit.Text(text, _s, strong ? 18 : 16, strong ? UiKit.UiBold : UiKit.UiFont);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(UiKit.Px(_s, 320), 0);
@@ -226,7 +229,7 @@ public partial class TownHud : CanvasLayer
         {
             case TownEventKind.Delivery: Float(e.X, e.Y, e.Coin); break;
             case TownEventKind.LevelReached:
-                if (e.Level > 1) Note($"Level {e.Level}! The town gives {Lower(e.Text)}.", true);
+                if (e.Level > 1) Note($"Level {e.Level}: {Upper(e.Text)}.", true);
                 break;
             case TownEventKind.BuildingOpened: Note((e.Text ?? "A new building") + " is open.", true); break;
             case TownEventKind.OfferAvailable: Note("New to buy: " + (e.Text ?? "a building") + "."); break;
@@ -240,10 +243,10 @@ public partial class TownHud : CanvasLayer
         }
     }
 
-    private static string Lower(string? s)
+    private static string Upper(string? s)
     {
-        if (string.IsNullOrEmpty(s)) return "something new";
-        return char.ToLowerInvariant(s[0]) + s.Substring(1);
+        if (string.IsNullOrEmpty(s)) return "Something new";
+        return char.ToUpperInvariant(s[0]) + s.Substring(1).TrimEnd('.');
     }
 
     // ------------------------------------------------------------------ floating coin

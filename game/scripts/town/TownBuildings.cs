@@ -20,6 +20,7 @@ public partial class TownBuildings : Node3D
     private Node3D?[] _built = Array.Empty<Node3D?>();
     private Node3D?[] _stakes = Array.Empty<Node3D?>();
     private float[] _pop = Array.Empty<float>();
+    private Node3D?[] _extras = Array.Empty<Node3D?>();   // offers that add to a plot already drawn (the second bucket)
     private Node3D? _sails, _bell, _charter;
     private float _sailAngle, _bellSwing;
 
@@ -27,6 +28,8 @@ public partial class TownBuildings : Node3D
     public int BuiltCount { get; private set; }
     public int StakedCount { get; private set; }
     public int Popping { get; private set; }
+    private readonly float[] _extraPop = new float[8];
+    public bool OfferDrawn(int o) => o < _extras.Length && _extras[o] != null;
     public bool PlotDrawn(int p) => _built[p] != null && _built[p]!.Visible;
     public bool PlotStaked(int p) => _stakes[p] != null && _stakes[p]!.Visible;
     public float SailAngle => _sailAngle;
@@ -62,6 +65,7 @@ public partial class TownBuildings : Node3D
         _built = new Node3D?[plots.Length];
         _stakes = new Node3D?[plots.Length];
         _pop = new float[plots.Length];
+        _extras = new Node3D?[_drv.Town.Plan.Offers.Length];
         _sails = _bell = _charter = null;
         Sync(instant: true);
     }
@@ -168,6 +172,26 @@ public partial class TownBuildings : Node3D
             if (_stakes[i] != null) _stakes[i]!.Visible = st;
             if (st) staked++;
         }
+        // An offer bought for a plot that is already standing (the well's second bucket): a piece beside it.
+        var offers = _drv.Town.Plan.Offers;
+        for (int o = 0; o < offers.Length; o++)
+        {
+            var of = offers[o];
+            if (of.Plot < 0 || plots[of.Plot].Offer == o || !_drv.Town.OfferBought(o)) continue;
+            built++;
+            if (_extras[o] != null) continue;
+            var p = plots[of.Plot];
+            string model = ModelLib.Pick("villager-cargo-water", "well");
+            var root = new Node3D { Name = $"Extra{o}", Position = Centre(p) + new Vector3(p.W * Cell * 0.42f, 0, p.H * Cell * 0.3f) };
+            var m = ModelLib.Instance(model, "Model");
+            float lift = -ModelLib.Mesh(model).GetAabb().Position.Y;
+            m.Position = new Vector3(0, lift * 1.3f, 0);
+            m.Scale = Vector3.One * 1.3f;
+            root.AddChild(m);
+            AddChild(root);
+            _extras[o] = root;
+            if (!instant) { root.Scale = new Vector3(1, 0.02f, 1); _extraPop[o % _extraPop.Length] = 0.0001f; }
+        }
         BuiltCount = built;
         StakedCount = staked;
     }
@@ -192,6 +216,14 @@ public partial class TownBuildings : Node3D
             _built[i]!.Scale = new Vector3(1f + over * 0.5f, Math.Max(0.02f, e + over), 1f + over * 0.5f);
             if (k >= 1f) { _pop[i] = 0; _built[i]!.Scale = Vector3.One; }
             else popping++;
+        }
+        for (int o = 0; o < _extras.Length && o < _extraPop.Length; o++)
+        {
+            if (_extraPop[o] <= 0 || _extras[o] == null) continue;
+            _extraPop[o] += dt / PopSeconds;
+            float k = Math.Min(1f, _extraPop[o]);
+            _extras[o]!.Scale = new Vector3(1, Math.Max(0.02f, 1f - MathF.Pow(1f - k, 3f)), 1);
+            if (k >= 1f) _extraPop[o] = 0; else popping++;
         }
         Popping = popping;
         // The mill's sails turn while it works; the bell swings while the town hurries.

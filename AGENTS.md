@@ -13,11 +13,11 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 
 | Path | What it holds |
 | --- | --- |
-| `sim/` | `TideToll.Sim`: the engine-free simulation (map, wear, walkers, tools, metrics, flow preview) |
+| `sim/` | `TideToll.Sim`: the engine-free simulation; `sim/Town/` is the incremental town the game plays (interface: `docs/plans/town-sim-api.md`); the rest is the earlier desire-line and river simulation |
 | `sim.tests/` | `TideToll.Sim.Tests` (xUnit); `Harness/` holds the toy's checks, also compiled into the tools |
 | `sim.tests/golden/` | `toy-golden.json` (round-2 toy), `toy-golden-v2.json` (finished toy) and their generator `export.mjs` (never edit the JSON by hand) |
 | `tools/TideToll.Tools/` | headless runner: `run`, `bench`, `gate`, `checks`, `river` (the river strategy bot) |
-| `game/` | the Godot project; references `sim/` |
+| `game/` | the Godot project; references `sim/`. `scripts/Main.cs` + `scripts/town/` are the town game; `game/legacy/` is the retired desire-line game (`.gdignore`, not compiled) |
 | `prototypes/desire-lines/` | the browser toy (Prototype 1) |
 | `assets/` | shipped art and sound, with `assets/LEDGER.csv` |
 | `tools/` | `check.sh` (`./check`), setup, ledger check, asset sync, export |
@@ -27,7 +27,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 
 - `sim/` never references Godot, `System.Random`, `DateTime`, `Stopwatch` or any clock. A test scans the source for them.
 - Same seed and same commands at the same ticks give the same run. Iterate arrays, never hash sets or dictionaries.
-- The game reads the simulation through read-only spans and changes it only through commands (`World` API in `sim/README.md`).
+- The game reads the town through its views (`Town`, `docs/plans/town-sim-api.md`) and changes it only through the player actions (`Buy`, `Pave`, `RingBell`, ...). `TownDriver` steps it at `TownRules.TickHz` whatever the frame rate and interpolates drawing. Never write a number from `sim/Town/TownRules.cs` into game code or a test: read prices and timings from the simulation.
 - Files under about 400 lines, one system per file.
 - Presets: `SimParams.Default` is the finished toy as a player meets it (its trail model, rain and mud, house growth, preview version 2); `SimParams.Toy` is the same with rain and growth off (the gate and the comparison traces); `SimParams.Legacy` is the round-2 toy (toy-golden.json, the pre-river baselines, the round-2 checks). A test that compares with recorded data names its preset.
 - The river rules (`SimParams.River`) are off by default and must stay invisible when off: `RiverOffBaselineTests` holds hashes recorded before they existed (on `Legacy`) and the finished toy's own day-20 baselines (on `Toy` and `Default`), and river code runs only behind `_river != null`. With the river rules on, rain and house growth are off whatever the preset says.
@@ -45,7 +45,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ## Checks
 
 ```
-./check                 # sim build + fast tests (Release, under a minute), Godot build, smoke, screenshot, ledger
+./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-perf, screenshots, ledger
 ./check --gate          # gate tables, comparison with the toy, 45-day traces, preview agreement (~6 min)
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
@@ -59,9 +59,13 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 `./check` must pass before every commit. The gate may fail honestly (the round-2 toy's own G3 fails on seed 115; the gate itself now runs on `SimParams.Toy`); never tune parameters or edit a test to make it pass. Logs go to `build/check-logs/`.
 
+## Game tests
+
+`game/tests/`: `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+
 ## Assets
 
-Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, URL, where used) before it goes into the game; `./check` fails without one. See `docs/asset-pipeline.md`.
+New models and icons load by name with a named stand-in when the file is missing (`ModelLib.Pick`, `TownHud.IconOr`). Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, URL, where used) before it goes into the game; `./check` fails without one. See `docs/asset-pipeline.md`.
 
 ## Git
 

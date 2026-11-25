@@ -9,7 +9,7 @@ namespace TideToll.Game;
 /// <summary>
 /// The map page's ground for the town: the same plane and shader as before (shaders/ground.gdshader), with the town's
 /// roads painted into its wear layer. Each road cell gets a drawn wear from its road: a new road is a faint trail
-/// (wear about 0.3: bent grass and a broken line of soil), firming toward a solid track as the road wears in, and
+/// (drawn wear 0.4: bent grass and a broken line of soil), firming toward a solid track as the road wears in, and
 /// packed earth once worn in. A road that opens draws itself in from its first node to its last over
 /// <see cref="RevealSeconds"/>; the drawn wear eases toward its target, so wear never jumps. Gravel and cobbles are
 /// strips on top (gravel_tex, cobble_tex: GravelStrip's capsule ramp at two texels a cell); crowded roads take a warm
@@ -24,7 +24,7 @@ public partial class TownGround : MeshInstance3D
     /// <summary>Real seconds a new road takes to draw itself in.</summary>
     public const float RevealSeconds = 1.6f;
     /// <summary>Drawn wear of a brand-new trail, of a worn-in track, and the span between.</summary>
-    public const float TrailWear = 0.30f, WornWear = 0.95f, WearSpan = 0.42f;
+    public const float TrailWear = 0.40f, WornWear = 0.95f, WearSpan = 0.40f;
 
     public ShaderMaterial Material { get; private set; } = null!;
     public int Uploads { get; private set; }
@@ -51,7 +51,6 @@ public partial class TownGround : MeshInstance3D
     private bool[] _wasOpen = Array.Empty<bool>();
     private readonly float[] _target = new float[N * N], _shown = new float[N * N];
     private readonly byte[] _rg = new byte[N * N * 2], _crowd = new byte[N * N];
-    private readonly byte[] _gravelGrid = new byte[N * N], _cobbleGrid = new byte[N * N];
     private readonly byte[] _gravelTexels = new byte[N * GravelStrip.Res * N * GravelStrip.Res];
     private readonly byte[] _cobbleTexels = new byte[N * GravelStrip.Res * N * GravelStrip.Res];
     private Image _wearImg = null!, _crowdImg = null!, _gravelImg = null!, _cobbleImg = null!;
@@ -217,25 +216,34 @@ public partial class TownGround : MeshInstance3D
         Uploads++;
     }
 
+    /// <summary>Half width of a paved strip, cells (a track is about a cell wide on the page).</summary>
+    public const float PavedHalf = 0.62f;
+
     private void UploadPaving(int sig)
     {
         var town = _drv.Town;
         _pavedSeen = sig;
-        Array.Clear(_gravelGrid);
-        Array.Clear(_cobbleGrid);
-        for (int r = 0; r < _cells.Length; r++)
-        {
-            if (!town.RoadOpen(r)) continue;
-            var s = town.RoadInfo(r).Surface;
-            if (s == Surface.Track) continue;
-            var grid = s == Surface.Gravel ? _gravelGrid : _cobbleGrid;
-            foreach (int c in _cells[r]) grid[c] = 1;
-        }
-        // A cell shared by a cobbled and a gravel road is drawn cobbled.
-        for (int i = 0; i < N * N; i++) if (_cobbleGrid[i] != 0) _gravelGrid[i] = 0;
+        Array.Clear(_gravelTexels);
+        Array.Clear(_cobbleTexels);
+        int g = 0, c = 0;
+        // Cobbles last, so where a gravel and a cobbled road meet the cobbles are drawn whole.
+        for (int pass = 0; pass < 2; pass++)
+            for (int r = 0; r < _cells.Length; r++)
+            {
+                if (!town.RoadOpen(r)) continue;
+                var s = town.RoadInfo(r).Surface;
+                if (s == Surface.Track || (pass == 0) != (s == Surface.Gravel)) continue;
+                var road = town.Plan.Roads[r];
+                var tex = s == Surface.Gravel ? _gravelTexels : _cobbleTexels;
+                for (int k = 0; k + 1 < road.Xs.Length; k++)
+                    GravelStrip.Segment(tex, N, road.Xs[k] + 0.5f, road.Ys[k] + 0.5f, road.Xs[k + 1] + 0.5f, road.Ys[k + 1] + 0.5f, PavedHalf);
+                if (s == Surface.Gravel) g += _cells[r].Length; else c += _cells[r].Length;
+            }
+        // A cobbled texel hides the gravel under it.
+        for (int i = 0; i < _cobbleTexels.Length; i++) if (_cobbleTexels[i] > 127 && _gravelTexels[i] > 0) _gravelTexels[i] = 0;
+        GravelCells = g;
+        CobbleCells = c;
         int gs = N * GravelStrip.Res;
-        GravelCells = GravelStrip.Rasterise(_gravelGrid, N, _gravelTexels);
-        CobbleCells = GravelStrip.Rasterise(_cobbleGrid, N, _cobbleTexels);
         _gravelImg.SetData(gs, gs, false, Image.Format.R8, _gravelTexels);
         _gravelTex.Update(_gravelImg);
         _cobbleImg.SetData(gs, gs, false, Image.Format.R8, _cobbleTexels);
