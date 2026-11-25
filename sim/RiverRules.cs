@@ -11,6 +11,9 @@ namespace TideToll.Sim;
 /// KeeperPrice 30 to 120, FerryCapacity 6 to 5, FerryTurnSec 0.5 to 0.75, FerryUpkeep 2 to 5, FerryWage 3 to 15.
 /// River pass 3 (lead's decisions B, C, D, 25 Nov 2026): StartMoney 0 to 50, FerryUpkeep 5 to 2 and FerryWage 15 to 3 (the doc's
 /// numbers again); new WetGrainValueShare, LoadedWadeSpeedMul and KeeperUnlockRaises.
+/// Tuning 25 Nov 2026 (third pass, strategy bot on the new trail model, seeds 101-120 and 201-220): WetGrainValueShare 0.5 to 0.55,
+/// DrawbridgePrice 200 to 220 (the drawbridge was bought before day 6), KeeperPrice 120 to 15 (the keeper has only
+/// the days after its unlock to pay back). KeeperUnlockRaises stays 10: 8 would pass (e) with more room, but a test pins 10.
 /// </summary>
 public sealed record RiverRules
 {
@@ -54,7 +57,7 @@ public sealed record RiverRules
     /// Grain carried through the ford gets wet and sells for this share of its value, at a boat and at the market (lead's
     /// decision B, 25 Nov 2026: the free ford costs trade; chosen starting number, for the tuner).
     /// </summary>
-    public double WetGrainValueShare { get; init; } = 0.5;
+    public double WetGrainValueShare { get; init; } = 0.55;
     /// <summary>
     /// A walker carrying grain wades the ford at this share of an unloaded walker's speed (decision B; chosen starting
     /// number). On top of SimParams.FordSpeedMul; the routing cost is not changed.
@@ -65,8 +68,8 @@ public sealed record RiverRules
     public double FootbridgePrice { get; init; } = 50;
     public double FerryPrice { get; init; } = 40;
     /// <summary>200c + 40 stone, with the stone folded into coin (chosen).</summary>
-    public double DrawbridgePrice { get; init; } = 200;
-    public double KeeperPrice { get; init; } = 120;              // chosen (tuned 25 Nov: doc has none)
+    public double DrawbridgePrice { get; init; } = 220;
+    public double KeeperPrice { get; init; } = 15;              // chosen (tuned 25 Nov: doc has none)
     /// <summary>
     /// The keeper can be hired only after the player has raised that drawbridge by hand this many times (lead's decision C,
     /// 25 Nov 2026: start at 10; the doc wants about 3 minutes of raising by hand first, and a hand-raising player raises

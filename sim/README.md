@@ -131,7 +131,7 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   2c x `BoatValueMul` (3) = 6c, booked when the boat leaves; otherwise the village market pays 70% of 2c, at most
   1 unit per house per day (the design doc's limit); the rest goes unsold. **Wet grain** (third pass, the lead's
   decision B): grain carried through the ford gets wet (`Walker.CargoWet`; not over the ice) and sells for
-  `WetGrainValueShare` (0.5, chosen) of its value at a boat and at the market; a walker carrying grain wades the ford at
+  `WetGrainValueShare` (0.55, tuned; 0.5 chosen) of its value at a boat and at the market; a walker carrying grain wades the ford at
   `LoadedWadeSpeedMul` (0.7, chosen) of an unloaded walker's speed (routing costs are unchanged). Counted:
   `RiverStats.GrainDeliveredWet`, `GrainDeliveredDry`, `WetValueLost` (coin the wet grain did not fetch). The flood
   still closes the ford.
@@ -141,7 +141,7 @@ The rules in short (numbers are `RiverRules` defaults; 1 day = 15 s = 150 ticks)
   all boats raised; raise 1.0 s, one boat per 1.5 s, lower 1.0 s). A raised bridge lowers itself once the boats
   within 4 rows below are through, or after 8 s with no boat. The keeper (120c, 5c a season) raises 1 s after a
   masted boat is within 6 rows and lowers once it is through. **The keeper is unlocked by use** (third pass, decision C):
-  it can be hired for a drawbridge only once the player has raised that bridge by hand `KeeperUnlockRaises` (10) times
+  it can be hired for a drawbridge only once the player has raised that bridge by hand `KeeperUnlockRaises` (10, the lead's start) times
   (`Crossing.HandRaises`, `RaisesToKeeper`, `KeeperUnlocked`; a press while it is already going up, and the keeper's
   own raises, do not count). Until then `HireKeeper` is refused in words, e.g. "No keeper will take this bridge on yet:
   raise it by hand six times more first (four of ten raises done)"; the `KeeperUnlocked` event names the bridge when
@@ -521,6 +521,52 @@ What fails, for the tuner: (a) the footbridge's trade is 81% of ford only's (888
 towns: it is unlocked a median 12.9 days after the drawbridge (the S6 player raises about once a day and misses 30% of
 boats until then) and then costs 120c, so it has little of the run left to pay back. (b) in its new form passes with room
 to spare (ford only 42% below the best purchase at the median, the lead aimed at 15%), so `WetGrainValueShare` can go up.
+
+### Tuning, third pass (25 November 2026, strategy bot on the new trail model, seeds 101-120 and 201-220)
+
+Changed `RiverRules` defaults (before -> after; doc figure; why):
+
+| Value | Before | After | Doc | Why |
+| --- | --- | --- | --- | --- |
+| WetGrainValueShare | 0.5 | 0.55 | none (lead's decision B) | at 0.6 the wet income paid the drawbridge on day 5.8 (floor 6); (b) still passes with a 37-38% median shortfall (aim 15%); gives (a)'s footbridge/ford ratio 74% (needs 80%) |
+| DrawbridgePrice | 200 | 220 | 200c + 40 stone | with the wetter income the drawbridge came on day 5.9, under the 6-day floor; 220 gives day 6.3 on both seed sets |
+| KeeperPrice | 120 | 15 | none (chosen) | the keeper has only the days after its unlock to pay back; at 120 it beat the 30%-missing player in 4 of 20 towns, at 40 in 11 and 10 of 20 |
+| KeeperUnlockRaises | 10 | 10 (unchanged) | doc: about 3 minutes of hand raising | tried 8: 12 and 14 of 20 at price 40, but `RiverRules3Tests.TheKeeperIsHiredOnlyAfterTheBridgeHasBeenRaisedByHandOftenEnough` asserts 10; put back. Its fix: set `KeeperUnlockRaises` in the test, then 8 can be used |
+
+Not moved: StartMoney 50, FerryUpkeep 2, FerryWage 3 (the doc's), LoadedWadeSpeedMul 0.7, ferry capacity and turn-round, boat
+value and frequency, crossing prices other than the drawbridge. Tried and dropped: `ReputationTurnedBack` 5 to 8 (the keeper
+did worse, 7 of 20 on 201-220); `KeeperDelaySec` 1.5 (no change in worst waits); wet 0.6 (drawbridge day under 6).
+The default numbers pass 20 of 21 checks on each set; the remaining one is (a)'s trade line, which the harness
+cannot pass (see below). Cliffs: the drawbridge day is 6.3 against a floor of 6 (wet share 0.6 or price 200 breaks it); (e) against
+the 30% player passes with 14 of 20 (101-120) and 15 of 20 (201-220) towns; the "manual drawbridge has the
+lower worst wait" check is a near tie (S5 2.3 s, S6 2.4 s) and flipped to 2.6 against 2.4 on a 10-seed screen.
+
+**Harness bug in check (a)**: `RiverGateChecks` tests `nextTrade.Key != default`, but `RiverPlayer` is a record struct and
+S1 (ford only, miss 0) equals `default`, so the line fails whenever ford only is the lowest-trade player other than S3/S4
+(it always is). The numbers pass: S3 888c against S1 1206c (74%) on 101-120 and 808c against 1120c (72%) on 201-220. The fix is in
+the check (use a bool or the KeyValuePair), not in the tuning.
+
+Final medians, 30 days, seeds 101-120 (201-220 in `docs/plans/river3-progress.md`); `wet lost c` is coin the wet grain did not
+fetch, `unlock d` and `keeper d` are in-game days; one in-game day is 15 s, so the keeper is available 12.9 days after the
+drawbridge (3.2 minutes) on 101-120 and 16.1 days (4.0 minutes) on 201-220, and 19.2 / 22.4 days (4.8 / 5.6 minutes) into the town.
+
+```
+ player                                | walkers | built d | unlock d | keeper d | trade c | wet lost c | money c | trip s | mean wait | worst wait | deliv/d | turn-back | rep
+ S1 ford only                          |     200 |       - |        - |        - |    1206 |       1007 |    1312 |  18.54 |      0.00 |        0.0 |    13.9 |      0.0% |  94
+ S2 ferry                              |      60 |     0.0 |        - |        - |     800 |          0 |     824 |  15.59 |      2.08 |        7.8 |     5.7 |      0.0% |  94
+ S2 ferry                              |     200 |     0.0 |        - |        - |    1533 |        794 |    1554 |  19.33 |      5.31 |       19.5 |    14.8 |      0.0% |  94
+ S3 footbridge                         |     200 |     0.0 |        - |        - |     888 |          0 |     940 |  15.40 |      0.27 |        1.1 |    18.2 |     66.0% |   0
+ S4 drawbridge, never raised           |     200 |     6.3 |        - |        - |    1036 |        210 |     887 |  16.01 |      0.00 |        0.0 |    17.5 |     48.4% |   0
+ S5 drawbridge, manual, misses 10%     |      60 |    11.2 |     21.6 |        - |     710 |        145 |     574 |  14.16 |      1.20 |        2.3 |     5.8 |      3.9% |  86
+ S5 drawbridge, manual, misses 10%     |     200 |     6.3 |     16.4 |        - |    2217 |        220 |    2065 |  16.30 |      1.12 |        2.3 |    17.1 |      4.5% |  82
+ S5 drawbridge, manual, misses 30%     |     200 |     6.3 |     19.2 |        - |    1978 |        216 |    1837 |  16.53 |      1.06 |        2.3 |    16.9 |     16.7% |  50
+ S5 drawbridge, manual, misses 50%     |     200 |     6.3 |     20.3 |        - |    1642 |        216 |    1504 |  16.17 |      1.03 |        2.3 |    16.9 |     25.0% |  31
+ S6 drawbridge + keeper                |      60 |    11.2 |     24.1 |     24.1 |     712 |        145 |     552 |  14.63 |      1.21 |        2.4 |     5.8 |      9.4% |  70
+ S6 drawbridge + keeper                |     200 |     6.3 |     19.2 |     19.2 |    2031 |        216 |    1858 |  16.29 |      1.09 |        2.4 |    16.6 |      7.9% |  73
+```
+
+First purchase: with the 50c purse a ferry (40c) or footbridge (50c) is built by day 1 in 60 of 60 runs; ford only is not starved
+(1312c median money at 200 walkers over 30 days).
 
 ## Parity with the toy
 

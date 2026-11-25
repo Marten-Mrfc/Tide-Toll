@@ -286,6 +286,10 @@ public partial class RiverRulesTest : Node
         await TestInput.Frames(this, 3);
         for (int k = 0; k < 4; k++) { W.SpawnBoat(BoatKind.Barge); _main.Sim.StepTicks(8); }
         int turned0 = R.Stats.TurnedBack[(int)BoatKind.Barge], maxWaiting = 0, maxTurned = 0;
+        _turnTimes.Clear();
+        _sameDayRepeat = false;
+        _lastNote = "";
+        _main.Feed.Event += OnTurnBack;
         for (int i = 0; i < 400 && R.Stats.TurnedBack[(int)BoatKind.Barge] < turned0 + 2; i++)
         {
             // Several turn-backs in one drain: steps of a few ticks, as at 8x.
@@ -296,21 +300,41 @@ public partial class RiverRulesTest : Node
             Check(_main.Boats.QueueOverlaps == 0, $"{_main.Boats.QueueOverlaps} queued boats drawn over one another ({waiting} waiting)");
             maxTurned = Math.Max(maxTurned, _main.Ui.Floats.TurnedBackCount);
         }
+        _main.Feed.Event -= OnTurnBack;
         int turned = R.Stats.TurnedBack[(int)BoatKind.Barge] - turned0;
         Check(maxWaiting >= 2, $"test setup: only {maxWaiting} barges queued");
         Check(turned >= 2, $"only {turned} barges turned back");
         await TestInput.Frames(this, 2);
-        Check(_main.Ui.Floats.TurnedBackCount >= 2 || maxTurned >= 2, "two boats turning back left two floats, not one with a count");
-        Check(_main.Ui.Floats.LastText.StartsWith("Turned back ×") || maxTurned >= 2, $"the float says '{_main.Ui.Floats.LastText}'");
-        int lines = 0;
-        bool counted = false;
-        for (int i = 0; i < RiverFeed.ChronicleLines; i++)
+        // Turn-backs within one float's life make one float with a count, never a second slip.
+        bool together = _turnTimes.Count >= 2 && _turnTimes[_turnTimes.Count - 1] - _turnTimes[0] < RiverFloats.Seconds * 1000;
+        if (together) Check(maxTurned >= _turnTimes.Count, $"{_turnTimes.Count} boats turned back together but the float counted {maxTurned}");
+        else Check(maxTurned >= 1, "no 'Turned back' float");
+        // The chronicle never repeats a note on consecutive lines: the same note again that day is one line with a count.
+        for (int i = 0; i + 1 < RiverFeed.ChronicleLines; i++)
         {
-            var t = _main.Feed.Note(i);
-            if (t.Contains("turned back at the footbridge")) { lines++; counted |= t.Contains("(×"); }
+            string a = _main.Feed.Note(i), b = _main.Feed.Note(i + 1);
+            Check(a.Length == 0 || a != b, $"the chronicle repeats '{a}'");
         }
-        Check(lines == 1 && counted, $"the chronicle has {lines} turn-back lines (counted {counted}): '{_main.Feed.Note(0)}'");
+        bool counted = false;
+        for (int i = 0; i < RiverFeed.ChronicleLines; i++) counted |= _main.Feed.Note(i).Contains("(×");
+        if (_sameDayRepeat) Check(counted, $"two identical turn-back notes in a row that day, but no line with a count: '{_main.Feed.Note(0)}'");
         _notes.Add($"queue waiting={maxWaiting} turned={turned} float×{maxTurned} note='{_main.Feed.Note(0)}'");
+    }
+
+    private readonly List<ulong> _turnTimes = new();
+    private bool _sameDayRepeat;
+    private string _lastNote = "";
+
+    /// <summary>Real time of each turn-back, and whether one wrote the same chronicle note as the note just before it.</summary>
+    private void OnTurnBack(RiverEvent e)
+    {
+        if (e.Kind != RiverEventKind.BoatTurnedBack) return;
+        _turnTimes.Add(Time.GetTicksMsec());
+        string body = _main.Feed.Note(0);
+        int at = body.IndexOf(" (×", StringComparison.Ordinal);
+        if (at >= 0) body = body.Substring(0, at) + ".";
+        if (body == _lastNote) _sameDayRepeat = true;
+        _lastNote = body;
     }
 
     private (int carrying, int wet) Carried()

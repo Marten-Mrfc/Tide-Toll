@@ -22,7 +22,7 @@ namespace TideToll.Game.Tests;
 /// - the river's seasons (RiverTest.Seasons.cs): a flood and a freeze driven through the simulation's hooks, with their
 ///   marks, tags, notes and ledger lines appearing and going, the ford tool reason while the ford is closed, the river
 ///   loop quieter on the ice; and the badge and the place tags kept apart at 1280 x 720 and 1920 x 1080.
-/// Starts with the ferry's, the drawbridge's and the keeper's prices (read from the rules) plus 20c, so a second
+/// Starts with the ferry's and the drawbridge's prices and the larger of the keeper's and the ferry's (read from the rules) plus 20c, so a second
 /// drawbridge is refused for coin.
 /// Prints RIVER PASS or RIVER FAIL and quits with 0 or 1.
 /// </summary>
@@ -39,7 +39,10 @@ public partial class RiverTest : Node
         _main.StartSeed = 1;
         _main.StartChapter = 2; // the river's chapter
         var rules = RiverRules.Default;
-        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + rules.KeeperPrice + 20, KeeperUnlockRaises = 0 }; // the keeper is hired at once here; the unlock has its own test
+        // Restated 25 Nov 2026: the purse left after the ferry and the drawbridge is the larger of the keeper's and the ferry's
+        // price plus 20c (it was the keeper's price plus 20c, which assumed the keeper costs at least the ferry less 20c;
+        // the tuner's keeper at 15c left 35c, under the ferry's 40c). Still short of a second drawbridge, still enough for the keeper.
+        _main.River = rules with { StartMoney = rules.FerryPrice + rules.DrawbridgePrice + Math.Max(rules.KeeperPrice, rules.FerryPrice) + 20, KeeperUnlockRaises = 0 }; // the keeper is hired at once here; the unlock has its own test
         AddChild(_main);
         Run();
     }
