@@ -5,7 +5,8 @@
 # long, top 0.5 m above the water (y = 0 is the bank / water surface), on piles. Four tall mooring posts with dark
 # tops at the outer end and halfway along, a low bollard with a coiled line, and goods waiting for a boat on the
 # shore half: two crates, three grain sacks and a wool bale (the cargo shapes villagers carry). A plank step meets the
-# bank. Footprint 4 x 6 m (2 x 3 cells); boats moor along either side or at the end.
+# bank. Footprint 3.2 x 6.5 m (fits 2 x 3 cells; the step reaches 0.5 m onto the bank); boats moor along either side
+# or at the end.
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import glb, ledger, asset_path
