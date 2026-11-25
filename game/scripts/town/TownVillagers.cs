@@ -12,7 +12,7 @@ namespace TideToll.Game;
 /// grain sack or the flour sack. One MultiMesh for bodies and one per good.
 /// Round 2: the body is drawn in one of a few light clothes colours (villager.gdshader tints the model's palette
 /// shading), the head in the model's own colours, each villager on a soft round shadow; queueing and working villagers
-/// fan out round the door or along the queue instead of standing on one spot (<see cref="Spread"/>).
+/// stand where the simulation puts them: on the road, at a queue spot, or on their own work spot (rules v2).
 /// </summary>
 public partial class TownVillagers : Node3D
 {
@@ -26,8 +26,9 @@ public partial class TownVillagers : Node3D
     /// <summary>Light clothes colours, chosen by villager id.</summary>
     public static readonly Color[] Clothes =
     {
-        Color.FromHtml("#E9DFC6"), Color.FromHtml("#C9DCE6"), Color.FromHtml("#E6B9A6"),
-        Color.FromHtml("#CFDDB0"), Color.FromHtml("#F0D58A"), Color.FromHtml("#D9C4E0"),
+        // Round 3: stronger, so six villagers read as six people (still soft enough for the paper look).
+        Color.FromHtml("#B8433A"), Color.FromHtml("#3F78B5"), Color.FromHtml("#D9A21E"),
+        Color.FromHtml("#4E8F4A"), Color.FromHtml("#8A5AA8"), Color.FromHtml("#E8E0CC"),
     };
     /// <summary>The model's height in metres (before <see cref="WalkerScale"/>), for tests.</summary>
     public float ModelHeight { get; private set; } = 2.6f;
@@ -112,7 +113,7 @@ public partial class TownVillagers : Node3D
         {
             var v = t.Villager(i);
             float tx = (float)(v.PrevX + (v.X - v.PrevX) * a), ty = (float)(v.PrevY + (v.Y - v.PrevY) * a);
-            Spread(v, ref tx, ref ty);
+            // Rules v2: the simulation stands workers on their own work spots and queuers on queue spots; draw them there.
             if (!_seen[i]) { _x[i] = tx; _y[i] = ty; _yaw[i] = HeadingYaw(v.Heading); _seen[i] = true; }
             float dx = tx - _x[i], dy = ty - _y[i], d = MathF.Sqrt(dx * dx + dy * dy);
             if (d > SnapCells) { _x[i] = tx; _y[i] = ty; d = 0; }
@@ -134,8 +135,9 @@ public partial class TownVillagers : Node3D
             if (v.Carry != Good.None && (int)v.Carry < 4)
             {
                 int g = (int)v.Carry;
-                float lift = v.Carry == Good.Water ? 1.95f : 2.45f;
-                var lb = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale * (v.Carry == Good.Water ? 1f : 1.2f));
+                // Round 3: loads bigger, so Water, Grain and Flour read at the normal view.
+                float lift = v.Carry == Good.Water ? 2.05f : 2.7f;
+                var lb = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale * (v.Carry == Good.Water ? 1.45f : 1.7f));
                 _loads[g].Multimesh.SetInstanceTransform(_loadCount[g]++, new Transform3D(lb, pos + new Vector3(0, lift * WalkerScale, 0)));
             }
         }
@@ -148,26 +150,6 @@ public partial class TownVillagers : Node3D
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
         MaxSideways = maxSide;
-    }
-
-    /// <summary>
-    /// Fans out villagers that the simulation stands on one spot: those queueing step back along their facing, one
-    /// place each; those working stand on a small ring round the door, spaced by id (the golden angle). Cells.
-    /// </summary>
-    public static void Spread(in VillagerView v, ref float x, ref float y)
-    {
-        if (v.Phase == VillagerPhase.Queued && v.QueuePosition >= 0)
-        {
-            float k = 0.75f * (v.QueuePosition + 1);
-            x -= MathF.Cos((float)v.Heading) * k;
-            y -= MathF.Sin((float)v.Heading) * k;
-        }
-        else if (v.Phase == VillagerPhase.Working)
-        {
-            float ang = v.Id * 2.39996f, r = 0.55f + 0.25f * (v.Id % 3);
-            x += MathF.Cos(ang) * r;
-            y += MathF.Sin(ang) * r;
-        }
     }
 
     /// <summary>A copy of the mesh whose material marks it for soft ink (as trees are), so small figures stay light.</summary>

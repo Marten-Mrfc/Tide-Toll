@@ -20,6 +20,9 @@ public partial class TownBuildings : Node3D
     private Node3D?[] _built = Array.Empty<Node3D?>();
     private Node3D?[] _stakes = Array.Empty<Node3D?>();
     private float[] _pop = Array.Empty<float>();
+    private int[] _ext = Array.Empty<int>();
+    /// <summary>The extensions the drawn cottage on a plot shows (tests).</summary>
+    public int DrawnExtensions(int p) => p < _ext.Length && _built[p] != null ? _ext[p] : -1;
     private Node3D?[] _extras = Array.Empty<Node3D?>();   // offers that add to a plot already drawn (the second bucket)
     private Node3D? _sails, _bell, _charter;
     private float _sailAngle, _bellSwing;
@@ -37,9 +40,10 @@ public partial class TownBuildings : Node3D
     public bool CharterShown => _charter != null && _charter.Visible;
 
     /// <summary>The model for a plot kind, with the stand-in used when the new file is missing.</summary>
-    public static string Model(PlotKind kind, int id) => kind switch
+    public static string Model(PlotKind kind, int id, int extensions = 0) => kind switch
     {
-        PlotKind.Cottage => $"cottage-0{1 + id % 3}",
+        // Rules v2: the three cottage models stand for the three sizes (built, extended once, extended twice).
+        PlotKind.Cottage => $"cottage-0{1 + Math.Clamp(extensions, 0, 2)}",
         PlotKind.Well => "well",
         PlotKind.Field => "field-ripe",
         PlotKind.Market => "market-stall",
@@ -65,6 +69,7 @@ public partial class TownBuildings : Node3D
         _built = new Node3D?[plots.Length];
         _stakes = new Node3D?[plots.Length];
         _pop = new float[plots.Length];
+        _ext = new int[plots.Length];
         _extras = new Node3D?[_drv.Town.Plan.Offers.Length];
         _sails = _bell = _charter = null;
         Sync(instant: true);
@@ -82,7 +87,9 @@ public partial class TownBuildings : Node3D
 
     private Node3D MakeBuilt(Plot p)
     {
-        string model = Model(p.Kind, p.Id);
+        int ext = p.Kind == PlotKind.Cottage ? _drv.Town.Extensions(p.Id) : 0;
+        _ext[p.Id] = ext;
+        string model = Model(p.Kind, p.Id, ext);
         var root = new Node3D { Name = $"Plot{p.Id}", Position = Centre(p) };
         float fw = p.W * Cell, fh = p.H * Cell;
         float yaw = DoorYaw(p);
@@ -99,7 +106,7 @@ public partial class TownBuildings : Node3D
             else body.Scale = new Vector3(fw / aabb.Size.X, 1f, fh / aabb.Size.Z) * 0.96f;
             return root;
         }
-        float s = Math.Min(fw / ax, fh / az) * 0.88f;
+        float s = Math.Min(fw / ax, fh / az) * (p.Kind == PlotKind.Cottage ? 0.74f + 0.1f * ext : 0.88f);
         s = Math.Min(s, 1.6f);
         body.Scale = Vector3.One * s;
         if (p.Kind == PlotKind.Mill && model == "mill" && ModelLib.HasPart("mill", "Sails") && ModelLib.HasPart("mill", "Body"))
@@ -131,7 +138,29 @@ public partial class TownBuildings : Node3D
         var aabb = ModelLib.Mesh(model).GetAabb();
         m.Scale = new Vector3(p.W * Cell / Math.Max(0.1f, aabb.Size.X) * 0.9f, 1f, p.H * Cell / Math.Max(0.1f, aabb.Size.Z) * 0.9f);
         root.AddChild(m);
+        // Round 3: a small label says what will stand here, so a staked plot never reads as an editor's box.
+        var label = new Label3D
+        {
+            Name = "What", Text = StakeText(p), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
+            PixelSize = 0.03f, Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.9f), OutlineSize = 14,
+            Font = UiKit.UiBold, Position = new Vector3(0, 1.6f, p.H * Cell / 2f + 1.6f), NoDepthTest = false, DoubleSided = true,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        root.AddChild(label);
         return root;
+    }
+
+    /// <summary>The words on a staked plot: what will stand there and when.</summary>
+    public string StakeText(Plot p)
+    {
+        var t = _drv.Town;
+        string what = p.Kind switch
+        {
+            PlotKind.Cottage => "A cottage", PlotKind.Well => "A well", PlotKind.Field => "A field", PlotKind.Market => "The market",
+            PlotKind.Mill => "The mill", PlotKind.BellGreen => "The bell", _ => "Something new",
+        };
+        if (t.PlotGiven(p.Id)) return what + ", to buy";
+        return $"{what}, at level {p.Level}";
     }
 
     /// <summary>Plot p should be drawn as a working or given building.</summary>
@@ -170,6 +199,7 @@ public partial class TownBuildings : Node3D
             bool st = ShowStakes(p);
             if (st && _stakes[i] == null) { _stakes[i] = MakeStakes(p); AddChild(_stakes[i]); }
             if (_stakes[i] != null) _stakes[i]!.Visible = st;
+            if (st && _stakes[i]!.GetNodeOrNull<Label3D>("What") is { } what) what.Text = StakeText(p);
             if (st) staked++;
         }
         // An offer bought for a plot that is already standing (the well's second bucket): a piece beside it.
@@ -202,7 +232,17 @@ public partial class TownBuildings : Node3D
         float dt = (float)delta;
         bool changed = false;
         foreach (var e in _drv.Events)
+        {
             if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.OfferAvailable) changed = true;
+            if (e.Kind == TownEventKind.CottageExtended && e.Plot >= 0 && e.Plot < _built.Length && _built[e.Plot] != null)
+            {
+                // The bigger cottage pops in in place of the smaller one.
+                var old = _built[e.Plot]!;
+                RemoveChild(old); old.QueueFree();
+                _built[e.Plot] = null;
+                changed = true;
+            }
+        }
         if (changed) Sync(instant: false);
         int popping = 0;
         for (int i = 0; i < _pop.Length; i++)

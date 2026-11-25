@@ -112,8 +112,10 @@ if have_godot; then
   step game-smoke tools/godot-test.sh 'SMOKE PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/smoke.tscn --quit-after 20000
   note "$(grep -o 'SMOKE PASS.*' "$LOGS/game-smoke.log" | head -1 | cut -c1-90)"
   # The town through real mouse and key events: the first upgrades bought by bookmark and key, then fast play by
-  # clicking to level 3: every purchase changes the town, each gift arrives and is drawn, a road wears in visibly,
-  # Pave mode lights the roads and a click paves one, the bell rings by key and by click; villagers never jump.
+  # clicking to level 6 buying every kind of shop item (Extend by clicking a cottage, Pave by clicking a road), each
+  # gift arrives and is drawn with its banner, a road wears in visibly, the bell by key and by click, the request card
+  # and the hint line match the simulation; then the end of the age (the simulation's bot) and 30 Pave clicks, tilted
+  # and flat, each on exactly the road the price tip named. Villagers never jump.
   step game-town tools/godot-test.sh 'TOWN PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/town.tscn --quit-after 200000
   note "$(grep -o 'TOWN PASS.*' "$LOGS/game-town.log" | head -1 | sed 's/TOWN PASS //' | cut -c1-90)"
   # CPU time per frame with the end-of-age town (the simulation's best-payback bot plays to the charter), at 1x and 8x,
@@ -143,7 +145,9 @@ if have_godot; then
     skip screenshot "xvfb-run not installed (tools/setup-linux.sh)"
   else
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display, at 1920 x 1080: the first
-    # minute, the first purchase, level 3, Pave mode and the end of the age (build/screenshots/town-*-1920x1080.png).
+    # minute, the first purchase, level 3, Pave mode, level 6, Extend mode, a request, the end of the age, the zoom and
+    # the menus (build/screenshots/town-*-1920x1080.png). Quick looks while working: add -- --menu-only (menus only) or
+    # -- --town-quick (stops after the request shot).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi

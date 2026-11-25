@@ -51,7 +51,7 @@ It prints a summary table and exits non-zero if anything fails. Logs go to `buil
 | --- | --- |
 | `sim-build`, `sim-test` | the simulation builds and its fast tests pass (the town in `sim/Town/` and the earlier desire-line and river simulation) |
 | `game-build`, `game-smoke` | the game builds; the town scene loads with all its pieces and runs 30 game seconds with no error line |
-| `game-town` | real mouse and key events buy the first upgrades, then fast play to level 3: every purchase changes the town, each gift arrives and is drawn, a road wears in visibly, a click in Pave mode paves a road, the bell rings by key and by click, villagers never jump or slide sideways |
+| `game-town` | real mouse and key events buy the first upgrades, then fast play to level 6 buying every kind of shop item (Extend by clicking a cottage, Pave by clicking a road); each gift arrives and is drawn, a road wears in visibly, the bell rings by key and by click, the request card and hint line match the simulation, villagers never jump; then 30 Pave clicks at the end of the age, tilted and flat, each on exactly the road the price tip named |
 | `game-perf` | CPU per frame with the end-of-age town (played there by the simulation's bot) under 6 ms (1x) and 10 ms (8x) mean |
 | `game-settings` | the settings pages alone: store, applier, every page, rebinding, the Saving page, keyboard only |
 | `game-menu` | Esc closes the book and stops the town; the cover menu by keyboard; settings and Back; Resume puts the camera back; settings changed there take effect in the game; New town asks first |

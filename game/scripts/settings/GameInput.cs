@@ -31,7 +31,15 @@ public static class GameInput
         new("tt_buy_2", "Buy pace", Key.Key2, Key.None),
         new("tt_buy_3", "Buy load", Key.Key3, Key.None),
         new("tt_buy_4", "Buy paving", Key.Key4, Key.None),
-        new("tt_buy_5", "Buy a building", Key.Key5, Key.None),
+        new("tt_buy_5", "Extend a cottage", Key.Key5, Key.E),
+        new("tt_buy_6", "Buy tools", Key.Key6, Key.None),
+        new("tt_buy_7", "Raise the Water price", Key.Key7, Key.None),
+        new("tt_buy_8", "Raise the Grain price", Key.Key8, Key.None),
+        new("tt_buy_9", "Raise the Flour price", Key.Key9, Key.None),
+        new("tt_buy_0", "A louder bell", Key.Key0, Key.None),
+        new("tt_offer_1", "Buy a building", Key.F, Key.None),
+        new("tt_offer_2", "Buy a second building", Key.G, Key.None),
+        new("tt_offer_3", "Buy a third building", Key.H, Key.None),
         new("tt_achievements", "Achievements", Key.Tab, Key.None),
     };
 

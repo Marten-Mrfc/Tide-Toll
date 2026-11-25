@@ -51,16 +51,20 @@ public partial class MenuTest : TownTestBase
         Main.Rig.UserMoved = true;
         Main.Rig.LookAt(Main.Rig.PivotLocal + new Vector3(8, 0, 6), Main.Rig.Camera.Size * 1.3f, instant: true);
         await Frames(10);
-        var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
-        // Esc in Pave mode leaves Pave mode first and does not pause (the bot plays until a road can be paved).
-        Main.Driver.RunBot(new TideToll.Sim.Town.TownBot(TideToll.Sim.Town.BotKind.Payback, 1), t => t.SuggestedPave() >= 0, 10 * 60 * 30);
+        // Esc in Pave mode leaves Pave mode first and does not pause (the bot plays until a road can be paved and paid for: round 3, Pave mode opens only then).
+        Main.Driver.RunBot(new TideToll.Sim.Town.TownBot(TideToll.Sim.Town.BotKind.Payback, 1), t => t.SuggestedPave() >= 0 && t.Coin >= t.PavePrice(t.SuggestedPave()), 10 * 60 * 30);
         await Frames(3);
         Main.Hud.SetPaveMode(true);
         await Frames(2);
         Check(Main.Hud.PaveMode, "Pave mode did not open (no worn-in road)");
         await Key(Godot.Key.Escape);
         Check(!Main.Hud.PaveMode && !M.IsPaused && !Main.Driver.Paused, "Esc in Pave mode should only leave Pave mode");
+        // Round 3: Pave mode may bring the suggested road into view, so the hand-moved view to return to is set after it.
+        Main.Rig.UserMoved = true;
+        Main.Rig.LookAt(Main.Rig.PivotLocal + new Vector3(8, 0, 6), Main.Rig.Camera.Size * 1.3f, instant: true);
+        await Frames(10);
+        var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
         // Esc pauses: the book closes, the tick stands still, the cover menu shows with Resume focused.
         int books0 = Main.Audio.BookSounds;

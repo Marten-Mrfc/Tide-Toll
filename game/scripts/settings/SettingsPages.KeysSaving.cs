@@ -17,7 +17,9 @@ public partial class SettingsPages
 
     private void BuildKeys(VBoxContainer left, VBoxContainer right, float s)
     {
-        int half = (GameInput.Actions.Length + 1) / 2;
+        // Round 3: 25 actions; the right column also holds the note and Restore defaults, so it takes two rows fewer.
+        int half = (GameInput.Actions.Length + 3) / 2;
+        float rowPx = GameInput.Actions.Length > 18 ? 32 : 40;
         for (int i = 0; i < GameInput.Actions.Length; i++)
         {
             var a = GameInput.Actions[i];
@@ -34,7 +36,7 @@ public partial class SettingsPages
                     Text = waiting ? "Press a key" : key == Key.None ? "None" : GameInput.KeyName(key),
                     FocusMode = FocusModeEnum.All, SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true,
                     TooltipText = $"{a.Label}: choose, then press the new key. Esc cancels.",
-                    CustomMinimumSize = new Vector2(0, 40 * s),
+                    CustomMinimumSize = new Vector2(0, rowPx * s),
                 };
                 if (key == Key.None && !waiting) b.AddThemeColorOverride("font_color", UiKit.FadedInk);
                 if (waiting) b.AddThemeStyleboxOverride("normal", SettingsLook.Slip(s, UiKit.Pressed, 2.5f));

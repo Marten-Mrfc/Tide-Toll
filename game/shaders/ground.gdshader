@@ -55,7 +55,7 @@ uniform vec4 rain_mud_col : source_color = vec4(0.310, 0.243, 0.184, 1.0); // #4
 uniform vec4 wet_col : source_color = vec4(0.498, 0.561, 0.600, 1.0);      // #7F8F99, the toy's wet multiply
 uniform vec4 glint_col : source_color = vec4(0.835, 0.886, 0.910, 1.0);    // #D5E2E8, puddle glints
 uniform float gravel_on = 0.0;       // any gravel on the map
-uniform vec4 gravel_wash : source_color = vec4(0.933, 0.918, 0.863, 1.0);  // #EEEADC, the toy's wash
+uniform vec4 gravel_wash : source_color = vec4(0.890, 0.851, 0.749, 1.0);  // #E3D9BF, round 3: a soft sandy pale
 uniform vec4 gravel_stone : source_color = vec4(0.467, 0.475, 0.435, 1.0); // #77796F
 uniform vec4 gravel_rim : source_color = vec4(0.353, 0.361, 0.333, 1.0);   // #5A5C55
 uniform float cobble_on = 0.0;       // any cobbles on the map (the town game)
@@ -201,9 +201,10 @@ void fragment() {
 		float stone = (1.0 - smoothstep(sr - 0.06, sr + 0.06, sd)) * step(0.3, hash12(si));
 		float fine = 1.0 - smoothstep(0.08, 0.30, fwidth(lp.x));   // stones show from about 3 px a metre
 		vec3 wash = gravel_wash.rgb * (0.95 + 0.08 * n2);
-		vec3 gc = mix(mix(wash, gravel_stone.rgb, 0.18), mix(wash, gravel_stone.rgb, stone * 0.85), fine);
-		c = mix(c, gc, strip);
-		c = mix(c, gravel_rim.rgb, rim * 0.9);
+		// Round 3: a soft pale path, between a worn track and cobbles: few faint stones, a light edge.
+		vec3 gc = mix(mix(wash, gravel_stone.rgb, 0.08), mix(wash, gravel_stone.rgb, stone * 0.28), fine);
+		c = mix(c, gc, strip * 0.92);
+		c = mix(c, gravel_rim.rgb, rim * 0.35);
 	}
 
 	// Cobbles: a darker grey strip of staggered square setts with ink joints, clearly not gravel's pale scatter.
@@ -226,7 +227,7 @@ void fragment() {
 	// Crowding: a road over its comfort takes a warm wash, stronger the more crowded, only on the road itself.
 	if (crowd_on > 0.0) {
 		float cr = texture(crowd_tex, m / map_size).r * smoothstep(0.15, 0.35, core);
-		c = mix(c, crowd_col.rgb, cr * 0.45);
+		c = mix(c, crowd_col.rgb, cr * 0.6);
 	}
 
 	// river: signed distance to the bank from the per-row centre line

@@ -81,6 +81,15 @@ public partial class SaveTest : TownTestBase
         using (var f = FileAccess.Open(path, FileAccess.ModeFlags.Write)) f.StoreString(text);
         await Reload();
         Check(Main.StartNote != "" && !FileAccess.FileExists(path), "a save from another version was not set aside");
+        // Round 3: a save from the first rules (the town's own save version 1) is set aside like any unreadable save.
+        Main.Saver.SaveNow();
+        string v2 = FileAccess.GetFileAsString(path);
+        string v1 = v2.Replace("\\\"Version\\\":" + TownSave.CurrentVersion, "\\\"Version\\\":1")
+                      .Replace("\\u0022Version\\u0022:" + TownSave.CurrentVersion, "\\u0022Version\\u0022:1");
+        Check(v1 != v2, "the test could not find the town's save version in the file");
+        using (var f = FileAccess.Open(path, FileAccess.ModeFlags.Write)) f.StoreString(v1);
+        await Reload();
+        Check(T.Level == 1 && T.Tick < 100 && Main.StartNote != "" && !FileAccess.FileExists(path), "a save from the first rules was not set aside");
 
         // The quit paths write a save: the window's close button and the menu's Quit.
         Main.HoldQuit = true;

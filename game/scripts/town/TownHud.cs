@@ -15,8 +15,8 @@ namespace TideToll.Game;
 /// </summary>
 public partial class TownHud : CanvasLayer
 {
-    public const int MaxNotes = 5, MaxFloaters = 32;
-    public const float NoteSeconds = 7f, FloatSeconds = 1.6f;
+    public const int MaxNotes = 3, MaxFloaters = 32;
+    public const float NoteSeconds = 7f, FloatSeconds = 1.8f, BannerSeconds = 6f;
 
     private Main _main = null!;
     private TownDriver _drv = null!;
@@ -42,7 +42,7 @@ public partial class TownHud : CanvasLayer
     public int FloatersStarted { get; private set; }
     public string CoinText => _coin.Text;
     public string NextText => _next.Text;
-    public float Scale => _s;
+    public float UiScale => _s;
     /// <summary>The small pause control (bottom right): closes the book like Esc.</summary>
     public Button PauseMark { get; private set; } = null!;
 
@@ -85,15 +85,19 @@ public partial class TownHud : CanvasLayer
         _root.AddChild(_floatLayer);
         for (int i = 0; i < MaxFloaters; i++)
         {
-            var l = UiKit.Text("", _s, 20, UiKit.UiBold, UiKit.Ink);
-            l.AddThemeColorOverride("font_outline_color", UiKit.Paper);
-            l.AddThemeConstantOverride("outline_size", UiKit.Px(_s, 5));
+            // Round 3: gold with a dark edge, a little bigger, rising and fading.
+            var l = UiKit.Text("", _s, 24, UiKit.UiBold, Color.FromHtml("#F2C14E"));
+            l.AddThemeColorOverride("font_outline_color", Color.FromHtml("#3A2A10"));
+            l.AddThemeConstantOverride("outline_size", UiKit.Px(_s, 6));
             l.Visible = false;
             _floatLayer.AddChild(l);
             _floaters[i] = l;
         }
 
         BuildLedger();
+        BuildRequestCard();
+        BuildBanner();
+        BuildHomeMark();
         _notes = new VBoxContainer { Name = "Notes", MouseFilter = Control.MouseFilterEnum.Ignore };
         _notes.AddThemeConstantOverride("separation", UiKit.Px(_s, 6));
         _notes.Position = new Vector2(UiKit.Px(_s, 16), UiKit.Px(_s, 200));
@@ -109,7 +113,7 @@ public partial class TownHud : CanvasLayer
         PauseMark.GrowHorizontal = Control.GrowDirection.Begin;
         PauseMark.GrowVertical = Control.GrowDirection.Begin;
         PauseMark.Pressed += () => _main.Menu.Pause();
-        _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer };
+        _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner };
         _fullA = -1f;
         Refresh();
     }
@@ -160,6 +164,7 @@ public partial class TownHud : CanvasLayer
         _next.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _next.CustomMinimumSize = new Vector2(UiKit.Px(_s, 310), 0);
         col.AddChild(_next);
+        BuildHintLine(col);
     }
 
     public override void _Process(double delta)
@@ -173,6 +178,10 @@ public partial class TownHud : CanvasLayer
         StepFloaters((float)delta);
         ShopFrame((float)delta);
         PaveFrame();
+        RequestFrame((float)delta);
+        HintFrame((float)delta);
+        BannerFrame((float)delta);
+        HomeFrame();
     }
 
     // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
@@ -241,8 +250,9 @@ public partial class TownHud : CanvasLayer
     private void StageFrame(float dt)
     {
         var rig = _main.Rig;
-        float size = rig.Camera.Size, slim = _main.SlimSize, fade = slim * 0.12f;
-        float a = Math.Clamp((slim - size) / fade, 0f, 1f);
+        // Round 3: the full interface is gone a little before the slim stage, so it never overlaps the left page.
+        float size = rig.Camera.Size, slim = _main.SlimSize, fade = slim * 0.12f, gone = slim * 0.94f;
+        float a = Math.Clamp((gone - size) / fade, 0f, 1f);
         if (a != _fullA)
         {
             _fullA = a;
@@ -296,7 +306,8 @@ public partial class TownHud : CanvasLayer
 
     private void StepNotes(float dt)
     {
-        _notes.Position = new Vector2(UiKit.Px(_s, 16), (_ledger != null ? _ledger.GetRect().End.Y : 180) + UiKit.Px(_s, 10));
+        float top = _req.Visible ? _req.GetRect().End.Y : _ledger != null ? _ledger.GetRect().End.Y : 180;
+        _notes.Position = new Vector2(UiKit.Px(_s, 16), top + UiKit.Px(_s, 10));
         for (int i = _noteList.Count - 1; i >= 0; i--)
         {
             var (l, age) = _noteList[i];
@@ -319,19 +330,23 @@ public partial class TownHud : CanvasLayer
         {
             case TownEventKind.Delivery: if (Settings.GameSettings.Current?.ShowCoinNumbers ?? true) Float(e.X, e.Y, e.Coin); break;
             case TownEventKind.LevelReached:
-                if (e.Level > 1) Note($"Level {e.Level}: {Upper(e.Text)}.", true);
+                if (e.Level > 1) Banner($"Level {e.Level}", $"{Upper(e.Text)}.");
                 break;
+            case TownEventKind.RequestAsked: case TownEventKind.RequestMet: case TownEventKind.RequestMissed: RequestEvent(e); break;
+            case TownEventKind.CottageExtended: Note(e.Level >= 2 ? "A cottage is extended again: room for one more." : "A cottage is extended: room for one more."); break;
             case TownEventKind.BuildingOpened: Note((e.Text ?? "A new building") + " is open.", true); break;
-            case TownEventKind.OfferAvailable: Note("New to buy: " + (e.Text ?? "a building") + "."); break;
+            case TownEventKind.OfferAvailable: Note("New to buy: " + Upper(e.Text ?? "a building") + "."); break;
             case TownEventKind.RoadWornIn: Note("A road has worn in. It can be paved now."); break;
             case TownEventKind.RoadPaved: Note(e.Surface == Surface.Cobbles ? "A road is cobbled." : "A road is laid with gravel."); break;
-            case TownEventKind.PerkEarned: Note("Perk: " + (e.Text ?? "") + ".", true); break;
+            case TownEventKind.PerkEarned: if (_perksSeen.Add(e.Text ?? "")) Note("Perk: " + (e.Text ?? "") + "."); break;
             case TownEventKind.AchievementUnlocked: Note("Achievement: " + (e.Text ?? "") + "."); break;
             case TownEventKind.VillagerArrived: if (t.VillagerCount > 1) Note("A new villager moves in."); break;
             case TownEventKind.Charter: Note("The town has its charter. Ring in the next age when you are ready.", true); break;
             case TownEventKind.NextAge: Note("The next age is coming. It is not built yet; the town keeps going.", true); break;
         }
     }
+
+    private readonly HashSet<string> _perksSeen = new();
 
     private static string Upper(string? s)
     {

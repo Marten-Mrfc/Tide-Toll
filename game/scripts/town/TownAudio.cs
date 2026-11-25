@@ -21,7 +21,8 @@ public partial class TownAudio : Node
     private TownDriver _drv = null!;
     private AudioStream[] _coin = null!, _place = null!, _bell = null!, _long = null!, _grass = null!, _dirt = null!;
     private AudioStream[] _buy = null!, _levelUp = null!, _gift = null!, _gravel = null!, _cobbles = null!, _achieve = null!, _charter = null!;
-    public int Paves, Achievements;
+    public int Paves, Achievements, Requests, Extends;
+    private AudioStream[] _asked = null!, _met = null!, _missed = null!, _extend = null!;
     private AudioStreamPlayer _fx = null!, _ui = null!, _bellP = null!, _steps = null!, _theme = null!, _river = null!;
     private readonly Random _rng = new(11);
     private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -43,6 +44,8 @@ public partial class TownAudio : Node
         _buy = Find("buy-0", _place); _levelUp = Find("level-up-0", _long); _gift = Find("gift-0", _long);
         _gravel = Find("pave-gravel-0", _place); _cobbles = Find("pave-cobbles-0", _place);
         _achieve = Find("achievement-0", _coin); _charter = Find("charter-0", _long);
+        _asked = Find("request-asked-0", _coin); _met = Find("request-met-0", _long); _missed = Find("request-missed-0", _place);
+        _extend = Find("extend-0", _place);
         _fx = Player("Fx", "Effects", -10, 4);
         _ui = Player("Ui", "Interface", -6, 2);
         _bellP = Player("BellP", "Effects", -6, 2);
@@ -137,7 +140,11 @@ public partial class TownAudio : Node
                     // Never a wall of coins at high speed: at most one every 0.25 real seconds.
                     if (_now - _lastCoin >= 0.25) { _lastCoin = _now; Play(_fx, _coin, 0, -12, ref Coins); }
                     break;
-                case TownEventKind.Purchase: if (e.Item != ShopItemKind.Pave) Play(_ui, _buy, 1, -6, ref Purchases); break;
+                case TownEventKind.Purchase: if (e.Item is not (ShopItemKind.Pave or ShopItemKind.Extend)) Play(_ui, _buy, 1, -6, ref Purchases); break;
+                case TownEventKind.CottageExtended: Play(_ui, _extend, 1, -6, ref Extends); break;
+                case TownEventKind.RequestAsked: Play(_fx, _asked, 5, -8, ref Requests); break;
+                case TownEventKind.RequestMet: Play(_bellP, _met, 2, -6, ref Requests); break;
+                case TownEventKind.RequestMissed: Play(_fx, _missed, 5, -8, ref Requests); break;
                 case TownEventKind.RoadPaved: Play(_ui, e.Surface == Surface.Cobbles ? _cobbles : _gravel, 1, -6, ref Paves); break;
                 case TownEventKind.LevelReached: if (e.Level > 1) Play(_bellP, _levelUp, 2, -8, ref Levels); break;
                 case TownEventKind.BuildingOpened: Play(_bellP, _gift, 2, -8, ref Levels); break;

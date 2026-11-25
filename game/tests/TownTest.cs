@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
 using TideToll.Sim.Town;
@@ -7,17 +8,21 @@ namespace TideToll.Game.Tests;
 
 /// <summary>
 /// game-town: the town through real input (mouse and key events parsed by Godot, reaching the interface first).
-/// Buys the first upgrades by clicking their bookmarks and by key, then plays at high speed by clicking whatever is
-/// affordable until at least level 3, checking that every purchase changed the town (a villager more and drawn, a pace
-/// or load level, a building drawn), that each level's gift arrived and was drawn (its plots popped in, its roads drew
-/// themselves in, a margin note said so), that a road wore in visibly, that paving by clicking a road works (Pave mode
-/// lights the roads, the hovered road shows a price, the click lays gravel that is drawn), and that the bell works by
-/// key and by click. Villagers never jump or slide sideways at normal speed.
+/// Buys the first upgrades by clicking their bookmarks and by key, then plays at high speed by clicking until level 6
+/// and at least one of every kind of shop item the rules have by then (Villager, Pace, Load, Tools, a value track,
+/// the bell track, a building offer, Extend by clicking a cottage, Pave by clicking a road), checking that every
+/// purchase changed the town, that each level's gift arrived and was drawn (plots, roads, the level banner), that a
+/// road wore in visibly, that the bell works by key and by click, that the request card matches the simulation's
+/// request and the hint line its hint (with the marker on its road or plot). Villagers never jump or slide sideways
+/// at normal speed. Then (TownTest.Pave.cs) the end of the age by the simulation's bot and 30 Pave clicks, tilted and
+/// flat, each landing on exactly the road the price tip named.
 /// </summary>
 public partial class TownTest : TownTestBase
 {
     protected override string Marker => "TOWN PASS";
-    private int _bought, _gifts, _villagerBuys, _paceBuys, _loadBuys, _buildingBuys;
+    private int _bought, _gifts;
+    private readonly Dictionary<ShopItemKind, int> _kinds = new();
+    private int _requestChecks, _hintChecks, _markerChecks;
 
     protected override async Task Run()
     {
@@ -42,17 +47,23 @@ public partial class TownTest : TownTestBase
         Check(T.PaceLevel == pace + 1, "key 2 buys pace");
         _bought++;
 
-        // Play fast with real clicks until at least level 3 and the first building bought, checking gifts, wear, paving and the bell on the way.
+        // Every bookmark has its own key while it is shown.
+        CheckKeysUnique();
+
+        // Play fast with real clicks until level 6 and every kind bought, checking gifts, wear, the bell, requests and hints.
         Main.Driver.SetSpeed(32);
-        bool wornSeen = false, paved = false, bellKey = false, bellClick = false;
+        bool wornSeen = false, bellKey = false, bellClick = false;
         int level = T.Level;
-        for (int f = 0; f < 60 * 600 && (T.Level < 3 || !wornSeen || !paved || !bellKey || !bellClick || _buildingBuys < 1); f++)
+        var need = new[] { ShopItemKind.Villager, ShopItemKind.Pace, ShopItemKind.Load, ShopItemKind.Tools, ShopItemKind.Value,
+            ShopItemKind.BellTrack, ShopItemKind.Building, ShopItemKind.Extend, ShopItemKind.Pave };
+        for (int f = 0; f < 60 * 900 && (T.Level < 6 || !wornSeen || !bellKey || !bellClick || !AllBought(need)); f++)
         {
             await Frames(1);
             if (T.Level > level)
             {
                 for (int l = level + 1; l <= T.Level; l++) await CheckGift(l);
                 level = T.Level;
+                CheckKeysUnique();
             }
             if (!wornSeen && T.RoadInfo(r0).WornIn)
             {
@@ -62,16 +73,50 @@ public partial class TownTest : TownTestBase
                 Notes.Add($"worn={firm:0.00}");
                 wornSeen = true;
             }
-            if (!paved && T.SuggestedPave() >= 0 && T.Coin >= T.PavePrice(T.SuggestedPave())) { await PaveByClick(); paved = true; continue; }
+            if (f % 20 == 0) { CheckRequestCard(); await CheckHint(); }
+            if (Got(ShopItemKind.Pave) == 0 && PavableNow()) { await PaveByClick(); continue; }
+            if (Got(ShopItemKind.Extend) == 0 && Main.Hud.Mark(ShopItemKind.Extend) is { Disabled: false }) { await ExtendByClick(); continue; }
             if (!bellKey && T.BellReady) { await BellByKey(); bellKey = true; continue; }
             if (bellKey && !bellClick && T.BellReady) { await BellByClick(); bellClick = true; continue; }
-            if (f % 3 == 0) await BuyCheapest();
+            if (f % 3 == 0) await BuyNext();
         }
-        Check(T.Level >= 3, $"reached level 3 (level {T.Level})");
-        Check(wornSeen && paved && bellKey && bellClick, $"worn={wornSeen} paved={paved} bellKey={bellKey} bellClick={bellClick}");
-        Check(_villagerBuys >= 2 && _paceBuys >= 2, $"bought villagers ({_villagerBuys}) and pace ({_paceBuys})");
-        Check(_buildingBuys >= 1, $"bought a building ({_buildingBuys})");
-        Notes.Add($"level={T.Level} bought={_bought} villagers={_villagerBuys} pace={_paceBuys} load={_loadBuys} buildings={_buildingBuys} gifts={_gifts} notes={Main.Hud.NotesShown} time={T.Time:0}s");
+        Check(T.Level >= 6, $"reached level 6 (level {T.Level})");
+        Check(wornSeen && bellKey && bellClick, $"worn={wornSeen} bellKey={bellKey} bellClick={bellClick}");
+        foreach (var k in need) Check(Got(k) >= 1, $"bought at least one {k} through the interface (bought {Kinds()})");
+        Check(_requestChecks > 0, "a request was asked and its card checked");
+        Check(_hintChecks > 0, "a hint was given and its line checked");
+        Notes.Add($"level={T.Level} bought={_bought} {Kinds()} gifts={_gifts} requests={_requestChecks} hints={_hintChecks} markers={_markerChecks} time={T.Time:0}s");
+
+        await PaveAtTheEndOfTheAge();
+    }
+
+    private int Got(ShopItemKind k) => _kinds.TryGetValue(k, out int n) ? n : 0;
+    private bool AllBought(ShopItemKind[] kinds) { foreach (var k in kinds) if (Got(k) == 0) return false; return true; }
+    private string Kinds()
+    {
+        var parts = new List<string>();
+        foreach (var kv in _kinds) parts.Add($"{kv.Key}:{kv.Value}");
+        return string.Join(",", parts);
+    }
+
+    private bool PavableNow()
+    {
+        for (int r = 0; r < T.RoadCount; r++) if (Main.Hud.Pavable(r)) return true;
+        return false;
+    }
+
+    private void CheckKeysUnique()
+    {
+        var seen = new HashSet<string>();
+        var items = Main.Hud.ShownItems;
+        for (int i = 0; i < items.Count && i < Main.Hud.Marks.Count; i++)
+        {
+            string text = Main.Hud.Marks[i].Text;
+            int a = text.IndexOf('['), b = text.IndexOf(']');
+            if (a < 0 || b < a) continue; // a finished track shows no key
+            string key = text.Substring(a + 1, b - a - 1);
+            Check(seen.Add(key), $"two bookmarks share the key [{key}]");
+        }
     }
 
     private int FirstOpenRoad()
@@ -101,49 +146,62 @@ public partial class TownTest : TownTestBase
     private async Task BuyByClick(ShopItemKind kind)
     {
         await Until(() => Main.Hud.Mark(kind) is { Disabled: false }, 60 * 120, kind + " affordable");
-        await ClickMark(kind);
+        await ClickMark(Main.Hud.ShownItems[IndexOf(kind)]);
+    }
+
+    private int IndexOf(ShopItemKind kind)
+    {
+        var items = Main.Hud.ShownItems;
+        for (int i = 0; i < items.Count; i++) if (items[i].Kind == kind) return i;
+        return -1;
     }
 
     /// <summary>Clicks a bookmark and checks the town changed the way that purchase should change it.</summary>
-    private async Task ClickMark(ShopItemKind kind)
+    private async Task ClickMark(ShopItem it)
     {
-        var b = Main.Hud.Mark(kind)!;
+        int i = -1;
+        var items = Main.Hud.ShownItems;
+        for (int j = 0; j < items.Count; j++) if (items[j].Kind == it.Kind && items[j].Index == it.Index) i = j;
+        if (i < 0) return;
+        var b = Main.Hud.Marks[i];
         long purchases = T.Purchases;
         int villagers = T.VillagerCount, pace = T.PaceLevel, load = T.LoadLevel, built = Main.Buildings.BuiltCount;
+        int tools = T.ToolsLevel, bellTrack = T.BellTrackLevel, value = it.Kind == ShopItemKind.Value ? T.ValueLevel((Good)it.Index) : 0;
         await Click(TestInput.Centre(b));
         if (T.Purchases == purchases) return; // the price moved past the purse between frames: not a failure of the click
         _bought++;
-        switch (kind)
+        _kinds[it.Kind] = Got(it.Kind) + 1;
+        switch (it.Kind)
         {
             case ShopItemKind.Villager:
                 Check(T.VillagerCount == villagers + 1, "a villager purchase adds a villager");
                 await Until(() => Main.Villagers.Drawn == T.VillagerCount, 30, "the new villager drawn");
-                _villagerBuys++;
                 break;
-            case ShopItemKind.Pace: Check(T.PaceLevel == pace + 1, "a pace purchase raises pace"); _paceBuys++; break;
-            case ShopItemKind.Load: Check(T.LoadLevel == load + 1, "a load purchase raises load"); _loadBuys++; break;
+            case ShopItemKind.Pace: Check(T.PaceLevel == pace + 1, "a pace purchase raises pace"); break;
+            case ShopItemKind.Load: Check(T.LoadLevel == load + 1, "a load purchase raises load"); break;
+            case ShopItemKind.Tools: Check(T.ToolsLevel == tools + 1, "a tools purchase raises tools"); break;
+            case ShopItemKind.BellTrack: Check(T.BellTrackLevel == bellTrack + 1, "a bell purchase raises the bell track"); break;
+            case ShopItemKind.Value: Check(T.ValueLevel((Good)it.Index) == value + 1, $"a {(Good)it.Index} price purchase raises its value"); break;
             case ShopItemKind.Building:
                 await Until(() => Main.Buildings.BuiltCount > built, 60, "the bought building drawn");
-                _buildingBuys++;
                 break;
         }
     }
 
-    private async Task BuyCheapest()
+    /// <summary>A sensible player: a kind not bought yet, else a villager or a building, else the cheapest.</summary>
+    private async Task BuyNext()
     {
-        int best = -1;
+        int best = -1, bestRank = 9;
         var items = Main.Hud.ShownItems;
         for (int i = 0; i < items.Count; i++)
         {
             var it = items[i];
-            if (it.Kind == ShopItemKind.Pave || !it.Affordable) continue;
-            // A sensible player: a villager or a building whenever one is affordable, else the cheapest.
-            int rank = it.Kind is ShopItemKind.Villager or ShopItemKind.Building ? 0 : 1;
-            int bestRank = best < 0 ? 9 : items[best].Kind is ShopItemKind.Villager or ShopItemKind.Building ? 0 : 1;
-            if (best < 0 || rank < bestRank || (rank == bestRank && it.Price < items[best].Price)) best = i;
+            if (it.Kind is ShopItemKind.Pave or ShopItemKind.Extend || !it.Affordable) continue;
+            int rank = Got(it.Kind) == 0 ? 0 : it.Kind is ShopItemKind.Villager or ShopItemKind.Building ? 1 : 2;
+            if (best < 0 || rank < bestRank || (rank == bestRank && it.Price < items[best].Price)) { best = i; bestRank = rank; }
         }
         if (best < 0) return;
-        await ClickMark(items[best].Kind);
+        await ClickMark(items[best]);
     }
 
     private async Task CheckGift(int level)
@@ -160,16 +218,92 @@ public partial class TownTest : TownTestBase
             await Until(() => Main.Ground.RoadReveal(r) >= 1f, 1200, $"level {level}: road {r} drew itself in");
             await Until(() => Main.Ground.RoadShown(r) > 0.15f, 120, $"level {level}: road {r} drawn");
         }
-        bool noted = false;
-        foreach (var n in Main.Hud.NoteLog) if (n.StartsWith($"Level {level}:")) noted = true;
-        Check(noted, $"level {level}: a margin note says what arrived");
+        bool banner = false;
+        foreach (var n in Main.Hud.BannerLog) if (n.StartsWith($"Level {level}:")) banner = true;
+        Check(banner, $"level {level}: a banner says what arrived");
         _gifts++;
+    }
+
+    /// <summary>The request card shows the simulation's request: who, how much of what, delivered, time left, reward.</summary>
+    private void CheckRequestCard()
+    {
+        var r = T.Request;
+        if (!r.Active || Main.Hud.FullAlpha < 1f) return;
+        Check(Main.Hud.RequestCardVisible, "a running request shows its card");
+        string card = Main.Hud.RequestCardText;
+        string good = TownHud.GoodName(r.Good);
+        Check(card.Contains(r.Amount + " " + good), $"the card names the amount and good ({card})");
+        Check(card.Contains(r.WhoName.ToLowerInvariant().Substring(4)), $"the card names who asks ({card})");
+        Check(card.Contains($"Delivered {Math.Min(r.Delivered, r.Amount)} of {r.Amount}"), $"the card shows what is delivered ({card})");
+        Check(card.Contains(TownHud.Money(r.RewardCoin) + " coin"), $"the card shows the reward ({card})");
+        float bar = Main.Hud.RequestTimeBar, want = (float)(r.SecondsLeft / r.Seconds);
+        Check(Math.Abs(bar - want) < 0.08f, $"the time bar shows the time left ({bar:0.00} vs {want:0.00})");
+        _requestChecks++;
+    }
+
+    /// <summary>The hint line under the ledger says the simulation's hint, with a marker on its road or plot.</summary>
+    private async Task CheckHint()
+    {
+        string h = T.Hint;
+        if (h.Length == 0 || Main.Hud.PaveMode || Main.Hud.ExtendMode || Main.Hud.FullAlpha < 1f) return;
+        int road = T.HintRoad, plot = T.HintPlot;
+        Main.Driver.SetPaused(true);
+        await Frames(2);
+        string shown = Main.Hud.HintText;
+        // A hint is held a few seconds, so the line may still show the one before.
+        if (shown == h)
+        {
+            _hintChecks++;
+            if (road >= 0 || plot >= 0)
+            {
+                Check(Main.Hud.HintMarkerVisible, $"the hint '{h}' has a marker");
+                Check(Main.Hud.HintMarkerRoad == road && Main.Hud.HintMarkerPlot == plot, $"the marker points where the hint says (road {road}, plot {plot})");
+                _markerChecks++;
+            }
+        }
+        else Check(shown.Length > 0, $"a hint is given ('{h}') but the line is empty");
+        Main.Driver.SetPaused(false);
+    }
+
+    private async Task ExtendByClick()
+    {
+        Main.Driver.SetPaused(true);
+        // Put the suggested cottage in the middle of the view (a still camera: the follow view eases).
+        int sug = T.SuggestedExtend();
+        var pl = T.Plan.Plots[sug];
+        Main.Rig.UserMoved = true;
+        Main.Rig.LookAt(new Vector3((pl.X + pl.W / 2f) * TownGround.Cell, 0, (pl.Y + pl.H / 2f) * TownGround.Cell), Main.Rig.Camera.Size, instant: true);
+        await Frames(3);
+        long purchases = T.Purchases;
+        await Click(TestInput.Centre(Main.Hud.Mark(ShopItemKind.Extend)!));
+        Check(Main.Hud.ExtendMode, "the Extend bookmark switches Extend mode on");
+        Check(Main.Hud.LitCottages > 0, "cottages that can be extended light up");
+        int p = T.SuggestedExtend();
+        Check(p >= 0, "a cottage is suggested");
+        await Frames(3);
+        var at = Main.Hud.PlotScreen(p);
+        TestInput.Motion(at);
+        await Frames(3);
+        Check(Main.Hud.HoverCottage == p, $"hovering the suggested cottage picks it (hover {Main.Hud.HoverCottage}, cottage {p}, mode {Main.Hud.ExtendMode}, ok {Main.Hud.Extendable(p)}, at {at}, direct {Main.Hud.ExtendTarget(at)}, gui {GetViewport().GuiGetHoveredControl()?.Name})");
+        Check(Main.Hud.HoverTipText.Contains("Extend this cottage"), $"the tip names the price ({Main.Hud.HoverTipText})");
+        int room = T.CottageRoom(p);
+        await Click(at);
+        Check(T.Extensions(p) == 1 && T.CottageRoom(p) == room + 1, "clicking the cottage extended it");
+        Check(T.Purchases == purchases + 1, "extending is a purchase");
+        Check(!Main.Hud.ExtendMode, "Extend mode ends after an extension");
+        await Until(() => Main.Buildings.DrawnExtensions(p) == 1, 30, "the extended cottage drawn bigger");
+        _kinds[ShopItemKind.Extend] = Got(ShopItemKind.Extend) + 1;
+        _bought++;
+        Main.Rig.UserMoved = false;
+        Main.Driver.SetPaused(false);
+        Notes.Add($"extended={p}");
     }
 
     private async Task PaveByClick()
     {
         Main.Driver.SetPaused(true);
         int r = T.SuggestedPave();
+        if (!Main.Hud.Pavable(r)) for (r = 0; r < T.RoadCount && !Main.Hud.Pavable(r); r++) { }
         // Put the road in the middle of the view, clear of the interface.
         var road = T.Plan.Roads[r];
         road.At(road.Length / 2, out double x, out double y, out _);
@@ -182,19 +316,20 @@ public partial class TownTest : TownTestBase
         var at = Main.Hud.RoadScreen(r);
         TestInput.Motion(at);
         await Frames(3);
-        Check(Main.Hud.HoverRoad == r, $"hovering the road picks it (hover {Main.Hud.HoverRoad}, road {r})");
-        double coin = T.Coin, price = T.PavePrice(r);
+        int tip = Main.Hud.HoverRoad;
+        Check(tip >= 0 && Main.Hud.HoverTipText.Contains("coin"), $"hovering a road names it with its price (hover {tip})");
+        double coin = T.Coin, price = T.PavePrice(tip);
+        var s0 = T.RoadInfo(tip).Surface;
         await Click(at);
-        Check(T.RoadInfo(r).Surface == Surface.Gravel, "clicking the road paved it with gravel");
+        Check(T.RoadInfo(tip).Surface != s0, "clicking paved the road the tip named");
         Check(Math.Abs(T.Coin - (coin - price)) < 1e-6, "paving cost its price");
-        await Frames(3);
-        Check(Main.Ground.GravelCells > 0, "the gravel is drawn");
-        if (Main.Hud.PaveMode) await Key(Godot.Key.Escape);
-        Check(!Main.Hud.PaveMode, "Esc leaves Pave mode");
+        await Until(() => Main.Ground.GravelCells > 0, 120, "the gravel drawn");
+        Check(!Main.Hud.PaveMode, "Pave mode ends after a pave");
         Main.Rig.UserMoved = false;
         Main.Driver.SetPaused(false);
+        _kinds[ShopItemKind.Pave] = Got(ShopItemKind.Pave) + 1;
         _bought++;
-        Notes.Add($"paved={r}");
+        Notes.Add($"paved={tip}");
     }
 
     private async Task BellByKey()

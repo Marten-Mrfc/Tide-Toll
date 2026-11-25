@@ -183,9 +183,11 @@ public partial class Main : Node3D
     {
         var t = Driver.Town;
         float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+        // Round 3: frame what is built; the next staked plot only stretches the frame a little, so it is just in view
+        // without pulling the town off centre.
         foreach (var p in t.Plan.Plots)
         {
-            if (!t.PlotGiven(p.Id) && !(p.Level == t.Level + 1)) continue; // staked plots count: the next gift is shown
+            if (!t.PlotGiven(p.Id)) continue;
             x0 = Math.Min(x0, p.X); y0 = Math.Min(y0, p.Y); x1 = Math.Max(x1, p.X + p.W); y1 = Math.Max(y1, p.Y + p.H);
         }
         for (int r = 0; r < t.RoadCount; r++)
@@ -196,6 +198,17 @@ public partial class Main : Node3D
             {
                 x0 = Math.Min(x0, road.Xs[k]); y0 = Math.Min(y0, road.Ys[k]);
                 x1 = Math.Max(x1, road.Xs[k] + 1); y1 = Math.Max(y1, road.Ys[k] + 1);
+            }
+        }
+        if (x0 <= x1)
+        {
+            const float stretch = 4f;
+            float bx0 = x0, by0 = y0, bx1 = x1, by1 = y1;
+            foreach (var p in t.Plan.Plots)
+            {
+                if (t.PlotGiven(p.Id) || p.Level != t.Level + 1) continue;
+                x0 = Math.Min(x0, Math.Max(p.X, bx0 - stretch)); y0 = Math.Min(y0, Math.Max(p.Y, by0 - stretch));
+                x1 = Math.Max(x1, Math.Min(p.X + p.W, bx1 + stretch)); y1 = Math.Max(y1, Math.Min(p.Y + p.H, by1 + stretch));
             }
         }
         if (x0 > x1) { x0 = t.Plan.WindowX; y0 = t.Plan.WindowY; x1 = x0 + t.Plan.WindowW; y1 = y0 + t.Plan.WindowH; }

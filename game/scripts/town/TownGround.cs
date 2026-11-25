@@ -137,10 +137,10 @@ public partial class TownGround : MeshInstance3D
             {
                 int cx = cells[k] % N, cy = cells[k] / N;
                 double best = double.MaxValue, d = 0;
-                for (int p = 0; p < road.Xs.Length; p++)
+                for (int p = 0; p < road.Px.Length; p++)
                 {
-                    double dx = road.Xs[p] - cx, dy = road.Ys[p] - cy, q = dx * dx + dy * dy;
-                    if (q < best) { best = q; d = road.Cum[p]; }
+                    double dx = road.Px[p] - cx, dy = road.Py[p] - cy, q = dx * dx + dy * dy;
+                    if (q < best) { best = q; d = road.PCum[p]; }
                 }
                 _cellDist[r][k] = (float)d;
             }
@@ -154,6 +154,9 @@ public partial class TownGround : MeshInstance3D
                 if (pl.DoorX == road.Xs[0] && pl.DoorY == road.Ys[0]) _reachA[r] = into;
                 if (pl.DoorX == road.Xs[lastPt] && pl.DoorY == road.Ys[lastPt]) _reachB[r] = into;
             }
+            // Round 3: a track's worn earth reaches the door as the paved strips do: the cells from each end into the plot.
+            AddReach(cells, _cellDist, r, road.Xs[0], road.Ys[0], _reachA[r], 0f);
+            AddReach(cells, _cellDist, r, road.Xs[^1], road.Ys[^1], _reachB[r], (float)road.Length);
             bool open = town.RoadOpen(r);
             _wasOpen[r] = open;
             _reveal[r] = open ? 1f : 0f;
@@ -162,6 +165,32 @@ public partial class TownGround : MeshInstance3D
         _pavedSeen = -1;
         _snap = true;
         Upload();
+    }
+
+    private void AddReach(List<int> cells, float[][] dist, int r, int dx, int dy, Vector2 reach, float d)
+    {
+        if (reach == Vector2.Zero) return;
+        int added = 0;
+        var extra = new List<int>();
+        for (float k = 0.25f; k <= 1.001f; k += 0.25f)
+        {
+            int cx = (int)MathF.Floor(dx + 0.5f + reach.X * k), cy = (int)MathF.Floor(dy + 0.5f + reach.Y * k);
+            if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+            int c = cy * N + cx;
+            if (cells.Contains(c) || extra.Contains(c)) continue;
+            extra.Add(c);
+            added++;
+        }
+        if (added == 0) return;
+        var all = new int[_cells[r].Length + added];
+        _cells[r].CopyTo(all, 0);
+        extra.CopyTo(all, _cells[r].Length);
+        var ds = new float[all.Length];
+        dist[r].CopyTo(ds, 0);
+        for (int i = _cells[r].Length; i < all.Length; i++) ds[i] = d;
+        _cells[r] = all;
+        dist[r] = ds;
+        cells.AddRange(extra);
     }
 
     public override void _Process(double delta)
@@ -258,8 +287,9 @@ public partial class TownGround : MeshInstance3D
                 var tex = s == Surface.Gravel ? _gravelTexels : _cobbleTexels;
                 float half = s == Surface.Gravel ? GravelHalf : CobbleHalf;
                 int last = road.Xs.Length - 1;
-                for (int k = 0; k < last; k++)
-                    GravelStrip.Segment(tex, N, road.Xs[k] + 0.5f, road.Ys[k] + 0.5f, road.Xs[k + 1] + 0.5f, road.Ys[k + 1] + 0.5f, half);
+                // The smooth curve the villagers walk (rules v2.1), never the grid route.
+                for (int k = 0; k + 1 < road.Px.Length; k++)
+                    GravelStrip.Segment(tex, N, (float)road.Px[k] + 0.5f, (float)road.Py[k] + 0.5f, (float)road.Px[k + 1] + 0.5f, (float)road.Py[k + 1] + 0.5f, half);
                 // On up to the doors at both ends.
                 if (last >= 0)
                 {

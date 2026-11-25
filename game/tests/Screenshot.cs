@@ -64,6 +64,27 @@ public partial class Screenshot : TownTestBase
         await Settle();
         await Shot("level-6");
 
+        // Round 3: Extend mode with the suggested cottage hovered, and a running request with its card.
+        Main.Driver.RunBot(bot, t => t.SuggestedExtend() >= 0 && t.Coin >= t.ExtendPrice && t.CanExtend(t.SuggestedExtend(), out _), 20 * 60 * 30);
+        Main.Driver.SetPaused(true);
+        await Frames(10);
+        Main.Hud.SetExtendMode(true);
+        await Frames(30);
+        int cot = T.SuggestedExtend();
+        if (cot >= 0) TestInput.Motion(Main.Hud.PlotScreen(cot));
+        await Frames(20);
+        await Shot("extend");
+        Main.Hud.SetExtendMode(false);
+        Main.Rig.UserMoved = false;
+        Main.Driver.SetPaused(false);
+        Main.Driver.RunBot(bot, t => t.Request.Active && t.Request.SecondsLeft < t.Request.Seconds * 0.7 && t.Request.Delivered > 0, 20 * 60 * 30);
+        await Settle();
+        Main.Driver.SetPaused(true);
+        await Frames(5);
+        await Shot("request");
+        Main.Driver.SetPaused(false);
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--town-quick") >= 0) { Notes.Add("quick"); return; }
+
         // The end of the age.
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);
         Check(T.HasCharter, "the bot reached the charter");

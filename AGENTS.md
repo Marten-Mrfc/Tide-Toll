@@ -67,6 +67,13 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, straight down from the whole page out); everything that maps screen to ground goes through `CameraRig.PickLocal` / `LocalToScreen` (ray to the ground plane), never through `Camera.Size` alone. `Main.Stage` (Town, Page, Book) drives the interface: full, slim strip, and the summary on the left page (`TownSummary`). Interface text is rebuilt only when its value changes; `game-perf` gates allocation per frame.
 
+## The town interface (round 3, rules v2)
+
+- The shop is data-driven from `Town.ShopItems`, grouped People / Work / Roads / Town (`TownHud.Shop.cs`); every bookmark has its own InputMap action (`tt_buy_0..9`, `tt_offer_1..3`); locked ("Unlocks at level N") and finished steps are read from the item's `Reason`.
+- Pave and Extend are click modes (`TownHud.Pave.cs`, `TownHud.Extend.cs`): hover and click use one picking (`PaveTarget`, `ExtendTarget`) that only finds what can be bought this moment; a click acts on exactly what the tip names. Never mark the left release handled: the camera must see it.
+- Roads are drawn from `Road.Px/Py` (the curve villagers walk), never `Xs/Ys`. Villagers stand where the simulation puts them (work spots, queue spots); no display fan-out.
+- Request card and hint line: `TownHud.Request.cs`; level banner and the Home control: `TownHud.Banner.cs`.
+
 ## Menus, settings, saving (round 2)
 
 - `Main` adds `SettingsRuntime` first (loads and applies `settings.cfg`); buses and their volumes belong to the settings, so no other code sets bus volumes. Game keys are the InputMap actions of `settings/GameInput.cs` (`tt_*`), never raw keys. The interface size is the window's content scale only: build interface sizes from `UiKit.ScaleFor(GetWindow().Size.Y)`, lay out in the visible rect.
