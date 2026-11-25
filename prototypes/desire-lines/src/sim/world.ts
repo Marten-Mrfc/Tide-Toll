@@ -8,6 +8,9 @@ import { generateMap, MapData, Building, BuildingKind } from "./mapgen";
 import { Heap, dijkstra, chooseAim, routeLength } from "./path";
 import { Metrics, HealthStats, largestTrail } from "./metrics";
 import { FlowPredictor, FlowPreview, Ov, WhatIf } from "./preview";
+import { Weather } from "./weather";
+import { GrownHouse, Plot, choosePlot } from "./growth";
+import { GateTarget, gateCellsFor, gateGroup, gateTarget } from "./gates";
 
 const enum WS { Home, Out, Away, Back }
 
@@ -47,6 +50,12 @@ export interface Stats extends HealthStats {
 
 export const SEASONS = ["Spring", "Summer", "Autumn", "Winter"];
 
+/** Rules switched on for a run. The player gets both on; the old gate sets run with both off. */
+export interface WorldOptions {
+  rain?: boolean; // rain and mud (default PARAMS.rainOn)
+  growth?: boolean; // house growth (default PARAMS.growthOn)
+}
+
 
 // Cost multipliers from wear and from recent traffic are lookup tables.
 const WEAR_LUT_STEPS = 10, FLOW_LUT_STEPS = 4;
@@ -63,6 +72,7 @@ export class World {
   hollow = new Uint8Array(NC);
   fence = new Uint8Array(NC);
   gate = new Uint8Array(NC); // a gate is a fence cell walkers may pass, at a time cost
+  gatePair = new Uint8Array(NC); // 1 on the two cells of a two-cell gate (a stair corner): each has half the delay
   gravel = new Uint8Array(NC);
   bridgeAt = new Int16Array(NC).fill(-1);
   bridges: Bridge[] = [];
@@ -96,10 +106,32 @@ export class World {
   private nextDecay = PARAMS.decayStepSimSec;
   private byKind: Record<BuildingKind, number[]> = { house: [], well: [], field: [], market: [] };
 
-  constructor(seed: number, walkers = PARAMS.defaultWalkers) {
+  /** Which rules this run has (fixed for the run). */
+  readonly rainOn: boolean;
+  readonly growthOn: boolean;
+  /** Rain and ground wetness (see weather.ts). Its own RNG stream; idle when rain is off. */
+  readonly weather: Weather;
+  /** 1 on cells that are mud now: worn earth (wear 25 or more) rained on, until it dries. Never gravel, bridges or the ford. */
+  mud = new Uint8Array(NC);
+  /** Cells currently mud (a count, for the page). */
+  mudCells = 0;
+  /** Houses added by growth, in the order they appeared. */
+  grown: GrownHouse[] = [];
+  /** Per cell, how many standing houses front it: it does not decay below frontageFloor. */
+  fronted = new Uint8Array(NC);
+  /** Sim time of the next household's arrival check. */
+  nextHouseTime = PARAMS.houseFirstSimSec;
+  /** The growth stream: only new villagers' dwell and taste draw from it, never the walkers' RNG. */
+  private growthRng: Rng;
+
+  constructor(seed: number, walkers = PARAMS.defaultWalkers, opts: WorldOptions = {}) {
     this.seed = seed;
     this.map = generateMap(seed);
     this.rng = mulberry32(seed * 31 + 5);
+    this.rainOn = opts.rain ?? PARAMS.rainOn;
+    this.growthOn = opts.growth ?? PARAMS.growthOn;
+    this.weather = new Weather(seed);
+    this.growthRng = mulberry32(((seed * 40503) ^ 0x6f7d) >>> 0);
     for (const b of this.map.buildings) this.byKind[b.kind].push(b.id);
     this.tripRate = new Float32Array(this.map.buildings.length ** 2);
     const P = PARAMS;
@@ -153,6 +185,20 @@ export class World {
   }
   private gc = new Float64Array(2);
 
+  /**
+   * Mud on cell c at wetness `wet`, applied to gc[0..1]: the spec's muddy cost
+   * (the state's base cost times its mud multiplier), blended with the toy's
+   * own cost times the multiplier by mudReplace, then with the dry cost by wetness.
+   */
+  private mudCosts(c: number, wet: number): void {
+    const P = PARAMS, s = groundOf(this.wear[c], this.hollow[c] === 1), mul = P.mudCostMul[s];
+    for (let i = 0; i < 2; i++) {
+      const dry = this.gc[i];
+      const muddy = (P.mudReplace * P.surfaceCost[s] + (1 - P.mudReplace) * dry) * mul;
+      this.gc[i] = dry + (muddy - dry) * wet;
+    }
+  }
+
   /** The ordinary walkers' ground multiplier for cell c (also their taste discount). */
   surf = (c: number): number => this.groundCost(c, this.gravel[c] === 1, false);
 
@@ -187,7 +233,12 @@ export class World {
       const noise = 1 + P.staticNoise * m.noise[c];
       // The ford never wears and is not made easier by traffic: only land is discounted.
       if (m.water[c]) k = kx = noise;
-      else { this.grounds(c, gravel); k = this.gc[0] * noise; kx = this.gc[1] * noise; }
+      else {
+        this.grounds(c, gravel);
+        const wet = this.weather.wetness;
+        if (wet > 0 && this.mud[c] && !gravel) this.mudCosts(c, wet);
+        k = this.gc[0] * noise; kx = this.gc[1] * noise;
+      }
       if (m.crop[c]) { k += P.cropPenalty; kx += P.cropPenalty; }
       if (m.ford[c]) { k *= P.fordCostMul; kx *= P.fordCostMul; }
     }
@@ -197,8 +248,12 @@ export class World {
       const crowd = 1 + P.crowdStrength * (1 / Math.min(1, v) - 1);
       k *= crowd; kx *= crowd;
     }
-    // A gate is a fixed delay: it does not grow with crowding.
-    if (gated) { k += P.gateCost; kx += P.gateCost; }
+    // A gate is a fixed delay: it does not grow with crowding. A two-cell gate splits it.
+    if (gated) {
+      const pair = (ov & Ov.GatePair) !== 0 || (this.gatePair[c] === 1 && (ov & Ov.Gate) === 0);
+      const g = pair ? P.gateCost / 2 : P.gateCost;
+      k += g; kx += g;
+    }
     cc[0] = k; cc[1] = kx;
   }
   private cc = new Float64Array(2);
@@ -250,18 +305,20 @@ export class World {
       const w = this.walkers.pop()!;
       if (w.state === WS.Out || w.state === WS.Back) this.here[w.cell]--;
     }
-    while (this.walkers.length < n && houses.length) {
-      const id = this.nextId++;
-      const home = houses[id % houses.length];
-      const door = this.map.buildings[home].door;
-      const x = (door % N) + 0.5, y = ((door / N) | 0) + 0.5;
-      this.walkers.push({
-        id, home, state: WS.Home, cell: door, aimX: x, aimY: y, hasAim: false,
-        timer: this.rng() * PARAMS.dwellSimSec * 2, target: home, tripStart: door, tripLen: 0, stuck: 0,
-        explorer: hash2(id, 77) < PARAMS.explorerShare, frugal: false,
-        taste: (this.rng() * 2 - 1) * PARAMS.tasteNoise, x, y, px: x, py: y,
-      });
-    }
+    while (this.walkers.length < n && houses.length) this.addWalker(houses[this.nextId % houses.length], this.rng);
+  }
+
+  /** A new villager at home in building `home`; its dwell and taste come from `rng`. */
+  private addWalker(home: number, rng: Rng) {
+    const id = this.nextId++;
+    const door = this.map.buildings[home].door;
+    const x = (door % N) + 0.5, y = ((door / N) | 0) + 0.5;
+    this.walkers.push({
+      id, home, state: WS.Home, cell: door, aimX: x, aimY: y, hasAim: false,
+      timer: rng() * PARAMS.dwellSimSec * 2, target: home, tripStart: door, tripLen: 0, stuck: 0,
+      explorer: hash2(id, 77) < PARAMS.explorerShare, frugal: false,
+      taste: (rng() * 2 - 1) * PARAMS.tasteNoise, x, y, px: x, py: y,
+    });
   }
 
   /** Walkers drawn on the map (those not inside a building). */
@@ -360,7 +417,8 @@ export class World {
     else {
       s *= this.gravel[c] ? P.gravelSpeedMul : P.stateSpeedMul[groundOf(this.wear[c], this.hollow[c] === 1)];
       if (m.ford[c]) s *= P.fordSpeedMul;
-      if (this.gate[c]) s *= P.gateSpeedMul;
+      if (this.gate[c]) s *= this.gatePair[c] ? 1 / (1 + (1 / P.gateSpeedMul - 1) / 2) : P.gateSpeedMul;
+      if (this.mud[c]) { const wet = this.weather.wetness; if (wet > 0) s *= 1 + (P.mudSpeedMul - 1) * wet; }
     }
     const rho = this.here[c] / P.cellAreaM2;
     if (rho > 0.3) s *= Math.max(0.1, 1 - Math.exp(-P.weidmannGamma * (1 / rho - 1 / P.weidmannRhoMax)));
@@ -453,14 +511,101 @@ export class World {
     for (let i = 0; i < NC; i++) occ[i] = occ[i] * keep + here[i] * a;
     const tr = this.tripRate, tk = Math.exp(-dt / (P.tripRateDays * P.daySimSec));
     for (let i = 0; i < tr.length; i++) tr[i] *= tk;
+    if (this.rainOn && this.weather.update(this.time)) this.updateMud();
     this.refreshFields();
     for (const w of this.walkers) this.stepWalker(w, dt);
     if (this.time >= this.nextDecay) {
       this.nextDecay += P.decayStepSimSec;
       this.decay(P.decayStepSimSec);
+      if (this.rainOn) this.updateMud();
       if (this.metrics.firstTrailTime < 0 && largestTrail(this.wear, this.land, P.firstTrailCells) >= P.firstTrailCells)
         this.metrics.firstTrailTime = this.time;
     }
+    if (this.growthOn && this.time >= this.nextHouseTime) {
+      this.nextHouseTime += P.houseEverySimSec;
+      this.growHouse();
+    }
+  }
+
+  // ---------------------------------------------------------------- rain and mud
+
+  /**
+   * Mud follows the rain: while it rains, every unpaved worn cell (wear 25 or
+   * more, not gravel, not a bridge or the ford) is mud; the mud stays (on
+   * cells still worn to trail) until the ground is dry. Runs once a sim second
+   * and when a shower starts.
+   */
+  private updateMud(): void {
+    const wx = this.weather, mud = this.mud;
+    if (wx.wetness <= 0 && !wx.raining) {
+      if (this.mudCells) { mud.fill(0); this.mudCells = 0; }
+      return;
+    }
+    const thr = PARAMS.stateThresholds[1], wear = this.wear;
+    let n = 0;
+    for (let c = 0; c < NC; c++) {
+      const worn = wear[c] >= thr && this.land[c] === 1 && this.gravel[c] === 0 && this.bridgeAt[c] < 0;
+      mud[c] = worn && (wx.raining || mud[c] === 1) ? 1 : 0;
+      n += mud[c];
+    }
+    this.mudCells = n;
+  }
+
+  /** Debug and tests: rain now for `simSec` (default a day); mud lasts as after a rain day of this season. */
+  startRain(simSec = PARAMS.daySimSec, strength = 1): void {
+    if (!this.rainOn) return;
+    this.weather.startRain(this.time, simSec, strength);
+    this.updateMud();
+  }
+
+  /** Debug and tests: stop the rain now; with `dry` the ground dries at once too. */
+  stopRain(dry = false): void {
+    if (!this.rainOn) return;
+    this.weather.stopRain(this.time, dry);
+    this.updateMud();
+  }
+
+  // ---------------------------------------------------------------- house growth
+
+  /** A household arrives if the town is below the Hamlet target and a valid plot exists. */
+  private growHouse(): Plot | null {
+    const P = PARAMS;
+    if (this.walkers.length + P.householdSize > Math.min(P.hamletTarget, P.maxWalkers)) return null;
+    const plot = choosePlot(this);
+    if (plot) this.addHouse(plot);
+    return plot;
+  }
+
+  /** Builds a cottage on a plot (see growth.ts) and moves its household in. */
+  addHouse(p: Plot): number {
+    const P = PARAMS, m = this.map, B = m.buildings.length, id = B;
+    m.buildings.push({ id, kind: "house", x: p.x, y: p.y, w: 3, h: 3, door: p.door });
+    this.byKind.house.push(id);
+    for (let y = p.y; y < p.y + 3; y++)
+      for (let x = p.x; x < p.x + 3; x++) {
+        const c = idx(x, y);
+        if (c === p.door) continue;
+        m.footprint[c] = 1;
+        this.land[c] = 0;
+        this.mud[c] = 0;
+      }
+    // Trip counts are indexed home * B + dest: copy them into the bigger table.
+    const tr = new Float32Array((B + 1) * (B + 1));
+    for (let i = 0; i < B; i++) for (let j = 0; j < B; j++) tr[i * (B + 1) + j] = this.tripRate[i * B + j];
+    this.tripRate = tr;
+    this.fields.push(new Float32Array(NC).fill(Infinity));
+    this.fieldsX.push(new Float32Array(useFrugal() ? NC : 0).fill(Infinity));
+    this.fieldTime.push(-1e9);
+    this.urgent.push(true);
+    for (const c of p.fronted) this.fronted[c]++;
+    const time = this.time;
+    this.grown.push({ building: id, x: p.x, y: p.y, w: 3, h: 3, door: p.door, front: p.front, time, day: Math.floor(time / P.daySimSec) + 1 });
+    this.edited();
+    // The new house's own field first (its villagers walk home on it), then the rest as after any edit.
+    this.rebuildCosts();
+    this.refreshField(id);
+    for (let i = 0; i < P.householdSize && this.walkers.length < P.maxWalkers; i++) this.addWalker(id, this.growthRng);
+    return id;
   }
 
   private decay(dt: number) {
@@ -482,6 +627,8 @@ export class World {
       let nw = w * f;
       // Gravel stops a trail regrowing: wear under it never decays below trail.
       if (this.gravel[i] && w >= t25 && nw < t25) nw = t25;
+      // A fronted cell (a house's frontage) does not fade below track while the house stands.
+      if (this.fronted[i] && w >= P.frontageFloor && nw < P.frontageFloor) nw = P.frontageFloor;
       wear[i] = nw < 0.01 ? 0 : nw;
     }
   }
@@ -534,7 +681,8 @@ export class World {
   /** Places fence cells; returns how many were new. */
   placeFence(cells: number[]): number {
     let n = 0;
-    for (const c of cells) if (c >= 0 && c < NC && !this.fence[c] && this.canFence(c)) { this.fence[c] = 1; n++; }
+    // A fence on gravel takes the gravel up (the trail beneath stays).
+    for (const c of cells) if (c >= 0 && c < NC && !this.fence[c] && this.canFence(c)) { this.fence[c] = 1; this.gravel[c] = 0; n++; }
     if (n) this.edited();
     return n;
   }
@@ -564,7 +712,7 @@ export class World {
   /** Lays gravel on these cells; returns how many were new. */
   placeGravel(cells: number[]): number {
     let n = 0;
-    for (const c of cells) if (this.canGravel(c) && !this.gravel[c]) { this.gravel[c] = 1; n++; }
+    for (const c of cells) if (this.canGravel(c) && !this.gravel[c]) { this.gravel[c] = 1; this.mud[c] = 0; n++; }
     if (n) this.edited();
     return n;
   }

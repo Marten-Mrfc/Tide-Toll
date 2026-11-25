@@ -65,7 +65,7 @@ public partial class GroundMarks : MeshInstance3D
                 case BuildingKind.House:
                     // The cottage sits at the back of its footprint, the door cell in front: the shadow under the
                     // cottage, the yard round the whole plot.
-                    Shadow(st, centre + new Vector2(-1.1f, -1.1f), half - new Vector2(0.5f, 0.7f), 0.24f);
+                    Shadow(st, centre + new Vector2(-1.5f, -1.5f), half - new Vector2(0.4f, 0.6f), 0.34f);
                     Yard(st, centre, half + new Vector2(1.3f, 1.3f), 1.2f, door, new Color(Palette.BentGrass, 0.30f));
                     break;
                 case BuildingKind.Well:

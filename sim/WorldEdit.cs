@@ -58,6 +58,7 @@ public sealed partial class World
     {
         if (_map.Water[c] != 0 || _map.Footprint[c] != 0 || _bridgeAt[c] >= 0) return false;
         foreach (var b in _map.Buildings) if (b.Door == c) return false;
+        if (_river != null) foreach (var x in _crossings) if (x.WestEnd == c || x.EastEnd == c) return false;
         return true;
     }
 
@@ -113,14 +114,27 @@ public sealed partial class World
     /// <summary>Builds a footbridge across the river at the row of (x, y). Returns it, or null if none fits.</summary>
     public Bridge? PlaceBridge(double x, double y)
     {
+        if (_river != null)
+        {
+            // With the river rules a footbridge costs coin and keeps clear of the landing and other crossings.
+            var r = PlaceFootbridge(x, y);
+            return r.Ok ? _bridges[^1] : null;
+        }
         if (!BridgeCellsAt(x, y, _bridgeScratch)) return null;
+        var br = AddBridgeFromScratch((int)Math.Floor(y));
+        Edited();
+        return br;
+    }
+
+    /// <summary>Adds a bridge over the cells in the scratch list (no checks, no rebuild).</summary>
+    private Bridge AddBridgeFromScratch(int row)
+    {
         // Reuse the lowest free id so bridge ids stay small.
         int id = 0;
         while (_bridges.Exists(b => b.Id == id)) id++;
-        var br = new Bridge(id, (int)Math.Floor(y), _bridgeScratch.ToArray());
+        var br = new Bridge(id, row, _bridgeScratch.ToArray());
         _bridges.Add(br);
         foreach (int c in br.Cells) _bridgeAt[c] = (short)id;
-        Edited();
         return br;
     }
 
@@ -132,9 +146,11 @@ public sealed partial class World
         {
             if (c < 0 || c >= _nc) continue;
             if (_fence[c] != 0) { _fence[c] = 0; n++; }
+            if (_river != null) n += RiverEraseAt(c);
             int b = _bridgeAt[c];
             if (b >= 0)
             {
+                if (_river != null) RiverBridgeErased(b);
                 int k = _bridges.FindIndex(q => q.Id == b);
                 foreach (int bc in _bridges[k].Cells) _bridgeAt[bc] = -1;
                 _bridges.RemoveAt(k); // keeps the order of the others, as the toy's filter does

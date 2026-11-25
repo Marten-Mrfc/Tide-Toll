@@ -78,37 +78,50 @@ void fragment() {
 	warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
 	vec2 m = lp + warp * cm * 0.9;
 	// 2. Three readings of the same wear: the core (softened over under a cell), a wide spread (the trampled fringe
-	//    walkers leave beside a trail) and a broad average (only wide, busy trunks stay high in it).
+	//    walkers leave beside a trail) and a broad average (only wide, busy trunks stay high in it). The ring samples
+	//    also give the wear's slope, which points across the trail: strokes are drawn along the walking direction.
 	float core = wear_at(m) * 0.4;
 	float spread = 0.0, broad = 0.0;
+	vec2 grad = vec2(0.0);
 	for (int k = 0; k < 6; k++) {
 		float a = float(k) * 1.0471976 + 0.35;
 		vec2 d = vec2(cos(a), sin(a));
 		core += wear_at(m + d * cm * 0.55) * 0.1;
-		spread += wear_at(m + d * cm * 2.2) + wear_at(m + d * cm * 1.2);
+		float wn = wear_at(m + d * cm * 1.2);
+		spread += wear_at(m + d * cm * 2.2) + wn;
 		broad += wear_at(m + d * cm * 1.0);
+		grad += d * wn;
 	}
 	spread /= 12.0;
 	broad = (broad + wear_at(m) * 2.0) / 8.0;
+	vec2 across = grad / max(length(grad), 1e-3);
+	vec2 along = vec2(-across.y, across.x);
+	// Strokes: value noise stretched 8:1 along the path (fixed on the map, so they never swim).
+	float stroke = vnoise(vec2(dot(lp, along) / 1.7, dot(lp, across) / 0.21));
+	stroke = mix(0.5, stroke, smoothstep(0.004, 0.03, length(grad)));   // no direction on open ground
 	float n1 = vnoise(lp / 2.2), n2 = vnoise(lp / 0.8), n3 = vnoise(lp / 5.5 + 3.1);
-	// The sim's own thresholds still drive the stages (10 trampled, 25 trail, 50 track, hollow flag), read through
-	// the softened core; noise moves each edge by a little, so it frays.
-	float fringe = smoothstep(0.03, 0.20, max(spread * 1.25, core)) * (0.75 + 0.25 * n3);
-	float bare = smoothstep(0.24, 0.40, core + (n1 - 0.5) * 0.16 + (n2 - 0.5) * 0.08);
-	// Dark packed earth only where a trail is both well worn and wide (a trunk) or the sim marked a hollow way.
-	float packed = smoothstep(0.78, 0.95, broad + (n1 - 0.5) * 0.10) * smoothstep(0.50, 0.65, core);
-	float w4 = smoothstep(0.3, 0.7, wh.g) * smoothstep(0.50, 0.65, core);
-	// Meadow, then flattened grass: paler and yellower, a lighter sheen where blades lie flat.
+	// Meadow, then bent grass: a wide, pale, yellower fringe of flattened blades with strokes along the walking
+	// direction, strongest by the trail and fading out raggedly.
+	float fringe = smoothstep(0.03, 0.22, max(spread * 1.25, core)) * (0.62 + 0.38 * n3);
 	vec3 grass = two(g0, lp);
-	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.25) * (1.04 + 0.06 * n2);
+	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.30) * (1.0 + 0.05 * n2);
+	flattened *= 0.93 + 0.16 * stroke;
 	vec3 c = mix(grass, flattened, fringe);
-	// Bare earth: the trail texture lifted toward paper, mottled, with tufts of grass left standing near its edges.
-	vec3 earth = mix(two(g2, lp), paper.rgb, 0.10) * (0.93 + 0.12 * n2);
-	float tufts = smoothstep(0.62, 0.80, n2) * (1.0 - smoothstep(0.42, 0.70, core));
-	earth = mix(earth, flattened, tufts * 0.7);
+	// Bare earth, blended by height: the grass has a height (noise), and wear wears it down to the soil from the lowest
+	// tufts up. A lightly used trail is a broken line of soil through grass; the busier it is, the wider and more
+	// solid the soil. The sim's thresholds stay the anchors: no soil below wear 25 (trail), solid soil only
+	// from about 70 (a track), so the grass breaks through all along its edges.
+	float height = 0.50 * n2 + 0.32 * n1 + 0.18 * stroke;
+	float worn = clamp((core - 0.25) / 0.50, 0.0, 1.0) * 1.3 - 0.15;
+	float bare = smoothstep(height - 0.10, height + 0.10, worn);
+	// The soil is light and mottled (trail earth lifted toward the paper), streaked along the walking direction.
+	vec3 earth = mix(two(g2, lp), paper.rgb, 0.16) * (0.92 + 0.10 * n2 + 0.06 * n1);
+	earth *= 0.96 + 0.08 * stroke;
 	c = mix(c, earth, bare);
-	// Packed track, then hollow way: the darker browns, kept for the busiest ground.
-	c = mix(c, mix(two(g3, lp), earth, 0.25 * n1), packed * 0.85);
+	// Dark packed earth only where a trail is both well worn and wide (a trunk) or the sim marked a hollow way.
+	float packed = smoothstep(0.74, 0.92, broad + (n1 - 0.5) * 0.10) * smoothstep(0.55, 0.70, core);
+	float w4 = smoothstep(0.3, 0.7, wh.g) * smoothstep(0.50, 0.65, core);
+	c = mix(c, mix(two(g3, lp), earth, 0.25 * n1), packed * 0.8);
 	c = mix(c, two(g4, lp), w4);
 	c = mix(c, texture(ramp_tex, vec2(core, 0.5)).rgb, ramp_mix * bare * (1.0 - w4));
 	float w = core;

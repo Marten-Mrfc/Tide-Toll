@@ -95,6 +95,9 @@ public sealed record SimParams
     public int FirstTrailCells { get; init; } = 10;
     public double TrunkTopShare { get; init; } = 0.1;
 
+    /// <summary>The river rules (boats, crossings, money). Null, the default, leaves them out entirely.</summary>
+    public RiverRules? River { get; init; }
+
     public Grid Grid => new(GridWidth, GridHeight);
     public int TicksPerDay => (int)(DaySimSec * TickHz);
     public int TicksPerSeason => (int)(SeasonSimSec * TickHz);

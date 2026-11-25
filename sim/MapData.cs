@@ -2,7 +2,8 @@ using System;
 
 namespace TideToll.Sim;
 
-public enum BuildingKind : byte { House = 0, Well = 1, Field = 2, Market = 3 }
+/// <summary>Landing exists only with the river rules and goods hauling on (appended after the map's buildings).</summary>
+public enum BuildingKind : byte { House = 0, Well = 1, Field = 2, Market = 3, Landing = 4 }
 
 /// <summary>A building on the map: its footprint's top-left cell, size and door cell (the toy's Building).</summary>
 public readonly struct Building

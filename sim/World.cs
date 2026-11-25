@@ -44,13 +44,14 @@ public sealed partial class World
     private readonly BinaryHeap _heap;
     private int _nextId;
     private double _nextDecay;
-    private readonly int[][] _byKind = new int[4][];
+    private readonly int[][] _byKind = new int[5][];
     private readonly int[] _aimPath;
 
     public World(int seed, int? walkers = null, SimParams? p = null)
     {
         _p = p ?? SimParams.Default;
         _p.Validate();
+        _river = _p.River;
         _g = _p.Grid;
         _n = _g.Width;
         _nc = _g.Count;
@@ -60,9 +61,10 @@ public sealed partial class World
         for (int i = 0; i < 5; i++) { _stateSpeedMul[i] = _p.StateSpeedMul[i]; _surfaceCost[i] = _p.SurfaceCost[i]; }
         Seed = seed;
         _map = MapGen.Generate(seed, _n);
+        if (_river != null) InitRiverMap();
         _rng = new Mulberry32(unchecked((uint)(seed * 31 + 5)));
         Building[] b = _map.Buildings;
-        for (int k = 0; k < 4; k++)
+        for (int k = 0; k < 5; k++)
         {
             var ids = new List<int>();
             foreach (var x in b) if ((int)x.Kind == k) ids.Add(x.Id);
@@ -85,6 +87,7 @@ public sealed partial class World
         for (int i = 0; i < _flowLut.Length; i++)
             _flowLut[i] = (float)(1 - _p.FlowDiscount * (1 - Math.Exp(-((double)i / FlowLutSteps) / _p.FlowScale)));
         for (int i = 0; i < _nc; i++) _land[i] = (byte)(_map.Water[i] == 0 && _map.Footprint[i] == 0 ? 1 : 0);
+        if (_river != null) InitRiver(seed);
         _fields = new float[b.Length][];
         _fieldTime = new double[b.Length];
         _urgent = new bool[b.Length];
@@ -100,7 +103,8 @@ public sealed partial class World
     public bool IsBlocked(int c)
     {
         if (_fence[c] != 0 || _map.Footprint[c] != 0) return true;
-        return _map.Water[c] == 1 && _map.Ford[c] == 0 && _bridgeAt[c] < 0;
+        if (_map.Water[c] == 1 && _map.Ford[c] == 0 && _bridgeAt[c] < 0) return true;
+        return _river != null && RiverSpanBlocked(c);
     }
 
     /// <summary>Routing cost multiplier of a cell's ground: worn and busy ground is cheaper.</summary>
@@ -118,6 +122,12 @@ public sealed partial class World
     {
         var m = _map;
         if (ov == CostOverride.Block || m.Footprint[c] != 0 || (_fence[c] != 0 && ov != CostOverride.Open)) return double.PositiveInfinity;
+        if (_river != null)
+        {
+            // Ferry water and drawbridge spans: their cost includes the expected and learned wait.
+            double rc = RiverCellCost(c, ov);
+            if (!double.IsNaN(rc)) return rc;
+        }
         bool bridge = ov == CostOverride.Bridge || (_bridgeAt[c] >= 0 && ov != CostOverride.CloseBridge);
         if (m.Water[c] != 0 && m.Ford[c] == 0 && !bridge) return double.PositiveInfinity;
         double k;
@@ -188,7 +198,8 @@ public sealed partial class World
         double tk = Math.Exp(-dt / (_p.TripRateDays * _p.DaySimSec));
         for (int i = 0; i < tr.Length; i++) tr[i] = (float)(tr[i] * tk);
         RefreshFields();
-        for (int i = 0; i < _walkerCount; i++) StepWalker(ref _walkers[i], dt);
+        if (_river != null) RiverStep(dt);
+        for (int i = 0; i < _walkerCount; i++) { _curWalker = i; StepWalker(ref _walkers[i], dt); }
         if (_time >= _nextDecay)
         {
             _nextDecay += _p.DecayStepSimSec;
@@ -196,6 +207,7 @@ public sealed partial class World
             if (_metrics.FirstTrailTime < 0 && _metrics.LargestTrail(_wear, _land, _p.FirstTrailCells) >= _p.FirstTrailCells)
                 _metrics.FirstTrailTime = _time;
         }
+        if (_river != null) RiverSettle();
     }
 
     private void Decay(double dt)

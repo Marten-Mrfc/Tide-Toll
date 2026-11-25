@@ -98,6 +98,39 @@ export const PARAMS = {
   weidmannRhoMax: 5.4,
   cellAreaM2: 4,
 
+  // Rain and mud (round 4; spec "Weather and mud", "Ground states", "Seasons and
+  // weather"). A weather stream of its own (seeded from the map seed, never the
+  // walkers' RNG) rolls once per in-game day for rain. While it rains, every
+  // unpaved land cell at wear 25 or more turns to mud; the mud lasts for that
+  // day plus one more (plus two in autumn), drying out over the last part of it.
+  rainOn: true, // the player's default; the old gate sets run with it off
+  rainChance: [0.3, 0.15, 0.4, 0] as const, // per day by season; winter: snow only in the spec (left out)
+  mudDays: [2, 2, 3, 2] as const, // days of mud counting the rain day (autumn "two more"; see README for the conflict)
+  rainRampSimSec: 2, // rain fades in and out over this long (drawing and sound only)
+  wetUpSimSec: 3, // the ground goes from dry to fully wet over this long once rain starts
+  drySimSec: 7.5, // mud dries out over the last half day of its run (the spec gives no drying rate)
+  // Muddy cost: the spec's multipliers on the state's base cost (trail 0.85 x 1.6
+  // = 1.36), blended with the toy's own worn-ground cost by mudReplace
+  // (1 = the base cost alone, 0 = multiply the toy's discounted cost), then
+  // blended with the dry cost by wetness. Busy mud is no easier: no flow discount.
+  mudCostMul: [1, 1, 1.6, 1.7, 1.8] as const, // by ground state; grass and trampled never get muddy
+  mudReplace: 1,
+  mudSpeedMul: 0.8, // walking speed on mud at full wetness (not in the spec)
+
+  // House growth (round 4; spec "Where houses appear", "Growth rate and density",
+  // "Frontage"). A Hamlet cottage (3 x 3 with its garden, 3 villagers) appears
+  // every houseEverySimSec on the best valid plot by the frontage rules, while
+  // the population is below hamletTarget. Walkers slider = population now.
+  growthOn: true, // the player's default; the old gate sets run with it off
+  houseEverySimSec: 30, // Hamlet: one household per 2 days
+  houseFirstSimSec: 30, // the first one comes after 2 days
+  hamletTarget: 250, // people; no new household would take the town above this
+  householdSize: 3,
+  frontageWear: 50, // the plot must touch a cell this worn (track)
+  plotClearWear: 25, // and overlap no cell this worn (trail)
+  frontageFloor: 50, // a fronted cell does not decay below this while its house stands
+  plotNeighbourRadius: 6, // +1 score per house within this many cells, up to 3
+
   // Flow preview: trip counts per (house, destination) decay with this time
   // constant, in days. Longer is steadier, shorter follows changes faster.
   tripRateDays: 3,

@@ -20,7 +20,7 @@ varying flat float outfit;
 void vertex() {
 	// A smaller head (the model's head dot covers half the villager from above): scaled about its centre, the same
 	// in walker.gdshader and walker_hull.gdshader so the ink hull keeps fitting.
-	VERTEX = mix(VERTEX, vec3(0.0, 2.24, 0.06) + (VERTEX - vec3(0.0, 2.24, 0.06)) * 0.68, smoothstep(1.84, 1.95, VERTEX.y));
+	VERTEX = mix(VERTEX, vec3(0.0, 2.24, 0.06) + (VERTEX - vec3(0.0, 2.24, 0.06)) * 0.6, smoothstep(1.84, 1.95, VERTEX.y));
 	float ph = INSTANCE_CUSTOM.x + anim_time * INSTANCE_CUSTOM.y;
 	float s = abs(sin(ph * 6.2831853));                 // two bounces per stride, like footfalls
 	VERTEX.y += s * INSTANCE_CUSTOM.z * (0.35 + 0.65 * smoothstep(0.0, 1.2, VERTEX.y)); // head lifts more than the feet
@@ -35,7 +35,8 @@ void fragment() {
 	int h = int(floor(fract(outfit * 7.31) * 3.0)) % 3;
 	vec3 hat = h == 0 ? hat0.rgb : h == 1 ? hat1.rgb : hat2.rgb;
 	if (is(c, model_tunic.rgb)) c = tunic;
-	else if (is(c, model_cape.rgb)) c = tunic * 0.78;       // the cape: the tunic's own colour, a shade darker
+	else if (is(c, model_cape.rgb)) c = tunic * 0.9;        // the cape: the tunic's own colour, a shade darker (from
+	                                                        // above it is most of the villager, so it must read as the tunic)
 	else if (is(c, model_head.rgb)) c = hat;
 	ALBEDO = c;
 	ALPHA = 1.0;

@@ -218,7 +218,46 @@ public partial class Smoke : Node
             Check(w.Ford[cell] == 0 && w.Water[cell] == 0, $"tree on water or ford at {cell % n},{cell / n}");
             foreach (var b in w.Buildings) Check(b.Door != cell, $"tree on a door at {cell % n},{cell / n}");
         }
-        _notes.Add($"trees={_main.Scenery.TreeCells.Count}");
+        Check(_main.Scenery.Dropped == 0, $"scenery dropped {_main.Scenery.Dropped} instances past a MultiMesh's capacity");
+        Check(_main.Scenery.Copses >= 6, $"only {_main.Scenery.Copses} copses: trees should stand in groups");
+        int houses = w.OfKind(BuildingKind.House).Length;
+        Check(_main.Marks.Shadows >= houses && _main.Marks.Yards >= houses, $"ground marks: {_main.Marks.Shadows} shadows, {_main.Marks.Yards} yards for {houses} houses");
+        _notes.Add($"trees={_main.Scenery.TreeCells.Count} copses={_main.Scenery.Copses} marks={_main.Marks.Shadows}+{_main.Marks.Yards}");
+        CheckTagsAndGuards();
+    }
+
+    /// <summary>
+    /// The place tags show at overview zoom and fade out zoomed in; the dash march wraps at a common multiple of both
+    /// dash periods; a zero-height window never gives infinite ink or walker widths.
+    /// </summary>
+    private void CheckTagsAndGuards()
+    {
+        var rig = _main.Rig;
+        var tags = _main.Ui.Tags;
+        rig.FramePlay(instant: true);
+        tags._Process(0);
+        int shown = 0;
+        for (int i = 0; i < 4; i++) if (tags.Tag(i).Visible) shown++;
+        Check(tags.Alpha >= 0.99f && shown == 4, $"play view: {shown} of 4 place tags shown at alpha {tags.Alpha}");
+        rig.LookAt(new Vector3(128, 0, 128), 60f);
+        tags._Process(0);
+        Check(tags.Alpha <= 0.01f, $"place tags still at alpha {tags.Alpha} zoomed in to 60 m");
+        rig.FramePlay(instant: true);
+        // Dash periods in seconds (shaders/route.gdshader): 15 px at 12 px/s and 9 px at 8 px/s.
+        foreach (double period in new[] { 15.0 / 12.0, 9.0 / 8.0 })
+        {
+            double k = RouteLayer.MarchWrap / period;
+            Check(Math.Abs(k - Math.Round(k)) < 1e-9, $"dash march wraps at {RouteLayer.MarchWrap} s, not a multiple of {period} s");
+        }
+        _main.Ink.Update(rig.Camera, new Vector2(1280, 0));
+        _main.Walkers.SetMetresPerPixel(rig.Camera.Size / 0f);
+        foreach (var name in new[] { "InkHard", "InkSoft" })
+        {
+            var m = (ShaderMaterial)_main.GetNode<MeshInstance3D>("CameraRig/Yaw/Pitch/Camera/Ink/" + name).MaterialOverride;
+            float wpx = (float)m.GetShaderParameter("width_px"), mpp = (float)m.GetShaderParameter("metres_per_px");
+            Check(float.IsFinite(wpx) && float.IsFinite(mpp), $"{name}: a zero-height window gave width {wpx} px, {mpp} m/px");
+        }
+        Check(float.IsFinite(_main.Walkers.MetresPerPixel), "a zero-height window gave walkers an infinite ink width");
     }
 
     private void Check(bool ok, string why)

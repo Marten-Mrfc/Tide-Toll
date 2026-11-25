@@ -13,6 +13,9 @@ namespace TideToll.Tools;
 ///   bench [--seed 1] [--budget-ms 5] [--p99-budget-ms 25]      ms per tick at 200 and 500 walkers (build in Release)
 ///   gate  [--quick] [--threads 3] [--golden path]              the toy's gate tables, gate checks and the comparison with the toy
 ///   checks                                                      the toy's reroute, bridge, robustness, determinism and preview checks
+///   river [--seeds 20] [--first 101] [--days 12] [--walkers 200] [--sweep] [--threads 3] [--brief]
+///         [--only S5,S6] [--set KeeperPrice=15,BoatValueMul=3]    (--set overrides RiverRules values for tuning runs)
+///                                                               the river strategy experiment: S1 to S6, a table per strategy
 /// Exit code 1 when a check fails or a budget is exceeded.
 /// </summary>
 public static class Program
@@ -27,6 +30,7 @@ public static class Program
             case "bench": return Bench(opt);
             case "gate": return Gate(opt);
             case "checks": return Checks();
+            case "river": return River(opt);
             default:
                 Console.WriteLine("usage: TideToll.Tools run|bench|gate|checks [options]  (see Program.cs)");
                 return cmd is "help" or "-h" or "--help" ? 0 : 2;
@@ -113,6 +117,38 @@ public static class Program
         Console.WriteLine(gl);
         int failed = log.Checks.Count(c => !c.Ok) + gl.Checks.Count(c => !c.Ok);
         Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads){(quick ? " [quick mode: 4 gate seeds, no report tables]" : "")}; toy golden from commit {golden.ToyCommit}");
+        return failed > 0 ? 1 : 0;
+    }
+
+    private static int River(Dictionary<string, string> o)
+    {
+        int seeds = Int(o, "seeds", 20), first = Int(o, "first", 101), days = Int(o, "days", 12), walkers = Int(o, "walkers", 200);
+        int threads = Int(o, "threads", Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1)));
+        var sw = Stopwatch.StartNew();
+        var all = Enum.GetValues<RiverStrategy>().Where(s => !o.TryGetValue("only", out var only) || only.Split(',').Any(k => s.ToString().StartsWith(k))).ToArray();
+        var rules = RiverRules.Default;
+        if (o.TryGetValue("set", out var set))
+        {
+            rules = rules with { };
+            foreach (var kv in set.Split(','))
+            {
+                var parts = kv.Split('=');
+                var prop = typeof(RiverRules).GetProperty(parts[0]) ?? throw new ArgumentException($"no RiverRules.{parts[0]}");
+                prop.SetValue(rules, Convert.ChangeType(parts[1], prop.PropertyType, System.Globalization.CultureInfo.InvariantCulture));
+                Console.WriteLine($"set {parts[0]} = {parts[1]}");
+            }
+        }
+        var rows = RiverBot.RunAll(Enumerable.Range(first, seeds), all, walkers, days, threads, rules);
+        if (o.ContainsKey("sweep"))
+            rows.AddRange(RiverBot.RunAll(Enumerable.Range(first, seeds), new[] { RiverStrategy.S5DrawbridgeManual, RiverStrategy.S6DrawbridgeKeeper }, 60, days, threads, rules));
+        Console.WriteLine($"RIVER EXPERIMENT: seeds {first} to {first + seeds - 1}, {days} days, {walkers} walkers{(o.ContainsKey("sweep") ? " (S5 and S6 also at 60)" : "")}");
+        RiverBot.Print(Console.Out, rows, !o.ContainsKey("brief"));
+        var log = new CheckLog();
+        RiverGateChecks.Check(rows, log);
+        Console.WriteLine("\nRIVER TRADE-OFF CHECKS");
+        Console.WriteLine(log);
+        int failed = log.Checks.Count(c => !c.Ok);
+        Console.WriteLine($"\n{(failed > 0 ? $"FAILED: {failed} check(s)" : "ALL CHECKS PASSED")} in {sw.Elapsed.TotalSeconds:F0} s ({threads} threads)");
         return failed > 0 ? 1 : 0;
     }
 

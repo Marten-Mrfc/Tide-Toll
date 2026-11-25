@@ -285,8 +285,10 @@ public partial class ToolController : Node
         }
         // A frame in which the simulation already took more than SkipAboveSimMs (several ticks at 8x) does no preview
         // work at all, so the two never stack into one long frame; the preview simply finishes a frame or two later.
-        if (Sim.SimMsThisFrame > FlowPreviewer.SkipAboveSimMs) PreviewSkips++;
-        else Previewer.Update(Clock.Elapsed.TotalMilliseconds, FlowPreviewer.BudgetMs);
+        // Otherwise the preview gets what the simulation left of the toy's 6 ms (at least 2 ms, so it always moves on).
+        double sim = Sim.SimMsThisFrame;
+        if (sim > FlowPreviewer.SkipAboveSimMs) PreviewSkips++;
+        else Previewer.Update(Clock.Elapsed.TotalMilliseconds, Math.Max(2.0, FlowPreviewer.BudgetMs - sim));
         var vp = GetViewport().GetVisibleRect().Size;
         // Route widths are in pixels at 800 px of window height and grow with taller windows (as the interface does).
         float px = Math.Max(1f, vp.Y / 800f);

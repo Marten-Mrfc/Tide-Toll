@@ -31,6 +31,17 @@ public struct Walker
     /// <summary>-TasteNoise..+TasteNoise: how much this walker favours worn ground.</summary>
     public double Taste;
     public double X, Y, Px, Py;
+    // River rules only (always zero without them).
+    /// <summary>Waiting at a crossing or riding the ferry (see <see cref="WalkerHold"/>).</summary>
+    public WalkerHold Hold;
+    /// <summary>Crossing id while <see cref="Hold"/> is not None.</summary>
+    public short HoldAt;
+    /// <summary>Units of grain carried to the landing.</summary>
+    public byte Cargo;
+    /// <summary>Seconds waited at the current crossing.</summary>
+    public float WaitT;
+    internal int Ticket;
+    internal double TripT0;
 
     /// <summary>Drawn on the map: walking out or back (not inside a building).</summary>
     public readonly bool Visible => State == WalkState.Out || State == WalkState.Back;

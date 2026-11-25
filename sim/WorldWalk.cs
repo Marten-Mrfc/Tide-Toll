@@ -65,6 +65,7 @@ public sealed partial class World
         w.Target = target;
         w.TripStart = w.Cell;
         w.TripLen = 0;
+        w.TripT0 = _time;
         w.Stuck = 0;
         w.HasAim = false;
         _here[w.Cell]++;
@@ -76,6 +77,7 @@ public sealed partial class World
         int s = w.TripStart, e = w.Cell, n = _n;
         _metrics.Trip(_time, w.TripLen, JsMath.Hypot(s % n - e % n, s / n - e / n));
         _here[w.Cell]--;
+        if (_river != null) RiverArrive(ref w);
         w.State = w.State == WalkState.Out ? WalkState.Away : WalkState.Home;
         w.Timer = Dwell();
         w.HasAim = false;
@@ -85,6 +87,8 @@ public sealed partial class World
     private void SendHome(ref Walker w)
     {
         if (w.Visible) _here[w.Cell]--;
+        w.Hold = WalkerHold.None;
+        w.Cargo = 0;
         w.Cell = _map.Buildings[w.Home].Door;
         w.State = WalkState.Home;
         w.Timer = _p.RetrySimSec;
@@ -142,6 +146,12 @@ public sealed partial class World
 
     private void StepWalker(ref Walker w, double dt)
     {
+        if (w.Hold != WalkerHold.None)
+        {
+            if (w.Hold == WalkerHold.Riding) return; // the ferry moves it
+            w.Px = w.X; w.Py = w.Y;
+            if (!RiverHold(ref w, dt)) return;
+        }
         w.Px = w.X; w.Py = w.Y;
         if (w.State == WalkState.Home || w.State == WalkState.Away)
         {
@@ -153,7 +163,7 @@ public sealed partial class World
                 if (t < 0) { w.Timer = _p.RetrySimSec; return; }
                 Depart(ref w, t, WalkState.Out);
             }
-            else
+            else if (_river == null || !HaulLeg(ref w))
             {
                 if (!(_fields[w.Home][w.Cell] < float.PositiveInfinity)) { SendHome(ref w); return; }
                 Depart(ref w, w.Home, WalkState.Back);
@@ -180,6 +190,7 @@ public sealed partial class World
         {
             double dx = w.AimX - w.X, dy = w.AimY - w.Y, d = JsMath.Hypot(dx, dy);
             double move = Math.Min(d, dist);
+            double ox = w.X, oy = w.Y, olen = w.TripLen;
             if (d > 1e-9)
             {
                 w.X += (dx / d) * move; w.Y += (dy / d) * move;
@@ -187,6 +198,12 @@ public sealed partial class World
             }
             dist -= move;
             int c = (int)Math.Floor(w.Y) * _n + (int)Math.Floor(w.X);
+            if (c != w.Cell && _river != null && RiverGate(ref w, c))
+            {
+                // A drawbridge that is not down, or a ferry stage: stop on this bank and wait.
+                w.X = ox; w.Y = oy; w.TripLen = olen;
+                break;
+            }
             if (c != w.Cell)
             {
                 _here[w.Cell]--; _here[c]++;

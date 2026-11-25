@@ -50,11 +50,13 @@ public partial class WalkerLayer : MultiMeshInstance3D
         _hull = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/walker_hull.gdshader") };
         _hull.SetShaderParameter("ink", Palette.Ink);
         _mat.NextPass = _hull;
-        // Outfits: six palette tunic colours and three dark hats or hoods, picked per villager (custom data w).
-        // Mid-tone palette colours that stand out on green grass and pale earth alike; hats a step darker than any tunic.
-        Color[] tunics = { Palette.Brick, Palette.River, Palette.Thatch, Palette.CastIronGreen, Palette.SlateRoof, Palette.Limewash.Lerp(Palette.Thatch, 0.35f) };
+        // Outfits: six palette tunic colours and three hats or hoods, picked per villager (custom data w).
+        // Mid-tone palette colours that stand out on green grass and pale earth alike; hats darker than the tunics or straw-pale.
+        // No greens: a green tunic vanishes into the meadow at overview zoom.
+        Color[] tunics = { Palette.Brick, Palette.River, Palette.Thatch, Palette.Limewash, Palette.Limewash.Lerp(Palette.River, 0.45f), Palette.Brick.Lerp(Palette.Thatch, 0.5f) };
         for (int i = 0; i < tunics.Length; i++) _mat.SetShaderParameter("tunic" + i, tunics[i]);
-        Color[] hats = { Palette.Mud, Palette.SootBrick, Color.FromHtml("#6F6450") }; // Mud, Soot brick, Wet mudflat
+        // A dark hood, a straw hat or a soot-brown cap: the crown reads apart from the tunic from above, never as a hole.
+        Color[] hats = { Palette.Mud, Palette.Thatch.Lerp(Palette.Paper, 0.25f), Palette.SootBrick };
         for (int i = 0; i < hats.Length; i++) _mat.SetShaderParameter("hat" + i, hats[i]);
         mesh.SurfaceSetMaterial(0, _mat);
         Multimesh = new MultiMesh
@@ -83,6 +85,9 @@ public partial class WalkerLayer : MultiMeshInstance3D
         _shadows.CustomAabb = CustomAabb;
         AddChild(_shadows);
     }
+
+    /// <summary>Metres per screen pixel the ink hull is sized for (tests).</summary>
+    public float MetresPerPixel => _metresPerPx;
 
     /// <summary>Ink width follows the zoom so it stays about 1.2 screen pixels.</summary>
     public void SetMetresPerPixel(float metresPerPx)
@@ -131,7 +136,9 @@ public partial class WalkerLayer : MultiMeshInstance3D
         float t = (float)_sim.AnimTime;
         _mat.SetShaderParameter(AnimTime, t);
         _hull.SetShaderParameter(AnimTime, t);
-        _hull.SetShaderParameter(HullW, 1.2f * _metresPerPx / Math.Max(0.01f, s));
+        // About 1.2 px of ink up close, thinning to 0.8 px at overview zoom, where a villager is only 7 px across.
+        float px = Mathf.Lerp(1.2f, 0.8f, Mathf.Clamp((_metresPerPx - 0.15f) / 0.25f, 0f, 1f));
+        _hull.SetShaderParameter(HullW, px * _metresPerPx / Math.Max(0.01f, s));
     }
 
     /// <summary>World-independent position of drawn instance i (map-local metres), for tests.</summary>
