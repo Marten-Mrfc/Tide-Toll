@@ -70,15 +70,16 @@ Stopping
 
 ## Scheduled check
 
-- Pending: `trig_01PEJwqyTfVijCKX1qo1iHHx`, fires 21:07 UTC.
+- Pending: `trig_01Nn4hVAgFfVCqKLdxGFhUCC`, fires 21:54 UTC. (The 21:07 one fired and was handled.)
 
 ## Rounds
 
 | Round | What | Workflow run | Started | Ended | Result |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | | Design doc rewritten by 20:34 (insert only; lead is proof-reading it) |
-| 1b | Settings screen as pages of the book, built on its own in the separate checkout `build/wt/settings` (new files only; handover note `build/wt/settings/docs/plans/settings-handover.md`); round 2's builder copies it in | `wf_4a702972-214`, script `build/wf/settings.js` | 20:37 | | |
+| 1 | Core loop: town simulation, design doc, assets, music, the playable core, balancing, bug hunt | `wf_2cd4c43f-ce4`, script `build/wf/r1.js` | 20:32 | | Design doc rewritten 20:34 (proof-read: fine, UX part thin on settings detail). Models and icons 20:42. Music 20:55 (5 pieces). Simulation 20:56 (179 fast tests pass; all pacing targets met on seed 1). First balancing done about 21:05 (`docs/plans/town-balance-r1.md`). Game core and the simulation bug hunt still running at 21:11 |
+| 1b | Settings screen as pages of the book, built on its own in the separate checkout `build/wt/settings` (new files only; handover note `build/wt/settings/docs/plans/settings-handover.md`); round 2's builder copies it in | `wf_4a702972-214`, script `build/wf/settings.js` | 20:35 | 20:54 | Done, test passes three times in a row; copied into the main checkout at 20:55 (`game/scripts/settings/`, `game/tests/Settings*`), handover `docs/plans/settings-handover.md`. Not yet opened from a pause menu |
 | 1c | Research: how incremental games pace their loop, as checkable rules (`docs/plans/incremental-research.md`) | `wf_424f4e35-7c9`, script `build/wf/research.js` | 20:39 | 20:41 | Done. Search found nothing on Incremental Traffic itself; sourced facts are cost growth of about 1.07 to 1.15 per level with roughly linear income; four more checkable targets added to the design brief |
+| 1d | Rules v2 of the simulation in the separate checkout `build/wt/sim2` (local branch `wt/sim2`; the lead commits there and merges into `claude/prototype-1` when done), then a second balancing; beside it the missing sound effects (main checkout, `assets/` only) | `wf_ed8099c3-fab`, script `build/wf/rules2.js` | 21:11 | | |
 
 ## Next steps
 
@@ -103,6 +104,9 @@ Stopping
 | 8 | The old simulation and its fast tests stay and keep running. The old game scenes move to `game/legacy/` and leave the build; their game tests are retired and listed in `docs/plans/retired-tests.md` | The second age may reuse the river code; the old scenes cannot run beside the new game |
 | 9 | No earnings while the game is closed; it continues where it stopped | Simplest honest behaviour for a first version |
 | 10 | A few new models and icons are made in code tonight (mill, bell, flour sack, interface icons), with ledger rows | The mill and the new buttons have no art yet |
+| 12 | Rules v2 after the first balance report: walking speed and the other upgrade tracks are finite (about 20 clear steps, not 170 taps); new tracks for working speed, the value of each good, and the bell; cottages can be extended by clicking them; unpaved roads clog sooner; about 16 levels instead of 12; timed requests ("12 Grain within 90 seconds") as goals a minute or two away; one line of advice at a time | The first numbers made 80 percent of all purchases the same cheap speed upgrade: a tap-fest with one right answer |
+| 13 | New sound effects are made in code for buying, levels, gifts, paving, requests, the book and the interface, with ledger rows | The new loop had no sounds of its own, and feedback at the moment of earning is most of what makes such a game pleasant |
+| 14 | The pause piece "Still Pages" stays 2 dB quieter than the other music, as its composer chose | A paused book should be quieter |
 | 11 | The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2 | It does not depend on the new simulation, so it need not wait |
 
 ## Needs you
@@ -115,7 +119,18 @@ Stopping
 
 ## Music pieces
 
-(filled in when the music agent reports)
+All made in code by `assets/src/audio/music-*.py` with the theme's own instruments, mix and loudness (shared engine `assets/src/audio/_music.py`); ledger rows added; nobody has listened to them yet.
+
+| Title | File (in `assets/audio/music/`) | Role | Key, tempo | Length |
+| --- | --- | --- | --- | --- |
+| Tide & Toll theme (the existing one) | `theme-hamlet-draft.ogg` | first-age rotation, first | D Dorian, 64 BPM | 45 s loop |
+| Ferry Morning | `music-ferry-morning.ogg` | first-age rotation | D Mixolydian, 68 BPM | 74 s loop |
+| The Long Field | `music-long-field.ogg` | first-age rotation | A Aeolian, 64 BPM | 79 s loop |
+| Low Meadow | `music-low-meadow.ogg` | first-age rotation | D Aeolian, 60 BPM | 72 s loop |
+| Tide and Toll, Rising | `music-theme-rising.ogg` | the age change | D Dorian, 64 BPM | 49 s, real ending |
+| Still Pages | `music-still-pages.ogg` | the paused book | D Dorian, 60 BPM | 60 s loop, 2 dB quieter on purpose |
+
+The game reads `assets/audio/music/playlist.json`. Not yet wired into the game (round 2 or 3).
 
 ## Fun, judged after each round
 
