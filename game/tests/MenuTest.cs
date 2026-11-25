@@ -53,9 +53,12 @@ public partial class MenuTest : TownTestBase
         await Frames(10);
         var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
-        // Esc in Pave mode leaves Pave mode first and does not pause.
+        // Esc in Pave mode leaves Pave mode first and does not pause (the bot plays until a road can be paved).
+        Main.Driver.RunBot(new TideToll.Sim.Town.TownBot(TideToll.Sim.Town.BotKind.Payback, 1), t => t.SuggestedPave() >= 0, 10 * 60 * 30);
+        await Frames(3);
         Main.Hud.SetPaveMode(true);
         await Frames(2);
+        Check(Main.Hud.PaveMode, "Pave mode did not open (no worn-in road)");
         await Key(Godot.Key.Escape);
         Check(!Main.Hud.PaveMode && !M.IsPaused && !Main.Driver.Paused, "Esc in Pave mode should only leave Pave mode");
 

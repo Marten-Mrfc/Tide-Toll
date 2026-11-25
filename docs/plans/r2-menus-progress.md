@@ -17,5 +17,25 @@ Started 2026-11-25 22:01 UTC. Time box about 40 minutes.
 - check.sh: game-settings, game-menu, game-save steps added.
 - Main.KeepWindow (tests): the stored window size is not applied, so --resolution 1920x1080 holds.
 
-## Next
-- full ./check --export; AGENTS.md, README.md notes.
+- 22:31 first full ./check --export PASSED (all 16 steps). AGENTS.md and README.md updated.
+- After it: MenuTest gained "Esc in Pave mode only leaves Pave mode" (first try failed because the test had no
+  pavable road; the bot now plays until one exists). Final ./check --export re-run at 22:35.
+
+## Decisions
+- The cover lettering is 2D (gilt Labels/Buttons, tooled frame drawn) laid over the 3D board's screen rect each frame;
+  the 3D board (BookCover) carries gilt rules and an endpaper. Closing hides the left page and the left half of the
+  base board at once (the front board lies there, endpaper up) and swings it over the spine; the town's models hide
+  once the board is 80 % down (trees stood through it).
+- Camera for the closed book uses CameraRig.LookAtFree (the pan limits would centre the open book instead).
+- Save file: user://town.json = { Game: 1, CamX, CamZ, CamSize, UserMoved, Town: TownSave json }, written via .tmp +
+  rename. Events queued by TownSave.Load are dropped (a loaded level is not news; it reset the follow camera).
+- New town seed: System.Random, never equal to the current seed. Esc on the question keeps the town; focus starts on
+  "Keep this town".
+- Pause music: the rotation (the theme now and then) waits; "Still Pages" loops on the Music bus while paused.
+- Tests: Main.Profile = user://tests/<marker>/ (wiped first) and Main.KeepWindow.
+
+## Known gaps
+- HUD labels still print default keys ("[Space]", "[4 or P]", "Pause [Esc]") after a rebind.
+- "The view follows the town" is obeyed (Main._Process) but no test asserts it.
+- The interface-size 3D cover rect assumes Camera3D.UnprojectPosition is in visible-rect units (seen right at 100 %;
+  not screenshotted at 150 %).

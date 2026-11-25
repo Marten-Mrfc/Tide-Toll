@@ -77,7 +77,7 @@ Stopping
 
 ## Scheduled check
 
-- Pending: `trig_01KNrFb35DSHRtLxa7dvXv45`, fires 22:40 UTC. (The 21:07 and 21:54 ones fired and were handled.)
+- Pending: `trig_01UFuhqeUNbUgoYAmSqSxJoQ`, fires 23:27 UTC. (Earlier ones fired and were handled.)
 
 ## Rounds
 
