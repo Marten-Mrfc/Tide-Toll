@@ -11,8 +11,8 @@ namespace TideToll.Game;
 /// </summary>
 public static class GravelStrip
 {
-    /// <summary>Texels per cell.</summary>
-    public const int Res = 2;
+    /// <summary>Texels per cell (4 since round 2: the town's paved roads are narrower than a cell).</summary>
+    public const int Res = 4;
     /// <summary>Half the strip's width, in cells (the toy's 1.15-cell stroke).</summary>
     public const float Half = 0.575f;
 

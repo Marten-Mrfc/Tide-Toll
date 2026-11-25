@@ -10,6 +10,9 @@ namespace TideToll.Game;
 /// <see cref="SnapCells"/> (a fast-forward). A walking villager faces the way it moves (never sideways); a waiting or
 /// working one faces the simulation's heading; turns are smooth. Loads ride on the villager: the water yoke, the
 /// grain sack or the flour sack. One MultiMesh for bodies and one per good.
+/// Round 2: the body is drawn in one of a few light clothes colours (villager.gdshader tints the model's palette
+/// shading), the head in the model's own colours, each villager on a soft round shadow; queueing and working villagers
+/// fan out round the door or along the queue instead of standing on one spot (<see cref="Spread"/>).
 /// </summary>
 public partial class TownVillagers : Node3D
 {
@@ -19,7 +22,15 @@ public partial class TownVillagers : Node3D
     public float WalkerScale = 1f;
 
     private TownDriver _drv = null!;
-    private MultiMeshInstance3D _bodies = null!;
+    private MultiMeshInstance3D _bodies = null!, _heads = null!, _shadows = null!;
+    /// <summary>Light clothes colours, chosen by villager id.</summary>
+    public static readonly Color[] Clothes =
+    {
+        Color.FromHtml("#E9DFC6"), Color.FromHtml("#C9DCE6"), Color.FromHtml("#E6B9A6"),
+        Color.FromHtml("#CFDDB0"), Color.FromHtml("#F0D58A"), Color.FromHtml("#D9C4E0"),
+    };
+    /// <summary>The model's height in metres (before <see cref="WalkerScale"/>), for tests.</summary>
+    public float ModelHeight { get; private set; } = 2.6f;
     private readonly MultiMeshInstance3D[] _loads = new MultiMeshInstance3D[4];
     private readonly int[] _loadCount = new int[4];
     private float[] _x = new float[Capacity], _y = new float[Capacity], _yaw = new float[Capacity], _phase = new float[Capacity];
@@ -44,8 +55,36 @@ public partial class TownVillagers : Node3D
     {
         _drv = drv;
         Name = "Villagers";
+        bool parts = ModelLib.HasPart("villager", "body") && ModelLib.HasPart("villager", "head");
         _bodies = ModelLib.Multi("villager", "Bodies", Capacity);
+        if (parts)
+        {
+            var body = ModelLib.Part("villager", "body");
+            var src = ModelLib.Mesh("villager").SurfaceGetMaterial(0) as StandardMaterial3D;
+            var dyed = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/villager.gdshader") };
+            dyed.SetShaderParameter("palette", src?.AlbedoTexture);
+            body.SurfaceSetMaterial(0, dyed);
+            _bodies.Multimesh.InstanceCount = 0;
+            _bodies.Multimesh.UseColors = true;
+            _bodies.Multimesh.Mesh = body;
+            _bodies.Multimesh.InstanceCount = Capacity;
+            for (int i = 0; i < Capacity; i++) _bodies.Multimesh.SetInstanceColor(i, Clothes[i % Clothes.Length]);
+            _heads = new MultiMeshInstance3D
+            {
+                Name = "Heads",
+                Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = SoftInk(ModelLib.Part("villager", "head")) },
+            };
+            AddChild(_heads);
+        }
+        ModelHeight = Math.Max(0.5f, ModelLib.Mesh("villager").GetAabb().End.Y);
         AddChild(_bodies);
+        _shadows = new MultiMeshInstance3D
+        {
+            Name = "Shadows",
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = ShadowDisc() },
+        };
+        AddChild(_shadows);
         for (int g = 1; g <= 3; g++)
         {
             _loads[g] = ModelLib.Multi(LoadModel((Good)g), "Load" + (Good)g, Capacity);
@@ -73,6 +112,7 @@ public partial class TownVillagers : Node3D
         {
             var v = t.Villager(i);
             float tx = (float)(v.PrevX + (v.X - v.PrevX) * a), ty = (float)(v.PrevY + (v.Y - v.PrevY) * a);
+            Spread(v, ref tx, ref ty);
             if (!_seen[i]) { _x[i] = tx; _y[i] = ty; _yaw[i] = HeadingYaw(v.Heading); _seen[i] = true; }
             float dx = tx - _x[i], dy = ty - _y[i], d = MathF.Sqrt(dx * dx + dy * dy);
             if (d > SnapCells) { _x[i] = tx; _y[i] = ty; d = 0; }
@@ -87,7 +127,10 @@ public partial class TownVillagers : Node3D
             float bob = moving ? MathF.Abs(MathF.Sin(_phase[i])) * 0.12f * WalkerScale : 0f;
             var basis = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale);
             var pos = new Vector3(_x[i] * Cell, bob, _y[i] * Cell);
-            bodies.SetInstanceTransform(i, new Transform3D(basis, pos));
+            var xf = new Transform3D(basis, pos);
+            bodies.SetInstanceTransform(i, xf);
+            _heads?.Multimesh.SetInstanceTransform(i, xf);
+            _shadows.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * WalkerScale * (1f - bob * 0.6f)), new Vector3(pos.X, 0.04f, pos.Z)));
             if (v.Carry != Good.None && (int)v.Carry < 4)
             {
                 int g = (int)v.Carry;
@@ -97,12 +140,82 @@ public partial class TownVillagers : Node3D
             }
         }
         bodies.VisibleInstanceCount = n;
+        if (_heads != null) _heads.Multimesh.VisibleInstanceCount = n;
+        _shadows.Multimesh.VisibleInstanceCount = n;
         int loads = 0;
         for (int g = 1; g <= 3; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
         Drawn = n;
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
         MaxSideways = maxSide;
+    }
+
+    /// <summary>
+    /// Fans out villagers that the simulation stands on one spot: those queueing step back along their facing, one
+    /// place each; those working stand on a small ring round the door, spaced by id (the golden angle). Cells.
+    /// </summary>
+    public static void Spread(in VillagerView v, ref float x, ref float y)
+    {
+        if (v.Phase == VillagerPhase.Queued && v.QueuePosition >= 0)
+        {
+            float k = 0.75f * (v.QueuePosition + 1);
+            x -= MathF.Cos((float)v.Heading) * k;
+            y -= MathF.Sin((float)v.Heading) * k;
+        }
+        else if (v.Phase == VillagerPhase.Working)
+        {
+            float ang = v.Id * 2.39996f, r = 0.55f + 0.25f * (v.Id % 3);
+            x += MathF.Cos(ang) * r;
+            y += MathF.Sin(ang) * r;
+        }
+    }
+
+    /// <summary>A copy of the mesh whose material marks it for soft ink (as trees are), so small figures stay light.</summary>
+    private static ArrayMesh SoftInk(ArrayMesh src)
+    {
+        var mesh = (ArrayMesh)src.Duplicate();
+        if (mesh.SurfaceGetMaterial(0) is StandardMaterial3D m)
+        {
+            var c = (StandardMaterial3D)m.Duplicate();
+            c.StencilMode = BaseMaterial3D.StencilModeEnum.Custom;
+            c.StencilFlags = 2;
+            c.StencilCompare = BaseMaterial3D.StencilCompareEnum.Always;
+            c.StencilReference = 1;
+            mesh.SurfaceSetMaterial(0, c);
+        }
+        return mesh;
+    }
+
+    /// <summary>A soft round shadow: a flat disc, dark in the middle and clear at the rim (vertex alpha).</summary>
+    private static ArrayMesh ShadowDisc()
+    {
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        const int seg = 20;
+        float r0 = 0.45f, r1 = 0.95f;
+        var dark = new Color(0.10f, 0.09f, 0.06f, 0.34f);
+        var clear = new Color(0.10f, 0.09f, 0.06f, 0f);
+        for (int i = 0; i < seg; i++)
+        {
+            float a0 = i * MathF.Tau / seg, a1 = (i + 1) * MathF.Tau / seg;
+            var p0 = new Vector3(MathF.Cos(a0), 0, MathF.Sin(a0));
+            var p1 = new Vector3(MathF.Cos(a1), 0, MathF.Sin(a1));
+            st.SetColor(dark); st.AddVertex(Vector3.Zero); st.AddVertex(p1 * r0); st.AddVertex(p0 * r0);
+            st.SetColor(dark); st.AddVertex(p0 * r0); st.AddVertex(p1 * r0);
+            st.SetColor(clear); st.AddVertex(p1 * r1);
+            st.SetColor(dark); st.AddVertex(p0 * r0);
+            st.SetColor(clear); st.AddVertex(p1 * r1); st.AddVertex(p0 * r1);
+        }
+        var mesh = st.Commit();
+        mesh.SurfaceSetMaterial(0, new StandardMaterial3D
+        {
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            VertexColorUseAsAlbedo = true,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+            NoDepthTest = false,
+        });
+        return mesh;
     }
 
     /// <summary>Yaw turning the model's front (+Z) along a map heading (atan2(dy, dx), y south).</summary>

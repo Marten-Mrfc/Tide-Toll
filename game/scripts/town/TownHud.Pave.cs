@@ -29,7 +29,12 @@ public partial class TownHud
             _paveMat = Palette.Unlit(new Color(UiKit.Focus, 0.55f), transparent: true);
             _paveMat.VertexColorUseAsAlbedo = true;
             _paveMat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
-            _paveMat.NoDepthTest = true;
+            // Each pixel lit once (stencil): where bands overlap at a join they no longer stack into darker blotches.
+            // Depth tested, so under the tilt a building in front hides the band behind it.
+            _paveMat.StencilMode = BaseMaterial3D.StencilModeEnum.Custom;
+            _paveMat.StencilFlags = 3; // read and write
+            _paveMat.StencilCompare = BaseMaterial3D.StencilCompareEnum.NotEqual;
+            _paveMat.StencilReference = 2;
             _paveMesh = new MeshInstance3D { Name = "PaveOverlay", Mesh = _paveIm, MaterialOverride = _paveMat, Visible = false,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
             _main.MapOrigin.AddChild(_paveMesh);
@@ -175,11 +180,15 @@ public partial class TownHud
         int lit = 0;
         _paveIm.SurfaceBegin(Mesh.PrimitiveType.Triangles);
         bool any = false;
+        // The hovered road first, then the suggestion, then the rest: with the stencil the first band drawn wins a pixel.
+        for (int pass = 0; pass < 3; pass++)
         for (int r = 0; r < t.RoadCount; r++)
         {
+            int want = r == HoverRoad ? 0 : r == sug ? 1 : 2;
+            if (want != pass) continue;
             if (!t.RoadOpen(r) || !t.CanPave(r, out _)) continue;
             var c = r == HoverRoad ? new Color(UiKit.Focus, 0.85f) : r == sug ? new Color(UiKit.Focus.Lerp(Colors.White, 0.2f), 0.7f) : new Color(UiKit.Focus, 0.42f);
-            Band(t.Plan.Roads[r], r == HoverRoad ? 1.0f : 0.75f, c);
+            Band(t.Plan.Roads[r], r == HoverRoad ? 0.85f : 0.6f, c);
             lit++;
             any = true;
         }

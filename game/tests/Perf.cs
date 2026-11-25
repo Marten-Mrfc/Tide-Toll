@@ -12,13 +12,19 @@ namespace TideToll.Game.Tests;
 /// --fixed-fps 60 so every frame advances 1/60 s of real time. Measured from the first process callback of a frame to
 /// the last (two probe nodes at the extreme process priorities), 600 frames at 1x and 600 at 8x after a warm-up.
 /// The budget is the old game's: mean under 6 ms at 1x and 10 ms at 8x. The worst frame and the bytes allocated per
-/// frame are printed for information (the interface builds its strings once a frame; the simulation itself allocates
-/// nothing, which the simulation's own tests check).
+/// frame are gated too (<see cref="AllocGate1x"/>, <see cref="AllocGate8x"/>; the simulation itself allocates nothing,
+/// which the simulation's own tests check).
 /// </summary>
 public partial class Perf : TownTestBase
 {
     protected override string Marker => "PERF PASS";
     public const double Budget1x = 6, Budget8x = 10;
+    /// <summary>
+    /// Allocation gates, managed bytes per frame (round 2). Measured with the interface rebuilding text only when a value
+    /// changes: about 1.1 KB at 1x (the same with the interface switched off: the rest is the engine glue and this test's
+    /// own awaits) and about 3.4 KB at 8x, where coin, floaters and bookmark prices change nearly every frame.
+    /// </summary>
+    public const long AllocGate1x = 1536, AllocGate8x = 6144;
 
     private partial class Probe : Node
     {
@@ -68,11 +74,19 @@ public partial class Perf : TownTestBase
             }
             long alloc = GC.GetTotalAllocatedBytes(false) - alloc0;
             double mean = sum / n;
-            bool pass = mean < budget;
+            long perFrame = alloc / n, gate = speed > 1 ? AllocGate8x : AllocGate1x;
+            bool pass = mean < budget && perFrame < gate;
             ok &= pass;
-            GD.Print($"PERF town {town.VillagerCount} villagers {speed:0}x: cpu ms/frame mean {mean:0.000} worst {worst:0.00} (gate mean < {budget}) {(pass ? "ok" : "OVER")}; game s {town.Time - t0:0.0}; bytes/frame {alloc / n}");
+            GD.Print($"PERF town {town.VillagerCount} villagers {speed:0}x: cpu ms/frame mean {mean:0.000} worst {worst:0.00} (gate mean < {budget}) {(pass ? "ok" : "OVER")}; game s {town.Time - t0:0.0}; bytes/frame {perFrame} (gate < {gate})");
         }
+        // For information: the same at 8x with the interface switched off, to show what the interface costs.
+        Main.Hud.ProcessMode = ProcessModeEnum.Disabled;
+        await Frames(30);
+        long a0 = GC.GetTotalAllocatedBytes(false);
+        for (int i = 0; i < 300; i++) await Frames(1);
+        GD.Print($"PERF 8x without the interface: bytes/frame {(GC.GetTotalAllocatedBytes(false) - a0) / 300} (information)");
+        Main.Hud.ProcessMode = ProcessModeEnum.Inherit;
         GD.Print($"PERF bot to the charter: {botMs:0} ms CPU for {ticks} ticks, level {town.Level}, {town.VillagerCount} villagers, {town.RoadsPaved} roads paved");
-        Check(ok, "CPU time per frame over budget");
+        Check(ok, "CPU time or allocation per frame over budget");
     }
 }

@@ -45,7 +45,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ## Checks
 
 ```
-./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-perf, screenshots, ledger
+./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-perf, game-book (the zoom), screenshots, ledger
 ./check --gate          # gate tables, comparison with the toy, 45-day traces, preview agreement (~6 min)
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
@@ -61,7 +61,11 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 ## Game tests
 
-`game/tests/`: `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+`game/tests/`: `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+
+## The view (round 2)
+
+The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, straight down from the whole page out); everything that maps screen to ground goes through `CameraRig.PickLocal` / `LocalToScreen` (ray to the ground plane), never through `Camera.Size` alone. `Main.Stage` (Town, Page, Book) drives the interface: full, slim strip, and the summary on the left page (`TownSummary`). Interface text is rebuilt only when its value changes; `game-perf` gates allocation per frame.
 
 ## Assets
 

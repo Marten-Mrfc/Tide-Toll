@@ -17,6 +17,8 @@ public partial class TownHud
     private readonly List<ShopItem> _items = new();
     private readonly List<ShopItem> _shown = new();
     private Button _bell = null!, _nextAge = null!;
+    private int[] _markSig = Array.Empty<int>();
+    private int _bellKey = int.MinValue;
     private float _shopClock;
 
     /// <summary>The bookmark button for a shop item kind (first one; tests), or null.</summary>
@@ -57,6 +59,8 @@ public partial class TownHud
         _shop.AddChild(head);
         _marks.Clear();
         _shown.Clear();
+        _markSig = Array.Empty<int>();
+        _bellKey = int.MinValue;
 
         _bell = MakeButton("Bell", "ui-bell", "ui-sound-on");
         _bell.Pressed += RingBell;
@@ -64,6 +68,7 @@ public partial class TownHud
         _nextAge = MakeButton("NextAge", "ui-achievement", "ui-reputation");
         _nextAge.Pressed += () => _drv.Town.RingNextAge();
         _nextAge.Visible = false;
+        _nextAge.Text = "Ring in the next age   [N]\nThe charter is yours";
         _root.AddChild(_nextAge);
     }
 
@@ -150,17 +155,24 @@ public partial class TownHud
         }
         _shown.Clear();
         _shown.AddRange(_items);
+        if (_markSig.Length != _items.Count) { _markSig = new int[_items.Count]; for (int j = 0; j < _markSig.Length; j++) _markSig[j] = int.MinValue; }
         for (int i = 0; i < _items.Count; i++)
         {
             var it = _items[i];
             var b = _marks[i];
+            // Rebuild the bookmark's text only when something it shows changed (round 2: no strings per frame).
+            long need = it.Reason == "Not enough coin" ? (long)Math.Floor(Math.Max(1, it.Price - t.Coin)) : 0;
+            int sig = HashCode.Combine((int)it.Kind, it.Level, (long)Math.Floor(it.Price), it.Affordable, it.Reason, need, PaveMode, it.Index < 0);
+            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId());
+            if (sig == _markSig[i]) continue;
+            _markSig[i] = sig;
             string lvl = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load ? $", level {it.Level}" : "";
             string price = it.Kind == ShopItemKind.Pave && it.Index < 0 ? "" : Money(it.Price) + " coin";
             string state;
             if (it.Kind == ShopItemKind.Pave)
                 state = it.Reason.Length > 0 && it.Reason != "Not enough coin" ? it.Reason : PaveMode ? "Pick a road. P to stop" : "Pave a road";
             else if (it.Affordable) state = "Buy";
-            else if (it.Reason == "Not enough coin") state = $"Need {Money(Math.Max(1, it.Price - t.Coin))} more";
+            else if (it.Reason == "Not enough coin") state = $"Need {Money(need)} more";
             else state = it.Reason.Length > 0 ? it.Reason : "Not yet";
             string name = it.Kind == ShopItemKind.Pave ? "Pave" : it.Name;
             b.Text = $"{name}{lvl}   [{KeyFor(it.Kind)}]\n{(price.Length > 0 ? price + ": " : "")}{state}";
@@ -186,17 +198,21 @@ public partial class TownHud
     {
         var t = _drv.Town;
         bool unlocked = t.Level >= 2 || t.BellRings > 0 || t.BellReady || t.BellWait > 0;
-        string state = !unlocked ? "Comes at level 2" : t.BellRinging ? "Ringing: everyone hurries" : t.BellReady ? "Ring it" : $"Rests {Math.Ceiling(t.BellWait)} s";
-        _bell.Text = $"The bell   [Space]\n{state}";
+        int key = !unlocked ? -1 : t.BellRinging ? -2 : t.BellReady ? -3 : (int)Math.Ceiling(t.BellWait);
+        if (key != _bellKey)
+        {
+            _bellKey = key;
+            string state = key == -1 ? "Comes at level 2" : key == -2 ? "Ringing: everyone hurries" : key == -3 ? "Ring it" : $"Rests {key} s";
+            _bell.Text = $"The bell   [Space]\n{state}";
+            _bell.TooltipText = "Ring the bell: everyone hurries for a few seconds, then it rests.";
+        }
         _bell.Disabled = !t.BellReady;
-        _bell.TooltipText = "Ring the bell: everyone hurries for a few seconds, then it rests.";
         _bell.Size = new Vector2(UiKit.Px(_s, 250), 0);
         _bell.ResetSize();
         _bell.Position = new Vector2(UiKit.Px(_s, 16), vp.Y - _bell.Size.Y - UiKit.Px(_s, 16));
-        _nextAge.Visible = t.CanRingNextAge;
+        _nextAge.Visible = t.CanRingNextAge && _fullA > 0.01f;
         if (_nextAge.Visible)
         {
-            _nextAge.Text = "Ring in the next age   [N]\nThe charter is yours";
             _nextAge.ResetSize();
             _nextAge.Position = new Vector2(UiKit.Px(_s, 16), _bell.Position.Y - _nextAge.Size.Y - UiKit.Px(_s, 8));
         }

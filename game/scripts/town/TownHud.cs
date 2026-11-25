@@ -29,6 +29,7 @@ public partial class TownHud : CanvasLayer
     private VBoxContainer _notes = null!;
     private readonly List<(Label label, float age)> _noteList = new();
     private Control _floatLayer = null!;
+    private Control? _ledger;
     private readonly Label[] _floaters = new Label[MaxFloaters];
     private readonly Vector3[] _floatAt = new Vector3[MaxFloaters];
     private readonly float[] _floatAge = new float[MaxFloaters];
@@ -97,6 +98,9 @@ public partial class TownHud : CanvasLayer
         _noteList.Clear();
         BuildShop();
         BuildPave();
+        BuildSlim();
+        _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer };
+        _fullA = -1f;
         Refresh();
     }
 
@@ -109,6 +113,7 @@ public partial class TownHud : CanvasLayer
         card.Position = new Vector2(UiKit.Px(_s, 16), UiKit.Px(_s, 14));
         card.CustomMinimumSize = new Vector2(UiKit.Px(_s, 330), 0);
         _root.AddChild(card);
+        _ledger = card;
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         col.AddThemeConstantOverride("separation", UiKit.Px(_s, 3));
         card.AddChild(col);
@@ -152,6 +157,7 @@ public partial class TownHud : CanvasLayer
         var vp = GetViewport().GetVisibleRect().Size;
         if (vp != _built && vp.Y > 1) Build();
         foreach (var e in _drv.Events) OnEvent(e);
+        StageFrame((float)delta);
         Refresh();
         StepNotes((float)delta);
         StepFloaters((float)delta);
@@ -159,19 +165,93 @@ public partial class TownHud : CanvasLayer
         PaveFrame();
     }
 
+    // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
+    private long _shownCoin = -1, _shownRate = -1, _shownRenown = -1, _shownNextRenown = -1;
+    private int _shownLevel = -1;
+    private bool _shownRung;
+
     private void Refresh()
     {
         var t = _drv.Town;
-        _coin.Text = Money(t.Coin) + " coin";
-        _rate.Text = Money(t.CoinPerMinute) + " a minute";
-        _level.Text = t.Level >= t.MaxLevel ? $"Level {t.Level}, the last" : $"Level {t.Level} of {t.MaxLevel}";
+        long coin = (long)Math.Floor(t.Coin), rate = (long)Math.Floor(t.CoinPerMinute);
+        bool coinChanged = coin != _shownCoin;
+        if (coinChanged) { _shownCoin = coin; _coin.Text = Money(coin) + " coin"; }
+        if (rate != _shownRate) { _shownRate = rate; _rate.Text = Money(rate) + " a minute"; }
+        bool levelChanged = t.Level != _shownLevel || t.NextAgeRung != _shownRung;
+        if (levelChanged)
+        {
+            _shownLevel = t.Level; _shownRung = t.NextAgeRung;
+            _level.Text = t.Level >= t.MaxLevel ? $"Level {t.Level}, the last" : $"Level {t.Level} of {t.MaxLevel}";
+            _next.Text = t.NextGift;
+        }
         float bar = (float)Math.Clamp(t.LevelBar, 0, 1);
         var sz = _barBack.Size;
         _barFill.Position = new Vector2(1, 1);
         _barFill.Size = new Vector2(Math.Max(0, (sz.X - 2) * bar), Math.Max(0, sz.Y - 2));
-        _renown.Text = t.Level >= t.MaxLevel ? $"Renown {Money(t.Renown)}" : $"Renown {Money(t.Renown)} of {Money(t.NextLevelRenown)}";
-        _next.Text = t.NextGift;
+        long renown = (long)Math.Floor(t.Renown), nextRenown = t.Level >= t.MaxLevel ? -1 : (long)Math.Floor(t.NextLevelRenown);
+        if (renown != _shownRenown || nextRenown != _shownNextRenown)
+        {
+            _shownRenown = renown; _shownNextRenown = nextRenown;
+            _renown.Text = nextRenown < 0 ? $"Renown {Money(renown)}" : $"Renown {Money(renown)} of {Money(nextRenown)}";
+        }
+        if (coinChanged || levelChanged) _slimText.Text = $"{Money(coin)} coin   Level {t.Level} of {t.MaxLevel}";
     }
+
+    // ------------------------------------------------------------------ zoom stages
+
+    private PanelContainer _slim = null!;
+    private Label _slimText = null!;
+    private float _fullA = 1f;
+    private bool _scrollHintShown;
+    /// <summary>Opacity of the full interface (1 zoomed in, 0 once the page is in view) and whether the slim strip shows.</summary>
+    public float FullAlpha => _fullA;
+    public bool SlimVisible => _slim.Visible;
+    public string SlimText => _slimText.Text;
+    /// <summary>Game seconds after which the one-time hint to scroll out appears, if the player has not zoomed out yet.</summary>
+    public const double ScrollHintAt = 75;
+    public const string ScrollHint = "Scroll out to see the whole book.";
+
+    private void BuildSlim()
+    {
+        _slim = new PanelContainer { Name = "Slim", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        var box = UiKit.Card(_s, new Color(UiKit.Paper, 0.94f), 1.2f);
+        box.SetContentMarginAll(UiKit.Px(_s, 6));
+        box.ContentMarginLeft = box.ContentMarginRight = UiKit.Px(_s, 14);
+        _slim.AddThemeStyleboxOverride("panel", box);
+        _slimText = UiKit.Text("", _s, 18, UiKit.UiBold);
+        _slim.AddChild(_slimText);
+        _root.AddChild(_slim);
+        _shownCoin = -1; _shownRate = -1; _shownRenown = -1; _shownNextRenown = -1; _shownLevel = -1;
+    }
+
+    /// <summary>
+    /// The interface follows the zoom: complete while zoomed in on the town; as the whole page comes into view it fades
+    /// to a slim strip (coin and level) at the top; with the book in view the left page carries the summary.
+    /// </summary>
+    private void StageFrame(float dt)
+    {
+        var rig = _main.Rig;
+        float size = rig.Camera.Size, slim = _main.SlimSize, fade = slim * 0.12f;
+        float a = Math.Clamp((slim - size) / fade, 0f, 1f);
+        if (a != _fullA)
+        {
+            _fullA = a;
+            var m = new Color(1, 1, 1, a);
+            bool vis = a > 0.01f;
+            foreach (var c in _fullParts) { if (c == null || !IsInstanceValid(c)) continue; c.Modulate = m; c.Visible = vis; }
+        }
+        _slim.Visible = a < 1f;
+        if (_slim.Visible)
+        {
+            _slim.Modulate = new Color(1, 1, 1, 1f - a);
+            _slim.ResetSize();
+            _slim.Position = new Vector2((_built.X - _slim.Size.X) / 2f, UiKit.Px(_s, 10));
+        }
+        if (!_scrollHintShown && size >= slim) _scrollHintShown = true; // found it alone: no hint needed
+        if (!_scrollHintShown && _drv.Town.Time >= ScrollHintAt) { _scrollHintShown = true; Note(ScrollHint); }
+    }
+
+    private Control?[] _fullParts = Array.Empty<Control?>();
 
     // ------------------------------------------------------------------ notes
 
@@ -206,7 +286,7 @@ public partial class TownHud : CanvasLayer
 
     private void StepNotes(float dt)
     {
-        _notes.Position = new Vector2(UiKit.Px(_s, 16), (_root.GetNodeOrNull<Control>("Ledger")?.GetRect().End.Y ?? 180) + UiKit.Px(_s, 10));
+        _notes.Position = new Vector2(UiKit.Px(_s, 16), (_ledger != null ? _ledger.GetRect().End.Y : 180) + UiKit.Px(_s, 10));
         for (int i = _noteList.Count - 1; i >= 0; i--)
         {
             var (l, age) = _noteList[i];

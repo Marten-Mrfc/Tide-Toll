@@ -118,10 +118,14 @@ if have_godot; then
   note "$(grep -o 'TOWN PASS.*' "$LOGS/game-town.log" | head -1 | sed 's/TOWN PASS //' | cut -c1-90)"
   # CPU time per frame with the end-of-age town (the simulation's best-payback bot plays to the charter), at 1x and 8x,
   # interface and sound running (no rendering headless); --fixed-fps 60 gives every frame 1/60 s. Fails above 6 ms (1x)
-  # or 10 ms (8x) mean, the old game's budget.
+  # or 10 ms (8x) mean, the old game's budget, or above 1536 (1x) or 6144 (8x) managed bytes allocated per frame.
   step game-perf tools/godot-test.sh 'PERF PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/perf.tscn --quit-after 20000
   note "$(grep -o 'PERF town [0-9]* villagers [0-9]x: cpu ms/frame mean [0-9.]*' "$LOGS/game-perf.log" | sed 's/PERF town [0-9]* villagers //; s/cpu ms\/frame mean/mean/' | tr '\n' ' ')ms"
   grep '^PERF' "$LOGS/game-perf.log" | sed 's/^/   /'
+  # The zoom from the tilted town out to the whole book by wheel notches (pitch, interface stages, the summary page
+  # against the simulation, Home), a Pave click while tilted and a villager's height on screen, at 1920 x 1080.
+  step game-book tools/godot-test.sh 'BOOK PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/book.tscn --quit-after 100000
+  note "$(grep -o 'BOOK PASS.*' "$LOGS/game-book.log" | head -1 | sed 's/BOOK PASS //' | cut -c1-90)"
   if [ "$SHOT" = 0 ]; then
     skip screenshot "--no-screenshot"
   elif ! command -v xvfb-run >/dev/null 2>&1; then
@@ -130,10 +134,10 @@ if have_godot; then
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display, at 1920 x 1080: the first
     # minute, the first purchase, level 3, Pave mode and the end of the age (build/screenshots/town-*-1920x1080.png).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
-    note "build/screenshots/town-{first-minute,first-purchase,level-3,pave,end-of-age}-1920x1080.png"
+    note "build/screenshots/town-{first-minute,first-purchase,level-3,pave,level-6,end-of-age,zoom-1..4,summary}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-perf screenshot; do
+  for s in game-build game-smoke game-town game-perf game-book screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

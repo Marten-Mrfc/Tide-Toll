@@ -1,0 +1,157 @@
+using System;
+using System.Text;
+using Godot;
+using TideToll.Sim.Town;
+
+namespace TideToll.Game;
+
+/// <summary>
+/// The left page of the book as the town's summary, printed in the book's fonts (Uncial Antiqua for the name, Alegreya
+/// for the rest): the town's name (made from the seed), the age and level, then villagers, cottages, roads and how many
+/// are paved, coin earned in all, trips, time in the town, the next gift and achievements. Label3Ds lying on the page,
+/// so it is part of the book at every zoom. Rewritten twice a second while the page can be seen, and only when a value
+/// changed (no allocation otherwise).
+/// </summary>
+public partial class TownSummary : Node3D
+{
+    private TownDriver _drv = null!;
+    private Label3D _name = null!, _sub = null!, _keys = null!, _vals = null!, _next = null!;
+    private double _clock = 1e9;
+    private readonly StringBuilder _sb = new(256);
+    private string _lastVals = "";
+    /// <summary>Set by Main: whether the left page can be seen (skips the work when it cannot).</summary>
+    public bool Watched = true;
+    public int Rewrites { get; private set; }
+
+    public static readonly string[] Rows = { "Villagers", "Cottages", "Roads", "Paved roads", "Coin earned", "Trips", "Time in the town", "Achievements" };
+
+    public void Init(Node3D leftPage, TownDriver drv)
+    {
+        _drv = drv;
+        Name = "Summary";
+        leftPage.AddChild(this);
+        _name = BookBuilder.AddLabel(this, "TownName", "", new Vector3(0, 0.1f, -128), 1300, Palette.Ink, UiKit.Display);
+        _sub = BookBuilder.AddLabel(this, "Age", "", new Vector3(0, 0.1f, -108), 720, Palette.FadedInk, UiKit.Serif);
+        _keys = BookBuilder.AddLabel(this, "Keys", string.Join("\n", Rows), new Vector3(-112, 0.1f, -10), 760, Palette.Ink, UiKit.Serif);
+        _keys.HorizontalAlignment = HorizontalAlignment.Left;
+        _keys.LineSpacing = 18f;
+        _vals = BookBuilder.AddLabel(this, "Values", "", new Vector3(112, 0.1f, -10), 760, Palette.Ink, UiKit.Serif);
+        _vals.HorizontalAlignment = HorizontalAlignment.Right;
+        _vals.LineSpacing = 18f;
+        _next = BookBuilder.AddLabel(this, "Next", "", new Vector3(0, 0.1f, 98), 680, Palette.FadedInk, UiKit.Serif);
+        _next.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _next.Width = 2600;
+        drv.Replaced += Force;
+        Force();
+    }
+
+    public override void _ExitTree() { if (_drv != null) _drv.Replaced -= Force; }
+
+    private void Force() { _clock = 1e9; _lastVals = ""; if (_name != null) _name.Text = TownName.Of(_drv.Town.Seed); }
+
+    public string NameText => _name.Text;
+    public string AgeText => _sub.Text;
+    public string ValuesText => _vals.Text;
+    public string NextText => _next.Text;
+
+    public override void _Process(double delta)
+    {
+        _clock += delta;
+        if (!Watched || _clock < 0.5) return;
+        _clock = 0;
+        var t = _drv.Town;
+        _sb.Clear();
+        _sb.Append("The first age, level ").Append(t.Level).Append(" of ").Append(t.MaxLevel);
+        if (!Same(_sb, _sub.Text)) _sub.Text = _sb.ToString();
+        _sb.Clear();
+        var v = Values(t);
+        for (int i = 0; i < v.Length; i++) { if (i > 0) _sb.Append('\n'); _sb.Append(v[i]); }
+        if (!Same(_sb, _lastVals)) { _lastVals = _sb.ToString(); _vals.Text = _lastVals; Rewrites++; }
+        if (t.Level != _nextLevel || t.NextAgeRung != _nextRung) { _nextLevel = t.Level; _nextRung = t.NextAgeRung; _next.Text = t.NextGift; }
+    }
+
+    private int _nextLevel = -1;
+    private bool _nextRung;
+    private readonly string[] _v = new string[8];
+    private readonly long[] _num = new long[8];
+
+    /// <summary>The values column, row by row (cached strings: rebuilt only for numbers that changed).</summary>
+    private string[] Values(Town t)
+    {
+        long mins = (long)(t.Time / 60.0);
+        Set(0, t.VillagerCount, null);
+        Set(1, Cottages(t), null);
+        Set(2, OpenRoads(t), null);
+        Set(3, t.CountPaved(), null);
+        Set(4, (long)Math.Floor(t.CoinEarned), "coin");
+        Set(5, t.Trips, null);
+        Set(6, mins, "time");
+        Set(7, Achieved(t), "ach");
+        return _v;
+    }
+
+    private void Set(int i, long n, string? kind)
+    {
+        if (_v[i] != null && _num[i] == n) return;
+        _num[i] = n;
+        _v[i] = kind switch
+        {
+            "coin" => TownHud.Money(n),
+            "time" => n >= 60 ? $"{n / 60} h {n % 60:00} min" : $"{n} min",
+            "ach" => $"{n} of {TownAchievementsCount(_drv.Town)}",
+            _ => n.ToString(TownHud.Inv),
+        };
+    }
+
+    private static int TownAchievementsCount(Town t) => t.AchievementCount;
+
+    public static int Cottages(Town t)
+    {
+        int n = 0;
+        foreach (var p in t.Plan.Plots) if (p.Kind == PlotKind.Cottage && t.PlotGiven(p.Id)) n++;
+        return n;
+    }
+
+    public static int OpenRoads(Town t)
+    {
+        int n = 0;
+        for (int r = 0; r < t.RoadCount; r++) if (t.RoadOpen(r)) n++;
+        return n;
+    }
+
+    public static int Achieved(Town t)
+    {
+        int n = 0;
+        for (int i = 0; i < t.AchievementCount; i++) if (t.Achievement(i).Unlocked) n++;
+        return n;
+    }
+
+    private static bool Same(StringBuilder sb, string s)
+    {
+        if (sb.Length != s.Length) return false;
+        for (int i = 0; i < s.Length; i++) if (sb[i] != s[i]) return false;
+        return true;
+    }
+}
+
+/// <summary>A plain village name made from the seed out of a small table of syllables (Ashford, Elmley, Thornby...).</summary>
+public static class TownName
+{
+    private static readonly string[] Heads =
+    {
+        "Ash", "Brook", "Cold", "Elm", "Fen", "Hol", "Kings", "Lang", "Mar", "Nether", "Oak", "Red", "Stan", "Thorn", "Wick", "Wood",
+        "Bar", "Chal", "Dun", "Hart",
+    };
+    private static readonly string[] Tails = { "ford", "ham", "ley", "ton", "by", "field", "wick", "bury", "stead", "combe", "worth", "well", "thorpe", "brook" };
+
+    public static string Of(int seed)
+    {
+        uint h = (uint)seed * 2654435761u;
+        h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
+        string a = Heads[h % (uint)Heads.Length], b = Tails[(h / (uint)Heads.Length) % (uint)Tails.Length];
+        // Avoid a doubled letter at the join reading oddly (Brookbrook, Thornthorpe).
+        if (a.EndsWith(b.Substring(0, 1), StringComparison.OrdinalIgnoreCase) && a.Length > 3) b = Tails[(h / 7u) % (uint)Tails.Length];
+        if (a.ToLowerInvariant() == b) b = "ton";
+        return a + b;
+    }
+}

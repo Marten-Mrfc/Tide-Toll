@@ -18,7 +18,7 @@ A town that grows one path at a time. Villagers walk the roads and earn coin on 
 
 An incremental town on the right-hand page of an open book (the design: [docs/plans/incremental-design.md](docs/plans/incremental-design.md)). It starts with one cottage, the well, one faint trail and one villager. Every finished trip earns coin (a "+N" floats up at the door). Coin buys upgrades from the bookmarks on the right: a villager, pace, load, paving and buildings, each with its price and either "Buy" or the reason it must wait. Every purchase adds renown; each level hands over the next piece of town by itself (a cottage and its lane, the bell on its green, a field, the market, the mill, the charter), staked out in advance and popping in with a margin note and a bell. Roads start as faint trails that wear in visibly; worn-in roads can be paved with gravel and later cobbles (P, then click a lit road; the busiest is suggested); crowded roads take a warm wash. The bell (Space) hurries everyone for a few seconds, then rests.
 
-Run it with `godot --path game` (`-- --seed=N` for another town), or the Windows build (see below). The camera starts on the town and follows it as it grows until you move it: drag, WASD or the arrow keys to move, the wheel to zoom (up to the whole page), Home to follow the town again. The old desire-line game (two chapters, fences, gates, gravel, crossings) is kept for reference in `game/legacy/` and is not built.
+Run it with `godot --path game` (`-- --seed=N` for another town), or the Windows build (see below). The camera starts on the town and follows it as it grows until you move it: drag, WASD or the arrow keys to move, the wheel (or + and -) to zoom: close in the camera looks at the town at a slant, and zooming out it flattens to the whole page and then the whole open book, whose left page shows the town's summary. Home goes back to following the town. The old desire-line game (two chapters, fences, gates, gravel, crossings) is kept for reference in `game/legacy/` and is not built.
 
 Sound: coins, purchases, a long bell for a new level, the bell, footsteps, the river and the theme now and then.
 
@@ -34,7 +34,7 @@ Then, from the repository root:
 
 ```
 ./check                 # sim build + tests, Godot build, the town's smoke, play-through (real input) and perf tests,
-                        # screenshots at 1920x1080, ledger
+                        # the zoom to the book (game-book), screenshots at 1920x1080, ledger
 ./check --export        # also build the Windows x86_64 export into build/windows/ and check the pack holds every asset
 ./check --gate          # also the long statistical runs (gate tables, toy comparison, ~6 min)
 ./check --bench         # also the simulation tick benchmark
@@ -42,7 +42,7 @@ Then, from the repository root:
 ./check --no-screenshot # skip the rendered screenshots (no xvfb)
 ```
 
-It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`town-first-minute`, `town-first-purchase`, `town-level-3`, `town-pave`, `town-end-of-age`, at 1920x1080).
+It prints a summary table and exits non-zero if anything fails. Logs go to `build/check-logs/`, screenshots to `build/screenshots/` (`town-first-minute`, `town-first-purchase`, `town-level-3`, `town-pave`, `town-level-6`, `town-end-of-age`, `town-zoom-1` to `town-zoom-4`, `town-summary`, at 1920x1080).
 
 | Step | What it proves |
 | --- | --- |

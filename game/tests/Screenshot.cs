@@ -9,7 +9,8 @@ namespace TideToll.Game.Tests;
 /// Screenshots of the town at the window's size (run under xvfb with --resolution): the first minute, the first
 /// purchase (bought through its bookmark), level 3, Pave mode with a road hovered, and the end of the age (the
 /// simulation's best-payback bot plays the town between shots). Files: town-{first-minute,first-purchase,level-3,
-/// pave,end-of-age}-WxH.png in --out-dir (default build/screenshots).
+/// pave,level-6,end-of-age,zoom-1..4,summary}-WxH.png in --out-dir (default build/screenshots). The zoom steps go
+/// from the end-of-age town (tilted) to the whole book (straight down); the summary is the left page close up.
 /// </summary>
 public partial class Screenshot : TownTestBase
 {
@@ -55,12 +56,34 @@ public partial class Screenshot : TownTestBase
         Main.Hud.SetPaveMode(false);
         Main.Driver.SetPaused(false);
 
+        // About level 6, the follow view.
+        Main.Driver.RunBot(bot, t => t.Level >= 6, 20 * 60 * 30);
+        Main.Rig.UserMoved = false;
+        await Settle();
+        await Shot("level-6");
+
         // The end of the age.
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);
         Check(T.HasCharter, "the bot reached the charter");
         Main.Rig.UserMoved = false;
         await Settle();
         await Shot("end-of-age");
+
+        // Four steps of the zoom out to the book, then the summary page close enough to read.
+        var pivot = Main.Rig.PivotLocal;
+        float town = Main.Rig.Camera.Size;
+        float[] sizes = { Mathf.Lerp(town, Main.SlimSize, 0.5f), Main.SlimSize * 0.97f, Main.Rig.PlaySize, Main.Rig.MaxSize };
+        for (int i = 0; i < sizes.Length; i++)
+        {
+            Main.Rig.UserMoved = true;
+            Main.Rig.LookAt(pivot, sizes[i], instant: true);
+            await Frames(8);
+            await Shot($"zoom-{i + 1}");
+        }
+        var left = Main.MapOrigin.GlobalTransform.AffineInverse() * Main.GetNode<Node3D>("Book/LeftPage").GlobalPosition;
+        Main.Rig.LookAt(left, Main.Rig.PlaySize * 1.08f, instant: true);
+        await Frames(40);
+        await Shot("summary");
         Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
     }
 

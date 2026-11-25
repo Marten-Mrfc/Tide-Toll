@@ -49,6 +49,11 @@ public partial class TownGround : MeshInstance3D
     private float[][] _cellDist = Array.Empty<float[]>();
     private float[] _reveal = Array.Empty<float>();
     private bool[] _wasOpen = Array.Empty<bool>();
+    // Per road: how far (cells, x and y) its first and last points reach on into the plot whose door they serve, so a
+    // paved strip runs up to the door instead of stopping a cell short of the wall.
+    private Vector2[] _reachA = Array.Empty<Vector2>(), _reachB = Array.Empty<Vector2>();
+    /// <summary>Cells a road's end runs on past the door cell toward the building.</summary>
+    public const float DoorReach = 0.7f;
     private readonly float[] _target = new float[N * N], _shown = new float[N * N];
     private readonly byte[] _rg = new byte[N * N * 2], _crowd = new byte[N * N];
     private readonly byte[] _gravelTexels = new byte[N * GravelStrip.Res * N * GravelStrip.Res];
@@ -120,6 +125,8 @@ public partial class TownGround : MeshInstance3D
         _cellDist = new float[roads.Length][];
         _reveal = new float[roads.Length];
         _wasOpen = new bool[roads.Length];
+        _reachA = new Vector2[roads.Length];
+        _reachB = new Vector2[roads.Length];
         for (int r = 0; r < roads.Length; r++)
         {
             var road = roads[r];
@@ -136,6 +143,16 @@ public partial class TownGround : MeshInstance3D
                     if (q < best) { best = q; d = road.Cum[p]; }
                 }
                 _cellDist[r][k] = (float)d;
+            }
+            foreach (var pl in town.Plan.Plots)
+            {
+                var into = new Vector2(pl.X + pl.W / 2f - (pl.DoorX + 0.5f), pl.Y + pl.H / 2f - (pl.DoorY + 0.5f));
+                if (into.LengthSquared() < 1e-6f) continue;
+                into = into.Normalized() * DoorReach;
+                int lastPt = road.Xs.Length - 1;
+                if (lastPt < 0) continue;
+                if (pl.DoorX == road.Xs[0] && pl.DoorY == road.Ys[0]) _reachA[r] = into;
+                if (pl.DoorX == road.Xs[lastPt] && pl.DoorY == road.Ys[lastPt]) _reachB[r] = into;
             }
             bool open = town.RoadOpen(r);
             _wasOpen[r] = open;
@@ -181,7 +198,7 @@ public partial class TownGround : MeshInstance3D
         {
             if (!town.RoadOpen(r)) continue;
             var info = town.RoadInfo(r);
-            float v = info.WornIn || info.Surface != Surface.Track ? WornWear : TrailWear + WearSpan * (float)info.Wear;
+            float v = info.Surface != Surface.Track ? PavedWear : info.WornIn ? WornWear : TrailWear + WearSpan * (float)info.Wear;
             float front = _reveal[r] * (float)(town.Plan.Roads[r].Length + 3.0);
             float crowd = (float)Math.Clamp((info.Crowding - 0.85) / 0.9, 0, 1);
             byte cb = (byte)(crowd * 255f);
@@ -216,8 +233,12 @@ public partial class TownGround : MeshInstance3D
         Uploads++;
     }
 
-    /// <summary>Half width of a paved strip, cells (a track is about a cell wide on the page).</summary>
-    public const float PavedHalf = 0.62f;
+    /// <summary>
+    /// Half widths of the paved strips, cells (round 2): gravel a little wider than a footpath, cobbles a cart's width,
+    /// 0.6 of a cell at most. Under a paved strip the worn earth is drawn as <see cref="PavedWear"/>, a light trampled
+    /// verge rather than a wide band of soil.
+    /// </summary>
+    public const float GravelHalf = 0.22f, CobbleHalf = 0.30f, PavedWear = 0.5f;
 
     private void UploadPaving(int sig)
     {
@@ -235,8 +256,17 @@ public partial class TownGround : MeshInstance3D
                 if (s == Surface.Track || (pass == 0) != (s == Surface.Gravel)) continue;
                 var road = town.Plan.Roads[r];
                 var tex = s == Surface.Gravel ? _gravelTexels : _cobbleTexels;
-                for (int k = 0; k + 1 < road.Xs.Length; k++)
-                    GravelStrip.Segment(tex, N, road.Xs[k] + 0.5f, road.Ys[k] + 0.5f, road.Xs[k + 1] + 0.5f, road.Ys[k + 1] + 0.5f, PavedHalf);
+                float half = s == Surface.Gravel ? GravelHalf : CobbleHalf;
+                int last = road.Xs.Length - 1;
+                for (int k = 0; k < last; k++)
+                    GravelStrip.Segment(tex, N, road.Xs[k] + 0.5f, road.Ys[k] + 0.5f, road.Xs[k + 1] + 0.5f, road.Ys[k + 1] + 0.5f, half);
+                // On up to the doors at both ends.
+                if (last >= 0)
+                {
+                    var ra = _reachA[r]; var rb = _reachB[r];
+                    if (ra != Vector2.Zero) GravelStrip.Segment(tex, N, road.Xs[0] + 0.5f, road.Ys[0] + 0.5f, road.Xs[0] + 0.5f + ra.X, road.Ys[0] + 0.5f + ra.Y, half);
+                    if (rb != Vector2.Zero) GravelStrip.Segment(tex, N, road.Xs[last] + 0.5f, road.Ys[last] + 0.5f, road.Xs[last] + 0.5f + rb.X, road.Ys[last] + 0.5f + rb.Y, half);
+                }
                 if (s == Surface.Gravel) g += _cells[r].Length; else c += _cells[r].Length;
             }
         // A cobbled texel hides the gravel under it.

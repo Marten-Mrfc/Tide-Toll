@@ -249,6 +249,14 @@ public partial class CameraRig : Node3D
         float room = PlayRoomPx * size / h; // metres of table right of the book kept for the tabs
         p.X = Axis(p.X, lx, hx, bx0, bx1 + room, ex);
         p.Z = Axis(p.Z, lz, hz, bz0, bz1, ey);
+        // 3. at the outer end of the zoom the whole book settles to the middle of the screen (with the tabs' room).
+        float bc0 = PlaySize * 1.05f, tb = MaxSize > bc0 ? Mathf.Clamp((size - bc0) / (MaxSize - bc0), 0f, 1f) : 0f;
+        if (tb > 0f)
+        {
+            tb = tb * tb * (3f - 2f * tb);
+            p.X = Mathf.Lerp(p.X, (bx0 + bx1 + room) / 2f, tb);
+            p.Z = Mathf.Lerp(p.Z, (bz0 + bz1) / 2f, tb);
+        }
         p.Y = 0;
         return p;
     }

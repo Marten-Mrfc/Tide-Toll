@@ -27,12 +27,31 @@ public partial class Main : Node3D
     public InkOutline Ink { get; private set; } = null!;
     public TownAudio Audio { get; private set; } = null!;
     public TownHud Hud { get; private set; } = null!;
+    public TownSummary Summary { get; private set; } = null!;
     /// <summary>The camera follows the town's extent (false once the player moves the view, true again on Home or a gift).</summary>
     public bool Following => !Rig.UserMoved;
     /// <summary>The town's extent in map-local metres (x, z), as followed.</summary>
     public Rect2 Extent { get; private set; }
 
     private double _followClock;
+    private Vector2 _limitsFor;
+
+    /// <summary>What the interface shows for the current zoom: everything, a slim strip, or the book (summary page).</summary>
+    public enum ZoomStage { Town, Page, Book }
+    /// <summary>View heights where the interface thins to the slim strip and where the book counts as in view.</summary>
+    public float SlimSize => Rig.PlaySize * 0.86f;
+    public float BookStageSize => (Rig.PlaySize + Rig.MaxSize) / 2f;
+    public ZoomStage Stage => Rig.Camera.Size >= BookStageSize ? ZoomStage.Book : Rig.Camera.Size >= SlimSize ? ZoomStage.Page : ZoomStage.Town;
+
+    /// <summary>The zoom's outer limit: the whole open book with a little table round it, for this window shape.</summary>
+    private void SetZoomLimits()
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        if (vp.Y < 1) return;
+        _limitsFor = vp;
+        float aspect = vp.X / vp.Y;
+        Rig.MaxSize = Math.Max(BookBuilder.CoverSize.Y * 1.10f, BookBuilder.CoverSize.X * 1.06f / Math.Max(0.3f, aspect));
+    }
 
     public override void _Ready()
     {
@@ -59,13 +78,16 @@ public partial class Main : Node3D
             BookSize = BookBuilder.CoverSize, LeftDragPans = true, MinSize = 36f,
         };
         AddChild(Rig);
-        // This round the zoom stops at the full page (the book view and the menus are next round's work).
-        Rig.MaxSize = Rig.PlaySize;
+        // One continuous zoom (round 2): from close on the town (tilted) out to the whole open book (straight down).
+        Rig.TiltFlatSize = Rig.PlaySize * 0.97f;
+        Rig.TiltFullSize = 80f;
+        SetZoomLimits();
         Rig.HomePressed = () => { Rig.UserMoved = false; Follow(instant: false); };
         Ink = new InkOutline();
         Ink.Attach(Rig.Camera);
 
         Audio = new TownAudio(); AddChild(Audio); Audio.Init(Driver);
+        Summary = new TownSummary(); Summary.Init(GetNode<Node3D>("Book/LeftPage"), Driver);
         Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
         Follow(instant: true);
     }
@@ -95,7 +117,12 @@ public partial class Main : Node3D
         return new Rect2(x0 * c, y0 * c, (x1 - x0) * c, (y1 - y0) * c);
     }
 
-    /// <summary>Frames the town: its extent with room round it, between the ledger on the left and the bookmarks on the right.</summary>
+    /// <summary>
+    /// Frames the town: its extent with a little room round it, in the space the interface leaves free (the ledger and
+    /// notes on the left, the bookmarks on the right). Under the tilt the ground's depth shows shortened (sin of the
+    /// pitch) and buildings stand up out of it, so the height needed is solved for the pitch that the size itself gives.
+    /// Never zoomed out past the slim-interface point, so the follow view always has the whole interface.
+    /// </summary>
     public void Follow(bool instant)
     {
         var vp = GetViewport().GetVisibleRect().Size;
@@ -103,14 +130,23 @@ public partial class Main : Node3D
         var ext = TownExtent();
         Extent = ext;
         float s = UiKit.ScaleFor(vp.Y);
-        float left = 360f * s, right = 310f * s;
-        float usable = Math.Max(200f, vp.X - left - right);
-        float pad = 14f;
-        float size = Math.Max(ext.Size.Y + 2 * pad, (ext.Size.X + 2 * pad) * vp.Y / usable);
-        size = Mathf.Clamp(size, Rig.MinSize + 10f, Rig.MaxSize);
+        float left = 362f * s, right = 300f * s, top = 10f * s, bottom = 10f * s;
+        float usableW = Math.Max(200f, vp.X - left - right), usableH = Math.Max(200f, vp.Y - top - bottom);
+        float pad = 5f, rise = 7f; // metres of room round the town; height of the tallest building
+        float size = Rig.MinSize;
+        for (int k = 0; k < 4; k++)
+        {
+            float p = Mathf.DegToRad(Rig.PitchFor(size));
+            float needH = (ext.Size.Y + 2 * pad) * MathF.Sin(p) + rise * MathF.Cos(p);
+            size = Math.Max(needH * vp.Y / usableH, (ext.Size.X + 2 * pad) * vp.Y / usableW);
+            size = Mathf.Clamp(size, Rig.MinSize + 10f, SlimSize * 0.97f);
+        }
         var centre = ext.GetCenter();
+        float pitch = Mathf.DegToRad(Rig.PitchFor(size));
         float shift = (left - right) / 2f * size / vp.Y;
-        Rig.LookAt(new Vector3(centre.X - shift, 0, centre.Y), size, instant);
+        // Buildings rise toward the top of the screen: move the ground centre a little that way to keep them in.
+        float lift = rise * MathF.Cos(pitch) / 2f / Math.Max(0.3f, MathF.Sin(pitch));
+        Rig.LookAt(new Vector3(centre.X - shift, 0, centre.Y - lift * 0.5f), size, instant);
     }
 
     public override void _Process(double delta)
@@ -121,10 +157,13 @@ public partial class Main : Node3D
         if (!Rig.UserMoved && _followClock >= 0.25) { _followClock = 0; Follow(instant: false); }
         var vp = GetViewport().GetVisibleRect().Size;
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
+        if (vp != _limitsFor) SetZoomLimits();
         Ink.Update(Rig.Camera, vp);
+        Summary.Watched = Rig.Camera.Size >= Rig.PlaySize * 0.8f;
         float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y;
-        // Villagers stay about 11 px wide when zoomed out; never smaller than the model.
-        Villagers.WalkerScale = Mathf.Clamp(11f / pxPerM, 1f, 2.4f);
+        // Villagers read as people: a little over life size close in, and kept about 15 px across as the view zooms
+        // out (the people are the point of the game), up to three times life size.
+        Villagers.WalkerScale = Mathf.Clamp(15f / pxPerM, 1.1f, 3f);
     }
 
     /// <summary>World position of a map cell centre.</summary>
