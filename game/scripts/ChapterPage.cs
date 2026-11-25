@@ -141,7 +141,7 @@ public partial class ChapterPage : PanelContainer
         col.AddChild(_preview);
         // With the river the page holds more, so the ground legend folds away too (the overlay key W still names it),
         // and then the older margin notes.
-        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2], _repNote, _notes[1] } : new Control[] { _keysPara, _howPara, _legend };
+        _optional = river ? new Control[] { _keysPara, _howPara, _legend, _notes[3], _notes[2], _repNote, _notes[1] } : new Control[] { _legend, _keysPara, _howPara };
         Folded = 0;
     }
 

@@ -123,14 +123,15 @@ if have_godot; then
   # the book while it is built again), Chapter II has the river rules, reset and new map stay inside the chapter.
   step game-chapter tools/godot-test.sh 'CHAPTER PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/chapter.tscn --quit-after 8000
   note "$(grep -o 'CHAPTER PASS.*' "$LOGS/game-chapter.log" | head -1 | cut -c1-90)"
-  # Chapter I's living town: the first cottage the library builds is drawn (rising, then standing), gets its yard and
-  # its mark, the chapter page counts it, and its household walks.
-  step game-hamlet tools/godot-test.sh 'HAMLET PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/hamlet.tscn --quit-after 20000
+  # Chapter I's living town: a cottage arriving is drawn (rising, yard, mark, page count, walkers), and a forced shower
+  # shows rain over the map, wet ground, mud and the weather line, then dries.
+  step game-hamlet tools/godot-test.sh 'HAMLET PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/hamlet.tscn --quit-after 40000
   note "$(grep -o 'HAMLET PASS.*' "$LOGS/game-hamlet.log" | head -1 | cut -c1-90)"
   # Every control exists, has a tooltip and label, toggles its state by mouse; every shortcut; focus; text sizes.
   step game-ui tools/godot-test.sh 'UI PASS' timeout 300 "$GODOT" --headless --path game --audio-driver Dummy res://tests/ui.tscn --quit-after 4000
   note "$(grep -o 'UI PASS.*' "$LOGS/game-ui.log" | head -1 | cut -c1-90)"
-  # CPU time per frame with 500 walkers at 1x and 8x, interface and audio code running (no rendering headless);
+  # CPU time per frame with 500 walkers at 1x and 8x in Chapter II (river) then Chapter I (rain, growth at 200 walkers),
+  # interface and audio code running (no rendering headless);
   # --fixed-fps 60 gives every frame 1/60 s of game time. Fails above 6 ms (1x) or 10 ms (8x) mean, or 64 bytes
   # allocated per frame. A third run at 8x drags a fence so the flow preview keeps recomputing (time gated only).
   step game-perf tools/godot-test.sh 'PERF PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/perf.tscn --quit-after 20000
@@ -148,6 +149,12 @@ if have_godot; then
     # The interface views again at 1920x1080 (the interface is rebuilt at full scale).
     step screenshot-1080 tools/godot-test.sh 'SCREENSHOT PASS' timeout 600 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 5000 -- --out-dir="$SHOTS" --ui-only
     note "build/screenshots/{book,map,wear,preview,river-*}-1920x1080.png"
+    # Chapter I at both sizes: day 1, the page turn, a gate and a gravel strip, day 30 with grown houses and a new one
+    # marked, rain and mud, the mud drying (hamlet-*.png, chapter-turn.png).
+    step screenshot-hamlet tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1280x720x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1280x720 res://tests/screenshot.tscn --quit-after 60000 -- --out-dir="$SHOTS" --hamlet-only
+    note "build/screenshots/{hamlet-*,chapter-turn}-1280x720.png"
+    step screenshot-hamlet-1080 tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 60000 -- --out-dir="$SHOTS" --hamlet-only --ui-only
+    note "build/screenshots/{hamlet-*,chapter-turn}-1920x1080.png"
   fi
 else
   for s in game-build game-smoke game-tools game-river game-chapter game-hamlet game-ui game-perf screenshot; do

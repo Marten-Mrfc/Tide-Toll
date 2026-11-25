@@ -183,7 +183,7 @@ public partial class GameUi : CanvasLayer
         Tabs.Reset.Pressed += Reset;
         Tabs.NewMap.Pressed += NewMap;
         Tabs.Walkers.SetValueNoSignal(sim.WalkerCount);
-        Tabs.Walkers.ValueChanged += v => { sim.SetWalkers((int)v); Tabs.WalkersLabel.Text = $"Walkers {sim.WalkerCount}"; };
+        Tabs.Walkers.ValueChanged += v => { sim.SetWalkers((int)v); ShowPopulation(true); };
     }
 
     /// <summary>Puts every control's state in line with the game (after a click, a key or an event).</summary>
@@ -204,8 +204,19 @@ public partial class GameUi : CanvasLayer
         Tabs.Preview.SetPressedNoSignal(_main.Tools.PreviewEnabled);
         Tabs.Overlay.SetPressedNoSignal(Overlay);
         Tabs.ShowSound(_main.Audio.Enabled);
-        Tabs.Walkers.SetValueNoSignal(sim.WalkerCount);
-        Tabs.WalkersLabel.Text = $"Walkers {sim.WalkerCount}";
+        ShowPopulation(true);
+    }
+
+    private int _shownPopulation = -1;
+
+    /// <summary>The walker slider and its label follow the population, which house growth raises after the start (as the toy's do).</summary>
+    private void ShowPopulation(bool force)
+    {
+        int n = _main.Sim.World.WalkerCount;
+        if (n == _shownPopulation && !force) return;
+        _shownPopulation = n;
+        Tabs.Walkers.SetValueNoSignal(n);
+        Tabs.WalkersLabel.Text = $"Walkers {n}";
     }
 
     // ------------------------------------------------------------------ actions (buttons and keys)
@@ -302,6 +313,7 @@ public partial class GameUi : CanvasLayer
         var w = sim.World;
         Chapter.Refresh(w.Stats(), w.WalkersOut(), sim.Seed, _now);
         Chapter.RefreshTown(w);
+        ShowPopulation(false);
         if (w.River is { } river)
         {
             Chapter.RefreshRiver(river, w.Time, w.Params.DaySimSec, _main.Feed);

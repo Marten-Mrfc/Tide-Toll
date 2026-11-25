@@ -278,24 +278,31 @@ dotnet test sim.tests -c Release --filter "FullyQualifiedName~RiverGateTests"   
 Players: S1 ford only; S2 ferry, S3 footbridge, S4 drawbridge never raised, all at row LandingRow + 4 (or the next
 valid row south) once the coin is there; S5 drawbridge raised by hand when a boat it noticed has waited 4 s or two
 noticed boats wait, at three attention levels: missing 10%, 30% and 50% of boats (S5-10, S5-30, S5-50; a fixed draw
-per boat, so a less attentive player misses a superset); S6 drawbridge with a keeper hired as soon as affordable
-(raised by hand until then, missing 30%). `--sweep` runs every player at 200 walkers and S2, S5-10 and S6 at 60, for
+per boat, so a less attentive player misses a superset); S6 drawbridge with a keeper hired as soon as it is unlocked
+(`KeeperUnlockRaises` hand raises of that bridge) and affordable (raised by hand until then, missing 30%). `--sweep` runs every player at 200 walkers and S2, S5-10 and S6 at 60, for
 12 and 30 days. Mean trip time, mean wait, crossings a day (`cross/d`, all crossings; `at built/d` the player's own),
 the share of crossings that waited at a gate first (`waited`) and grain delivered to the landing a day (`deliv/d`) are
 measured over the second half of the run, when every player has built; the worst wait, the largest queue at the
-player's crossing (`queue`), lost grain, flood and ice days and the money cover the whole run.
+player's crossing (`queue`), lost grain, flood and ice days and the money cover the whole run, as do `unlock d` (the day
+the keeper was unlocked), `wet` (share of grain delivered wet) and `wet lost c` (coin wet grain did not fetch).
 
-The checks (`RiverGateChecks`, on the longest run length, "most towns" = more than half the seeds):
-(a) the footbridge gives the fastest trips and clearly the worst trade (at most 80% of any other player's but the
-never-raised drawbridge); (b) ford only is clearly the slowest (10%+) where the ford is 15+ rows from the landing, and
-nobody crosses the ford while the band is under water; (c) at 60 walkers the ferry ends richer than the hand-raised
-drawbridge (S5-10) in most towns, and at 200 its capacity bites (mean wait and largest queue at least double those at
-60, fewer deliveries than the drawbridge); (d) at 200 walkers S5-10 ends richer than the ferry in most towns, and not at
-60; (e) at 200 walkers the keeper ends richer than S5-30 and than S5-50 in most towns (S5-10 is shown, need not lose);
-(f) no player is best at trade income, trip time and net money at once. Then the spec's earlier checks (footbridge
-turns back 60%+ of barges, the ford under 10% of boats, a never-raised drawbridge earns no more than a footbridge,
-S5-10 and S6 turn back under 15%, manual batching has the lower worst wait). The old "keeper minus manual net money is
-positive at 200 walkers" assumed a player who never looks away; it is printed as report only.
+The checks (`RiverGateChecks`, on the longest run length, "most towns" = more than half the seeds; the lead's decision E,
+third pass): (a) the footbridge gives the fastest trips and clearly the worst trade (at most 80% of any other player's
+but the never-raised drawbridge); (b) the free ford costs trade: at 200 walkers ford only ends with clearly less money
+(5%+) than the best purchase in most towns and 15%+ less at the median, and is the richest strategy in at most a quarter
+of towns (the old form, "ford only is clearly the slowest where the ford is 15+ rows from the landing", is printed as
+report only with its result), and nobody crosses the ford while the band is under water; (c) at 60 walkers the ferry
+ends richer than the hand-raised drawbridge (S5-10) in most towns, and at 200 its capacity bites (mean wait and largest
+queue at least double those at 60, fewer deliveries than the drawbridge); (d) at 200 walkers S5-10 ends richer than the
+ferry in most towns, and not at 60; (e) at 200 walkers the keeper ends richer than S5-30 and than S5-50 in most towns
+(S5-10 is shown, need not lose), and no keeper is ever hired before its unlock; (f) no player is best at trade income,
+trip time and net money at once; (g) pacing: a crossing is affordable on the first day (ferry and footbridge runs build
+by day 1), the drawbridge is bought after 6 to 10 days at 200 walkers (median of S5-10), and the keeper comes no sooner
+than its unlock. Then the spec's earlier checks (footbridge turns back 60%+ of barges, the ford under 10% of boats, a
+never-raised drawbridge earns no more than a footbridge, S5-10 and S6 turn back under 15%, manual batching has the lower
+worst wait). The old "keeper minus manual net money is positive at 200 walkers" is printed as report only.
+
+The sweep below predates the third pass (the table of the third pass is in its own section further down).
 
 Last sweep (25 November 2026, `river --seed-sets 101-120,201-220 --sweep`, 16 min on 3 threads; every `RiverRules`
 number at the values listed above, none tuned this round). Medians over 40 seeds, 30 days:
@@ -377,7 +384,7 @@ day) lets on 25.5 a day (a walker whose any-angle line cuts across the span whil
 treated as clipping the corner and let on without the queue; on Legacy no walker does); the learned wait at a raised drawbridge
 ends at 0.35 s, under the test's 0.5 s (more walkers use the bridge, so short waits at capacity outnumber the raised spells in its
 moving average); and a walker set down from a rising leaf takes over 40 s to finish its trip (it waits out the raise, crosses,
-then has a long walk). Fixed on the way (both presets): the route check of a waiting walker now uses the walker's own view
+then has a long walk; all three fixed in the third pass, below). Fixed on the way (both presets): the route check of a waiting walker now uses the walker's own view
 (frugal walkers descend the frugal field: sync plan conflict A), and a queue pass for a drawbridge that was raised since is spent
 instead of letting the walker onto the raised span.
 
@@ -401,6 +408,109 @@ Result on 40 seeds at 30 days (medians, 200 walkers): ford only 2231c net, ferry
 3 days, wade speed .25) made bridges worse too; FerryCapacity 8 with turn 0.25 passes (b) but then (c) and (d) fail; keeper at
 160c makes (e) against the 30% player a coin flip (22 of 40 towns). Cliffs: keeper price (60 to 120 safe, 160 not), ferry
 capacity and turn (above 7 or below 0.4 s flips (b)/(c)/(d)).
+
+### Third pass, 25 November 2026 (green on the new trail model, bugs, the lead's decisions B to E)
+
+**The three failing river tests** had one cause. On the finished toy's trail model a drawbridge's learned wait changes its
+routing cost, a field refresh sends some walkers along the bank instead, but they still walk towards the aim they took
+before, onto the first deck cell. The corner-clipper rule (route does not use the bridge within three steps) then let them
+on without the queue, and from the deck they walked across uncounted (seed 5, a 20-a-day drawbridge: 28 of 28 such walkers
+crossed, 25.5 crossings a day; on Legacy and on footbridges none). Now such a walker never steps onto the deck: it stops
+short and aims at the next cell down its own field (`RiverGate` returns `TurnAside`). The capacity test (18.25 a day on a
+20-a-day bridge) and the rising-leaf test pass unchanged; one expectation was restated with its reason beside it:
+`WalkersQueueWhileTheBridgeIsUp` read the drawbridge's learned wait (a moving average over the last walkers served) at the
+very end, 100 ticks after the last queue had cleared; it now reads it right after each raise's queue has gone over (> 0.5 s
+every time). Every River* test passes on all three trail models (`TIDETOLL_RIVER_PRESET` unset, `legacy`, `toy`).
+
+**Bugs fixed**, each with a test (`RuleFixes3Tests`, `ToyV2ParityTests.TheWeatherStreamOfLargeSeedsMatchesTheToy`):
+gate pairs are stored per cell (`World.GatePartner`), so removing a two-cell gate never takes a neighbouring gate with it
+and the tool names exactly the cells it removes (the toy found partners by adjacency); the weather stream's seed is the
+toy's double product (`RainWeather.StreamSeed`; the exporter's new `streamsLarge` section, drawn from the toy's own
+`Weather` class, differs from the old integer formula for seeds 3400001, 12345679, 99999999 and 2147483647, and every
+earlier section of the re-exported file is identical); the boat schedule's stream has its own seed (`seed * 7919 + 211`,
+was the map generator's `+ 13`: every river run's boat gaps changed, and no river test had recorded them); growth says
+when its pre-sized room is used up (`GrowthRoomFull`, `GrowthRoomLeft`); and a test holds rain, mud and growth off
+through four years of a river town (floods every spring) although `SimParams.Default` has them on.
+
+**The worst tick**: a tick that refreshes a field runs `RebuildCosts` and two route searches (both views): about 3 ms
+against 0.4 ms for a tick without. The live fields now use the toy's bucket queue (`BucketQueue.cs`, plan step A10),
+with a fast path for cells off the border: 1.03 ms a search against the heap's 2.40 on the 128 x 128 test map, every value
+identical (`CostFieldTests`: random maps, wide cost ranges, fallbacks, three live towns with the river; the toy's own
+`dijkstraLow`; every golden trace). The first household's tick (10.4 ms; later ones 1.7 ms) was the plot search's first
+compile: the world runs the search once at construction (it only fills scratch). `tools ... ticks` times every tick of a
+run and lists the worst with what ran in them. Measured with `ticks --days 20`, seed 1, 3000 ticks (4 shared cores, so
+single ticks above about 8 ms without a route search are the machine):
+
+PERF_TABLE
+
+**The lead's decisions B, C and D** (rules above): wet grain at the ford (`WetGrainValueShare` 0.5, `LoadedWadeSpeedMul`
+0.7, both new and chosen); the keeper unlocked by `KeeperUnlockRaises` (10, new) hand raises of that drawbridge; the
+starting purse; the ferry's running costs. Tests: `RiverRules3Tests`. River mode only: without the river rules nobody
+carries grain, and every comparison with the toy is unchanged.
+
+| `RiverRules` value | Before | After | Source |
+| --- | --- | --- | --- |
+| StartMoney | 0 | 50 | decision D: a ferry (40c) or a footbridge (50c) in the first minute |
+| FerryUpkeep | 5 | 2 | decision D: the design doc's number |
+| FerryWage | 15 | 3 | decision D: the design doc's number |
+| WetGrainValueShare | (none) | 0.5 | decision B, chosen starting number |
+| LoadedWadeSpeedMul | (none) | 0.7 | decision B, chosen starting number |
+| KeeperUnlockRaises | (none) | 10 | decision C: "start at 10" |
+
+The tuner works from this table: `river --seed-sets 101-120 --sweep` at the numbers above, nothing tuned (439 s on 3
+threads; seeds 501-524 are the reviewer's only). Medians over 20 seeds, 30 days:
+
+```
+MEDIANS OVER SEEDS, 30 days (20 seeds)
+ player                                | walkers | built d | unlock d | keeper d | trade c | boat c | market c | turn-back | barges | mean wait s | worst wait s | trip s | cross/d | at built/d | waited | deliv/d | lost | queue |    wet | wet lost c | rep | money c
+ S2 ferry                              |      60 |     0.0 |        - |        - |     799 |    777 |       11 |      0.0% |   0.0% |        2.08 |          7.8 |  15.59 |      24 |         20 |  86.7% |     5.7 |    0 |    14 |   0.0% |          0 |  94 |     823
+ S5 drawbridge, manual, misses 10%     |      60 |    11.0 |     21.2 |        - |     700 |    692 |       16 |      4.0% |   6.1% |        1.21 |          2.3 |  14.45 |      24 |         21 |  16.0% |     5.7 |    0 |     7 |  34.0% |        156 |  86 |     588
+ S6 drawbridge + keeper                |      60 |    11.0 |     23.7 |     23.7 |     692 |    668 |       24 |      9.2% |  13.8% |        1.19 |          2.4 |  14.67 |      23 |         21 |  12.4% |     5.8 |    0 |     7 |  34.6% |        156 |  70 |     442
+ S1 ford only                          |     200 |       - |        - |        - |    1098 |   1084 |        9 |      0.0% |   0.0% |        0.00 |          0.0 |  18.54 |      60 |          0 |   0.0% |    13.9 |    0 |     0 |  97.4% |       1119 |  94 |    1204
+ S2 ferry                              |     200 |     0.0 |        - |        - |    1418 |   1410 |       11 |      0.0% |   0.0% |        5.31 |         19.5 |  19.33 |      68 |         24 |  40.3% |    14.8 |    0 |    53 |  75.8% |        882 |  94 |    1438
+ S3 footbridge                         |     200 |     0.0 |        - |        - |     888 |    621 |      267 |     66.0% | 100.0% |        0.27 |          1.1 |  15.40 |      81 |         75 |   6.4% |    18.2 |    0 |     9 |   0.0% |          0 |   0 |     940
+ S4 drawbridge, never raised           |     200 |     6.2 |        - |        - |    1013 |    804 |      213 |     48.4% |  73.9% |        0.00 |          0.0 |  16.01 |      78 |         73 |   0.0% |    17.5 |    0 |     0 |  18.0% |        233 |   0 |     884
+ S5 drawbridge, manual, misses 10%     |     200 |     6.2 |     16.4 |        - |    2185 |   2150 |       34 |      4.5% |   7.0% |        1.12 |          2.3 |  16.45 |      68 |         60 |  17.4% |    17.1 |    0 |    20 |  18.8% |        245 |  82 |    2053
+ S5 drawbridge, manual, misses 30%     |     200 |     6.2 |     19.2 |        - |    1954 |   1872 |       67 |     16.7% |  25.0% |        1.08 |          2.3 |  16.53 |      71 |         63 |  12.7% |    16.9 |    0 |    18 |  18.4% |        240 |  50 |    1829
+ S5 drawbridge, manual, misses 50%     |     200 |     6.2 |     20.3 |        - |    1589 |   1472 |      123 |     25.0% |  38.8% |        1.07 |          2.3 |  16.17 |      76 |         67 |   6.2% |    16.9 |    0 |    16 |  18.8% |        239 |  31 |    1471
+ S6 drawbridge + keeper                |     200 |     6.2 |     19.2 |     19.2 |    1992 |   1944 |       46 |      7.9% |  12.0% |        1.12 |          2.4 |  16.29 |      69 |         61 |  16.2% |    16.6 |    0 |    20 |  18.8% |        240 |  73 |    1734
+```
+
+```
+RIVER CHECKS over 30 days (20 seeds)
+  PASS  (a) footbridge gives the fastest walker trips (median mean trip: S3 15.40 s; fastest S3 15.40 s)
+  FAIL  (a) footbridge has clearly the worst trade: at most 80% of every other player's but the never-raised drawbridge (S3 888c, next lowest S1 1098c; S4 1013c)
+  PASS  (b) the free ford costs trade: at 200 walkers ford only ends with clearly less money (5%+) than the best purchase in most towns (20 of 20) and 15%+ less at the median (median shortfall 42.2%; wet grain lost, median 1119c, 97.4% of its grain delivered wet)
+  PASS  (b) ford only is the richest strategy at 200 walkers in at most a quarter of towns (0 of 20)
+  report only  (b, old form) ford only is clearly the slowest (10%+ over every other player) on the 11 towns with the ford 15+ rows from the landing: no (S1 18.95 s, next slowest S2 19.42 s)
+  PASS  (b) nobody crosses the ford while the flood band is under water (0 crossings over 209 flood days in all runs)
+  PASS  (c) at 60 walkers the ferry ends with more net money than the hand-raised drawbridge (S5, 10% missed) in most towns (16 of 20 towns; medians S2 823c, S5 588c)
+  PASS  (c) at 200 walkers the ferry's capacity bites: mean wait and largest queue at least double those at 60, and fewer deliveries than the drawbridge (wait 2.08 s -> 5.31 s, queue 14 -> 53, deliveries a day S2 14.8, S5 17.1)
+  PASS  (d) at 200 walkers the hand-raised drawbridge (10% missed) ends with more net money than the ferry in most towns (18 of 20 towns; medians S5 2053c, S2 1438c)
+  PASS  (d) at 60 walkers it does not (4 of 20 towns)
+  FAIL  (e) at 200 walkers the keeper ends with more net money than the player missing 30% of boats in most towns (4 of 20 towns; medians S6 1734c, S5-30 1829c)
+  PASS  (e) at 200 walkers the keeper ends with more net money than the player missing 50% of boats in most towns (18 of 20 towns; S5-50 1471c)
+  info  (e) against the player missing 10% (need not win): 0 of 20 towns; S5-10 2053c
+  PASS  (e) the keeper is never hired before its unlock (10 hand raises): 40 hires over 40 keeper runs, all after the unlock: yes
+  PASS  (f) no strategy is best at trade income, trip time and net money at once (trade income: S5-10, trip time: S3, net money: S5-10)
+  PASS  (g) one crossing is affordable in the first in-game day: purse 50c, ferry 40c, footbridge 50c; 60 of 60 ferry and footbridge runs built by day 1
+  PASS  (g) at 200 walkers the drawbridge is bought after 6 to 10 in-game days (median S5-10 6.2; S6 6.2)
+  PASS  (g) the keeper comes no sooner than its unlock after the drawbridge: unlocked a median 12.9 days and hired 12.9 days after the drawbridge at 200 walkers (20 of 20 unlocked, 20 hired)
+  PASS  footbridge turns back more than 60% of barges (S3 median 100.0%)
+  PASS  ford only turns back fewer than 10% of boats (S1 median 0.0%)
+  PASS  never-raised drawbridge earns no more than the footbridge (net money S4 884c, S3 940c)
+  PASS  manual (10% missed) and keeper drawbridges turn back fewer than 15% of boats (S5 4.5%, S6 7.9%)
+  PASS  manual drawbridge has the lower worst walker wait of S5 (10% missed) and S6 (S5 2.3 s, S6 2.4 s)
+  report only  keeper minus manual (10% missed) net money at 200 walkers is positive: no (-319c; at 60 walkers -147c)
+
+FAILED: 2 of 21 check(s) in 439 s (3 threads)
+```
+
+What fails, for the tuner: (a) the footbridge's trade is 81% of ford only's (888c against 1098c; the check wants at most
+80%), now that wet grain costs ford only 1119c at the median; (e) the keeper beats the player missing 30% in only 4 of 20
+towns: it is unlocked a median 12.9 days after the drawbridge (the S6 player raises about once a day and misses 30% of
+boats until then) and then costs 120c, so it has little of the run left to pay back. (b) in its new form passes with room
+to spare (ford only 42% below the best purchase at the median, the lead aimed at 15%), so `WetGrainValueShare` can go up.
 
 ## Parity with the toy
 

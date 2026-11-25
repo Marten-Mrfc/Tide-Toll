@@ -238,6 +238,8 @@ public partial class Perf : Node
         // The seasons run on: spring thaws the ice and a flood ends; put them back so the whole run is measured in them.
         if (Runs[_run].weather == 'i' && _main.Sim.World.River is { Frozen: false }) { _main.Sim.World.Freeze(); _weatherAgain++; }
         if (Runs[_run].weather == 'f' && _main.Sim.World.River is { Flooded: false }) { _main.Sim.World.StartFlood(7); _weatherAgain++; }
+        // A day's own roll for rain starts a new shower that ends the forced one sooner: keep it raining.
+        if (Runs[_run].weather == 'r' && !_main.Sim.World.Weather.Raining) { _main.Sim.World.StartRain(10 * _main.Params.DaySimSec); _weatherAgain++; }
         if (Runs[_run].preview && _frame % 45 == 0)
         {
             var p = Cell(_bx + 6, _by + (_frame / 45 % 5) - 2);

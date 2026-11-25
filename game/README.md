@@ -2,23 +2,29 @@
 
 Purpose: rendering, camera, UI and audio. Godot 4.7 .NET, C# only, Mobile renderer. The simulation lives in `../sim` (project reference, always built optimised), so the game never owns game rules: it reads the `World` through read-only spans and changes it only through commands.
 
-Today it plays Prototype 1 on the map page of the book: the same town as the browser toy for the same seed, villagers wearing trails into the page, the player placing and erasing fences and footbridges with a flow preview of the routes that would change, a wear overlay, pause and four speeds, reset and new map, 50 to 500 walkers, and basic sound, in the Living Map style with the Hamlet assets. The left page is the chapter page (how to play, the village facts, path health, the legend and the status line); the controls are paper bookmarks out of the map page's edge.
+The game is a book with two chapters and opens on the first:
 
-With the river rules on (the default; `-- --no-river` turns them off) it also plays the river prototype (Prototype 1, step 2): rowboats and masted barges on the simulation's schedule sail up to the landing, wait at crossings they cannot pass with their patience running down, and turn back when it runs out; the player buys a footbridge, ferry or drawbridge from bookmarks priced from the rules (`RiverRules`), works the drawbridge by hand or hires its keeper, and the chapter page keeps the ledger and a chronicle of margin notes. The seasons reach the river: a spring flood washes over the band beside it and closes the ford (then leaves mud), and winter ice freezes it (boats held, villagers crossing anywhere, their paths scratched into the ice until the thaw). See "The river" below.
+- **Chapter I, "The Hamlet"** is Prototype 1 as the finished browser toy plays it (`SimParams.Default`, the river rules off): the same town as the toy for the same seed, villagers wearing trails into the page, fences, gates (at any angle), gravel, the footbridge and erase with a flow preview of the routes that would change (the library's `Describe` wording), rain that turns worn trails to mud until it dries, and cottages that new families build beside busy trails. No boats, no coin.
+- **Chapter II, "The River"** is the river prototype (the same with `Main.River` on; the library then turns rain and growth off): the same path tools (gravel and gates cost nothing), plus boats, coin and the crossings (below).
+
+The player turns the page with the chapter bookmark (the brick-red ribbon at the top of the tabs, "Chapter II ›" or "‹ Chapter I") or the C key: a leaf of paper turns over the book (`PageTurn`, about 1.2 s), the book is built again under it for the other chapter, a fresh town from the current seed (walker count, speed, pause, sound, preview, overlay and view kept), and the new pages are revealed. Reset and New map stay inside the chapter. Command line: `-- --chapter 1|2` (default 1); `-- --no-river` is Chapter I.
+
+Both chapters have a wear overlay, pause and four speeds, reset and new map, 50 to 500 walkers, and basic sound, in the Living Map style with the Hamlet assets. The left page is the chapter page (title, how to play, the village facts, path health, the legend and the status line; Chapter I adds houses and the weather, Chapter II the ledger); the controls are paper bookmarks out of the map page's edge.
+
+In Chapter II it plays the river prototype (Prototype 1, step 2): rowboats and masted barges on the simulation's schedule sail up to the landing, wait at crossings they cannot pass with their patience running down, and turn back when it runs out; the player buys a footbridge, ferry or drawbridge from bookmarks priced from the rules (`RiverRules`), works the drawbridge by hand or hires its keeper, and the chapter page keeps the ledger and a chronicle of margin notes. The seasons reach the river: a spring flood washes over the band beside it and closes the ford (then leaves mud), and winter ice freezes it (boats held, villagers crossing anywhere, their paths scratched into the ice until the thaw). See "The river" below.
 
 ## Files
 
 | Path | What it holds |
 | --- | --- |
 | `project.godot`, `TideToll.csproj`, `TideToll.sln` | project files (the `.sln` is needed for exports) |
-| `main.tscn`, `scripts/Main.cs` | main scene; wires the driver, the map layers, the camera, the ink pass and the HUD |
 | `scripts/SimDriver.cs` | owns the `World`; fixed 10 Hz tick with an accumulator, speeds 1/2/4/8x, pause, per-frame time budget, commands |
-| `scripts/MapGround.cs` | the ground plane: wear (eased) and hollow flags uploaded 5 times a second, river, ford, crop mask, wear overlay; with the river a seasons texture (R = ice wear, uploaded with the wear while frozen and cleared at the thaw; G = flood band) and the eased flood, mud and ice values |
-| `scripts/TownLayer.cs`, `shaders/building.gdshader` | buildings from the simulation's list: cottages (each with its own thatch tone), well, market stalls, field corner posts |
+| `scripts/MapGround.cs` | the ground plane: wear (eased) and hollow flags uploaded 5 times a second, river, ford, crop mask, wear overlay, the gravel strip (uploaded on edits); with the river a seasons texture (R = ice wear, uploaded with the wear while frozen and cleared at the thaw; G = flood band) and the eased flood, mud and ice values |
+| `scripts/TownLayer.cs`, `shaders/building.gdshader` | buildings from the simulation's list: cottages (each with its own thatch tone), well, market stalls, field corner posts; cottages the town grows (`SimDriver.HouseBuilt`) rise out of their plot over 1.1 s (only the newest of a fast-forward burst) |
 | `scripts/GroundMarks.cs`, `shaders/ground_mark.gdshader` | one mesh printed on the ground round the town: soft drop shadows under the cottages and the well, inked yard outlines (house plots, the well's round yard, the market square) with a gap at each door |
 | `scripts/MapTags.cs` | paper tags naming the Well, Market, Field and Ford (Alegreya, an ink thread to the place); shown at overview zoom, faded out below 170 m of view, gone at 120 m; during a spring flood a bold "Ford closed" tag with a vermillion edge takes the Ford tag's place at every zoom |
 | `scripts/Scenery.cs`, `shaders/tree.gdshader` | seeded decoration: trees in copses round the map edge (a few small copses and lone trees inside, all clear of doors, water, the ford and likely paths), reeds, rowboat, ford stones (MultiMesh per model, grown if a seed needs more); crowns shaded as round clumps |
-| `scripts/EditLayer.cs`, `scripts/FenceLines.cs` | fences (wattle and posts, straightened runs) and footbridges, rebuilt on each edit |
+| `scripts/EditLayer.cs`, `scripts/FenceLines.cs` | fences (wattle and posts, straightened runs), gates cut into the rail at any angle (the toy's gateMark and cutForGates; the leaf stands ajar between two gate posts, partner from `World.GatePartner`) and footbridges, rebuilt on each edit |
 | `scripts/WalkerLayer.cs` | every villager in one MultiMesh, interpolated between ticks, one buffer upload per frame |
 | `scripts/InkOutline.cs` | the screen-space ink pass (two camera quads: normal and soft-ink stencil) |
 | `scripts/CameraRig.cs` | pivot / yaw / pitch / orthographic camera: pan, zoom, limits, book and play views, picking |
@@ -31,7 +37,7 @@ With the river rules on (the default; `-- --no-river` turns them off) it also pl
 | `scripts/RouteLayer.cs`, `shaders/route.gdshader` | the flow preview on the map: dashed faint "now", solid sky-blue "after" with arrow heads, blocked routes dotted with a ring and cross; one mesh with pooled upload arrays, pixel widths; the dash march wraps at 45 s (a multiple of both dash periods) |
 | `scripts/GameUi.cs` | the interface (node `Hud`): lays the chapter page and the tabs over the book every frame, preview readout by the pointer, the fps and ms-per-tick readout on a small ink plate 12 px in from the bottom-right corner, keyboard shortcuts, rebuilt on resize (the old root leaves the tree first) |
 | `scripts/ChapterPage.cs` | the left page: title, how to play, village facts, with the river the ledger (coin, income today, reputation in words, boats served and turned back today) and four margin notes, path health with the trunk-share band gauge, ground or heat legend, status line; every line at least 12 px inside the page (it folds the key reminder, then the how-to paragraph, away when the page is too short, as at 1280 x 720); folds into a slip when zoomed in |
-| `scripts/ToolTabs.cs` | the bookmark tabs: pause, 1x 2x 4x 8x, fence, footbridge, ferry and drawbridge (with the river: each with its price on a second line, faint with "short" when the purse cannot pay, the tooltip saying by how much), erase, flow preview, wear overlay, sound and volume, reset, new map, walkers 50 to 500; tucked 9 px under the right page's edge, which `PageLip` draws over them (edge rule, a stack line and the page's soft shadow), so they read as bookmarks in the book |
+| `scripts/ToolTabs.cs` | the bookmark tabs: the chapter ribbon (C), pause, 1x 2x 4x 8x, fence, gate, gravel, footbridge, ferry and drawbridge (with the river: each with its price on a second line, faint with "short" when the purse cannot pay, the tooltip saying by how much), erase, flow preview, wear overlay, sound and volume, reset, new map, walkers 50 to 500; tucked 9 px under the right page's edge, which `PageLip` draws over them (edge rule, a stack line and the page's soft shadow), so they read as bookmarks in the book |
 | `scripts/UiKit.cs` | interface look: paper and ink styles, fonts (and `PrintFont`, an MSDF copy for text printed on the book: map title in Uncial Antiqua, folios and compass in Alegreya), scale from the window height, icons |
 | `scripts/RiverLayer.cs`, `RiverLayer.Queue.cs`, `shaders/river_sign.gdshader`, `shaders/wake.gdshader` | the river's traffic: boats from a pool keyed by boat id (rowboat with a grain bundle when loaded; barge hull, mast and cargo node), interpolated between ticks along the river's bend, up to 2.2x long at overview (as wide as the water allows), jumps (mooring, turning back) eased out; moored boats either side of the jetty, drawn smaller when a crossing is close; queues drawn nose to tail but never over a crossing or a moored boat (`.Queue`: held short and rafted beside the boat ahead); V-shaped wakes (one MultiMesh); signs drawn over everything at a fixed pixel size at every zoom (one MultiMesh): the patience ring round an hourglass or a crossed-out mast, the vermillion turn-back diamond; the landing jetty, grown with the boats |
 | `scripts/CrossingLayer.cs` | ferries (posts, rope, dotted crossing line, the raft sliding with the crossing's progress) and drawbridges (lift with leaf, beam, chains and signal arm from the model's nodes, fixed spans, ramps with barriers, keeper's hut and keeper once hired), rebuilt on edits, animated per frame from the crossing's state; one sign MultiMesh (`LineSlots` = 64 instances) with the ferry lines, the overview map marks that fade in from 110 to 170 m of view (ferry: dotted rope between posts with the raft on it; footbridge: plank deck with rails; drawbridge: deck with its gantry, the leaf's part open while raised), the closed ford's vermillion bar during a flood (every zoom) and each drawbridge's signal disc (every zoom) |
@@ -48,8 +54,10 @@ With the river rules on (the default; `-- --no-river` turns them off) it also pl
 | `shaders/walker.gdshader`, `shaders/walker_hull.gdshader`, `shaders/walker_shadow.gdshader` | villager bob and sway and outfits (six palette tunics, three hats, per villager from the instance data); thin inverted-hull ink (downward faces left out); a soft shadow disc per villager from the same instance buffer |
 | `shaders/outline_screen.gdshader` | copy of `assets/src/common/outline_screen.gdshader` |
 | `tests/smoke.tscn` | headless smoke test (`Smoke.cs`) |
-| `tests/perf.tscn` | headless CPU-per-frame and allocation test, 500 walkers at 1x and 8x (`Perf.cs`) |
-| `tests/screenshot.tscn` | rendered screenshots under xvfb (`Screenshot.cs`, river views in `Screenshot.River.cs`) |
+| `tests/chapter.tscn` | the two chapters through real input: opens on I, the bookmark and C turn the page, reset and new map stay in the chapter (`ChapterTest.cs`) |
+| `tests/hamlet.tscn` | Chapter I's living town: a cottage arriving is drawn, a forced shower shows rain, mud and the weather line and dries (`HamletTest.cs`) |
+| `tests/perf.tscn` | headless CPU-per-frame and allocation test, 500 walkers at 1x and 8x in Chapter II (with preview, flood, ice) then Chapter I (with rain, and growth at 200 walkers) (`Perf.cs`) |
+| `tests/screenshot.tscn` | rendered screenshots under xvfb (`Screenshot.cs`, river views in `Screenshot.River.cs`, Chapter I's in `Screenshot.Hamlet.cs` with `-- --hamlet-only`) |
 | `tests/river.tscn` | headless river test through real input (`RiverTest.cs`; the seasons and the badge overlap checks in `RiverTest.Seasons.cs`) |
 | `export_presets.cfg` | Windows Desktop preset (`tools/export-windows.sh`) |
 | `assets/` | generated copy of `../assets` (`tools/sync-assets.sh`); never edit, gitignored |
@@ -57,7 +65,8 @@ With the river rules on (the default; `-- --no-river` turns them off) it also pl
 ## Scene tree (built in code at startup)
 
 ```
-Main (Main.cs)
+Main (Main.cs)                          everything below except PageTurn is built again for each chapter
+  PageTurn (CanvasLayer 30)/ Leaf       the page-turn moment, kept across chapters
   Environment, Sun                      one sun from the south-east; linear tonemap
   Table/ Top, Seam0..10, Inkwell
   Book/
@@ -69,7 +78,7 @@ Main (Main.cs)
         Marks (GroundMarks)             one mesh: drop shadows and yard outlines
         Town (TownLayer)/ House3/Cottage, Well0/Well, Market2/StallBackW.., Field1/Post0..3
         Scenery/ Trees0..2, Reeds, FordStones (MultiMesh), Rowboat
-        Edits (EditLayer)/ Fences/{Wattle, Posts} (MultiMesh), Bridges/Bridge0/{EndW, EndE, Span0..}   (footbridges only)
+        Edits (EditLayer)/ Fences/{Wattle, Posts, Gates} (MultiMesh), Bridges/Bridge0/{EndW, EndE, Span0..}   (footbridges only)
         Crossings (CrossingLayer)/ FerryLines (MultiMesh: ferry lines, signal discs), Ferry3/{PostW, PostE, Rope, Raft},
                                   Drawbridge4/{Lift/{Frame, Leaf, Beam, Chains, Signal}, Span3.., EndW/{Ramp, Barrier}, EndE, Keeper/{Hut, Keeper}}
         River (RiverLayer)/ Boat0..31/{Rowboat/{Hull, Cargo}, Barge/{Hull, Mast, Cargo}}, Wakes, Signs (MultiMesh), Landing/Jetty
@@ -80,9 +89,9 @@ Main (Main.cs)
   CameraRig/ Yaw/ Pitch/ Camera/ Ink/{InkHard, InkSoft}
   RiverFeed                             drains river events after the ticks (priority -90)
   Tools (ToolController)                pointer input, ghost, FlowPreviewer
-  Audio (AudioDirector, Node2D)         Step0..11, River (2D players at screen positions), Theme, Bell, Tool, Boat0..3, Bridge0..1, Coin
-  Hud (GameUi, CanvasLayer)/ Root/ MapTags/{Well, Market, Field, Ford}, MapTags/Fordclosed, RiverFloats/Float0..7, BridgeBadges/Bridge4,
-                                        Chapter (ChapterPage), Tabs (ToolTabs), PageLip,
+  Audio (AudioDirector, Node2D)         Step0..11, River (2D players at screen positions), Theme, Bell, Tool, Rain, Boat0..3, Bridge0..1, Coin
+  Hud (GameUi, CanvasLayer)/ Root/ Rain, MapTags/{Well, Market, Field, Ford}, MapTags/Fordclosed, RiverFloats/Float0..7, BridgeBadges/Bridge4,
+                                        NewHouses, Chapter (ChapterPage), Tabs (ToolTabs: Chapter ribbon first), PageLip,
                                         PreviewTip, Fps/Text
 ```
 
@@ -92,14 +101,17 @@ Units: 1 unit = 1 m, one cell = 2 m, the map is 128 x 128 cells. Cell (x, y) cov
 
 | Input | Does |
 | --- | --- |
-| F, B, E or the tabs | pick up the fence, footbridge or eraser (again puts it down) |
-| Y, D or the tabs (river) | pick up the ferry or the drawbridge; hover the river for the ghost, price and preview, click to build |
+| C or the chapter bookmark | turn the page to the other chapter (a fresh town from the same seed) |
+| F, T, G, B, E or the tabs | pick up the fence, gate, gravel, footbridge or eraser (again puts it down) |
+| drag (gravel) | brush a strip; it snaps to a worn trail within a cell; the ghost and preview follow; release lays it |
+| hover, click (gate) | the nearest fence within two cells shows the gate (one cell, or two at a stair's corner) or says why none fits; click places it, or takes out a gate |
+| Y, D or the tabs (Chapter II) | pick up the ferry or the drawbridge; hover the river for the ghost, price and preview, click to build |
 | click a drawbridge (no tool) | select it (its badge gets a blue frame); click it again to raise or lower it |
 | L, K | raise or lower the selected drawbridge (else the first); hire its keeper |
 | Ctrl+1 to 9 | raise or lower drawbridge 1 to 9 without selecting it |
 | left drag (fence) | draw a fence line; the ghost and flow preview follow; release places it |
 | hover, click (footbridge) | shows the bridge that would be built or says why none fits; press and release builds it |
-| click or drag (erase) | removes fences in a 3 x 3 brush and whole bridges and ferries (a crossing costs half its price; the hover says how much) |
+| click or drag (erase) | removes fences (with their gates) and gravel in a 3 x 3 brush and whole bridges and ferries (a crossing costs half its price; the hover says how much) |
 | Esc, right click | put the tool down (Esc also leaves the keyboard focus) |
 | Space, 1 2 3 4 | pause and resume; speed 1x 2x 4x 8x |
 | P, W, M | flow preview (on by default), wear overlay, sound (on by default) |
@@ -110,9 +122,16 @@ Units: 1 unit = 1 m, one cell = 2 m, the map is 128 x 128 cells. Cell (x, y) cov
 
 The camera pans with the arrows only: W is the wear overlay and E the eraser in Prototype 1 (the UX tab's W A S D pan and Q/E rotation come back with rebinding).
 
-## The river
+## Chapter I: gravel, gates, rain and a growing town
 
-`Main.River` (a `RiverRules`, default `RiverRules.Default`) is turned into `Main.Params.River` at start; tests change it (for example a fuller purse) before adding the scene; `-- --no-river` sets it to null and the game plays Prototype 1 as before.
+- Gravel is free in both chapters. It is drawn in the ground shader as a pale stony strip (#EEEADC wash, stones #77796F that fade to their mean below a pixel, a 1 to 2 px rim #5A5C55): the toy's 1.15-cell stroke joining neighbouring gravel cells, so a strip along a slanting trail is one band. Uploaded only when the gravel grid changes.
+- Gates are cut into the fence's rail where the toy cuts them and drawn with `fence-gate` standing ajar (0.32 rad) between two gate posts.
+- Rain (`World.Weather`, `World.Mud`, Chapter I only): streaks over the map page while it rains; the land darkens with the wetness; mud cells are wet trail and dry from the least-worn first over the last `DrySimSec`; the chapter page says "Rain, day N", "Mud until day N" or "Dry"; a rain bed and wet footsteps from the existing sounds.
+- Growth: `Buildings`, `Houses` and the walker count change during a tick; nothing caches their length. `SimDriver.HouseBuilt` tells the town (node, rising), the marks (yards and shadows rebuilt), the scenery (trees on the plot felled) and the overlay (`NewHouses`); the page says "Houses: N" and "newest on day N".
+
+## The river (Chapter II)
+
+`Main.River` (a `RiverRules`, default `RiverRules.Default`) is turned into `Main.Params.River` when the book is built for Chapter II; tests change it (for example a fuller purse) before adding the scene, with `Main.StartChapter = 2`, or before `SwitchChapter(2)`. In Chapter I `Main.Params.River` is null.
 
 - Boats are drawn from `RiverView.Boats` every frame. The simulation's boat is a point at its bow row; the hull is drawn behind it, so a held barge stops short of the bridge. The simulation queues boats 2 rows apart; they are drawn nose to tail. Moored boats lie either side of the jetty. Boats grow to 1.6x at overview zoom.
 - A raised leaf seen from straight above is only a dark edge, so the state is carried by shape on the map: the signal disc's arm (flat = walkers' turn, upright and blue = boats' turn), the open water under the lift, the barriers, the walkers bunched at the banks (waiting walkers are drawn spread round their stopping point), the badge's glyph and words.
@@ -123,7 +142,10 @@ The camera pans with the arrows only: W is the wear overlay and E the eraser in 
 
 ## Hooks for tests and the next builder
 
-Everything hangs off the `Main` node (`GetTree().CurrentScene as Main`, or the node itself):
+Everything hangs off the `Main` node (`GetTree().CurrentScene as Main`, or the node itself). A page turn builds every node under `Main` again (except `PageTurn`), so read `Main.Sim`, `Main.Ui` and the rest again after `ChapterChanged` (or `SwitchChapter`):
+
+- **Chapters** `Main.Chapter` (1 or 2), `StartChapter`, `TurnPage()`, `TurnTo(n)` (with the page-turn moment), `SwitchChapter(n)` (at once), `ChapterBuilds`, event `ChapterChanged`, `ChapterNames`, `ChapterNumerals`; `Main.Turn` (`PageTurn`: `Busy`, `Cover` 0..1, `Turns`, `Target`, `PinAt` to hold the leaf for a screenshot).
+- **Chapter I** `Main.Town` (`Grown`, `Rising`, `Now`, `SeenAt(i)`), `Main.Ui.Houses` (`NewHouses.Showing`), `Main.Ui.Rain` (`RainLayer.Level`), `Main.Ground` (`GravelCells`, `GravelUploads`, `Wet`, `MudShownMax`, `MudUploads`, `MapGround.WetAmount`), `Main.Edits.GatePieces`, `Main.Scenery.Felled`, `Main.Audio` (`RainDb`, `MudSteps`), the chapter page's `Column/Houses/Value`, `Column/HousesNote`, `Chapter.WeatherText`; tools `Tool.Gravel`, `Tool.Gate`, `BrushCells`, `GateCells`; driver `PlaceGravel(cells)`, `PlaceGate(cell)`, `RemoveGate(cell)`, `HouseBuilt`, `HousesSeen`, `CheckGrowth()`, `Held`.
 
 - **Simulation** `Main.Sim` (`SimDriver`): `World` (read-only spans, see `sim/README.md`), `Seed`, `WalkerCount`, `Paused`, `Speed`, `Alpha`, `AnimTime`, `MsPerTick`, `TicksPerSecond`, `SimMsThisFrame`, `BudgetHits`.
   - Time: `SetPaused(bool)`, `TogglePause()`, `SetSpeed(1|2|4|8)`, `SetWalkers(n)` (0..500), `Reset()` (same seed), `Reset(seed)`, `NewMap()` (the toy's next-seed rule, `SimDriver.NextSeed`).
