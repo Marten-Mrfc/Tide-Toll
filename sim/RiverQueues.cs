@@ -19,7 +19,8 @@ public sealed partial class World
         if (x == null || x.Type == CrossingType.Ford || _frozen) return false; // on ice every crossing is open ground
         if (w.Pass && w.HoldAt == id) { w.Pass = false; return false; }     // its turn came in the queue
         WalkerQueue q = SideOf(w.Cell) < 0 ? x.West! : x.East!;
-        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && !QueueHasWalker(x, q) && x.Tokens >= 1)
+        // Straight on when nobody is queued on either bank and the bridge has room; otherwise to the back of the queue.
+        if (x.Type != CrossingType.Ferry && BridgeOpen(x) && x.Tokens >= 1 && !QueueHasWalker(x, x.West!) && !QueueHasWalker(x, x.East!))
         {
             x.Tokens -= 1;
             return false;
