@@ -33,7 +33,7 @@ public partial class InkOutline : Node3D
             // The canonical shader stays untouched; ink_alpha is added here so soft ink can thin out when zoomed out.
             var sh = new Shader
             {
-                Code = code.Replace("// STENCIL_MODE", $"stencil_mode read, {cmp[i]}, 1;\nuniform float ink_alpha = 1.0;")
+                Code = code.Replace("\n// STENCIL_MODE\n", $"\nstencil_mode read, {cmp[i]}, 1;\nuniform float ink_alpha = 1.0;\n")
                            .Replace("ALPHA = e;", "ALPHA = e * ink_alpha;"),
             };
             var m = new ShaderMaterial { Shader = sh };

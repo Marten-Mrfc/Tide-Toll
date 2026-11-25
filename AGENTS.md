@@ -55,6 +55,15 @@ node sim.tests/golden/export.mjs <toy-dir>   # regenerate goldens from a toy fol
 
 Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, URL, where used) before it goes into the game; `./check` fails without one. See `docs/asset-pipeline.md`.
 
+## Interrupted work (temporary note from the lead, 25 November 2026)
+
+The container restarted at about 00:20 UTC and stopped the agents that were working. If your task covers one of these folders, an earlier agent with the same task was interrupted part-way, and its unfinished work is in the working tree and in the snapshot commits:
+
+- `game/` and `tools/`: the polish pass was nearly finished (ground shader, villagers, labels, trees, bookmarks, the review's fixes). See it with `git diff 9ead7ed -- game tools`. Check each item against your task, keep what is good, finish or redo the rest. Do not start again from nothing.
+- `sim/` and `sim.tests/`: the river rules had barely begun; see `git diff 9ead7ed -- sim sim.tests tools/TideToll.Tools`.
+- `assets/`: the river asset set was finished before the restart.
+- `prototypes/desire-lines/`: round 4 had not changed any file yet.
+
 ## Git
 
 Work on branch `claude/prototype-1`. Do not edit `docs/overnight-log.md` unless asked.

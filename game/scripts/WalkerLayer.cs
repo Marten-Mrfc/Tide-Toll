@@ -51,9 +51,10 @@ public partial class WalkerLayer : MultiMeshInstance3D
         _hull.SetShaderParameter("ink", Palette.Ink);
         _mat.NextPass = _hull;
         // Outfits: six palette tunic colours and three dark hats or hoods, picked per villager (custom data w).
-        Color[] tunics = { Palette.Brick, Palette.DeepWater, Palette.CastIronGreen, Palette.SlateRoof, Palette.Thatch, Palette.SootBrick };
+        // Mid-tone palette colours that stand out on green grass and pale earth alike; hats a step darker than any tunic.
+        Color[] tunics = { Palette.Brick, Palette.River, Palette.Thatch, Palette.CastIronGreen, Palette.SlateRoof, Palette.Limewash.Lerp(Palette.Thatch, 0.35f) };
         for (int i = 0; i < tunics.Length; i++) _mat.SetShaderParameter("tunic" + i, tunics[i]);
-        Color[] hats = { Palette.Mud, Palette.Ink, Palette.SootBrick.Darkened(0.2f) };
+        Color[] hats = { Palette.Mud, Palette.SootBrick, Color.FromHtml("#6F6450") }; // Mud, Soot brick, Wet mudflat
         for (int i = 0; i < hats.Length; i++) _mat.SetShaderParameter("hat" + i, hats[i]);
         mesh.SurfaceSetMaterial(0, _mat);
         Multimesh = new MultiMesh

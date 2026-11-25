@@ -6,6 +6,9 @@ uniform float anim_time = 0.0;
 uniform float hull_w = 0.06;
 uniform vec4 ink : source_color = vec4(0.1683, 0.1441, 0.1236, 1.0);
 void vertex() {
+	// A smaller head (the model's head dot covers half the villager from above): scaled about its centre, the same
+	// in walker.gdshader and walker_hull.gdshader so the ink hull keeps fitting.
+	VERTEX = mix(VERTEX, vec3(0.0, 2.24, 0.06) + (VERTEX - vec3(0.0, 2.24, 0.06)) * 0.68, smoothstep(1.84, 1.95, VERTEX.y));
 	float ph = INSTANCE_CUSTOM.x + anim_time * INSTANCE_CUSTOM.y;
 	float s = abs(sin(ph * 6.2831853));
 	VERTEX.y += s * INSTANCE_CUSTOM.z * (0.35 + 0.65 * smoothstep(0.0, 1.2, VERTEX.y));

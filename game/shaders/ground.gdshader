@@ -103,7 +103,7 @@ void fragment() {
 	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.25) * (1.04 + 0.06 * n2);
 	vec3 c = mix(grass, flattened, fringe);
 	// Bare earth: the trail texture lifted toward paper, mottled, with tufts of grass left standing near its edges.
-	vec3 earth = mix(two(g2, lp), paper.rgb, 0.16) * (0.93 + 0.12 * n2);
+	vec3 earth = mix(two(g2, lp), paper.rgb, 0.10) * (0.93 + 0.12 * n2);
 	float tufts = smoothstep(0.62, 0.80, n2) * (1.0 - smoothstep(0.42, 0.70, core));
 	earth = mix(earth, flattened, tufts * 0.7);
 	c = mix(c, earth, bare);

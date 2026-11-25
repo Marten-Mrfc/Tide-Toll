@@ -4,7 +4,7 @@ shader_type spatial;
 // villagers. world_vertex_coords: the push is in world space whatever the walker's facing.
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, world_vertex_coords;
 uniform vec4 ink : source_color = vec4(0.169, 0.149, 0.125, 1.0);
-uniform float strength = 0.30;
+uniform float strength = 0.22;
 uniform float push = 0.35;       // metres per unit of instance scale
 void vertex() {
 	float sc = length(MODEL_MATRIX[0].xyz);

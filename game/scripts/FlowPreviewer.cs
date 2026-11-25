@@ -56,8 +56,12 @@ public sealed class FlowPreviewer
         set { _enabled = value; if (!value) Clear(); }
     }
 
-    /// <summary>Whether the preview on screen answers the latest request.</summary>
-    public bool Settled => _hasWant && _shownKey == _wantKey && !_job && Current != null;
+    /// <summary>
+    /// Whether the preview on screen answers the latest request. A refresh of that same request against the same
+    /// edits (the once-a-second recompute as traffic drifts) leaves it settled: what is shown still answers it.
+    /// </summary>
+    public bool Settled => _hasWant && _shownKey == _wantKey && Current != null
+                           && (!_job || (_jobKey == _shownKey && _world.Version == _shownVersion));
     public bool Busy => _job;
 
     public void SetWorld(World w)
