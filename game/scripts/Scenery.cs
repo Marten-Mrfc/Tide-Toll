@@ -229,10 +229,22 @@ public partial class Scenery : Node3D
         return false;
     }
 
-    private static void Fill(MultiMeshInstance3D mmi, List<Transform3D> xfs)
+    /// <summary>Instances dropped because a MultiMesh could not grow (never expected; tests check it stays 0).</summary>
+    public int Dropped { get; private set; }
+
+    private void Fill(MultiMeshInstance3D mmi, List<Transform3D> xfs)
     {
         var mm = mmi.Multimesh;
+        if (xfs.Count > mm.InstanceCount)
+        {
+            // Grow rather than drop: a seed with more trees or reeds than the first guess still shows all of them.
+            // Setting InstanceCount clears the buffer, which is refilled just below. Rare (a new map), never per frame.
+            GD.Print($"Scenery: {mmi.Name} grows from {mm.InstanceCount} to {xfs.Count + 32} instances");
+            mm.VisibleInstanceCount = -1;
+            mm.InstanceCount = xfs.Count + 32;
+        }
         int n = Math.Min(xfs.Count, mm.InstanceCount);
+        Dropped += xfs.Count - n;
         for (int i = 0; i < n; i++) mm.SetInstanceTransform(i, xfs[i]);
         mm.VisibleInstanceCount = n;
     }

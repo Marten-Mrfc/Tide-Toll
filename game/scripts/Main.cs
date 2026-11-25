@@ -80,6 +80,8 @@ public partial class Main : Node3D
     {
         // Zoom-dependent drawing: ink width, walker size and walker ink follow the screen pixels per metre.
         var vp = GetViewport().GetVisibleRect().Size;
+        // A minimised or zero-height window: nothing is drawn, and every width below would divide by zero.
+        if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
         Ink.Update(Rig.Camera, vp);
         float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y; // as if at 1080p, so the look is resolution-independent
         // Villagers stay about 7 px wide when zoomed out (the mesh is 1 m wide, already 1.5x life size).

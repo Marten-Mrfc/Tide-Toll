@@ -64,7 +64,10 @@ public partial class WalkerLayer : MultiMeshInstance3D
     }
 
     /// <summary>Ink width follows the zoom so it stays about 1.2 screen pixels.</summary>
-    public void SetMetresPerPixel(float metresPerPx) => _metresPerPx = metresPerPx;
+    public void SetMetresPerPixel(float metresPerPx)
+    {
+        if (float.IsFinite(metresPerPx) && metresPerPx > 0) _metresPerPx = metresPerPx; // ignore a zero-height window
+    }
 
     public override void _Process(double delta) => Sync();
 

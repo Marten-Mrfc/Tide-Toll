@@ -29,6 +29,9 @@ public partial class RouteLayer : MeshInstance3D
     private readonly List<float> _ring = new();
     private static readonly StringName Mpp = new("metres_per_px"), March = new("march"), Opacity = new("opacity");
 
+    /// <summary>Seconds after which the dash animation wraps: a common multiple of both dash periods.</summary>
+    public const double MarchWrap = 45.0;
+
     /// <summary>Routes in the mesh now (tests).</summary>
     public int Routes { get; private set; }
     public int Vertices => _v.Count;
@@ -58,7 +61,9 @@ public partial class RouteLayer : MeshInstance3D
         }
         if (!Visible) return;
         if (metresPerPx != _mpp) { _mpp = metresPerPx; _mat.SetShaderParameter(Mpp, metresPerPx); }
-        _mat.SetShaderParameter(March, (float)(time % 1000.0));
+        // Wrap at 45 s, a common multiple of both dash periods (15 px / 12 px/s = 1.25 s, 9 px / 8 px/s = 1.125 s), so
+        // the wrap never jumps; float time stays precise.
+        _mat.SetShaderParameter(March, (float)(time % MarchWrap));
     }
 
     private void Build(FlowPreview p)

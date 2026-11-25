@@ -18,8 +18,9 @@ public partial class GameUi : CanvasLayer
     private Control _root = null!;
     public ChapterPage Chapter { get; private set; } = null!;
     public ToolTabs Tabs { get; private set; } = null!;
-    private PanelContainer _tip = null!;
+    private PanelContainer _tip = null!, _fpsPlate = null!;
     private Label _tipText = null!, _fps = null!;
+    private ToolTabs.PageLip _lip = null!;
     private float _s;
     private Vector2 _builtFor;
     private double _since = 1, _now;
@@ -62,6 +63,8 @@ public partial class GameUi : CanvasLayer
     {
         var vp = GetViewport().GetVisibleRect().Size;
         if (vp == _builtFor) return;
+        // Out of the tree first, so the new "Root" never sits beside the old one (it would be renamed "@Root@2").
+        RemoveChild(_root);
         _root.QueueFree();
         Build();
     }
@@ -83,6 +86,9 @@ public partial class GameUi : CanvasLayer
         Tabs = new ToolTabs();
         Tabs.Build(_s);
         _root.AddChild(Tabs);
+        // Drawn over the tabs: the page's edge lying on top of them, so they read as bookmarks tucked under the page.
+        _lip = new ToolTabs.PageLip { Name = "PageLip", Tabs = Tabs, Scale1 = _s };
+        _root.AddChild(_lip);
         Wire();
 
         _tip = new PanelContainer { Name = "PreviewTip", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
@@ -93,15 +99,20 @@ public partial class GameUi : CanvasLayer
         _tip.AddChild(_tipText);
         _root.AddChild(_tip);
 
-        _fps = UiKit.Text("", _s, 13, UiKit.UiFont, new Color(UiKit.Paper, 0.85f));
-        _fps.Name = "Fps";
-        // Pinned to the bottom-right corner, growing leftward as the text changes length.
-        _fps.AnchorLeft = _fps.AnchorRight = _fps.AnchorTop = _fps.AnchorBottom = 1;
-        _fps.GrowHorizontal = Control.GrowDirection.Begin;
-        _fps.GrowVertical = Control.GrowDirection.Begin;
-        _fps.OffsetLeft = _fps.OffsetRight = -UiKit.Px(_s, 10);
-        _fps.OffsetTop = _fps.OffsetBottom = -UiKit.Px(_s, 6);
-        _root.AddChild(_fps);
+        // The fps and ms-per-tick readout: paper text on a small ink plate in the bottom-right corner, so it reads over
+        // the table, the page stack or the map alike; placed in _Process whenever its text changes.
+        _fpsPlate = new PanelContainer { Name = "Fps", MouseFilter = Control.MouseFilterEnum.Ignore };
+        var plate = new StyleBoxFlat { BgColor = new Color(UiKit.Ink, 0.9f), BorderColor = new Color(UiKit.Paper, 0.35f), AntiAliasing = true };
+        plate.SetBorderWidthAll(1);
+        plate.SetCornerRadiusAll(UiKit.Px(_s, 4));
+        plate.ContentMarginLeft = plate.ContentMarginRight = UiKit.Px(_s, 8);
+        plate.ContentMarginTop = plate.ContentMarginBottom = UiKit.Px(_s, 3);
+        _fpsPlate.AddThemeStyleboxOverride("panel", plate);
+        _fps = UiKit.Text("", _s, 13, UiKit.UiFont, UiKit.Paper);
+        _fps.Name = "Text";
+        _fpsPlate.AddChild(_fps);
+        _fpsPlate.Visible = false; // until it has text
+        _root.AddChild(_fpsPlate);
 
         _main.Rig.PlayRoomPx = ToolTabs.WidthFor(_s) + 24 * _s;
         _tabsAt = new Vector2(-1, -1);
@@ -230,6 +241,17 @@ public partial class GameUi : CanvasLayer
         var w = sim.World;
         Chapter.Refresh(w.Stats(), w.WalkersOut(), sim.Seed, _now);
         _fps.Text = $"{Engine.GetFramesPerSecond():0} fps · sim {sim.MsPerTick:0.00} ms/tick · {sim.TicksPerSecond:0} ticks/s";
+        PlaceFps(vp);
+    }
+
+    /// <summary>The readout's plate, a margin in from the bottom-right corner of the window.</summary>
+    private void PlaceFps(Vector2 vp)
+    {
+        _fpsPlate.Visible = true;
+        _fpsPlate.ResetSize();
+        float m = UiKit.Px(_s, 12);
+        var at = new Vector2(Mathf.Round(vp.X - _fpsPlate.Size.X - m), Mathf.Round(vp.Y - _fpsPlate.Size.Y - m));
+        if (_fpsPlate.Position != at) _fpsPlate.Position = at;
     }
 
     /// <summary>The chapter column over the left page, the tabs out of the right page's outer edge.</summary>
@@ -242,7 +264,11 @@ public partial class GameUi : CanvasLayer
         Chapter.Place(new Rect2(a, b - a).Abs(), vp);
         var right = _main.RightPageRect;
         var edge = cam.UnprojectPosition(new Vector3(right.End.X, 0, right.Position.Y));
-        float x = Mathf.Min(edge.X - 3 * _s, vp.X - Tabs.TabWidth - 10 * _s);
+        // Tucked a few pixels under the page edge (the lip draws the edge over them); pushed further onto the page
+        // only when the window is too narrow, and then they lie on it as loose slips (no lip).
+        float tuck = ToolTabs.Tuck * _s;
+        float x = Mathf.Min(edge.X - tuck, vp.X - Tabs.TabWidth - 10 * _s);
+        _lip.Place(edge.X, x + tuck >= edge.X - 0.5f);
         float y = Mathf.Max(12 * _s, edge.Y + 20 * _s);
         float h = Tabs.GetCombinedMinimumSize().Y;
         if (y + h > vp.Y - 30 * _s) y = Mathf.Max(8 * _s, vp.Y - 30 * _s - h);

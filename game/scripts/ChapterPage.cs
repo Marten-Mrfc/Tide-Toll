@@ -29,6 +29,12 @@ public partial class ChapterPage : PanelContainer
     private Label _trunk = null!, _trunkNote = null!, _status = null!, _preview = null!;
     private Control _title = null!, _howTo = null!, _ground = null!, _heat = null!, _legendHead = null!;
     private BandGauge _gauge = null!;
+    private VBoxContainer _col = null!;
+    private Label _howPara = null!, _keysPara = null!;
+    // Parts that fold away, in this order, when the page is too short for everything (1280 x 720 book view):
+    // the key reminder (every tab shows its key), then the how-to paragraph (the tabs' tooltips say it too).
+    private Control[] _optional = System.Array.Empty<Control>();
+    private readonly float[] _optionalH = new float[4];
     private StyleBox _onPage = null!, _slip = null!;
     private Rect2 _placed;
     private int _lastDay = -1, _lastSeason = -1, _lastYear = -1, _lastOut = -1, _lastWalkers = -1, _lastSeed = -1;
@@ -38,6 +44,11 @@ public partial class ChapterPage : PanelContainer
 
     /// <summary>True when the page is too far off screen and the entries sit on a slip in the corner.</summary>
     public bool Slip { get; private set; }
+    /// <summary>The page's rectangle on screen (pixels), and how many optional parts are folded away to fit it.</summary>
+    public Rect2 PageRect { get; private set; }
+    public int Folded { get; private set; }
+    /// <summary>Least distance in pixels kept between the page's edge and any line on it (UX: at least 12 px).</summary>
+    public const float MinInset = 12f;
 
     public void Build(float s)
     {
@@ -48,6 +59,7 @@ public partial class ChapterPage : PanelContainer
         _slip = UiKit.Card(s, UiKit.Paper, 1.5f);
         AddThemeStyleboxOverride("panel", _onPage);
         var col = new VBoxContainer { Name = "Column", MouseFilter = MouseFilterEnum.Ignore };
+        _col = col;
         col.AddThemeConstantOverride("separation", UiKit.Px(s, 3));
         AddChild(col);
 
@@ -62,8 +74,12 @@ public partial class ChapterPage : PanelContainer
         _title = title;
 
         var how = new VBoxContainer { Name = "HowTo", MouseFilter = MouseFilterEnum.Ignore };
-        how.AddChild(Para(HowTo, 16, UiKit.Serif, UiKit.Ink));
-        how.AddChild(Para(Keys, 13, UiKit.UiFont, UiKit.FadedInk.Darkened(0.35f)));
+        _howPara = Para(HowTo, 16, UiKit.Serif, UiKit.Ink);
+        _howPara.Name = "HowToText";
+        _keysPara = Para(Keys, 13, UiKit.UiFont, UiKit.FadedInk.Darkened(0.35f));
+        _keysPara.Name = "KeysText";
+        how.AddChild(_howPara);
+        how.AddChild(_keysPara);
         col.AddChild(how);
         _howTo = how;
 
@@ -94,6 +110,8 @@ public partial class ChapterPage : PanelContainer
         _preview.Name = "PreviewLine";
         _preview.Visible = false;
         col.AddChild(_preview);
+        _optional = new Control[] { _keysPara, _howPara };
+        Folded = 0;
     }
 
     private Label Para(string text, float px, FontFile font, Color c)
@@ -126,12 +144,14 @@ public partial class ChapterPage : PanelContainer
         v.CustomMinimumSize = new Vector2(UiKit.Px(_s, 60), 0);
         row.AddChild(n); row.AddChild(v);
         col.AddChild(row);
+        note = null!;
+        if (!withNote) return v; // (a label built and never added would leak: an orphan CanvasItem at exit)
         note = UiKit.Text("", _s, 13, UiKit.UiFont, UiKit.FadedInk.Darkened(0.3f));
         note.HorizontalAlignment = HorizontalAlignment.Right;
         note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         note.CustomMinimumSize = new Vector2(UiKit.Px(_s, 60), 0);
         note.Name = name.Replace(" ", "") + "Note";
-        if (withNote) col.AddChild(note);
+        col.AddChild(note);
         return v;
     }
 
@@ -245,8 +265,12 @@ public partial class ChapterPage : PanelContainer
     /// <summary>Lays the column over the visible part of the page (pageRect in screen pixels), or folds it into a slip.</summary>
     public void Place(Rect2 page, Vector2 vp)
     {
+        PageRect = page;
+        // Side margins in proportion to the page; top and bottom at least MinInset plus a little air, and never less
+        // than the side margin's share of the height, so the last line stays clear of the book's bottom edge.
         float s = _s, margin = Mathf.Max(UiKit.Px(s, 18), page.Size.X * 0.07f);
-        var inner = page.Grow(-margin);
+        float vmargin = Mathf.Max(MinInset + UiKit.Px(s, 8), page.Size.Y * 0.055f);
+        var inner = new Rect2(page.Position + new Vector2(margin, vmargin), page.Size - new Vector2(2 * margin, 2 * vmargin));
         var screen = new Rect2(Vector2.Zero, vp).Grow(-UiKit.Px(s, 12));
         var vis = inner.Intersection(screen);
         bool slip = vis.Size.X < 290 * s || vis.Size.Y < 520 * s;
@@ -267,11 +291,34 @@ public partial class ChapterPage : PanelContainer
             float x = Mathf.Clamp(inner.Position.X + (inner.Size.X - w) / 2f, vis.Position.X, vis.End.X - w);
             r = new Rect2(x, vis.Position.Y, w, vis.Size.Y);
         }
+        if (!slip) Fit(r.Size.Y);
         if (r == _placed) return;
         _placed = r;
         CustomMinimumSize = new Vector2(r.Size.X, 0); // first, or a wider old minimum would stop the shrink
         Position = r.Position;
         Size = new Vector2(r.Size.X, slip ? 0 : r.Size.Y);
+    }
+
+    /// <summary>
+    /// Folds the optional parts away one at a time while the column is taller than the room on the page, and unfolds
+    /// them when there is room again (with a few pixels of hysteresis, so it never flickers). One step per frame;
+    /// allocation-free.
+    /// </summary>
+    private void Fit(float avail)
+    {
+        float need = _col.GetCombinedMinimumSize().Y;
+        if (need > avail && Folded < _optional.Length)
+        {
+            var c = _optional[Folded];
+            _optionalH[Folded] = c.Size.Y + _col.GetThemeConstant("separation");
+            c.Visible = false;
+            Folded++;
+        }
+        else if (Folded > 0 && need + _optionalH[Folded - 1] + UiKit.Px(_s, 6) <= avail)
+        {
+            Folded--;
+            _optional[Folded].Visible = true;
+        }
     }
 
     /// <summary>The trunk share on a 0 to 100% rule with the 30% to 70% band hatched and a diamond at the value.</summary>

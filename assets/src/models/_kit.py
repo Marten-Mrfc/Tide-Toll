@@ -108,3 +108,70 @@ def stone(m, rng, pos, r, h, top="Concrete", side="Wet mudflat", n=6, amount=0.1
     tp = [(x0 + x * taper, y0 + h, z0 + z * taper) for x, z in out]
     loft(m, bot, tp, side)
     cap(m, tp, top)
+
+
+def tube(m, p0, p1, r0, colour, n=6, r1=None, ends=True, end_colour=None):
+    """Round (n-sided) rod from point p0 to p1, radius r0 at p0 and r1 at p1 (default r0): masts lying down, rope,
+    a furled sail on its yard, a lantern's crossbar. Flat-shaded like everything else."""
+    p0, p1 = _v(p0), _v(p1)
+    r1 = r0 if r1 is None else r1
+    d = p1 - p0
+    d = d / np.linalg.norm(d)
+    a = _v((0, 1, 0)) if abs(d[1]) < 0.9 else _v((1, 0, 0))
+    s = np.cross(d, a); s /= np.linalg.norm(s)
+    u = np.cross(s, d)
+    ang = [2 * math.pi * (i + 0.5) / n for i in range(n)]
+    ra = [p0 + r0 * (math.cos(t) * s + math.sin(t) * u) for t in ang]
+    rb = [p1 + r1 * (math.cos(t) * s + math.sin(t) * u) for t in ang]
+    centre = (p0 + p1) / 2
+    for i in range(n):
+        j = (i + 1) % n
+        q = [ra[i], ra[j], rb[j], rb[i]]
+        mid = np.mean(q, axis=0)
+        out = mid - (p0 + d * np.dot(mid - p0, d))
+        m._face(q, colour, out)
+    if ends:
+        m._face(ra, end_colour or colour, p0 - centre)
+        m._face(rb, end_colour or colour, p1 - centre)
+
+
+def plate(m, pts_yz, x, thickness, colour, edge=None):
+    """Flat vertical plate in the Y-Z plane (a leeboard, a rudder blade, a gable board): convex outline
+    [(y, z), ...] extruded `thickness` across X, centred on x."""
+    h = thickness / 2
+    a = [_v((x - h, y, z)) for y, z in pts_yz]
+    b = [_v((x + h, y, z)) for y, z in pts_yz]
+    m._face(a, colour, _v((-1, 0, 0)))
+    m._face(b, colour, _v((1, 0, 0)))
+    c = np.mean(a + b, axis=0)
+    n = len(a)
+    for i in range(n):
+        j = (i + 1) % n
+        q = [a[i], a[j], b[j], b[i]]
+        out = np.mean(q, axis=0) - c
+        out[0] = 0.0
+        m._face(q, edge or colour, out)
+
+
+def hull(m, half, gun, keel, sx_keel, sz_keel, colours, inner=(0.88, 0.94), deck=None, dz_keel=0.0):
+    """A boat hull from a half outline at the gunwale [(x >= 0, z)], bow first: outer side lofted from a smaller
+    keel ring up to the gunwale, flat bottom, a gunwale band and (deck=y) a flat deck inside the band.
+    colours = dict(side=, bottom=, band=, deck=). Returns (gunwale ring, inner ring at the gunwale)."""
+    out = half + [(-x, z) for x, z in reversed(half[1:])]
+    out = [p for i, p in enumerate(out) if i == 0 or abs(p[0] - out[i - 1][0]) + abs(p[1] - out[i - 1][1]) > 1e-9]
+    if abs(out[-1][0] - out[0][0]) + abs(out[-1][1] - out[0][1]) < 1e-9:
+        out = out[:-1]
+    g = [(x, gun, z) for x, z in out]
+    k = [(x * sx_keel, keel, z * sz_keel + dz_keel) for x, z in out]
+    gi = [(x * inner[0], gun, z * inner[1]) for x, z in out]
+    loft(m, k, g, colours["side"])
+    cap(m, k, colours["bottom"], facing=(0, -1, 0))
+    n = len(out)
+    for i in range(n):
+        j = (i + 1) % n
+        m.add_poly([g[i], g[j], gi[j], gi[i]], colours["band"], facing=(0, 1, 0))
+    if deck is not None:
+        di = [(x, deck, z) for x, _, z in gi]
+        loft(m, di, gi, colours["band"], inward=True, centre=(0, deck + 1, 0))
+        cap(m, di, colours["deck"])
+    return g, gi

@@ -54,6 +54,7 @@ public partial class InkOutline : Node3D
     public void Update(Camera3D cam, Vector2 viewportPx)
     {
         if (cam.Size == _lastSize && viewportPx.Y == _lastH) return;
+        if (viewportPx.Y < 1f || cam.Size <= 0f) return; // zero-height window: keep the last widths, never infinity
         _lastSize = cam.Size; _lastH = viewportPx.Y;
         float pxPerM = viewportPx.Y / cam.Size;
         float line = LinePx(pxPerM * 1080f / viewportPx.Y);

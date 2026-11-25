@@ -43,7 +43,7 @@ public partial class AudioDirector : Node2D
     private readonly double[] _voiceAt = new double[FootVoices];
     private AudioStreamPlayer2D _riverPlayer = null!;
     private AudioStreamPlayer _themePlayer = null!, _bellPlayer = null!, _toolPlayer = null!;
-    private readonly int[] _last = new int[8];
+    private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1 }; // -1: nothing played yet in that slot
     private readonly Random _rng = new(7);
     private double _now, _beatAcc, _riverAcc, _lastBell = -100, _nextTheme = 30, _lowpass = 1;
     private long _beatIndex;
@@ -292,8 +292,10 @@ public partial class AudioDirector : Node2D
 
     private int Next(AudioStream[] set, int slot)
     {
-        int k = _rng.Next(set.Length - 1);
-        if (k >= _last[slot]) k++; // never the same file twice in a row
+        int last = _last[slot];
+        // The first pick may be any file; later picks skip the last one (never the same file twice in a row).
+        int k = last < 0 || set.Length < 2 ? _rng.Next(set.Length) : _rng.Next(set.Length - 1);
+        if (last >= 0 && set.Length >= 2 && k >= last) k++;
         _last[slot] = k;
         return k;
     }

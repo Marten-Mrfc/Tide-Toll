@@ -46,6 +46,21 @@ public partial class Perf : Node
 
     public override void _Ready()
     {
+        try { Setup(); }
+        catch (Exception e) { Crash(e); }
+    }
+
+    // Godot only logs an unhandled C# exception and carries on; the test must stop and fail instead.
+    private void Crash(Exception e)
+    {
+        GD.PrintErr($"PERF FAIL: exception {e}");
+        GD.Print("PERF FAIL");
+        _run = Runs.Length;
+        GetTree().Quit(1);
+    }
+
+    private void Setup()
+    {
         foreach (var a in OS.GetCmdlineUserArgs())
         {
             if (a.StartsWith("--frames=")) _frames = int.Parse(a.Substring(9));
@@ -102,6 +117,13 @@ public partial class Perf : Node
     private Vector2 Cell(int x, int y) => _main.Rig.LocalToScreen(new Vector3((x + 0.5f) * 2f, 0, (y + 0.5f) * 2f));
 
     public override void _Process(double delta)
+    {
+        if (_run >= Runs.Length) return;
+        try { Frame(delta); }
+        catch (Exception e) { Crash(e); }
+    }
+
+    private void Frame(double delta)
     {
         // Processed last: everything the game did this frame lies between the marker's stamp and now.
         if (_run >= Runs.Length) return;

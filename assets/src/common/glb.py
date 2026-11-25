@@ -233,7 +233,9 @@ INK_SOFT = 1.5     # crease threshold for ink="soft" models (the default pass us
 
 def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common/glb.py", ink=None):
     """Write a .glb. parts = a Mesh, or a list of (node_name, Mesh) or (node_name, Mesh, ink) for separate nodes
-    (all at the origin, transforms applied). Returns {'tris', 'min', 'max', 'size', 'colours'}. Raises if max_tris
+    (all at the origin, transforms applied), or (node_name, Mesh, ink, (x, y, z)) for a node that the game moves or
+    rotates: its mesh is in the node's local frame (pivot at the local origin) and the node carries that translation
+    (a hinged drawbridge leaf, a mast that lowers). ink None = the file's default. Returns {'tris', 'min', 'max', 'size', 'colours'}. Raises if max_tris
     is exceeded. Output bytes depend only on the input, so generators are reproducible.
     ink="soft" marks the nodes (glTF node extras {"ink": "soft"}, which Godot imports as node metadata "extras")
     for the soft-crease ink pass: many-faceted organic shapes (tree crowns, crop rows) whose facet creases would
@@ -241,8 +243,9 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
     above INK_SOFT; silhouettes are inked as usual."""
     if isinstance(parts, Mesh):
         parts = [(Path(path).stem, parts)]
-    parts = [(p[0], p[1], p[2] if len(p) > 2 else ink) for p in parts]
-    total = sum(m.tri_count() for _, m, _ in parts)
+    parts = [(p[0], p[1], p[2] if len(p) > 2 and p[2] is not None else ink, p[3] if len(p) > 3 else None)
+             for p in parts]
+    total = sum(p[1].tri_count() for p in parts)
     if max_tris is not None and total > max_tris:
         raise ValueError(f"{path}: {total} triangles, budget {max_tris}")
     bin_chunks, views, accessors, meshes, nodes = [], [], [], [], []
@@ -270,7 +273,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         return len(accessors) - 1
 
     lo, hi = np.full(3, np.inf), np.full(3, -np.inf)
-    for name, m, node_ink in parts:
+    for name, m, node_ink, trans in parts:
         if not m.tris:
             raise ValueError(f"part {name!r} is empty")
         pos = np.array([p for t in m.tris for p in t[:3]], np.float32)
@@ -282,12 +285,15 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         nrm = np.array(nrm, np.float32)
         uv = np.array([P.uv(t[3]) for t in m.tris for _ in range(3)], np.float32)
         idx = np.arange(len(pos), dtype=np.uint32 if len(pos) > 65535 else np.uint16)
-        lo, hi = np.minimum(lo, pos.min(0)), np.maximum(hi, pos.max(0))
+        off = np.zeros(3, np.float32) if trans is None else np.asarray(trans, np.float32)
+        lo, hi = np.minimum(lo, pos.min(0) + off), np.maximum(hi, pos.max(0) + off)
         prim = {"attributes": {"POSITION": add_acc(pos, "VEC3", 34962, True), "NORMAL": add_acc(nrm, "VEC3", 34962),
                                "TEXCOORD_0": add_acc(uv, "VEC2", 34962)},
                 "indices": add_acc(idx, "SCALAR", 34963), "material": 0, "mode": 4}
         meshes.append({"name": name, "primitives": [prim]})
         node = {"name": name, "mesh": len(meshes) - 1}
+        if trans is not None:
+            node["translation"] = [float(v) for v in trans]
         if node_ink:
             node["extras"] = {"ink": node_ink}
         nodes.append(node)
@@ -309,7 +315,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         f.write(struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
         f.write(struct.pack("<II", len(js), 0x4E4F534A) + js)
         f.write(struct.pack("<II", len(binb), 0x004E4942) + binb)
-    used = sorted({t[3] for _, m, _ in parts for t in m.tris})
+    used = sorted({t[3] for p in parts for t in p[1].tris})
     return {"tris": total, "min": [round(float(x), 3) for x in lo], "max": [round(float(x), 3) for x in hi],
             "size": [round(float(x), 3) for x in hi - lo], "colours": used}
 
