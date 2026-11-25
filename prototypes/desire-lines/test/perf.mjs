@@ -102,7 +102,8 @@ for (const r of rows) {
 console.log("\n4x CPU throttling (report only; frame budget: at most 10 ms of sim work per frame, dropped sim time shows as sim s per s below the speed)");
 for (const r of throttled)
   console.log(`${String(r.walkers).padStart(14)} ${String(r.speed + "x").padStart(5)} | ${r.fps.toFixed(1).padStart(5)} ${r.avgIntervalMs.toFixed(2).padStart(7)} ms ${r.worstIntervalMs.toFixed(1).padStart(8)} ms  ${String(r.longFrames).padStart(5)} | ` +
-    `${r.avgWorkMs.toFixed(2).padStart(6)} ${r.p95WorkMs.toFixed(2).padStart(6)} ${r.worstWorkMs.toFixed(1).padStart(6)} | ${r.tickMs.toFixed(2).padStart(7)} (worst frame of ticks ${r.worstTickFrameMs.toFixed(1)}, budget hit ${r.budgetHits}x) | ${r.simSecondsPerSecond.toFixed(2).padStart(11)}`);
+    `${r.avgWorkMs.toFixed(2).padStart(6)} ${r.p95WorkMs.toFixed(2).padStart(6)} ${r.worstWorkMs.toFixed(1).padStart(6)} | ${r.tickMs.toFixed(2).padStart(7)} (worst frame of ticks ${r.worstTickFrameMs.toFixed(1)}, budget hit ${r.budgetHits}x) | ${r.simSecondsPerSecond.toFixed(2).padStart(11)}\n` +
+    `${" ".repeat(21)}drawing: avg ${r.avgDrawMs.toFixed(2)} ms, p95 ${r.p95DrawMs.toFixed(2)} ms, worst ${r.worstDrawMs.toFixed(1)} ms; worn-ground rebuild ${r.groundMs.toFixed(2)} ms each (${r.groundBuilds} rebuilds)`);
 console.log(`\nFLOW PREVIEW while dragging a fence (200 walkers, 1x, 2 s): ${drag.fps.toFixed(1)} fps, work avg ${drag.avgWorkMs.toFixed(2)} ms, p95 ${drag.p95WorkMs.toFixed(2)} ms, worst ${drag.worstWorkMs.toFixed(1)} ms, worst frame gap ${drag.worstIntervalMs.toFixed(1)} ms; readout "${pstate.text}"`);
 console.log(`criteria: average >= 55 fps and no frame gap of 100 ms or more. Page errors: ${errors.length ? errors.join("; ") : "none"}`);
 if (!ok || errors.length) process.exitCode = 1;

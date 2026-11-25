@@ -167,7 +167,23 @@ export function rainTests(check: Check, log: Log) {
   check(mudOnGravel === 0 && mudOnWater === 0 && trailCells.every(v => w.gravel[v]), "rain: mud never appears on gravel (nor on water, the ford or a bridge)");
   const expected = PARAMS.daySimSec * PARAMS.mudDays[season];
   log(`  forced shower: mud for ${(until - forced).toFixed(1)} s (${PARAMS.mudDays[season]} days in ${["spring", "summer", "autumn", "winter"][season]}: ${expected} s); dry ${(w.time - forced).toFixed(1)} s after it began (${w.weather.rainDays - rolled0} rain day(s) rolled meanwhile); then wetness ${w.weather.wetness}, ${w.mudCells} mud cells, cost ${w.cellCost(c).toFixed(3)}`);
-  check(Math.abs(until - forced - expected) < 0.01 && w.weather.wetness === 0 && w.mudCells === 0 && w.cellCost(c) < wet && maxWet === 1, "rain: mud lasts the rain day plus one (two in autumn), then the ground dries and costs fall back");
+  check(PARAMS.mudDays.every(d => d === 2) && Math.abs(until - forced - expected) < 0.01 && w.weather.wetness === 0 && w.mudCells === 0 && w.cellCost(c) < wet && maxWet === 1, "rain: mud lasts the rain day plus one in every season (autumn too), then the ground dries and costs fall back");
+
+  // Mud follows a tool at once, with no tick in between: gravel erased in rain turns to mud,
+  // a fence laid over gravel or over mud is never mud, and the step costs follow.
+  w.startRain();
+  run(w, 0.4);
+  const [g0, g1] = trailCells, muddy = [...Array(NC).keys()].find(v => w.mud[v] && !w.gravel[v] && v !== c && w.canFence(v))!;
+  // (Each update also picks up cells worn to trail since the last one, so the count is checked against the flags.)
+  const n0 = w.mudCells, counted = () => w.mud.reduce((s, v) => s + v, 0) === w.mudCells;
+  w.erase([g0]);
+  const erasedMud = w.mud[g0] === 1 && counted() && w.cellCost(g0) > w.cellCost(g1);
+  w.placeFence([g1, muddy]);
+  const fencedDry = w.mud[g1] === 0 && w.mud[muddy] === 0 && counted();
+  w.placeGravel([c]);
+  const gravelDry = w.mud[c] === 0 && counted();
+  log(`  tools in rain, no tick between: gravel erased -> mud ${w.mud[g0]}; fence over gravel and over mud -> mud ${w.mud[g1]}, ${w.mud[muddy]}; gravel on mud -> mud ${w.mud[c]}; mud cells ${n0} -> ${w.mudCells}`);
+  check(erasedMud && fencedDry && gravelDry, "rain: mud updates at once after a tool (gravel erased, fence over gravel or mud, gravel on mud)");
 
   // Walkers step beside mud: two identical runs, one with a shower; walker time on lightly
   // worn trail (wear 25 to 50, dearer than grass when muddy) falls and time on the ground beside rises.

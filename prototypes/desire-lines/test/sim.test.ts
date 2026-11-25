@@ -23,7 +23,7 @@ import { World } from "../src/sim/world";
 import { PARAMS } from "../src/sim/params";
 import { N, NC, idx, inside, line4 } from "../src/sim/grid";
 import { traceRoute } from "../src/sim/path";
-import { FlowPreview, describePreview, Ov } from "../src/sim/preview";
+import { FlowPreview, describePreview, Ov, GRAVEL_NOTES } from "../src/sim/preview";
 import { readFileSync } from "node:fs";
 import { seedRow, exactTable, Row, SAMPLE_FROM, DAYS, WIDTH_DAY } from "./g3";
 import { gateAngleTests, gateRefusalTests, fenceOverGravelTest, rainTests, growthTests, newDeterminismTest, newIsolationTest, gravelNoteTest } from "./rules.test";
@@ -241,6 +241,21 @@ function gravelTest(seeds: number[]) {
     log(`  seed ${seed}: ${laid} gravel cells, ${along} on predicted routes ("${describePreview(pv, k => a.buildings[k].kind)}"); footsteps on them in the last 2 days ${sa} (without gravel ${sb}); trail cells ${ta} (without ${tb}) ${ok ? "" : "  <- not pulled"}`);
   }
   check(predicted >= seeds.length - 1, `preview: the predicted routes run along the gravel strip (half its cells within 1.5 cells) on ${predicted} of ${seeds.length} seeds`);
+  // Round 5: on mature maps a strip 3 cells from a used route often wins traffic over days that the
+  // route search cannot see (round 4: "No change to routes" on 4 of 16 sites that then pulled walkers).
+  // The readout must never say "No change" there: it reroutes, or says it may draw walkers.
+  const texts: string[] = [];
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const m = new World(seed, 200, OFF);
+    run(m, 10);
+    for (const k of [0, 1]) {
+      const strip = besideRoute(m, m.houses[(seed + k) % m.houses.length], 24, 3);
+      if (strip.length) texts.push(describePreview(m.previewFlows({ gravel: strip }), b => m.buildings[b].kind));
+    }
+  }
+  const tally = (t: string) => texts.filter(x => x === t).length;
+  log(`  day 10, seeds 1 to 8, strips 3 cells beside a house-market route: ${texts.length} sites; "Reroutes ..." ${texts.filter(x => x.startsWith("Reroutes")).length}, "${GRAVEL_NOTES.near}" ${tally(GRAVEL_NOTES.near)}, "${GRAVEL_NOTES.on}" ${tally(GRAVEL_NOTES.on)}, "No change to routes" ${tally("No change to routes")}, "${GRAVEL_NOTES.far}" ${tally(GRAVEL_NOTES.far)}`);
+  check(texts.length >= 12 && tally("No change to routes") === 0 && tally(GRAVEL_NOTES.far) === 0, "preview: gravel 3 cells from a used route never reads \"No change to routes\" (it reroutes, or may draw walkers)");
   check(pulled >= seeds.length - 1, `gravel: a strip beside a young route pulls the trail onto it (3x the footsteps, half of it trail) on ${pulled} of ${seeds.length} seeds`);
 
   // No regrowth below trail: worn ground under gravel stays trail with no traffic.

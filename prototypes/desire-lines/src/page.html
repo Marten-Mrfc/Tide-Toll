@@ -9,6 +9,7 @@
     --line: #b8bdb0;
     --accent: #234a6e;
     --accent-fg: #f4f6f2;
+    --dawn: #c9d2d3; /* the dawn mark's tint behind the day line (the text keeps --fg) */
     --focus: #1f63b0;
     --ok: #2f6b3a;
     --warn: #9a5a12;
@@ -62,7 +63,7 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
-      --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
+      --accent: #8db4dc; --accent-fg: #10161c; --dawn: #2b363b; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
       --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535a3b;
       --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
       --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
@@ -76,7 +77,7 @@
   }
   :root[data-theme="dark"] {
     --bg: #151916; --panel: #1d221e; --fg: #e5e8df; --muted: #a2aa9f; --line: #3a423b;
-    --accent: #8db4dc; --accent-fg: #10161c; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
+    --accent: #8db4dc; --accent-fg: #10161c; --dawn: #2b363b; --shadow: rgba(0, 0, 0, 0.5); --focus: #9cc4f0; --ok: #7fc08a; --warn: #e0a85a;
     --map-paper: #20261f; --map-grass: #34472b; --map-grass-dark: #2d3f25; --map-trampled: #535a3b;
     --map-trail: #8a7144; --map-trail-worn: #a2864f; --map-track: #b8975e; --map-trunk: #dbbd84; --map-hollow: #f3e6c4; --map-crop: #5f5b2c;
     --map-mud: #2b2119; --map-mud-glint: #9db7c9; --map-wet: #75838c; --map-rain: #b9cad8; --map-garden: #44593a; --map-new: #ff8a70;
@@ -151,6 +152,7 @@
   dt { color: var(--muted); }
   dd { margin: 0; text-align: right; }
   dd small { color: var(--muted); font-size: 12px; display: block; }
+  .sr-sep { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }
   .ok { color: var(--ok); }
   .warn { color: var(--warn); }
   .legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -167,12 +169,15 @@
   [hidden] { display: none !important; }
   .note { color: inherit; }
   #hud-weather.wet { color: var(--accent); font-weight: 600; }
+  /* Dawn: the day line gets a soft tint and an accent underline that fade out; the text colour
+     never changes, so it reads at every moment (at least 4.5 to 1 in both themes). */
+  #hud-time { border-radius: 3px; text-decoration-line: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: transparent; }
   @media (prefers-reduced-motion: no-preference) {
-    #hud-time.dawn { animation: dawn 1.2s ease-out; }
-    @keyframes dawn { 0% { background: var(--accent); color: var(--accent-fg); } 100% { background: transparent; } }
+    #hud-time.dawn { animation: dawn 1.6s ease-out; }
+    @keyframes dawn { 0% { background-color: var(--dawn); text-decoration-color: var(--accent); } 100% { background-color: transparent; text-decoration-color: transparent; } }
   }
   @media (prefers-reduced-motion: reduce) {
-    #hud-time.dawn { text-decoration: underline; }
+    #hud-time.dawn { text-decoration-color: var(--accent); }
   }
   .heat { height: 10px; border: 1px solid var(--line);
     background: linear-gradient(90deg, var(--heat-0), var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-4)); }

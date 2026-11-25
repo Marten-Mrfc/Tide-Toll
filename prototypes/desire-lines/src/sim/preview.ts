@@ -70,8 +70,13 @@ export interface FlowPreview {
   meanCostRatio: number;
   blocked: { dest: number; houses: number }[]; // destinations cut off, and for how many houses
   version: number; // world.version when the computation started
-  /** "far": a gravel strip that changes no route and lies away from every trail (see FAR_CELLS). */
-  note?: "far";
+  /**
+   * For a gravel strip that changes no route in the search: "far", no cell within FAR_CELLS
+   * of a trail; "on", most of the strip lies on a route walkers use now; "near", a cell
+   * within NEAR_CELLS of one. The search cannot see gravel win traffic over days (busy
+   * gravel gets cheaper, as a trunk does), so "near" says it may, and promises nothing.
+   */
+  note?: "far" | "on" | "near";
 }
 
 // Pairs with fewer trips a day than this are ignored, unless the change cuts the
@@ -85,6 +90,8 @@ const AFFECTED_COST = 0.03; // ... and is affected if it changes more than this
 const AFFECTED_CELLS = 3; // ... or moves more than this many cells anywhere
 const GROUPS_PER_STEP = 8; // route groups classified between two yields
 const FAR_CELLS = 6; // a gravel strip with no cell within this many cells of a trail is "too far from any route"
+const NEAR_CELLS = 3; // ... and one within this many cells of a used route "may draw walkers" (round 4: 16 of 16 sites at 3 cells did)
+const USED_FLOW = 3; // a cell is on a used route if it is trail (wear 25) or has this many recent footsteps (World.flow)
 
 /** One set of fields (ordinary and frugal) over one pair of costs. */
 interface FieldSet { cost: Float32Array; costX: Float32Array; f: Float32Array[]; fX: Float32Array[]; }
@@ -244,7 +251,7 @@ export class FlowPredictor {
     for (const { change: c } of all) if (c.reachable) { rr += c.rate; rs += c.rate * c.costRatio; }
     const gravelOnly = !!change.gravel?.length && CHANGE_FLAGS.every(([k]) => k === "gravel" || !change[k]?.length);
     return {
-      note: gravelOnly && all.length === 0 && farFromTrails(w.wear, change.gravel!) ? "far" : undefined,
+      note: gravelOnly && all.length === 0 ? gravelNote(w, change.gravel!) : undefined,
       changes: shown.map(x => x.change),
       more: Math.max(0, all.length - maxPairs),
       reroutedPerDay: all.reduce((s, x) => s + x.change.rate, 0),
@@ -317,12 +324,37 @@ function farFromTrails(wear: Float32Array, cells: number[]): boolean {
   return true;
 }
 
+/** Whether walkers use cell c now: trail, or recent footsteps. */
+function used(w: World, c: number): boolean {
+  return w.wear[c] >= PARAMS.stateThresholds[1] || w.flow[c] >= USED_FLOW;
+}
+
+/** The note for a gravel strip that changes no route (see FlowPreview.note). */
+function gravelNote(w: World, cells: number[]): "far" | "on" | "near" | undefined {
+  if (farFromTrails(w.wear, cells)) return "far";
+  let on = 0, near = false;
+  for (const c of cells) {
+    if (used(w, c)) { on++; continue; }
+    const x = c % N, y = (c / N) | 0;
+    for (let yy = y - NEAR_CELLS; yy <= y + NEAR_CELLS && !near; yy++)
+      for (let xx = x - NEAR_CELLS; xx <= x + NEAR_CELLS && !near; xx++)
+        if (xx >= 0 && yy >= 0 && xx < N && yy < N && used(w, yy * N + xx)) near = true;
+  }
+  return on * 2 >= cells.length ? "on" : near || on > 0 ? "near" : undefined;
+}
+
 /** The route up to the first point that the change blocks. */
 function cutAtBlock(pts: Float32Array, cost: Float32Array): Float32Array {
   for (let i = 0; i < pts.length; i += 2)
     if (cost[Math.floor(pts[i + 1]) * N + Math.floor(pts[i])] === Infinity) return pts.slice(0, Math.max(2, i));
   return pts;
 }
+
+export const GRAVEL_NOTES = {
+  far: "Too far from any route to change anything",
+  on: "On a route walkers already use: it keeps the trail from growing back",
+  near: "May draw walkers from nearby trails",
+} as const;
 
 /**
  * One-line readout, e.g. "Reroutes about 40 walkers a day (+8% longer)". The
@@ -332,7 +364,7 @@ export function describePreview(p: FlowPreview, name: (b: number) => string): st
   const parts: string[] = [];
   for (const b of p.blocked) parts.push(`Blocks the ${name(b.dest)} for ${b.houses} house${b.houses === 1 ? "" : "s"}`);
   const n = p.reroutedPerDay;
-  if (n < 0.5) return parts[0] ?? (p.note === "far" ? "Too far from any route to change anything" : "No change to routes");
+  if (n < 0.5) return parts[0] ?? (p.note ? GRAVEL_NOTES[p.note] : "No change to routes");
   const shown = n < 5 ? `${Math.max(1, Math.round(n))}` : `about ${Math.max(5, Math.round(n / 5) * 5)}`;
   let line = `Reroutes ${shown} walker${shown === "1" ? "" : "s"} a day`;
   if (Math.abs(p.meanCostRatio - 1) >= 0.02) {

@@ -56,11 +56,15 @@ export function updateVillage(w: World) {
   el.classList.toggle("wet", w.rainOn && (wx.raining || wx.wetness > 0));
   const g = w.grown, last = g.length ? g[g.length - 1] : null;
   const houses = `Houses: ${w.houses.length}`, note = !w.growthOn ? "no growth on this map" : last ? `newest on day ${last.day}` : "none new yet";
+  // "Houses: 11", then the note on its own line; a visually hidden "; " keeps the two apart in
+  // copied text, innerText and screen readers ("Houses: 11; newest on day 7").
   const hEl = $("hud-houses");
   if (hEl.firstChild?.textContent !== houses || hEl.lastChild?.textContent !== note) {
     hEl.textContent = houses;
-    const small = document.createElement("small");
+    const sep = document.createElement("span"), small = document.createElement("small");
+    sep.className = "sr-sep";
+    sep.textContent = "; ";
     small.textContent = note;
-    hEl.appendChild(small);
+    hEl.append(sep, small);
   }
 }

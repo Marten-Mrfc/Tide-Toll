@@ -142,6 +142,8 @@ export class Sound {
     const mute = !this.on || this.paused || document.hidden;
     if (mute !== this.muted) {
       this.muted = mute;
+      // Days that passed while it was silent ring no bell: the next frame only notes the day.
+      if (!mute) this.lastDay = -1;
       au.setMuted(mute);
       if (mute) this.note.hidden = true;
     }

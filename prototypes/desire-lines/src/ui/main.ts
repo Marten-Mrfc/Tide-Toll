@@ -14,6 +14,8 @@ import { readout } from "./readout";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const MAX_TICKS_PER_FRAME = 8; // beyond this a slow frame drops sim time instead of stalling
 const TICK_BUDGET_MS = 10; // and no more sim work than this per frame, so a slow machine slows the sim instead of stalling
+const LATE_FRAME_MS = 25; // a frame that came this late (about 1.5 frames at 60 Hz) ...
+const LATE_BUDGET_MS = 5; // ... gets only this much sim work, so a slow machine catches up on frames first
 const PREVIEW_BUDGET_MS = 6; // flow preview work per frame (3 ms when the sim was busy)
 const SPEEDS = [1, 2, 4, 8];
 
@@ -221,11 +223,12 @@ function placeTip(at: [number, number], tw: number, th: number, p: NonNullable<t
   return [Math.max(4, Math.min(W - tw - 4, x)), Math.max(4, Math.min(H - th - 4, y))];
 }
 // Frame recorder for the perf test: every frame's interval and in-page work time.
-let rec: { intervals: number[]; works: number[]; sim0: number; t0: number; worstTick: number; budgetHits: number } | null = null;
+let rec: { intervals: number[]; works: number[]; draws: number[]; sim0: number; t0: number; worstTick: number; budgetHits: number } | null = null;
 const intervals: number[] = [], works: number[] = [];
 function frame(now: number) {
   const t0 = performance.now();
   const dt = Math.min(0.25, (now - last) / 1000);
+  const budget = now - last > LATE_FRAME_MS ? LATE_BUDGET_MS : TICK_BUDGET_MS;
   if (now > last) { intervals.push(now - last); if (intervals.length > 120) intervals.shift(); }
   last = now;
   if (!paused) {
@@ -239,7 +242,7 @@ function frame(now: number) {
         // An honest budget: a tick is only started if it should fit. Ticks that rebuild a route
         // field cost about four plain ones, so each kind's cost is tracked; at least one tick a frame runs.
         const heavy = world.nextTickRefreshes();
-        if (done > 0 && performance.now() - ts + (heavy ? heavyTickMs : plainTickMs) > TICK_BUDGET_MS) break;
+        if (done > 0 && performance.now() - ts + (heavy ? heavyTickMs : plainTickMs) > budget) break;
         const t1 = performance.now();
         world.tick();
         const d = performance.now() - t1;
@@ -257,7 +260,9 @@ function frame(now: number) {
   previewer.update(now, simMs > TICK_BUDGET_MS * 0.8 ? PREVIEW_BUDGET_MS / 2 : PREVIEW_BUDGET_MS);
   renderer.flow = previewer.enabled ? previewer.current : null;
   showTip();
+  const td = performance.now();
   renderer.draw(paused ? 1 : Math.min(1, acc), now);
+  if (rec) rec.draws.push(performance.now() - td);
   sound.update(now, world);
   if (now - hudAt > 500) {
     hudAt = now;
@@ -299,18 +304,21 @@ const api = {
       gates: world.gate.reduce((a, b) => a + b, 0), gravel: world.gravel.reduce((a, b) => a + b, 0), tool: input.tool,
     };
   },
-  perfStart() { rec = { intervals: [], works: [], sim0: world.time, t0: performance.now(), worstTick: 0, budgetHits: 0 }; },
+  perfStart() { const t = renderer.timing; t.ground = t.groundBuilds = t.bg = t.walkers = t.fx = 0; rec = { intervals: [], works: [], draws: [], sim0: world.time, t0: performance.now(), worstTick: 0, budgetHits: 0 }; },
   perfStop() {
     const r = rec!;
     rec = null;
     const iv = r.intervals.slice(1), wk = r.works;
     const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
-    const sorted = [...wk].sort((a, b) => a - b);
+    const sorted = [...wk].sort((a, b) => a - b), ds = [...r.draws].sort((a, b) => a - b);
     const secs = (performance.now() - r.t0) / 1000;
     return {
       frames: iv.length, seconds: secs, fps: 1000 / avg(iv), avgIntervalMs: avg(iv), worstIntervalMs: Math.max(...iv),
       longFrames: iv.filter(v => v > 50).length, avgWorkMs: avg(wk), p95WorkMs: sorted[Math.floor(sorted.length * 0.95)] ?? 0,
-      worstWorkMs: sorted[sorted.length - 1] ?? 0, simSecondsPerSecond: (world.time - r.sim0) / secs, tickMs, worstTickFrameMs: r.worstTick, budgetHits: r.budgetHits,
+      worstWorkMs: sorted[sorted.length - 1] ?? 0, avgDrawMs: avg(ds), p95DrawMs: ds[Math.floor(ds.length * 0.95)] ?? 0, worstDrawMs: ds[ds.length - 1] ?? 0,
+      groundMs: renderer.timing.ground / Math.max(1, renderer.timing.groundBuilds), groundBuilds: renderer.timing.groundBuilds,
+      perFrameMs: { bg: renderer.timing.bg / Math.max(1, wk.length), walkers: renderer.timing.walkers / Math.max(1, wk.length), fx: renderer.timing.fx / Math.max(1, wk.length), ground: renderer.timing.ground / Math.max(1, wk.length) },
+      simSecondsPerSecond: (world.time - r.sim0) / secs, tickMs, worstTickFrameMs: r.worstTick, budgetHits: r.budgetHits,
     };
   },
   placeFence: (cells: CellList) => world.placeFence(toCells(cells)),

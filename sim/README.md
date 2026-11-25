@@ -232,7 +232,54 @@ turns back 60%+ of barges, the ford under 10% of boats, a never-raised drawbridg
 S5-10 and S6 turn back under 15%, manual batching has the lower worst wait). The old "keeper minus manual net money is
 positive at 200 walkers" assumed a player who never looks away; it is printed as report only.
 
-Last sweep: being run (25 November 2026); the table goes here when it finishes.
+Last sweep (25 November 2026, `river --seed-sets 101-120,201-220 --sweep`, 16 min on 3 threads; every `RiverRules`
+number at the values listed above, none tuned this round). Medians over 40 seeds, 30 days:
+
+```
+MEDIANS OVER SEEDS, 30 days (40 seeds)
+ player                                | walkers | built d | keeper d | trade c | boat c | market c | turn-back | barges | mean wait s | worst wait s | trip s | cross/d | at built/d | waited | deliv/d | lost | queue | rep | money c
+ S2 ferry                              |      60 |     0.0 |        - |     554 |    542 |       13 |      0.0% |   0.0% |        1.65 |          6.1 |  16.38 |      23 |         18 |  72.6% |     5.2 |    0 |    12 |  94 |     647
+ S5 drawbridge, manual, misses 10%     |      60 |     8.0 |        - |     572 |    556 |       22 |      4.8% |   7.1% |        1.23 |          2.3 |  15.35 |      24 |         20 |  14.4% |     5.6 |    0 |     8 |  80 |     474
+ S6 drawbridge + keeper                |      60 |     8.0 |      9.3 |     564 |    550 |       16 |      0.0% |   0.0% |        1.32 |          2.9 |  15.03 |      24 |         21 |  19.5% |     5.5 |    0 |     7 |  94 |     416
+ S1 ford only                          |     200 |       - |        - |    1454 |   1444 |       22 |      0.0% |   0.0% |        0.00 |          0.0 |  18.13 |      57 |          0 |   0.0% |    14.2 |    0 |     0 |  94 |    1630
+ S2 ferry                              |     200 |     0.0 |        - |    1591 |   1578 |       25 |      0.0% |   0.0% |        4.71 |         20.4 |  19.02 |      68 |         15 |  44.0% |    15.5 |    0 |    52 |  94 |    1690
+ S3 footbridge                         |     200 |     0.0 |        - |     636 |    382 |      259 |     66.7% | 100.0% |        0.20 |          1.0 |  15.67 |      77 |         73 |   3.7% |    17.9 |    0 |     8 |   0 |     759
+ S4 drawbridge, never raised           |     200 |     5.6 |        - |     796 |    568 |      214 |     50.0% |  75.0% |        0.00 |          0.0 |  16.10 |      76 |         69 |   0.0% |    17.9 |    0 |     0 |   0 |     704
+ S5 drawbridge, manual, misses 10%     |     200 |     5.6 |        - |    1652 |   1600 |       48 |      4.8% |   7.3% |        1.11 |          2.3 |  17.13 |      69 |         57 |  15.3% |    17.2 |    0 |    20 |  80 |    1564
+ S5 drawbridge, manual, misses 30%     |     200 |     5.6 |        - |    1479 |   1402 |       97 |     16.7% |  25.4% |        1.14 |          2.3 |  16.86 |      72 |         61 |   9.7% |    17.4 |    0 |    17 |  50 |    1387
+ S5 drawbridge, manual, misses 50%     |     200 |     5.6 |        - |    1262 |   1118 |      139 |     26.9% |  40.4% |        1.10 |          2.3 |  16.20 |      75 |         63 |   5.4% |    17.2 |    0 |    16 |  26 |    1167
+ S6 drawbridge + keeper                |     200 |     5.6 |      5.8 |    1652 |   1632 |       27 |      0.0% |   0.0% |        1.30 |          4.4 |  16.86 |      68 |         55 |  22.1% |    16.9 |    0 |    24 |  94 |    1496
+```
+
+```
+RIVER CHECKS over 30 days (40 seeds)
+  PASS  (a) footbridge gives the fastest walker trips (median mean trip: S3 15.67 s; fastest S3 15.67 s)
+  PASS  (a) footbridge has clearly the worst trade: at most 80% of every other player's but the never-raised drawbridge (S3 636c, next lowest S5-50 1262c; S4 796c)
+  FAIL  (b) ford only is clearly the slowest (10%+ over every other player) on the 25 towns with the ford 15+ rows from the landing (S1 19.40 s, next slowest S2 19.28 s)
+  PASS  (b) nobody crosses the ford while the flood band is under water (0 crossings over 1012 flood days in all runs)
+  PASS  (c) at 60 walkers the ferry ends with more net money than the hand-raised drawbridge (S5, 10% missed) in most towns (38 of 40 towns; medians S2 647c, S5 474c)
+  PASS  (c) at 200 walkers the ferry's capacity bites: mean wait and largest queue at least double those at 60, and fewer deliveries than the drawbridge (wait 1.65 s -> 4.71 s, queue 12 -> 52, deliveries a day S2 15.5, S5 17.2)
+  FAIL  (d) at 200 walkers the hand-raised drawbridge (10% missed) ends with more net money than the ferry in most towns (7 of 40 towns; medians S5 1564c, S2 1690c)
+  PASS  (d) at 60 walkers it does not (2 of 40 towns)
+  PASS  (e) at 200 walkers the keeper ends with more net money than the player missing 30% of boats in most towns (34 of 40 towns; medians S6 1496c, S5-30 1387c)
+  PASS  (e) at 200 walkers the keeper ends with more net money than the player missing 50% of boats in most towns (40 of 40 towns; S5-50 1167c)
+  info  (e) against the player missing 10% (need not win): 19 of 40 towns; S5-10 1564c
+  PASS  (f) no strategy is best at trade income, trip time and net money at once (trade income: S6, trip time: S3, net money: S2)
+  PASS  footbridge turns back more than 60% of barges (S3 median 100.0%)
+  PASS  ford only turns back fewer than 10% of boats (S1 median 0.0%)
+  PASS  never-raised drawbridge earns no more than the footbridge (net money S4 704c, S3 759c)
+  PASS  manual (10% missed) and keeper drawbridges turn back fewer than 15% of boats (S5 4.8%, S6 0.0%)
+  PASS  manual drawbridge has the lower worst walker wait of S5 (10% missed) and S6 (S5 2.3 s, S6 4.4 s)
+  report only  keeper minus manual (10% missed) net money at 200 walkers is positive: no (-68c; at 60 walkers -59c)
+
+FAILED: 2 of 16 check(s) in 969 s (3 threads)
+```
+
+At 12 days (same seeds) the drawbridge is built on day 5.6 and the keeper on day 5.8 at 200 walkers (8.0 and 9.3 at
+60): money still comes faster than the doc's early figure, which is the tuner's job. What fails: (b) the ford is not
+clearly the slowest, because at 200 walkers the ferry's queue makes it as slow (19.3 s against 19.4 s); (d) the
+hand-raised drawbridge ends richer than the ferry in only 7 of 40 towns (the ferry costs 40c against 240c and walkers
+learn its wait and use the ford instead).
 
 ## Parity with the toy
 

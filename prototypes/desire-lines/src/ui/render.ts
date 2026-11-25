@@ -12,7 +12,7 @@ import { hash2 } from "../sim/rng";
 import { followField } from "../sim/path";
 import { FlowPreview, RouteChange } from "../sim/preview";
 import { Palette } from "./palette";
-import { WearLayer, mix } from "./ground";
+import { WearLayer, mix, dryProgress, GROUND_BANDS } from "./ground";
 import { Pen, GateMark, drawFence, drawGate, drawGravel, drawBridge, gateMark } from "./ink";
 import { Effects } from "./effects";
 
@@ -40,6 +40,7 @@ export class Renderer {
   private baseKey = "";
   private groundAt = -1e9;
   private groundVersion = -1;
+  private groundBand = -1; // the next band of a rebuild in progress, or -1
   cssSize = 0;
   private dpr = 1;
   overlay = false;
@@ -53,6 +54,8 @@ export class Renderer {
   readonly fx: Effects;
   /** Whether the game is paused (rain stops falling on screen). */
   paused = false;
+  /** Time spent rebuilding the worn-ground layer (the perf test reads it). */
+  readonly timing = { ground: 0, groundBuilds: 0, bg: 0, walkers: 0, fx: 0 };
 
   constructor(public canvas: HTMLCanvasElement, public world: World, public pal: Palette) {
     this.ctx = canvas.getContext("2d")!;
@@ -64,7 +67,7 @@ export class Renderer {
 
   setWorld(w: World) { this.world = w; this.flow = null; this.ghost = null; this.fx.reset(); this.invalidate(); }
   setPalette(p: Palette) { this.pal = p; this.ground.setPalette(p); this.ground.setHeat(p.heat); this.fx.setPalette(p); this.invalidate(); }
-  invalidate() { this.layerKey = ""; this.baseKey = ""; this.groundAt = -1e9; }
+  invalidate() { this.layerKey = ""; this.baseKey = ""; this.groundAt = -1e9; this.groundVersion = -1; }
 
   resize(cssSize: number) {
     const dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -301,14 +304,29 @@ export class Renderer {
     let dirty = false;
     const bkey = `${w.seed}|${w.buildings.length}`;
     if (bkey !== this.baseKey) { this.buildBase(); this.baseKey = bkey; dirty = true; }
-    if (now - this.groundAt >= GROUND_MS || this.groundVersion !== w.version) {
+    // The worn ground: after an edit it is rebuilt at once (the player sees the change, and mud,
+    // in the same frame); otherwise every GROUND_MS, one band of rows a frame (see ground.ts).
+    const tg = performance.now();
+    if (this.groundVersion !== w.version) {
       this.ground.build(w, this.overlay);
+      this.groundBand = -1;
       this.groundAt = now;
       this.groundVersion = w.version;
+      this.timing.groundBuilds++;
       dirty = true;
+    } else if (this.groundBand < 0 && now - this.groundAt >= GROUND_MS) {
+      this.ground.begin(w, this.overlay);
+      this.groundBand = 0;
+      this.groundAt = now;
     }
+    if (this.groundBand >= 0) {
+      this.ground.band(this.groundBand++);
+      if (this.groundBand === GROUND_BANDS) { this.groundBand = -1; this.timing.groundBuilds++; dirty = true; }
+    }
+    this.timing.ground += performance.now() - tg;
     const key = `${W}|${w.version}|${w.seed}|${this.fx.standing(w, now)}`;
     if (key !== this.layerKey) { this.buildLayer(); this.layerKey = key; dirty = true; }
+    const tb = performance.now();
     if (dirty) {
       const bg = this.bg;
       if (bg.width !== W) bg.width = bg.height = W;
@@ -317,8 +335,10 @@ export class Renderer {
       g.imageSmoothingQuality = "low"; // the wear layer is already interpolated; "high" costs ~8 ms a refresh
       g.drawImage(this.base, 0, 0, N, N, 0, 0, W, W);
       g.drawImage(this.ground.canvas, 0, 0, this.ground.canvas.width, this.ground.canvas.height, 0, 0, W, W);
-      // Wet ground is darker: grass and earth are multiplied by a cool grey as the ground wets.
-      const wet = w.rainOn ? w.weather.wetness : 0;
+      // Wet ground is darker: grass and earth are multiplied by a cool grey as the ground wets,
+      // fading out over the mud's last day as the trails dry (see ground.ts).
+      const dp = w.rainOn ? dryProgress(w) : 1;
+      const wet = !w.rainOn ? 0 : dp > 0 ? Math.max(0, 1 - dp) : w.weather.wetness;
       if (wet > 0.01 && !this.overlay) {
         g.globalCompositeOperation = "multiply";
         g.globalAlpha = 0.4 * wet;
@@ -337,26 +357,32 @@ export class Renderer {
       g.drawImage(this.layer, 0, 0);
     }
     ctx.drawImage(this.bg, 0, 0);
+    const tw = performance.now();
+    this.timing.bg += tw - tb;
 
     // Walkers: a fixed small scatter per walker so a crowd on one lane reads as a crowd.
+    // One path of dots (no allocation): its halo is the same path stroked 1.2 r wide
+    // (reaching 1.6 r), then the dots are filled over it.
     const r = Math.max(1.4 * this.dpr, s * 0.3);
-    const halo = new Path2D(), dots = new Path2D();
+    ctx.beginPath();
     for (const k of w.walkers) {
       if (!w.isVisible(k)) continue;
       const o = k.id & 1023;
       const x = (k.px + (k.x - k.px) * alpha + this.offX[o]) * s;
       const y = (k.py + (k.y - k.py) * alpha + this.offY[o]) * s;
-      halo.moveTo(x + r * 1.6, y); halo.arc(x, y, r * 1.6, 0, Math.PI * 2);
-      dots.moveTo(x + r, y); dots.arc(x, y, r, 0, Math.PI * 2);
+      ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.2832);
     }
     ctx.globalAlpha = 0.75;
-    ctx.fillStyle = p["walker-halo"];
-    ctx.fill(halo);
+    ctx.lineWidth = 1.2 * r;
+    ctx.strokeStyle = p["walker-halo"];
+    ctx.stroke();
     ctx.globalAlpha = 1;
     ctx.fillStyle = p.walker;
-    ctx.fill(dots);
-
+    ctx.fill();
+    const tf = performance.now();
+    this.timing.walkers += tf - tw;
     this.fx.draw(ctx, this, now);
+    this.timing.fx += performance.now() - tf;
     if (this.flow) this.drawFlowPreview(ctx, this.flow);
     this.drawGhost();
   }

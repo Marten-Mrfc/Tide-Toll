@@ -10,7 +10,10 @@
     "test": "node test/run-sim-tests.mjs",
     "perf": "node build.mjs && node test/perf.mjs",
     "smoke": "node build.mjs && node test/smoke.mjs",
-    "check": "npm run typecheck && npm run build && npm test"
+    "check": "npm run typecheck && npm run build && npm test",
+    "levels": "node test/audio-levels.mjs",
+    "soak": "node build.mjs && node test/soak.mjs",
+    "live": "node test/run-sim-tests.mjs test/g3-live.ts"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

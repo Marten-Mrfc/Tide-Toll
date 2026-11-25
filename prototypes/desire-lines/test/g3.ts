@@ -12,6 +12,8 @@ const TPD = PARAMS.daySimSec * PARAMS.tickHz;
 export interface Row {
   seed: number; walkers: number; ft: number; det: number; cov: number; mean: number; min: number; max: number; meanD: number;
   below: number; width: number; houses: number; finalWalkers: number; rainDays: number;
+  /** Share of ticks with any mud on the map, and with rain falling (0 with rain off; not in the fingerprint). */
+  mudTime: number; rainTime: number;
   trunk: number[]; fingerprint: string;
 }
 
@@ -29,9 +31,14 @@ export function seedRow(seed: number, walkers: number, opts: WorldOptions = { ra
   // Older builds of World ignore the third argument (rain and growth did not exist).
   const w = new World(seed, walkers, opts);
   const trunk: number[] = [], trunkD: number[] = [], det: number[] = [], cov: number[] = [];
-  let width = 0;
+  let width = 0, mudTicks = 0, rainTicks = 0;
+  const wx = w as unknown as { mudCells?: number; weather?: { raining: boolean } };
   for (let d = 1; d <= DAYS; d++) {
-    for (let i = 0; i < TPD; i++) w.tick();
+    for (let i = 0; i < TPD; i++) {
+      w.tick();
+      if (wx.mudCells) mudTicks++;
+      if (wx.weather && wx.weather.raining) rainTicks++;
+    }
     if (d === WIDTH_DAY) width = trailWidth(w.wear, w.land, w.metrics.window());
     if (d >= SAMPLE_FROM) {
       const s = w.stats();
@@ -44,6 +51,7 @@ export function seedRow(seed: number, walkers: number, opts: WorldOptions = { ra
     seed, walkers, ft, det: mean(det), cov: mean(cov), mean: mean(trunk),
     min: Math.min(...trunk), max: Math.max(...trunk), meanD: mean(trunkD), below: trunk.filter(v => v < 0.3 || v > 0.7).length, width,
     houses: ext.grown ? ext.grown.length : 0, finalWalkers: w.walkers.length, rainDays: ext.weather ? ext.weather.rainDays : 0,
+    mudTime: mudTicks / (DAYS * TPD), rainTime: rainTicks / (DAYS * TPD),
     trunk, fingerprint: fingerprint([ft, width, ...trunk, ...trunkD, ...det, ...cov]),
   };
 }

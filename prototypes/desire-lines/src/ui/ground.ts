@@ -11,8 +11,11 @@
 //   footsteps, smoothed) pulls busy trunks towards a stronger compacted-earth
 //   colour while quiet side trails stay lighter; along a trail the colour
 //   follows its wear. Hollow ways stay the most extreme colour of all.
-// - Mud: cells that are mud blend to wet, dark, churned earth with a few
-//   puddle glints, in proportion to the ground's wetness.
+// - Mud is wet trail: the same worn ground, darker, more saturated and more
+//   solid (wet earth is glossy, so the mottling evens out), with a few puddle
+//   glints on the busiest cells only. Over the mud's last day it dries cell by
+//   cell, the least-worn cells first, so the trunks are the last to dry.
+//   Drawing only: the mud rule and its timing (World.mud, weather.ts) are untouched.
 import { World } from "../sim/world";
 import { PARAMS } from "../sim/params";
 import { N, NC } from "../sim/grid";
@@ -20,6 +23,7 @@ import { hash2 } from "../sim/rng";
 import { Palette, RGB } from "./palette";
 
 export const M = 512; // wear layer resolution
+export const GROUND_BANDS = 4; // a rebuild's pixels are drawn over this many frames
 const WANDER = 0.45; // cells (the art spec: under half a cell)
 const HOLLOW_VALUE = 112; // display value of a hollow-way cell (wear runs 0 to 100)
 const LUT_MAX = 116; // display values 0..LUT_MAX map onto the 256 LUT entries
@@ -27,6 +31,29 @@ const TRUNK_LEVELS = 8; // traffic levels in the LUT
 const MUD_LEVELS = 6; // mud levels in the LUT
 const TRAFFIC_LO = 12, TRAFFIC_HI = 110; // footsteps (flow) from side trail to trunk
 const FRINGE = 22; // the blurred wear spreads the trampled band up to this display value
+const DRY_SPREAD = 0.2; // drying: share of the last day over which one cell goes from wet to dry
+const GLINT_TRAFFIC = 5; // puddle glints only on cells at this traffic level or more (of 0..7)
+
+/**
+ * How wet the ground under cell `c` is drawn, 0..1 (drawing only). While it rains
+ * and through the mud's run this is the weather's wetness; over the mud's last
+ * in-game day each muddy cell dries on its own: a cell worn to just trail (wear 25)
+ * at the start of that day, the busiest track (wear 85 or more) at its very end.
+ * `dry` is how far through the last day the clock is (0..1; below 0 before it).
+ */
+export function wetAmount(wear: number, dry: number, wetness: number): number {
+  if (dry <= 0) return wetness;
+  const r = wear <= 25 ? 0 : wear >= 85 ? 1 : (wear - 25) / 60;
+  const a = ((1 - DRY_SPREAD) * r + DRY_SPREAD - dry) / DRY_SPREAD;
+  return a <= 0 ? 0 : a >= 1 ? 1 : a;
+}
+
+/** How far through the mud's last in-game day the clock is: below 0 before it, 1 when the mud is gone. */
+export function dryProgress(w: World): number {
+  const wx = w.weather;
+  if (wx.raining) return -1;
+  return 1 - (wx.mudUntil - w.time) / PARAMS.daySimSec;
+}
 
 export class WearLayer {
   readonly canvas = document.createElement("canvas");
@@ -77,8 +104,8 @@ export class WearLayer {
    * Display value (wear, or HOLLOW_VALUE for a hollow way) to packed RGBA, for
    * each traffic and mud level: trampled, trail and track fading in from
    * transparent; busy trunks towards the trunk colour; hollow ways distinct;
-   * mud towards wet dark earth. Track stays a little translucent so it reads
-   * as worn earth, not paving.
+   * mud as the same ground wet (darker, richer, more opaque). Track stays a
+   * little translucent so it reads as worn earth, not paving.
    */
   setPalette(pal: Palette) {
     const p = pal.rgb;
@@ -98,16 +125,32 @@ export class WearLayer {
           // soft edge is where its side wear falls off. Busy track tops out at 0.84,
           // so the grass still shows through a little; hollow ways are more solid.
           let al = 0.5 * smooth((v - 2) / 14) + 0.26 * smooth((v - 14) / 18) + 0.08 * smooth((v - 40) / 40) + 0.1 * smooth((v - 100) / 12) + 0.06 * tr;
+          // Wet trail: the worn colour kept, pulled a third of the way to wet earth and
+          // darkened a little more (the wet multiply over the whole map darkens it again);
+          // a little more opaque, as wet earth hides the grass under a trail's edge.
           const mu = (m / (MUD_LEVELS - 1)) * smooth((v - 18) / 12);
-          if (mu > 0) { c = mix(c, p.mud, 0.85 * mu); al = al + 0.2 * mu; }
+          if (mu > 0) { c = mix(c, p.mud, 0.34 * mu); c = [c[0] * (1 - 0.14 * mu), c[1] * (1 - 0.14 * mu), c[2] * (1 - 0.1 * mu)]; al = al + 0.14 * mu; }
           al = Math.min(1, al);
           this.lut[(m * TRUNK_LEVELS + t) * 256 + i] = pack(c, al);
         }
     this.glint = pack(p["mud-glint"], 0.95);
   }
 
-  /** Rebuilds the wear layer (and the heat map, if `heat`) from the world. */
+  /** Rebuilds the whole wear layer (and the heat map, if `heat`) from the world at once. */
   build(w: World, heat: boolean) {
+    this.begin(w, heat);
+    for (let b = 0; b < GROUND_BANDS; b++) this.band(b);
+  }
+
+  private anyMud = false;
+  private heatPending: World | null = null;
+
+  /**
+   * Starts a rebuild: takes this moment's wear, traffic and mud into the per-cell
+   * arrays. The pixels follow in GROUND_BANDS bands of rows (`band`), one a frame,
+   * so a rebuild never lands on a single frame; the last band also redraws the heat map.
+   */
+  begin(w: World, heat: boolean) {
     const disp = this.disp, wear = w.wear, hol = w.hollow, blur = this.blur;
     for (let c = 0; c < NC; c++) disp[c] = hol[c] ? HOLLOW_VALUE : wear[c];
     // Fringe: a 3 x 3 blur of the wear (two passes in place via `blur`), spread into the trampled band.
@@ -123,14 +166,22 @@ export class WearLayer {
     for (let c = 0; c < NC; c++) { const v = (tr[c] - TRAFFIC_LO) / (TRAFFIC_HI - TRAFFIC_LO); blur[c] = v <= 0 ? 0 : v >= 1 ? 1 : v; }
     boxBlur(blur, tk, this.mudv);
     for (let c = 0; c < NC; c++) tk[c] = Math.max(tk[c], blur[c] * 0.8) * (TRUNK_LEVELS - 1);
-    // Mud, scaled by how wet the ground is.
-    const wet = w.rainOn ? w.weather.wetness : 0, mud = w.mud, mv = this.mudv;
-    const anyMud = wet > 0.01 && w.mudCells > 0;
-    if (anyMud) for (let c = 0; c < NC; c++) mv[c] = mud[c] ? wet * (MUD_LEVELS - 1) : 0;
+    // Mud, scaled by how wet each cell is drawn (drying from the least-worn cells first).
+    const mud = w.mud, mv = this.mudv, wetness = w.rainOn ? w.weather.wetness : 0;
+    const dry = w.rainOn ? dryProgress(w) : 1;
+    const anyMud = w.rainOn && w.mudCells > 0 && dry < 1 && (dry > 0 || wetness > 0.01);
+    if (anyMud) for (let c = 0; c < NC; c++) mv[c] = mud[c] ? wetAmount(wear[c], dry, wetness) * (MUD_LEVELS - 1) : 0;
+    this.anyMud = anyMud;
+    this.heatPending = heat ? w : null;
+  }
 
+  /** Draws band b (0..GROUND_BANDS-1) of the pixels from the arrays `begin` filled, and puts it on the canvas. */
+  band(b: number) {
+    const disp = this.disp, tk = this.trunk, mv = this.mudv, anyMud = this.anyMud;
+    const y0 = (b * M) / GROUND_BANDS, y1 = ((b + 1) * M) / GROUND_BANDS;
     const u32 = this.u32, lut = this.lut, gx = this.gx, wx = this.wx, wy = this.wy, mot = this.mottle, jit = this.jitter, k = 255 / LUT_MAX;
     const glint = this.glint;
-    for (let y = 0; y < M; y++) {
+    for (let y = y0; y < y1; y++) {
       const sy0 = gx[y], dx = wx[y], o = y * M;
       for (let x = 0; x < M; x++) {
         let sx = gx[x] + dx, sy = sy0 + wy[x];
@@ -153,14 +204,16 @@ export class WearLayer {
         }
         const col = lut[(ml * TRUNK_LEVELS + tl) * 256 + (v >= LUT_MAX ? 255 : (v * k + 0.5) | 0)];
         const mo = mot[o + x];
-        if (ml >= 3 && mo > 252 && v > 30) { u32[o + x] = glint; continue; } // a puddle glint on churned mud
-        // Mud is churned: deeper mottling.
-        const alpha = ml > 0 ? (((col >>> 24) * (mo - (ml * (255 - mo)) / 5)) >> 8) : (((col >>> 24) * mo) >> 8);
-        u32[o + x] = ((alpha < 0 ? 0 : alpha) << 24 | (col & 0xffffff)) >>> 0;
+        // A puddle glint: only in the ruts of the busiest wet trail.
+        if (ml >= 3 && tl >= GLINT_TRAFFIC && mo > 252 && v > 40) { u32[o + x] = glint; continue; }
+        // Wet earth is glossy: the mottling evens out as it wets.
+        const m2 = ml > 0 ? mo + (((255 - mo) * ml) / (MUD_LEVELS - 1)) * 0.7 : mo;
+        const alpha = ((col >>> 24) * m2) >> 8;
+        u32[o + x] = (alpha << 24 | (col & 0xffffff)) >>> 0;
       }
     }
-    this.ctx.putImageData(this.img, 0, 0);
-    if (heat) this.buildHeat(w);
+    this.ctx.putImageData(this.img, 0, 0, 0, y0, M, y1 - y0);
+    if (b === GROUND_BANDS - 1 && this.heatPending) { this.buildHeat(this.heatPending); this.heatPending = null; }
   }
 
   private heatPal: RGB[] = [];

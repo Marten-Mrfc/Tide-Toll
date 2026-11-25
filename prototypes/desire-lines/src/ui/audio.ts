@@ -30,9 +30,13 @@ export interface DesireAudio {
 type F = Float32Array<ArrayBuffer>;
 const SURF: Surface[] = ['grass', 'dirt', 'gravel', 'mud', 'bridge'];
 // Loudness of each buffer (loudest 400 ms block, dB RMS, mono). Calibrated against the game's files (see report).
-const LV = { grass: -24.7, dirt: -20.5, gravel: -27, mud: -24.7, bridge: -19, ford: -22.2, bell: -22.1, place: -17.9,
-  erase: -24.3, refuse: -25.8, river: -33.2, rain: -35.7 };
+// Round 5 (npm run levels, offline render): the river bed measured -51 dBFS RMS in the page and the bell -38,
+// against footsteps at -23 to -45 and a busy mix at -24, so the river is up 10 dB (-33.2), rain 4 dB (-35.7)
+// and the bell 6 dB (-22.1). Measured, not heard.
+const LV = { grass: -24.7, dirt: -20.5, gravel: -27, mud: -24.7, bridge: -19, ford: -22.2, bell: -16.1, place: -17.9,
+  erase: -24.3, refuse: -25.8, river: -23.2, rain: -31.7 };
 const BPM = 64, BEAT = 60 / BPM, LOOK = 0.35;
+const STEP_BUDGET = 8; // step voices a beat, at most, however many walkers
 // Theme score (theme-hamlet-draft-score.json, bars 1-8): bars split by |, "NOTE[:beats]" (default 1 beat).
 const MELODY = 'D5 E5 G5|A5:3|B5 A5 G5|A5:2 E5|G5 A5 G5|E5:2 F5|E5 D5 E5|D5:3';
 const DRUM: [number, number, number][] = [[5, 1, 0], [5, 3, 1], [6, 1, 0], [6, 3, 1], [7, 1, 0], [7, 3, 1], [8, 1, 0], [8, 2.5, 1]];
@@ -288,19 +292,22 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     st.alive = count(t, -1) + (riverNode ? 1 : 0) + (rainNode ? 1 : 0); if (st.alive > st.maxAlive) st.maxAlive = st.alive; return true;
   }
   function ended(this: AudioScheduledSourceNode) { this.disconnect(); }
+  // A cue's nodes are released when its source ends, so nothing piles up over a long session.
+  function release(nodes: AudioNode[]) { for (let i = 0; i < nodes.length; i++) nodes[i].disconnect(); }
   function play(buf: AudioBuffer, bus: AudioNode, t: number, gain: number, pan: number, rate: number, cls: number) {
     if (!on || muted) return;
     t = Math.max(t, ctx.currentTime); if (!claim(t, t + buf.duration / rate, cls)) return;
     st.cues++; if (cls === 3) st.themeNotes++;
     const s = ctx.createBufferSource(), g = ctx.createGain(), p = ctx.createStereoPanner();
     s.buffer = buf; s.playbackRate.value = rate; g.gain.value = gain; p.pan.value = pan < -1 ? -1 : pan > 1 ? 1 : pan;
-    s.connect(g); g.connect(p); p.connect(bus); s.onended = ended; s.start(t);
+    s.connect(g); g.connect(p); p.connect(bus); s.onended = () => release([s, g, p]); s.start(t);
   }
   // footstep lanes: 7 pans x 5 gains of persistent Gain->StereoPanner chains, so a step voice is ONE BufferSource
   const GL = [0.25, 0.35, 0.5, 0.7, 1], lanes: GainNode[] = [];
   for (let p = 0; p < 7; p++) for (let q = 0; q < 5; q++) { const g = ctx.createGain(), pn = ctx.createStereoPanner(); g.gain.value = GL[q]; pn.pan.value = p / 3 - 1; g.connect(pn); pn.connect(stepTone); lanes.push(g); }
   function stepAt(buf: AudioBuffer, t: number, gain: number, pan: number, rate: number) {
     if (!on || muted) return;
+    if (beatSteps >= STEP_BUDGET) { st.dropped++; return; }
     t = Math.max(t, ctx.currentTime); if (!claim(t, t + buf.duration / rate, 0)) return;
     st.steps++; beatSteps++;
     let q = 0; while (q < 4 && gain > Math.sqrt(GL[q] * GL[q + 1])) q++;
@@ -312,6 +319,8 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
   function bed(buf: AudioBuffer, bus: AudioNode, g: GainNode, f?: BiquadFilterNode) {
     const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(f || g); if (f) f.connect(g); g.connect(bus); s.start(ctx.currentTime, rnd() * buf.duration); return s;
   }
+  function stopRiver() { if (riverNode) { riverNode.stop(); release([riverNode]); } if (riverG) release([riverG]); riverNode = null; riverG = null; riverOffAt = 0; }
+  function stopRain() { if (rainNode) { rainNode.stop(); release([rainNode]); } if (rainF) release([rainF]); if (rainG) release([rainG]); rainNode = null; rainF = null; rainG = null; rainOffAt = 0; }
   // theme: events merged and sorted once. kind 0 pipe(midi,beats) 1 lyre(idx) 2 drum(idx)
   const ev: { t: number; k: number; a: number; d: number }[] = [];
   MELODY.split('|').forEach((bar, b) => { let beat = 0; bar.split(' ').forEach(tok => { const [nm, bt] = tok.split(':'), d = bt ? +bt : 1; ev.push({ t: (b * 3 + beat) * BEAT + (b + beat === 0 ? 0.08 : 0), k: 0, a: noteMidi(nm), d: d * BEAT * 0.93, }); beat += d; }); });
@@ -329,7 +338,9 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
     e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel, t + 0.05); e.gain.setTargetAtTime(vel * 0.8, t + 0.05, 0.12); e.gain.setTargetAtTime(0.0001, t + dur, 0.05);
     const pn = ctx.createStereoPanner(); pn.pan.value = -0.12; e.connect(pn); pn.connect(mus);
     const end = t + dur + 0.5; o.start(t); v.start(t); n.start(t, rnd() * 1.5); o.stop(end); v.stop(end); n.stop(end);
-    o.onended = () => { e.disconnect(); pn.disconnect(); };
+    // All eight nodes go once the last of the three sources has ended.
+    let left = 3;
+    o.onended = v.onended = n.onended = () => { if (--left === 0) release([o, v, vg, n, bp, ng, e, pn]); };
   }
   const roundEnd = 8 * 3 * BEAT + 3.5; // the tune and its ring-out
   function pumpTheme(now: number) {
@@ -340,7 +351,7 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
       if (++themeI === ev.length) { themeI = 0; themeT0 += 8 * 3 * BEAT + 3.5 + 12 + 14 * rnd(); } // 22.5 s tune, 3.5 s ring-out, 12-26 s of silence
     }
   }
-  // scheduler: one pass per beat; at most 12 step voices a beat, however many walkers
+  // scheduler: one pass per beat; at most STEP_BUDGET (8) step voices a beat, however many walkers
   let nextBeat = 0;
   const clamp1 = (v: number) => v < -1 ? -1 : v > 1 ? 1 : v;
   function ensureRunning() { if (RT && ctx.state !== "running") (ctx as AudioContext).resume(); }
@@ -373,13 +384,13 @@ export function create(ctx: BaseAudioContext, opts?: { bpm?: number; volume?: nu
       const now = ctx.currentTime;
       if (themeOn) pumpTheme(now);
       if (now < nextBeat - LOOK) return;
-      if (rainOffAt && now > rainOffAt && rainNode) { rainNode.stop(); rainNode.disconnect(); rainNode = null; rainOffAt = 0; }
-      if (riverOffAt && now > riverOffAt && riverNode) { riverNode.stop(); riverNode.disconnect(); riverNode = null; riverOffAt = 0; }
+      if (rainOffAt && now > rainOffAt && rainNode) stopRain();
+      if (riverOffAt && now > riverOffAt && riverNode) stopRiver();
       const t0 = nextBeat < now ? now + 0.03 : nextBeat; nextBeat = t0 + beatLen; st.beats++;
       beatSteps = 0;
       let want = 0;
       for (let i = 0; i < n; i++) { const w = areas[i].walkers; if (w > 0) want += w < 12 ? Math.min(w < 3 ? 1 : 2, 1.2 * Math.sqrt(w)) : 1; }
-      const scale = want > 8 ? 8 / want : 1;
+      const scale = want > STEP_BUDGET ? STEP_BUDGET / want : 1;
       for (let i = 0; i < n; i++) {
         const a = areas[i], w = a.walkers;
         if (w > 0) {
