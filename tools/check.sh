@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One command for everything that can be verified automatically. Exits non-zero if any step fails.
-#   ./check                 sim build + fast tests (Release), Godot C# build, the town's headless smoke, play-through
+#   ./check                 sim build + fast tests (Release), Godot C# build, the town's headless smoke, game-town and the whole-age playthrough
 #                           (real input) and perf tests, screenshots at 1920x1080, ledger
 #   ./check --no-screenshot skip the rendered screenshot (no xvfb, or in a hurry)
 #   ./check --gate          also run the long statistical runs: gate tables, toy comparison, Category=Gate tests (~6 min)
@@ -124,6 +124,14 @@ if have_godot; then
   step game-perf tools/godot-test.sh 'PERF PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/perf.tscn --quit-after 20000
   note "$(grep -o 'PERF town [0-9]* villagers [0-9]x: cpu ms/frame mean [0-9.]*' "$LOGS/game-perf.log" | sed 's/PERF town [0-9]* villagers //; s/cpu ms\/frame mean/mean/' | tr '\n' ' ')ms"
   grep '^PERF' "$LOGS/game-perf.log" | sed 's/^/   /'
+  # The whole first age through injected clicks and keys only, like a sensible person (1920 x 1080, 16x): bookmarks,
+  # their keys, Pave and Extend by pointing until the tip names a road or cottage, the bell, then Ring in the next age
+  # and the first age's page. Fails on any error, a Pave or Extend click that does not do what its tip said, a lit
+  # bookmark that buys nothing, or a minute after the second with nothing to buy. Prints purchases and decisions a
+  # minute per ten minutes and the charter's minute.
+  step game-playthrough tools/godot-test.sh 'PLAY PASS' timeout 1500 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/play.tscn --quit-after 400000
+  note "$(grep -o 'PLAY PASS charter=[0-9.]*min buys=[0-9]*' "$LOGS/game-playthrough.log" | head -1 | sed 's/PLAY PASS //')"
+  grep '^PLAY ' "$LOGS/game-playthrough.log" | grep -v 'PLAY PASS' | sed 's/^/   /'
   # The zoom from the tilted town out to the whole book by wheel notches (pitch, interface stages, the summary page
   # against the simulation, Home), a Pave click while tilted and a villager's height on screen, at 1920 x 1080.
   step game-book tools/godot-test.sh 'BOOK PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/book.tscn --quit-after 100000
@@ -147,12 +155,12 @@ if have_godot; then
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display, at 1920 x 1080: the first
     # minute, the first purchase, level 3, Pave mode, level 6, Extend mode, a request, the end of the age, the zoom and
     # the menus (build/screenshots/town-*-1920x1080.png). Quick looks while working: add -- --menu-only (menus only) or
-    # -- --town-quick (stops after the request shot).
+    # -- --town-quick (stops after the request shot) or -- --age-only (the charter, achievements, summary, next age, first-age page).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-perf game-book game-settings game-menu game-save screenshot; do
+  for s in game-build game-smoke game-town game-playthrough game-perf game-book game-settings game-menu game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

@@ -1,32 +1,41 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using TideToll.Sim.Town;
 
 namespace TideToll.Game;
 
 /// <summary>
-/// The town's sound, from the existing Hamlet files only (the old AudioDirector served the two chapters and is
-/// retired with them; this keeps its buses and its rules: never repeat the last file, small pitch and level spread,
-/// nothing plays when headless or with the Dummy driver, but cues are still counted for tests).
-/// Coin at a delivery (at most a few a second), a purchase knock, a long bell for a new level and a gift, the bell
-/// when rung, footsteps on a slow beat from the walking villagers, the river loop and the theme now and then.
-/// The town's own cues (buy, level-up, gift, pave-gravel, pave-cobbles, achievement, charter) are used where their
-/// files exist, with Hamlet stand-ins otherwise (place-0N.wav, bell-long-*.wav, coin-0N.wav).
+/// The town's sound. Every event in assets/audio/sfx/town-sounds.json plays its own files (SoundCues) at the coin's
+/// gain plus nothing (the files are rendered at their intended loudness), never the same file twice running, pitch
+/// varied only where the file allows, and never more often than its least gap. World sounds go to the Effects bus,
+/// the interface and the book to the Interface bus, music to Music (TownMusic), the river and the mill to Ambience.
+/// The mill's loop is heard while the mill works, louder near the view's centre and fading with distance and zoom.
+/// Nothing plays when headless or with the Dummy driver, but every cue is still counted (tests).
 /// </summary>
 public partial class TownAudio : Node
 {
+    /// <summary>The coin's player gain: the reference every town sound is rendered against.</summary>
+    public const float CoinDb = -12f;
     public bool Silent { get; private set; }
-    public int Coins, Purchases, Levels, Bells, Steps, Themes;
+    public int Coins, Purchases, Levels, Bells, Steps, Paves, Achievements, Requests, Extends, UiSounds, BookSounds, Cannots, Charters;
+    /// <summary>The mill loop's current linear level (0 silent .. 1 full), for tests.</summary>
+    public float MillLevel { get; private set; }
+    public bool PauseMusic { get; private set; }
+    public TownMusic Music { get; private set; } = null!;
+    /// <summary>Every cue played, by event id (tests).</summary>
+    public readonly Dictionary<string, int> Played = new();
 
     private TownDriver _drv = null!;
-    private AudioStream[] _coin = null!, _place = null!, _bell = null!, _long = null!, _grass = null!, _dirt = null!;
-    private AudioStream[] _buy = null!, _levelUp = null!, _gift = null!, _gravel = null!, _cobbles = null!, _achieve = null!, _charter = null!;
-    public int Paves, Achievements, Requests, Extends;
-    private AudioStream[] _asked = null!, _met = null!, _missed = null!, _extend = null!;
-    private AudioStreamPlayer _fx = null!, _ui = null!, _bellP = null!, _steps = null!, _theme = null!, _river = null!;
+    private Dictionary<string, SoundCue> _cues = null!;
+    private AudioStream[] _coin = null!, _bell = null!, _long = null!, _grass = null!, _dirt = null!;
+    private AudioStreamPlayer _fx = null!, _world = null!, _ui = null!, _bellP = null!, _steps = null!, _river = null!, _mill = null!;
     private readonly Random _rng = new(11);
     private readonly int[] _last = { -1, -1, -1, -1, -1, -1, -1, -1 };
-    private double _now, _lastCoin = -1, _beat, _nextTheme = 8;
+    private double _now, _lastCoin = -1, _beat;
+    private Func<(Vector3 centre, float size, float play)>? _view;
+    private int _millPlot = -2;
+    private Vector3 _millAt;
 
     public void Init(TownDriver drv)
     {
@@ -35,78 +44,69 @@ public partial class TownAudio : Node
         Silent = DisplayServer.GetName() == "headless" || Array.IndexOf(OS.GetCmdlineArgs(), "Dummy") >= 0;
         // The buses and their volumes belong to the settings (SettingsApplier); this only makes sure they exist.
         Settings.SettingsApplier.EnsureBuses();
-        _coin = Load("sfx/coin-0", 6); _place = Load("sfx/place-0", 6); _bell = Load("sfx/bell-0", 6);
+        _cues = SoundCues.Load();
+        _coin = Load("sfx/coin-0", 6); _bell = Load("sfx/bell-0", 6);
         _grass = Load("sfx/step-grass-0", 8); _dirt = Load("sfx/step-dirt-0", 8);
-        string[] notes = { "a4", "d4", "e4", "g4" };
+        string[] notes = { "d4", "e4", "g4", "a4" };
         _long = new AudioStream[notes.Length];
         for (int i = 0; i < notes.Length; i++) _long[i] = GD.Load<AudioStream>($"res://assets/audio/sfx/bell-long-{notes[i]}.wav");
-        // The town's own cues where their files are there (assets/audio/sfx), else the Hamlet stand-ins.
-        _buy = Find("buy-0", _place); _levelUp = Find("level-up-0", _long); _gift = Find("gift-0", _long);
-        _gravel = Find("pave-gravel-0", _place); _cobbles = Find("pave-cobbles-0", _place);
-        _achieve = Find("achievement-0", _coin); _charter = Find("charter-0", _long);
-        _asked = Find("request-asked-0", _coin); _met = Find("request-met-0", _long); _missed = Find("request-missed-0", _place);
-        _extend = Find("extend-0", _place);
-        _fx = Player("Fx", "Effects", -10, 4);
-        _ui = Player("Ui", "Interface", -6, 2);
-        _bellP = Player("BellP", "Effects", -6, 2);
+        _fx = Player("Fx", "Effects", CoinDb, 4);
+        _world = Player("World", "Effects", CoinDb, 3);
+        _ui = Player("Ui", "Interface", CoinDb, 3);
+        _bellP = Player("BellP", "Effects", CoinDb, 3);
         _steps = Player("Steps", "Effects", -16, 3);
-        var themeStream = GD.Load<AudioStream>("res://assets/audio/music/theme-hamlet-draft.ogg");
-        _theme = Player("Theme", "Music", -14, 1);
-        _theme.Stream = themeStream;
         var riverStream = GD.Load<AudioStream>("res://assets/audio/ambience/water-river-loop.ogg");
         if (riverStream is AudioStreamOggVorbis ogg) ogg.Loop = true;
-        _hover = Load("sfx/ui-hover-0", 2); _press = Load("sfx/ui-press-0", 4);
-        _open = Load("sfx/book-open-0", 2); _close = Load("sfx/book-close-0", 2);
-        _menu = Player("Menu", "Interface", -8, 3);
-        _book = Player("Book", "Interface", -4, 2);
-        _pause = Player("Pause", "Music", -12, 1);
-        var still = GD.Load<AudioStream>("res://assets/audio/music/music-still-pages.ogg");
-        if (still is AudioStreamOggVorbis sp) sp.Loop = true;
-        _pause.Stream = still;
         _river = Player("River", "Ambience", -24, 1);
         _river.Stream = riverStream;
+        _mill = Player("Mill", "Ambience", -80, 1);
+        if (_cues.TryGetValue("mill", out var m) && m.Streams.Length > 0)
+        {
+            if (m.Streams[0] is AudioStreamOggVorbis mo) mo.Loop = true;
+            _mill.Stream = m.Streams[0];
+        }
+        Music = new TownMusic();
+        AddChild(Music);
+        Music.Init(Silent);
         if (!Silent) _river.Play();
+        drv.Replaced += () => _millPlot = -2;
     }
 
-    private AudioStream[] _hover = null!, _press = null!, _open = null!, _close = null!;
-    private AudioStreamPlayer _menu = null!, _book = null!, _pause = null!;
-    public int UiSounds, BookSounds;
-    /// <summary>The pause piece ("Still Pages") is on instead of the rotation.</summary>
-    public bool PauseMusic { get; private set; }
+    /// <summary>Main gives the view (centre on the map in metres, the camera's size, the size of the normal play view).</summary>
+    public void SetView(Func<(Vector3 centre, float size, float play)> view) => _view = view;
 
-    public void UiHover() => Play(_menu, _hover, 6, -10, ref UiSounds);
-    public void UiPress() => Play(_menu, _press, 6, -6, ref UiSounds);
-    public void BookOpen() => Play(_book, _open, 7, -4, ref BookSounds);
-    public void BookClose() => Play(_book, _close, 7, -4, ref BookSounds);
+    public void UiHover() => Cue("ui-hover", _ui, ref UiSounds);
+    public void UiPress() => Cue("ui-press", _ui, ref UiSounds);
+    public void UiTab() => Cue("ui-tab", _ui, ref UiSounds);
+    public void PageTurn() => Cue("page-turn", _ui, ref BookSounds);
+    public void Cannot() => Cue("cannot-afford", _ui, ref Cannots);
+    public void BookOpen() => Cue("book-open", _ui, ref BookSounds);
+    public void BookClose() => Cue("book-close", _ui, ref BookSounds);
 
     /// <summary>While the book is closed: the rotation waits and the pause piece plays; on resume the rotation goes on.</summary>
     public void SetPauseMusic(bool on)
     {
         if (PauseMusic == on) return;
         PauseMusic = on;
-        if (Silent) return;
-        _theme.StreamPaused = on;
-        if (on) _pause.Play(); else _pause.Stop();
+        Music.SetPaused(on);
     }
+
+    /// <summary>The next age is rung in: the charter bell peal and the rising theme.</summary>
+    public void NextAgeRung()
+    {
+        Charters++;
+        Music.PlayRising();
+        _peal = 0; _pealAt = _now;
+    }
+
+    private int _peal = -1;
+    private double _pealAt;
 
     private AudioStreamPlayer Player(string name, string bus, float db, int poly)
     {
         var p = new AudioStreamPlayer { Name = name, Bus = bus, VolumeDb = db, MaxPolyphony = poly };
         AddChild(p);
         return p;
-    }
-
-    /// <summary>Every file prefix1.wav, prefix2.wav, ... that exists, or the stand-in set when there is none.</summary>
-    private static AudioStream[] Find(string prefix, AudioStream[] standIn)
-    {
-        var list = new System.Collections.Generic.List<AudioStream>();
-        for (int i = 1; i <= 9; i++)
-        {
-            string p = $"res://assets/audio/sfx/{prefix}{i}.wav";
-            if (!ResourceLoader.Exists(p)) break;
-            list.Add(GD.Load<AudioStream>(p));
-        }
-        return list.Count > 0 ? list.ToArray() : standIn;
     }
 
     private static AudioStream[] Load(string prefix, int n)
@@ -116,6 +116,27 @@ public partial class TownAudio : Node
         return a;
     }
 
+    /// <summary>Plays one event's cue unless it played within its least gap. Returns whether it played.</summary>
+    private bool Cue(string id, AudioStreamPlayer p, ref int count)
+    {
+        if (!_cues.TryGetValue(id, out var c) || c.Streams.Length == 0) return false;
+        if (_now - c.LastAt < c.MinGap) return false;
+        c.LastAt = _now;
+        c.Count++;
+        count++;
+        Played[id] = c.Count;
+        if (Silent) return true;
+        int k = _rng.Next(c.Streams.Length);
+        if (k == c.Last && c.Streams.Length > 1) k = (k + 1) % c.Streams.Length;
+        c.Last = k;
+        p.Stream = c.Streams[k];
+        p.PitchScale = c.PitchVary ? 1f + ((float)_rng.NextDouble() - 0.5f) * 0.06f : 1f;
+        p.VolumeDb = CoinDb + c.VolumeDb;
+        p.Play();
+        return true;
+    }
+
+    /// <summary>The Hamlet sets not in town-sounds.json (coin, the bell, steps): a small level spread.</summary>
     private void Play(AudioStreamPlayer p, AudioStream[] set, int slot, float db, ref int count)
     {
         count++;
@@ -125,7 +146,7 @@ public partial class TownAudio : Node
         _last[slot] = k;
         p.Stream = set[k];
         p.PitchScale = 1f + ((float)_rng.NextDouble() - 0.5f) * 0.06f;
-        p.VolumeDb = db + ((float)_rng.NextDouble() - 0.5f) * 4f;
+        p.VolumeDb = db + ((float)_rng.NextDouble() - 0.5f) * 2f;
         p.Play();
     }
 
@@ -138,37 +159,73 @@ public partial class TownAudio : Node
             {
                 case TownEventKind.Delivery:
                     // Never a wall of coins at high speed: at most one every 0.25 real seconds.
-                    if (_now - _lastCoin >= 0.25) { _lastCoin = _now; Play(_fx, _coin, 0, -12, ref Coins); }
+                    if (_now - _lastCoin >= 0.25) { _lastCoin = _now; Play(_fx, _coin, 0, CoinDb, ref Coins); }
                     break;
-                case TownEventKind.Purchase: if (e.Item is not (ShopItemKind.Pave or ShopItemKind.Extend)) Play(_ui, _buy, 1, -6, ref Purchases); break;
-                case TownEventKind.CottageExtended: Play(_ui, _extend, 1, -6, ref Extends); break;
-                case TownEventKind.RequestAsked: Play(_fx, _asked, 5, -8, ref Requests); break;
-                case TownEventKind.RequestMet: Play(_bellP, _met, 2, -6, ref Requests); break;
-                case TownEventKind.RequestMissed: Play(_fx, _missed, 5, -8, ref Requests); break;
-                case TownEventKind.RoadPaved: Play(_ui, e.Surface == Surface.Cobbles ? _cobbles : _gravel, 1, -6, ref Paves); break;
-                case TownEventKind.LevelReached: if (e.Level > 1) Play(_bellP, _levelUp, 2, -8, ref Levels); break;
-                case TownEventKind.BuildingOpened: Play(_bellP, _gift, 2, -8, ref Levels); break;
-                case TownEventKind.AchievementUnlocked: Play(_fx, _achieve, 5, -10, ref Achievements); break;
-                case TownEventKind.Charter: Play(_bellP, _charter, 2, -6, ref Levels); break;
-                case TownEventKind.BellRung: Play(_bellP, _bell, 3, -4, ref Bells); break;
+                case TownEventKind.Purchase: if (e.Item is not (ShopItemKind.Pave or ShopItemKind.Extend)) Cue("upgrade-bought", _ui, ref Purchases); break;
+                case TownEventKind.CottageExtended: Cue("cottage-extended", _world, ref Extends); break;
+                case TownEventKind.RequestAsked: Cue("request-asked", _fx, ref Requests); break;
+                case TownEventKind.RequestMet: Cue("request-met", _bellP, ref Requests); break;
+                case TownEventKind.RequestMissed: Cue("request-missed", _fx, ref Requests); break;
+                case TownEventKind.RoadPaved: Cue(e.Surface == Surface.Cobbles ? "road-paved-cobbles" : "road-paved-gravel", _world, ref Paves); break;
+                case TownEventKind.LevelReached: if (e.Level > 1) Cue("level-reached", _bellP, ref Levels); break;
+                case TownEventKind.BuildingOpened: Cue("gift-arrives", _bellP, ref Levels); break;
+                case TownEventKind.AchievementUnlocked: Cue("achievement", _fx, ref Achievements); break;
+                case TownEventKind.Charter: Cue("charter-granted", _bellP, ref Charters); break;
+                case TownEventKind.BellRung: Play(_bellP, _bell, 3, CoinDb + 2f, ref Bells); break;
             }
         }
-        // Footsteps: a hit on a slow beat while anyone walks, grass on new trails, dirt on worn ones.
+        // The peal when the next age is rung in: the four long bells, one every 0.7 s.
+        if (_peal >= 0 && _now >= _pealAt)
+        {
+            if (!Silent) { _bellP.Stream = _long[_peal]; _bellP.PitchScale = 1f; _bellP.VolumeDb = CoinDb + 3f; _bellP.Play(); }
+            Bells++;
+            _peal++; _pealAt = _now + 0.7;
+            if (_peal >= _long.Length) _peal = -1;
+        }
+        Footsteps(delta);
+        MillFrame();
+    }
+
+    private void Footsteps(double delta)
+    {
+        // A hit on a slow beat while anyone walks, grass on new trails, dirt on worn ones.
         _beat += delta;
-        if (_beat >= 0.42)
+        if (_beat < 0.42) return;
+        _beat = 0;
+        var t = _drv.Town;
+        int walking = 0;
+        for (int i = 0; i < t.VillagerCount; i++) if (t.Villager(i).Phase == VillagerPhase.Walking) walking++;
+        if (walking > 0 && !_drv.Paused) Play(_steps, t.RoadsPaved > 0 || t.Level > 3 ? _dirt : _grass, 4, -20 + Math.Min(6, walking), ref Steps);
+    }
+
+    /// <summary>The mill's loop: on while the mill works, full within 6 m of the view's centre at the normal play zoom,
+    /// gone at 40 m; zooming out to the page and the book takes it down to nothing.</summary>
+    private void MillFrame()
+    {
+        var t = _drv.Town;
+        if (_millPlot == -2)
         {
-            _beat = 0;
-            var t = _drv.Town;
-            int walking = 0;
-            for (int i = 0; i < t.VillagerCount; i++) if (t.Villager(i).Phase == VillagerPhase.Walking) walking++;
-            if (walking > 0 && !_drv.Paused) Play(_steps, t.RoadsPaved > 0 || t.Level > 3 ? _dirt : _grass, 4, -20 + Math.Min(6, walking), ref Steps);
+            _millPlot = -1;
+            foreach (var p in t.Plan.Plots)
+                if (p.Kind == PlotKind.Mill) { _millPlot = p.Id; _millAt = new Vector3((p.X + p.W / 2f) * TownGround.Cell, 0, (p.Y + p.H / 2f) * TownGround.Cell); }
         }
-        // The theme now and then, with long silences between.
-        if (_now >= _nextTheme && !PauseMusic)
+        float level = 0f;
+        if (_millPlot >= 0 && t.PlotWorking(_millPlot) && _view != null && !_drv.Paused && !PauseMusic)
         {
-            _nextTheme = _now + 150 + _rng.Next(60);
-            Themes++;
-            if (!Silent) _theme.Play();
+            var (centre, size, play) = _view();
+            float d = new Vector2(_millAt.X - centre.X, _millAt.Z - centre.Z).Length();
+            float near = Math.Clamp(1f - (d - 6f) / 34f, 0f, 1f);
+            float zoom = Math.Clamp(1f - (size / Math.Max(1f, play) - 0.6f) / 0.6f, 0f, 1f);
+            level = near * near * zoom;
         }
+        MillLevel = Mathf.MoveToward(MillLevel, level, 0.05f);
+        if (Silent || _mill.Stream == null) return;
+        if (MillLevel > 0.001f)
+        {
+            float db = CoinDb + (_cues.TryGetValue("mill", out var m) ? m.VolumeDb : -6f);
+            _mill.VolumeDb = db + Mathf.LinearToDb(MillLevel);
+            if (!_mill.Playing) _mill.Play();
+        }
+        else if (_mill.Playing) _mill.Stop();
     }
 }

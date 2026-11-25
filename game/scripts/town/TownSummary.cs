@@ -15,6 +15,9 @@ namespace TideToll.Game;
 public partial class TownSummary : Node3D
 {
     private TownDriver _drv = null!;
+    private Label3D _achHead = null!;
+    private readonly Label3D[] _achNames = new Label3D[2], _achVals = new Label3D[2];
+    private string _lastAch = "";
     private Label3D _name = null!, _sub = null!, _keys = null!, _vals = null!, _next = null!;
     private double _clock = 1e9;
     private readonly StringBuilder _sb = new(256);
@@ -30,24 +33,36 @@ public partial class TownSummary : Node3D
         _drv = drv;
         Name = "Summary";
         leftPage.AddChild(this);
-        _name = BookBuilder.AddLabel(this, "TownName", "", new Vector3(0, 0.1f, -128), 1300, Palette.Ink, UiKit.Display);
-        _sub = BookBuilder.AddLabel(this, "Age", "", new Vector3(0, 0.1f, -108), 720, Palette.FadedInk, UiKit.Serif);
-        _keys = BookBuilder.AddLabel(this, "Keys", string.Join("\n", Rows), new Vector3(-112, 0.1f, -10), 760, Palette.Ink, UiKit.Serif);
+        // Round 3: the summary in the upper half, the achievements with their progress in the lower half.
+        _name = BookBuilder.AddLabel(this, "TownName", "", new Vector3(0, 0.1f, -136), 1150, Palette.Ink, UiKit.Display);
+        _sub = BookBuilder.AddLabel(this, "Age", "", new Vector3(0, 0.1f, -119), 620, Palette.FadedInk, UiKit.Serif);
+        _keys = BookBuilder.AddLabel(this, "Keys", string.Join("\n", Rows), new Vector3(-112, 0.1f, -64), 600, Palette.Ink, UiKit.Serif);
         _keys.HorizontalAlignment = HorizontalAlignment.Left;
-        _keys.LineSpacing = 18f;
-        _vals = BookBuilder.AddLabel(this, "Values", "", new Vector3(112, 0.1f, -10), 760, Palette.Ink, UiKit.Serif);
+        _keys.LineSpacing = 4f;
+        _vals = BookBuilder.AddLabel(this, "Values", "", new Vector3(112, 0.1f, -64), 600, Palette.Ink, UiKit.Serif);
         _vals.HorizontalAlignment = HorizontalAlignment.Right;
-        _vals.LineSpacing = 18f;
-        _next = BookBuilder.AddLabel(this, "Next", "", new Vector3(0, 0.1f, 98), 680, Palette.FadedInk, UiKit.Serif);
+        _vals.LineSpacing = 4f;
+        _next = BookBuilder.AddLabel(this, "Next", "", new Vector3(0, 0.1f, -14), 560, Palette.FadedInk, UiKit.Serif);
         _next.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _next.Width = 2600;
+        _achHead = BookBuilder.AddLabel(this, "AchievementsHead", "Achievements", new Vector3(0, 0.1f, 2), 760, Palette.Ink, UiKit.Serif);
+        for (int c = 0; c < 2; c++)
+        {
+            float x0 = c == 0 ? -114 : 6, x1 = c == 0 ? -6 : 114;
+            _achNames[c] = BookBuilder.AddLabel(this, $"AchNames{c}", "", new Vector3(x0, 0.1f, 52), 520, Palette.Ink, UiKit.Serif);
+            _achNames[c].HorizontalAlignment = HorizontalAlignment.Left;
+            _achNames[c].LineSpacing = 1f;
+            _achVals[c] = BookBuilder.AddLabel(this, $"AchValues{c}", "", new Vector3(x1, 0.1f, 52), 520, Palette.FadedInk, UiKit.Serif);
+            _achVals[c].HorizontalAlignment = HorizontalAlignment.Right;
+            _achVals[c].LineSpacing = 1f;
+        }
         drv.Replaced += Force;
         Force();
     }
 
     public override void _ExitTree() { if (_drv != null) _drv.Replaced -= Force; }
 
-    private void Force() { _clock = 1e9; _lastVals = ""; if (_name != null) _name.Text = TownName.Of(_drv.Town.Seed); }
+    private void Force() { _clock = 1e9; _lastVals = ""; _lastAch = ""; if (_name != null) _name.Text = TownName.Of(_drv.Town.Seed); }
 
     public string NameText => _name.Text;
     public string AgeText => _sub.Text;
@@ -67,8 +82,37 @@ public partial class TownSummary : Node3D
         var v = Values(t);
         for (int i = 0; i < v.Length; i++) { if (i > 0) _sb.Append('\n'); _sb.Append(v[i]); }
         if (!Same(_sb, _lastVals)) { _lastVals = _sb.ToString(); _vals.Text = _lastVals; Rewrites++; }
-        if (t.Level != _nextLevel || t.NextAgeRung != _nextRung) { _nextLevel = t.Level; _nextRung = t.NextAgeRung; _next.Text = t.NextGift; }
+        if (t.Level != _nextLevel || t.NextAgeRung != _nextRung) { _nextLevel = t.Level; _nextRung = t.NextAgeRung; _next.Text = t.NextAgeRung ? "The first age is complete. The river comes next." : t.NextGift; }
+        Achievements(t);
     }
+
+    /// <summary>The achievements in two columns, name and state ("Done", "37 of 100"), rewritten only when a state changes.</summary>
+    private void Achievements(Town t)
+    {
+        _sb.Clear();
+        int n = t.AchievementCount;
+        for (int i = 0; i < n; i++) { var a = t.Achievement(i); _sb.Append(a.Unlocked ? 'D' : 'n').Append((long)Math.Floor(a.Value * (a.Target <= 1 ? 100 : 1))).Append(','); }
+        if (Same(_sb, _lastAch)) return;
+        _lastAch = _sb.ToString();
+        int half = (n + 1) / 2;
+        var nm = new StringBuilder(); var vl = new StringBuilder();
+        for (int c = 0; c < 2; c++)
+        {
+            nm.Clear(); vl.Clear();
+            for (int i = c * half; i < Math.Min(n, (c + 1) * half); i++)
+            {
+                var a = t.Achievement(i);
+                if (nm.Length > 0) { nm.Append('\n'); vl.Append('\n'); }
+                nm.Append(a.Name);
+                vl.Append(TownHud.AchievementState(a));
+            }
+            _achNames[c].Text = nm.ToString();
+            _achVals[c].Text = vl.ToString();
+        }
+        _achHead.Text = $"Achievements, {Achieved(t)} of {n}";
+    }
+
+    public string AchievementsText => _achNames[0].Text + "\n" + _achNames[1].Text;
 
     private int _nextLevel = -1;
     private bool _nextRung;

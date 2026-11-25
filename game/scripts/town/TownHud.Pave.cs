@@ -220,8 +220,7 @@ public partial class TownHud
         _paveBanner.Visible = banner;
         if (banner)
         {
-            string want = PaveMode ? "Pave: click a lit road. Hold Shift to pave several. Esc to stop."
-                                   : "Extend: click a lit cottage. Hold Shift to extend several. Esc to stop.";
+            string want = ModeHelp(PaveMode);
             if (_paveBanner.Text != want) _paveBanner.Text = want;
             _paveBanner.ResetSize();
             _paveBanner.Position = new Vector2((_built.X - _paveBanner.Size.X) / 2f, UiKit.Px(_s, 14));

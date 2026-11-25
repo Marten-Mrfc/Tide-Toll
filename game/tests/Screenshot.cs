@@ -25,6 +25,8 @@ public partial class Screenshot : TownTestBase
         System.IO.Directory.CreateDirectory(_dir);
         var bot = new TownBot(BotKind.Payback, 1);
         // --menu-only: a short town, then only the pause menu's shots (quick look while working on the menu).
+        // --age-only: straight to the charter and the end-of-age shots (quick look at the end of the age).
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--age-only") >= 0) { await EndOfAge(bot); await NextAge(); return; }
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--menu-only") >= 0) { Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 10); await MenuShots(); return; }
 
         // The first minute, as a player sees it.
@@ -84,13 +86,46 @@ public partial class Screenshot : TownTestBase
         await Shot("request");
         Main.Driver.SetPaused(false);
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--town-quick") >= 0) { Notes.Add("quick"); return; }
+        await EndOfAge(bot);
 
-        // The end of the age.
+        await NextAge();
+        await MenuShots();
+        Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
+    }
+
+    /// <summary>The next age rung in (the peal and its banner), then the first age's page.</summary>
+    private async Task NextAge()
+    {
+        Main.Rig.UserMoved = false;
+        Main.Follow(instant: true);
+        await Frames(10);
+        await Key(Godot.Key.N);
+        await Frames(12);
+        await Shot("next-age");
+        await Until(() => Main.Hud.AgePageOpen, 2000, "the first age's page opens");
+        await Frames(10);
+        await Shot("first-age");
+        await Key(Godot.Key.Escape);
+        await Frames(5);
+        Check(!Main.Hud.AgePageOpen && !Main.Menu.IsPaused, "Esc closes the age page without pausing");
+    }
+
+    /// <summary>The charter arriving, the end of the age, the achievements page, the zoom to the book and the summary.</summary>
+    private async Task EndOfAge(TownBot bot)
+    {
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);
         Check(T.HasCharter, "the bot reached the charter");
         Main.Rig.UserMoved = false;
+        await Frames(25);
+        await Shot("charter");
         await Settle();
         await Shot("end-of-age");
+        await Key(Godot.Key.Tab);
+        await Frames(20);
+        Check(Main.Hud.AchievementsOpen, "Tab opens the achievements");
+        await Shot("achievements");
+        await Key(Godot.Key.Tab);
+        await Frames(5);
 
         // Four steps of the zoom out to the book, then the summary page close enough to read.
         var pivot = Main.Rig.PivotLocal;
@@ -107,9 +142,6 @@ public partial class Screenshot : TownTestBase
         Main.Rig.LookAt(left, Main.Rig.PlaySize * 1.08f, instant: true);
         await Frames(40);
         await Shot("summary");
-
-        await MenuShots();
-        Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
     }
 
     private async Task MenuShots()

@@ -26,7 +26,7 @@ public partial class TownHud
     private readonly List<ShopItem> _shown = new();
     private Button _bell = null!, _nextAge = null!;
     private int[] _markSig = Array.Empty<int>();
-    private int _bellKey = int.MinValue;
+    private int _bellKey = int.MinValue, _bellKeysVersion = -1, _nextAgeSig = -1;
 
     /// <summary>The bookmark button for a shop item kind (first one; tests), or null.</summary>
     public Button? Mark(ShopItemKind kind)
@@ -113,15 +113,14 @@ public partial class TownHud
         _heads.Clear();
         _shown.Clear();
         _markSig = Array.Empty<int>();
-        _bellKey = int.MinValue;
+        _bellKey = int.MinValue; _nextAgeSig = -1;
 
         _bell = MakeButton("Bell", "ui-bell", "ui-sound-on");
         _bell.Pressed += RingBell;
         _root.AddChild(_bell);
         _nextAge = MakeButton("NextAge", "ui-achievement", "ui-reputation");
-        _nextAge.Pressed += () => _drv.Town.RingNextAge();
+        _nextAge.Pressed += NextAgePressed;
         _nextAge.Visible = false;
-        _nextAge.Text = "Ring in the next age   [N]\nThe charter is yours";
         _root.AddChild(_nextAge);
     }
 
@@ -152,6 +151,7 @@ public partial class TownHud
         b.AddThemeStyleboxOverride("hover_pressed", pressed);
         b.AddThemeStyleboxOverride("disabled", off);
         b.AddThemeColorOverride("font_disabled_color", UiKit.Ink.Lerp(UiKit.Paper, 0.25f));
+        b.MouseEntered += () => _main.Audio.UiHover();
         return b;
     }
 
@@ -165,14 +165,14 @@ public partial class TownHud
     {
         if (i < 0 || i >= _shown.Count) return;
         var it = _shown[i];
-        if (it.Kind == ShopItemKind.Pave) { SetPaveMode(!PaveMode); return; }
-        if (it.Kind == ShopItemKind.Extend) { SetExtendMode(!ExtendMode); return; }
+        if (it.Kind == ShopItemKind.Pave) { _main.Audio.UiPress(); SetPaveMode(!PaveMode); return; }
+        if (it.Kind == ShopItemKind.Extend) { _main.Audio.UiPress(); SetExtendMode(!ExtendMode); return; }
         // Read the item afresh: prices change after every purchase.
         _drv.Town.ShopItems(_items);
         foreach (var cur in _items)
             if (cur.Kind == it.Kind && cur.Index == it.Index)
             {
-                if (!_drv.Town.Buy(cur)) Note(cur.Reason.Length > 0 ? cur.Reason + "." : "Not yet.");
+                if (!_drv.Town.Buy(cur)) { _main.Audio.Cannot(); Note(cur.Reason.Length > 0 ? cur.Reason + "." : "Not yet."); }
                 return;
             }
     }
@@ -227,7 +227,7 @@ public partial class TownHud
             long need = poor ? (long)Math.Floor(Math.Max(1, it.Price - t.Coin)) : 0;
             bool mode = it.Kind == ShopItemKind.Pave ? PaveMode : it.Kind == ShopItemKind.Extend && ExtendMode;
             int sig = HashCode.Combine((int)it.Kind, it.Level, (long)Math.Floor(it.Price), it.Affordable, it.Reason, need, mode, ord);
-            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId(), _keysVersion);
+            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId(), Settings.GameInput.Version);
             if (sig == _markSig[i]) continue;
             _markSig[i] = sig;
             string key = KeyLabel(ActionFor(it, ord), it.Kind);
@@ -265,9 +265,9 @@ public partial class TownHud
         BellFrame(vp);
     }
 
-    private int _keysVersion;
     /// <summary>Call when key bindings changed, so the bookmarks print the new keys.</summary>
-    public void KeysChanged() => _keysVersion++;
+    /// <summary>Kept for callers: the keys are reprinted by themselves when the bindings change (GameInput.Version).</summary>
+    public void KeysChanged() { }
 
     private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
 
@@ -321,20 +321,28 @@ public partial class TownHud
         var t = _drv.Town;
         bool unlocked = t.Level >= 2 || t.BellRings > 0 || t.BellReady || t.BellWait > 0;
         int key = !unlocked ? -1 : t.BellRinging ? -2 : t.BellReady ? -3 : (int)Math.Ceiling(t.BellWait);
+        if (Settings.GameInput.Version != _bellKeysVersion) { _bellKeysVersion = Settings.GameInput.Version; _bellKey = int.MinValue; }
         if (key != _bellKey)
         {
             _bellKey = key;
             string state = key == -1 ? "Comes at level 2" : key == -2 ? "Ringing: everyone hurries" : key == -3 ? "Ring it" : $"Rests {key} s";
-            _bell.Text = $"The bell   [Space]\n{state}";
+            _bell.Text = $"The bell{Settings.GameInput.Tag("tt_bell", "   ")}\n{state}";
             _bell.TooltipText = "Ring the bell: everyone hurries for a few seconds, then it rests.";
         }
         _bell.Disabled = !t.BellReady;
         _bell.Size = new Vector2(UiKit.Px(_s, 250), 0);
         _bell.ResetSize();
         _bell.Position = new Vector2(UiKit.Px(_s, 16), vp.Y - _bell.Size.Y - UiKit.Px(_s, 16));
-        _nextAge.Visible = t.CanRingNextAge && _fullA > 0.01f;
+        _nextAge.Visible = (t.CanRingNextAge || t.NextAgeRung) && _fullA > 0.01f && !AgePageOpen;
         if (_nextAge.Visible)
         {
+            int ns = (t.NextAgeRung ? 1 : 0) + 2 * Settings.GameInput.Version;
+            if (ns != _nextAgeSig)
+            {
+                _nextAgeSig = ns;
+                _nextAge.Text = t.NextAgeRung ? $"The first age{Settings.GameInput.Tag("tt_next_age", "   ")}\nRead its page again"
+                                              : $"Ring in the next age{Settings.GameInput.Tag("tt_next_age", "   ")}\nThe charter is yours";
+            }
             _nextAge.ResetSize();
             _nextAge.Position = new Vector2(UiKit.Px(_s, 16), _bell.Position.Y - _nextAge.Size.Y - UiKit.Px(_s, 8));
         }
@@ -347,7 +355,9 @@ public partial class TownHud
             bool handled = true;
             if (Is(e, "tt_pave")) SetPaveMode(!PaveMode);
             else if (Is(e, "tt_bell")) RingBell();
-            else if (k.Keycode == Key.N && _drv.Town.CanRingNextAge) _drv.Town.RingNextAge();
+            else if (Is(e, "tt_next_age") && (_drv.Town.CanRingNextAge || _drv.Town.NextAgeRung)) NextAgePressed();
+            else if (Is(e, "tt_achievements")) ToggleAchievements();
+            else if ((Is(e, "tt_pause") || k.Keycode == Key.Escape) && (AchievementsOpen || AgePageOpen)) { CloseAchievements(); CloseAgePage(); }
             else if ((Is(e, "tt_pause") || k.Keycode == Key.Escape) && (PaveMode || ExtendMode)) { SetPaveMode(false); SetExtendMode(false); }
             else if (!ActivateByKey(e)) handled = false;
             if (handled) GetViewport().SetInputAsHandled();

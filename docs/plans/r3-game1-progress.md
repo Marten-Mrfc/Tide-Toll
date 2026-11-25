@@ -28,3 +28,4 @@ Started 2026-11-25 22:47 UTC (the machine clock; it runs oddly slow). Time box ~
 - 23:25 full ./check PASSED (table in the final report). Screenshots read: first-minute, level-6, pave, extend, request, end-of-age, zoom-2, settings-keys.
 - After it: stake label raised (its foot was clipped by the ground), Extend at the last level shown as finished ("Unlocks at a later level" never comes; sim wish written). Second full ./check running.
 - Keys page: the left column scrolls (it did before with fewer rows too); the settings test's fit check passes. A two-column rebalance is left for the next agent if wanted.
+- 23:37 second full ./check PASSED after the last changes. Everything in my brief is finished; see "Not done" above for what is left by design.

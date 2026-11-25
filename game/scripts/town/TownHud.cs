@@ -113,7 +113,8 @@ public partial class TownHud : CanvasLayer
         PauseMark.GrowHorizontal = Control.GrowDirection.Begin;
         PauseMark.GrowVertical = Control.GrowDirection.Begin;
         PauseMark.Pressed += () => _main.Menu.Pause();
-        _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner };
+        BuildBookParts();
+        _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner, _achMark };
         _fullA = -1f;
         Refresh();
     }
@@ -182,6 +183,7 @@ public partial class TownHud : CanvasLayer
         HintFrame((float)delta);
         BannerFrame((float)delta);
         HomeFrame();
+        BookFrame((float)delta);
     }
 
     // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
@@ -260,6 +262,13 @@ public partial class TownHud : CanvasLayer
             bool vis = a > 0.01f;
             foreach (var c in _fullParts) { if (c == null || !IsInstanceValid(c)) continue; c.Modulate = m; c.Visible = vis; }
         }
+        var stage = _main.Stage;
+        if (stage != _lastStage)
+        {
+            // Turning to the whole book (and back) sounds like a page.
+            if (_lastStage != (Main.ZoomStage)(-1) && (stage == Main.ZoomStage.Book || _lastStage == Main.ZoomStage.Book)) _main.Audio.PageTurn();
+            _lastStage = stage;
+        }
         _slim.Visible = a < 1f;
         if (_slim.Visible)
         {
@@ -272,6 +281,7 @@ public partial class TownHud : CanvasLayer
     }
 
     private Control?[] _fullParts = Array.Empty<Control?>();
+    private Main.ZoomStage _lastStage = (Main.ZoomStage)(-1);
 
     // ------------------------------------------------------------------ notes
 
@@ -341,8 +351,10 @@ public partial class TownHud : CanvasLayer
             case TownEventKind.PerkEarned: if (_perksSeen.Add(e.Text ?? "")) Note("Perk: " + (e.Text ?? "") + "."); break;
             case TownEventKind.AchievementUnlocked: Note("Achievement: " + (e.Text ?? "") + "."); break;
             case TownEventKind.VillagerArrived: if (t.VillagerCount > 1) Note("A new villager moves in."); break;
-            case TownEventKind.Charter: Note("The town has its charter. Ring in the next age when you are ready.", true); break;
-            case TownEventKind.NextAge: Note("The next age is coming. It is not built yet; the town keeps going.", true); break;
+            case TownEventKind.Charter:
+                Banner("The charter", "The town is granted its charter. Ring in the next age when you are ready.");
+                FocusBellGreen();
+                break;
         }
     }
 

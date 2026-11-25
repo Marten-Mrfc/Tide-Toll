@@ -156,6 +156,7 @@ public partial class PauseMenu : CanvasLayer
     {
         if (Now != State.Playing) return;
         if (_main.Hud.PaveMode) _main.Hud.SetPaveMode(false);
+        _main.Hud.CloseAchievements(); _main.Hud.CloseAgePage();
         var rig = _main.Rig;
         _keptPivot = rig.PivotLocal; _keptSize = rig.Camera.Size; _keptMoved = rig.UserMoved;
         _followAfter = false;
@@ -263,7 +264,7 @@ public partial class PauseMenu : CanvasLayer
         bool cancel = pause || e.IsActionPressed("ui_cancel");
         switch (Now)
         {
-            case State.Playing when pause && !_main.Hud.PaveMode: Pause(); break;
+            case State.Playing when pause && !_main.Hud.TakesEsc: Pause(); break;
             case State.Cover when cancel: Resume(); break;
             case State.Asking when cancel: CancelAsk(); break;
             default: return;

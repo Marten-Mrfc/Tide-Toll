@@ -45,7 +45,7 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ## Checks
 
 ```
-./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-perf, game-book (the zoom), screenshots, ledger
+./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-playthrough (the whole age), game-perf, game-book (the zoom), screenshots, ledger
 ./check --gate          # gate tables, comparison with the toy, 45-day traces, preview agreement (~6 min)
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
@@ -61,7 +61,7 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 ## Game tests
 
-`game/tests/`: `settings.tscn` (the settings pages alone), `menu.tscn` (pause, cover menu, settings joined, New town), `save.tscn` (save, reload, damaged save, quit paths), `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+`game/tests/`: `settings.tscn` (the settings pages alone), `menu.tscn` (pause, cover menu, settings joined, New town), `save.tscn` (save, reload, damaged save, quit paths), `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `play.tscn` (game-playthrough: the whole age through clicks and keys like a person, `PlayThrough.cs`), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
 
 ## The view (round 2)
 
@@ -73,6 +73,8 @@ The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, strai
 - Pave and Extend are click modes (`TownHud.Pave.cs`, `TownHud.Extend.cs`): hover and click use one picking (`PaveTarget`, `ExtendTarget`) that only finds what can be bought this moment; a click acts on exactly what the tip names. Never mark the left release handled: the camera must see it.
 - Roads are drawn from `Road.Px/Py` (the curve villagers walk), never `Xs/Ys`. Villagers stand where the simulation puts them (work spots, queue spots); no display fan-out.
 - Request card and hint line: `TownHud.Request.cs`; level banner and the Home control: `TownHud.Banner.cs`.
+- Achievements page, the Ring in the next age moment and the first age's page: `TownHud.Book.cs` (tt_achievements, tt_next_age); the left page of the book lists the achievements too (`TownSummary`). Every key printed in the interface comes from `GameInput.Bound/Tag` (the binding now); text with keys is rebuilt when `GameInput.Version` changes.
+- Sound: `SoundCues` reads `assets/audio/sfx/town-sounds.json` (same table in code as a fallback); `TownAudio` plays every event's cue at the coin's gain (the files carry their loudness), with a least gap per event; the mill loop by distance and zoom. Music: `TownMusic` (playlist rotation, fades, a gap, Still Pages while paused, Rising at the next age), timed by its own clock so tests can read it with the Dummy driver.
 
 ## Menus, settings, saving (round 2)
 

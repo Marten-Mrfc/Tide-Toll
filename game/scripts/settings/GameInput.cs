@@ -41,6 +41,7 @@ public static class GameInput
         new("tt_offer_2", "Buy a second building", Key.G, Key.None),
         new("tt_offer_3", "Buy a third building", Key.H, Key.None),
         new("tt_achievements", "Achievements", Key.Tab, Key.None),
+        new("tt_next_age", "Ring in the next age", Key.N, Key.None),
     };
 
     public static int IndexOf(string action)
@@ -64,6 +65,7 @@ public static class GameInput
     /// <summary>Replaces the keys of every action in the InputMap with these bindings (missing actions get defaults).</summary>
     public static void Apply(IReadOnlyDictionary<string, Key[]> bindings)
     {
+        Version++;
         foreach (var a in Actions)
         {
             if (!InputMap.HasAction(a.Name)) InputMap.AddAction(a.Name);
@@ -72,6 +74,25 @@ public static class GameInput
             foreach (var key in keys)
                 if (key != Key.None) InputMap.ActionAddEvent(a.Name, new InputEventKey { PhysicalKeycode = key });
         }
+    }
+
+    /// <summary>Goes up every time the bindings are applied: the interface reprints its keys when it changes.</summary>
+    public static int Version { get; private set; }
+
+    /// <summary>The first key bound to an action now, as printed ("" when none).</summary>
+    public static string Bound(string action)
+    {
+        if (!InputMap.HasAction(action)) return "";
+        foreach (var ev in InputMap.ActionGetEvents(action))
+            if (ev is InputEventKey key) return KeyName(KeyOf(key));
+        return "";
+    }
+
+    /// <summary>"  [key]" for a label, or "" when the action has no key.</summary>
+    public static string Tag(string action, string gap = "  ")
+    {
+        string k = Bound(action);
+        return k.Length > 0 ? $"{gap}[{k}]" : "";
     }
 
     /// <summary>The key of a key event: its physical key when known, else its key code.</summary>

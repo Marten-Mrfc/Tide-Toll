@@ -64,6 +64,7 @@ public partial class TownBuildings : Node3D
 
     public void Rebuild()
     {
+        _loadedWithCharter = true;
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
         var plots = _drv.Town.Plan.Plots;
         _built = new Node3D?[plots.Length];
@@ -124,6 +125,7 @@ public partial class TownBuildings : Node3D
             _charter = ModelLib.Instance(stone, "Charter");
             _charter.Position = new Vector3(fw * 0.3f / s, 0, fh * 0.25f / s);
             _charter.Visible = false;
+            _charterBase = _charter.Position;
             body.AddChild(_charter);
         }
         else body.AddChild(ModelLib.Instance(model, "Model"));
@@ -275,9 +277,31 @@ public partial class TownBuildings : Node3D
             _sailAngle = (_sailAngle + dt * 1.2f * (float)Math.Min(_drv.Speed, 4)) % (MathF.PI * 2f);
             _sails.Rotation = new Vector3(0, 0, _sailAngle);
         }
-        float swingTarget = t.BellRinging ? 1f : 0f;
+        _pealLeft = Math.Max(0f, _pealLeft - dt);
+        float swingTarget = t.BellRinging || _pealLeft > 0 ? 1f : 0f;
         _bellSwing = Mathf.MoveToward(_bellSwing, swingTarget, dt * 3f);
         if (_bell != null) _bell.Rotation = new Vector3(MathF.Sin((float)_drv.AnimTime * 9f) * 0.45f * _bellSwing, 0, 0);
-        if (_charter != null) _charter.Visible = t.HasCharter;
+        if (_charter != null)
+        {
+            // The charter stone arrives: it comes down from above and settles, over 1.4 s (instant for a loaded town).
+            if (t.HasCharter && !_charter.Visible) { _charterT = _loadedWithCharter ? 1.4f : 0f; }
+            _charter.Visible = t.HasCharter;
+            if (t.HasCharter && _charterT < 1.4f)
+            {
+                _charterT += dt;
+                float k = Math.Clamp(_charterT / 1.4f, 0f, 1f), e = 1f - (1f - k) * (1f - k) * (1f - k);
+                _charter.Position = new Vector3(_charterBase.X, (1f - e) * 9f, _charterBase.Z);
+                _charter.Scale = Vector3.One * (0.5f + 0.5f * e);
+            }
+        }
+        _loadedWithCharter = false;
     }
+
+    private float _charterT = 1.4f, _pealLeft;
+    private bool _loadedWithCharter = true;
+    private Vector3 _charterBase;
+    /// <summary>The charter stone is still coming down (tests and screenshots).</summary>
+    public bool CharterArriving => _charter != null && _charter.Visible && _charterT < 1.4f;
+    /// <summary>The bell swings for a while without the town's hurry (the next age rung in).</summary>
+    public void Peal(float seconds) => _pealLeft = seconds;
 }
