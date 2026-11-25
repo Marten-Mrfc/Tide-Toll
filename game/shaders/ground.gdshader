@@ -58,6 +58,13 @@ uniform float gravel_on = 0.0;       // any gravel on the map
 uniform vec4 gravel_wash : source_color = vec4(0.933, 0.918, 0.863, 1.0);  // #EEEADC, the toy's wash
 uniform vec4 gravel_stone : source_color = vec4(0.467, 0.475, 0.435, 1.0); // #77796F
 uniform vec4 gravel_rim : source_color = vec4(0.353, 0.361, 0.333, 1.0);   // #5A5C55
+uniform float cobble_on = 0.0;       // any cobbles on the map (the town game)
+uniform sampler2D cobble_tex : filter_linear, repeat_disable;              // R8 256x256: the cobbled strip's edge ramp, as gravel_tex
+uniform vec4 cobble_stone : source_color = vec4(0.537, 0.522, 0.494, 1.0); // #89857E
+uniform vec4 cobble_joint : source_color = vec4(0.302, 0.278, 0.247, 1.0); // #4D473F
+uniform float crowd_on = 0.0;        // any crowded road (the town game)
+uniform sampler2D crowd_tex : filter_linear, repeat_disable;               // R8 128x128: how far over its comfort a road is, 0..1
+uniform vec4 crowd_col : source_color = vec4(0.878, 0.455, 0.173, 1.0);    // the heat map's orange, laid on lightly
 uniform vec3 shadow_tint = vec3(0.70, 0.74, 0.86);
 uniform float bank_px = 1.6;         // ink bank line width in screen pixels
 
@@ -197,6 +204,29 @@ void fragment() {
 		vec3 gc = mix(mix(wash, gravel_stone.rgb, 0.18), mix(wash, gravel_stone.rgb, stone * 0.85), fine);
 		c = mix(c, gc, strip);
 		c = mix(c, gravel_rim.rgb, rim * 0.9);
+	}
+
+	// Cobbles: a darker grey strip of staggered square setts with ink joints, clearly not gravel's pale scatter.
+	if (cobble_on > 0.0) {
+		float cv = texture(cobble_tex, (lp + warp * cm * 0.12) / map_size).r - 0.5;
+		float ca = max(fwidth(cv), 1e-4);
+		float cstrip = smoothstep(-ca, ca, cv);
+		float crim = 1.0 - smoothstep(ca * 0.6, ca * 2.4, abs(cv));
+		vec2 q = lp / 0.75;
+		q.x += 0.5 * mod(floor(q.y), 2.0);
+		vec2 f = abs(fract(q) - 0.5);
+		float jw = max(fwidth(q.x) * 0.9, 0.06);
+		float joint = smoothstep(0.5 - jw, 0.5, max(f.x, f.y));
+		float fine = 1.0 - smoothstep(0.10, 0.35, fwidth(lp.x));
+		vec3 sett = cobble_stone.rgb * (0.88 + 0.22 * hash12(floor(q) + 4.2));
+		vec3 cc = mix(mix(cobble_stone.rgb, cobble_joint.rgb, 0.25), mix(sett, cobble_joint.rgb, joint * 0.85), fine);
+		c = mix(c, cc, cstrip);
+		c = mix(c, cobble_joint.rgb, crim * 0.95);
+	}
+	// Crowding: a road over its comfort takes a warm wash, stronger the more crowded, only on the road itself.
+	if (crowd_on > 0.0) {
+		float cr = texture(crowd_tex, m / map_size).r * smoothstep(0.15, 0.35, core);
+		c = mix(c, crowd_col.rgb, cr * 0.45);
 	}
 
 	// river: signed distance to the bank from the per-row centre line

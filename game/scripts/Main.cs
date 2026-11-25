@@ -1,212 +1,137 @@
+using System;
 using Godot;
+using TideToll.Game.Settings;
 using TideToll.Sim;
+using TideToll.Sim.Town;
 
 namespace TideToll.Game;
 
 /// <summary>
-/// Main scene: an open book on a table seen from above, the town living on the right-hand page.
-/// Everything is built in code so the scene file stays tiny and diffable. This node wires the pieces:
-/// the simulation driver, the map layers under MapOrigin (ground, town, scenery, fences and bridges, walkers),
-/// the camera rig with the ink pass, and the HUD. Tools and interface code reach everything through the
-/// properties here (see game/README.md, "Hooks"); the play layer is Tools (tools, ghosts, flow preview), Audio and
-/// Ui (the interface in the book).
+/// Main scene: the incremental town on the right-hand page of the open book. Built in code so the scene file stays
+/// tiny. Wires the driver (TownDriver: fixed-step simulation, interpolation, speed), the map layers under
+/// Book/RightPage/MapOrigin (ground with the roads, plots and buildings, trees, villagers), the camera rig with the ink
+/// pass, the sound and the interface. The camera starts zoomed in on the town and follows its extent as it grows,
+/// until the player moves it (drag, WASD or arrows, the wheel); Home goes back to following. A level's gift makes
+/// room for itself: the view follows the town again so the new piece is in sight.
 /// </summary>
 public partial class Main : Node3D
 {
-    /// <summary>
-    /// The simulation's parameters for the chapter being played: Chapter I ("The Hamlet") is the library's Default with
-    /// the river rules off (rain, mud and growing houses on); Chapter II ("The River") is the same with <see cref="River"/>
-    /// on (the library then turns rain and growth off).
-    /// </summary>
-    public SimParams Params { get; private set; } = SimParams.Default;
-    /// <summary>River rules for Chapter II (tests may change them, e.g. the starting coin, before adding the scene).</summary>
-    public RiverRules? River = RiverRules.Default;
-    /// <summary>The chapter to open on (1 or 2). "-- --chapter 2" on the command line opens Chapter II; "-- --no-river" is Chapter I.</summary>
-    public int StartChapter = 1;
-    /// <summary>The chapter being played: 1, The Hamlet (paths only), or 2, The River (boats, coin and the crossings).</summary>
-    public int Chapter { get; private set; } = 1;
-    /// <summary>Times the book was built for a chapter (1 at start, one more for every page turn).</summary>
-    public int ChapterBuilds { get; private set; }
-    /// <summary>The page-turn moment (an overlay kept across chapters).</summary>
-    public PageTurn Turn { get; private set; } = null!;
-    /// <summary>A new chapter's book is built and ready (tests, sound).</summary>
-    public event System.Action<int>? ChapterChanged;
-    public static readonly string[] ChapterNames = { "", "The Hamlet", "The River" };
-    public static readonly string[] ChapterNumerals = { "", "I", "II" };
-    public SimDriver Sim { get; private set; } = null!;
+    public int StartSeed = 1;
+    public TownDriver Driver { get; private set; } = null!;
+    public Town Town => Driver.Town;
     public CameraRig Rig { get; private set; } = null!;
     public Node3D MapOrigin { get; private set; } = null!;
-    public MapGround Ground { get; private set; } = null!;
-    public TownLayer Town { get; private set; } = null!;
-    public GroundMarks Marks { get; private set; } = null!;
-    public Scenery Scenery { get; private set; } = null!;
-    public EditLayer Edits { get; private set; } = null!;
-    public WalkerLayer Walkers { get; private set; } = null!;
+    public TownGround Ground { get; private set; } = null!;
+    public TownBuildings Buildings { get; private set; } = null!;
+    public TownVillagers Villagers { get; private set; } = null!;
     public InkOutline Ink { get; private set; } = null!;
-    public ToolController Tools { get; private set; } = null!;
-    public AudioDirector Audio { get; private set; } = null!;
-    public GameUi Ui { get; private set; } = null!;
-    /// <summary>The river: boats, the landing and the wakes and marks on the water (null pieces when the rules are off).</summary>
-    public RiverLayer Boats { get; private set; } = null!;
-    /// <summary>Ferries, drawbridges and keepers' huts, animated from the simulation's state.</summary>
-    public CrossingLayer Crossings { get; private set; } = null!;
-    /// <summary>River events drained once a frame and handed to the chronicle, the sound and the marks.</summary>
-    public RiverFeed Feed { get; private set; } = null!;
+    public TownAudio Audio { get; private set; } = null!;
+    public TownHud Hud { get; private set; } = null!;
+    /// <summary>The camera follows the town's extent (false once the player moves the view, true again on Home or a gift).</summary>
+    public bool Following => !Rig.UserMoved;
+    /// <summary>The town's extent in map-local metres (x, z), as followed.</summary>
+    public Rect2 Extent { get; private set; }
 
-    /// <summary>The two pages in world space (x, z rectangles on y = 0), for laying the interface over them.</summary>
-    public Rect2 LeftPageRect => new(-(BookBuilder.PageWidth + 1f), -BookBuilder.PageDepth / 2f, BookBuilder.PageWidth, BookBuilder.PageDepth);
-    public Rect2 RightPageRect => new(1f, -BookBuilder.PageDepth / 2f, BookBuilder.PageWidth + BookBuilder.StackSteps * 1.3f, BookBuilder.PageDepth);
-
-    /// <summary>Seed and walker count to start with (tests set these before adding the scene to the tree).</summary>
-    public int StartSeed = 1;
-    public int StartWalkers = -1;
+    private double _followClock;
 
     public override void _Ready()
     {
+        GameInput.Register();
         var args = OS.GetCmdlineUserArgs();
-        int at = System.Array.IndexOf(args, "--chapter");
-        if (at >= 0 && at + 1 < args.Length && int.TryParse(args[at + 1], out int ch)) StartChapter = ch;
-        foreach (var a in args) if (a.StartsWith("--chapter=") && int.TryParse(a.Substring(10), out int ch2)) StartChapter = ch2;
-        if (System.Array.IndexOf(args, "--no-river") >= 0) StartChapter = 1;
-        Chapter = StartChapter == 2 ? 2 : 1;
-        Turn = new PageTurn { Name = "PageTurn" };
-        AddChild(Turn);
-        Turn.Init(this);
-        Build(StartSeed, StartWalkers, null);
-    }
-
-    /// <summary>Turns the page to the other chapter, with the page-turn moment (the C key and the chapter bookmark).</summary>
-    public void TurnPage() => TurnTo(Chapter == 1 ? 2 : 1);
-
-    /// <summary>Turns to a chapter with the page-turn moment; the new book is built while the turning leaf covers it.</summary>
-    public void TurnTo(int chapter)
-    {
-        chapter = chapter == 2 ? 2 : 1;
-        if (chapter == Chapter || Turn.Busy) return;
-        Turn.Start(chapter);
-    }
-
-    /// <summary>
-    /// Builds the book again for a chapter at once (the page turn calls this while its leaf covers the book; tests may
-    /// call it directly): a fresh town from the current seed, with the walker count, speed, pause, sound, flow preview,
-    /// wear overlay and view kept.
-    /// </summary>
-    public void SwitchChapter(int chapter)
-    {
-        chapter = chapter == 2 ? 2 : 1;
-        var keep = new Kept
-        {
-            Seed = Sim.Seed, Walkers = Sim.WalkerCount, Speed = Sim.Speed, Paused = Sim.Paused, Sound = Audio.Enabled,
-            Volume = Audio.Volume, Preview = Tools.PreviewEnabled, Overlay = Ui.Overlay, PlayView = Rig.InPlayView,
-        };
-        foreach (var c in GetChildren())
-        {
-            if (c == Turn) continue;
-            RemoveChild(c);
-            c.QueueFree();
-        }
-        Chapter = chapter;
-        Build(keep.Seed, keep.Walkers, keep);
-    }
-
-    private struct Kept
-    {
-        public int Seed, Walkers, Speed;
-        public bool Paused, Sound, Preview, Overlay, PlayView;
-        public float Volume;
-    }
-
-    private void Build(int seed, int walkers, Kept? keep)
-    {
-        Params = SimParams.Default with { River = Chapter == 2 ? River ?? RiverRules.Default : null };
+        foreach (var a in args) if (a.StartsWith("--seed=") && int.TryParse(a.Substring(7), out int sd)) StartSeed = sd;
         AddChild(MakeEnvironment());
         AddChild(MakeSun());
-        BookBuilder.Build(this, Params, Chapter);
+        BookBuilder.Build(this, SimParams.Default, 1);
         MapOrigin = GetNode<Node3D>("Book/RightPage/MapOrigin");
 
-        Sim = new SimDriver { Name = "Sim", Params = Params };
-        AddChild(Sim);
-        Sim.Reset(seed);
-        if (walkers >= 0) Sim.SetWalkers(walkers);
+        Driver = new TownDriver { Name = "Driver", ProcessPriority = -100 };
+        AddChild(Driver);
+        Driver.Reset(StartSeed);
 
-        Ground = new MapGround(); MapOrigin.AddChild(Ground); Ground.Init(Sim);
-        Marks = new GroundMarks(); MapOrigin.AddChild(Marks); Marks.Init(Sim);
-        Town = new TownLayer(); MapOrigin.AddChild(Town); Town.Init(Sim);
-        Scenery = new Scenery(); MapOrigin.AddChild(Scenery); Scenery.Init(Sim);
-        Edits = new EditLayer(); MapOrigin.AddChild(Edits); Edits.Init(Sim);
-        Crossings = new CrossingLayer(); MapOrigin.AddChild(Crossings); Crossings.Init(Sim);
-        Boats = new RiverLayer(); MapOrigin.AddChild(Boats); Boats.Init(Sim);
-        Walkers = new WalkerLayer(); MapOrigin.AddChild(Walkers); Walkers.Init(Sim, Crossings);
+        Ground = new TownGround(); MapOrigin.AddChild(Ground); Ground.Init(Driver);
+        Buildings = new TownBuildings(); MapOrigin.AddChild(Buildings); Buildings.Init(Driver);
+        MapOrigin.AddChild(TownTrees.Make(Driver.Town.Plan));
+        Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
 
         Rig = new CameraRig
         {
-            Name = "CameraRig",
-            MapOrigin = MapOrigin,
-            MapCells = Params.GridWidth,
-            CellMetres = (float)Params.CellMeters,
-            BookSize = BookBuilder.CoverSize,
+            Name = "CameraRig", MapOrigin = MapOrigin, MapCells = TownGround.N, CellMetres = TownGround.Cell,
+            BookSize = BookBuilder.CoverSize, LeftDragPans = true, MinSize = 36f,
         };
         AddChild(Rig);
+        // This round the zoom stops at the full page (the book view and the menus are next round's work).
+        Rig.MaxSize = Rig.PlaySize;
+        Rig.HomePressed = () => { Rig.UserMoved = false; Follow(instant: false); };
         Ink = new InkOutline();
         Ink.Attach(Rig.Camera);
 
-        Feed = new RiverFeed();
-        AddChild(Feed);
-        Feed.Init(this);
-        Tools = new ToolController();
-        AddChild(Tools);
-        Tools.Init(this);
-        Audio = new AudioDirector();
-        AddChild(Audio);
-        Audio.Init(this);
-        if (keep is { } k)
+        Audio = new TownAudio(); AddChild(Audio); Audio.Init(Driver);
+        Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
+        Follow(instant: true);
+    }
+
+    /// <summary>The bounding box of every given plot and open road, in map-local metres.</summary>
+    public Rect2 TownExtent()
+    {
+        var t = Driver.Town;
+        float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+        foreach (var p in t.Plan.Plots)
         {
-            Sim.SetSpeed(k.Speed);
-            Sim.SetPaused(k.Paused);
-            Audio.SetEnabled(k.Sound);
-            Audio.SetVolume(k.Volume);
-            Tools.PreviewEnabled = k.Preview;
+            if (!t.PlotGiven(p.Id) && !(p.Level == t.Level + 1)) continue; // staked plots count: the next gift is shown
+            x0 = Math.Min(x0, p.X); y0 = Math.Min(y0, p.Y); x1 = Math.Max(x1, p.X + p.W); y1 = Math.Max(y1, p.Y + p.H);
         }
-        Ui = new GameUi();
-        AddChild(Ui);              // sets Rig.PlayRoomPx for the tabs, so frame afterwards
-        if (keep is { Overlay: true }) Ui.SetOverlay(true);
-        if (keep is { PlayView: false }) Rig.FrameBook(instant: true); else Rig.FramePlay(instant: true);
-        Ui.PlaceNow();
-        MoveChild(Turn, GetChildCount() - 1);
-        ChapterBuilds++;
-        ChapterChanged?.Invoke(Chapter);
+        for (int r = 0; r < t.RoadCount; r++)
+        {
+            if (!t.RoadOpen(r)) continue;
+            var road = t.Plan.Roads[r];
+            for (int k = 0; k < road.Xs.Length; k++)
+            {
+                x0 = Math.Min(x0, road.Xs[k]); y0 = Math.Min(y0, road.Ys[k]);
+                x1 = Math.Max(x1, road.Xs[k] + 1); y1 = Math.Max(y1, road.Ys[k] + 1);
+            }
+        }
+        if (x0 > x1) { x0 = t.Plan.WindowX; y0 = t.Plan.WindowY; x1 = x0 + t.Plan.WindowW; y1 = y0 + t.Plan.WindowH; }
+        float c = TownGround.Cell;
+        return new Rect2(x0 * c, y0 * c, (x1 - x0) * c, (y1 - y0) * c);
+    }
+
+    /// <summary>Frames the town: its extent with room round it, between the ledger on the left and the bookmarks on the right.</summary>
+    public void Follow(bool instant)
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        if (vp.Y < 1) return;
+        var ext = TownExtent();
+        Extent = ext;
+        float s = UiKit.ScaleFor(vp.Y);
+        float left = 360f * s, right = 310f * s;
+        float usable = Math.Max(200f, vp.X - left - right);
+        float pad = 14f;
+        float size = Math.Max(ext.Size.Y + 2 * pad, (ext.Size.X + 2 * pad) * vp.Y / usable);
+        size = Mathf.Clamp(size, Rig.MinSize + 10f, Rig.MaxSize);
+        var centre = ext.GetCenter();
+        float shift = (left - right) / 2f * size / vp.Y;
+        Rig.LookAt(new Vector3(centre.X - shift, 0, centre.Y), size, instant);
     }
 
     public override void _Process(double delta)
     {
-        // Zoom-dependent drawing: ink width, walker size and walker ink follow the screen pixels per metre.
+        foreach (var e in Driver.Events)
+            if (e.Kind == TownEventKind.LevelReached && e.Level > 1) Rig.UserMoved = false; // the gift makes room
+        _followClock += delta;
+        if (!Rig.UserMoved && _followClock >= 0.25) { _followClock = 0; Follow(instant: false); }
         var vp = GetViewport().GetVisibleRect().Size;
-        // A minimised or zero-height window: nothing is drawn, and every width below would divide by zero.
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
         Ink.Update(Rig.Camera, vp);
-        float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y; // as if at 1080p, so the look is resolution-independent
-        // Villagers stay about 7 px wide when zoomed out (the mesh is 1 m wide, already 1.5x life size).
-        Walkers.WalkerScale = Mathf.Clamp(7f / pxPerM, 1f, 1.8f);
-        Walkers.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
-        Boats.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
-        Crossings.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
-        // Boats and the landing grow up to 2.2x when zoomed out (as villagers do), so at the play view a barge reads
-        // apart from a rowboat and a waiting boat from one under way; the crossings get their map marks there.
-        Boats.BoatScale = Mathf.Clamp(8f / pxPerM, 1f, 2.2f);
-        Crossings.Overview = Mathf.Clamp((Rig.Camera.Size - 110f) / 60f, 0f, 1f);
-        Marks.SetMetresPerPixel(Rig.Camera.Size / vp.Y);
+        float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y;
+        // Villagers stay about 8 px wide when zoomed out; never smaller than the model.
+        Villagers.WalkerScale = Mathf.Clamp(8f / pxPerM, 1f, 1.8f);
     }
 
-    /// <summary>World position of a cell centre on the map page (cells are 2 m).</summary>
-    public Vector3 CellToWorld(int x, int y)
-    {
-        float s = (float)Params.CellMeters;
-        return MapOrigin.GlobalTransform * new Vector3((x + 0.5f) * s, 0, (y + 0.5f) * s);
-    }
+    /// <summary>World position of a map cell centre.</summary>
+    public Vector3 CellToWorld(float x, float y) => MapOrigin.GlobalTransform * new Vector3((x + 0.5f) * TownGround.Cell, 0, (y + 0.5f) * TownGround.Cell);
 
     private static DirectionalLight3D MakeSun() => new()
     {
-        // One sun fixed in the world, from the south-east, low enough for long soft shadows.
         Name = "Sun",
         RotationDegrees = new Vector3(-48, 45, 0),
         LightColor = Color.FromHtml("#FFF4E0"),
@@ -226,7 +151,6 @@ public partial class Main : Node3D
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
             AmbientLightColor = Palette.Paper,
             AmbientLightEnergy = 0.4f,
-            // Linear keeps the palette close to its hex values; no bloom, haze or depth of field (banned).
             TonemapMode = Godot.Environment.ToneMapper.Linear,
         };
         return new WorldEnvironment { Name = "Environment", Environment = env };

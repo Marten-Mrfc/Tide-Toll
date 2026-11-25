@@ -19,6 +19,22 @@ public static class ModelLib
 
     public static string Path(string model) => $"res://assets/models/{model}.glb";
 
+    /// <summary>Whether a model file is in the project (new models may arrive late: load a named stand-in then).</summary>
+    public static bool Has(string model) => ResourceLoader.Exists(Path(model));
+
+    /// <summary>The model if it is there, else the stand-in.</summary>
+    public static string Pick(string model, string standIn) => Has(model) ? model : standIn;
+
+    /// <summary>Whether a model has a node of that name (a part the game animates, such as the mill's sails).</summary>
+    public static bool HasPart(string model, string node)
+    {
+        if (!Has(model)) return false;
+        var root = GD.Load<PackedScene>(Path(model)).Instantiate<Node3D>();
+        bool found = Find(root, node) != null;
+        root.Free();
+        return found;
+    }
+
     /// <summary>The model's meshes merged into one surface (all Hamlet models share one palette material).</summary>
     public static ArrayMesh Mesh(string model)
     {

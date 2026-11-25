@@ -1,0 +1,51 @@
+using System;
+using Godot;
+using TideToll.Sim.Town;
+
+namespace TideToll.Game;
+
+/// <summary>
+/// Trees on the meadow round the town, so the page is not bare: oaks and poplars on dry ground, willows near the
+/// river, never inside the first age's town window (with a margin) or on water. Placed from the seed by a fixed hash,
+/// so the same town always has the same trees. Three MultiMeshes, built once.
+/// </summary>
+public static class TownTrees
+{
+    public static Node3D Make(TownPlan plan)
+    {
+        var root = new Node3D { Name = "Trees" };
+        var map = plan.Map;
+        int n = TownGround.N;
+        string[] models = { "tree-oak", "tree-poplar", "tree-willow" };
+        var xf = new System.Collections.Generic.List<Transform3D>[3];
+        for (int k = 0; k < 3; k++) xf[k] = new();
+        uint h = (uint)(plan.Seed * 2654435761u + 12345u);
+        for (int tries = 0; tries < 2600; tries++)
+        {
+            h = h * 1664525u + 1013904223u; float fx = (h >> 8) / 16777216f;
+            h = h * 1664525u + 1013904223u; float fy = (h >> 8) / 16777216f;
+            h = h * 1664525u + 1013904223u; float fr = (h >> 8) / 16777216f;
+            int x = (int)(fx * (n - 4)) + 2, y = (int)(fy * (n - 4)) + 2;
+            if (x >= plan.WindowX - 3 && x < plan.WindowX + plan.WindowW + 3 && y >= plan.WindowY - 3 && y < plan.WindowY + plan.WindowH + 3) continue;
+            float dRiver = MathF.Abs(x + 0.5f - map.RiverX[y]) - (float)map.RiverHalfW;
+            if (dRiver < 2.5f || map.Water[y * n + x] != 0) continue;
+            // Clumps: keep a tree only where low-frequency noise says "wood", and keep the river bank open-ish.
+            float clump = map.Noise.Length == n * n ? map.Noise[y * n + x] : 0.5f;
+            if (clump < 0.45f && fr > 0.12f) continue;
+            int kind = dRiver < 7f ? 2 : fr < 0.35f ? 1 : 0;
+            float s = 0.85f + 0.35f * fr;
+            var basis = new Basis(Vector3.Up, fr * 6.283f).Scaled(Vector3.One * s);
+            xf[kind].Add(new Transform3D(basis, new Vector3((x + fx * 7 % 1) * TownGround.Cell, 0, (y + fy * 5 % 1) * TownGround.Cell)));
+            if (xf[0].Count + xf[1].Count + xf[2].Count >= 260) break;
+        }
+        for (int k = 0; k < 3; k++)
+        {
+            if (xf[k].Count == 0) continue;
+            var mmi = ModelLib.Multi(models[k], models[k], xf[k].Count);
+            for (int i = 0; i < xf[k].Count; i++) mmi.Multimesh.SetInstanceTransform(i, xf[k][i]);
+            mmi.Multimesh.VisibleInstanceCount = xf[k].Count;
+            root.AddChild(mmi);
+        }
+        return root;
+    }
+}

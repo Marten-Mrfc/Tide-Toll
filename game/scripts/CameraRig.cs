@@ -62,6 +62,20 @@ public partial class CameraRig : Node3D
     /// <summary>A middle or right drag is panning the view.</summary>
     public bool Dragging => _dragging;
     private Vector2 _dragLast;
+    private bool _leftDown;
+    private Vector2 _leftFrom;
+    /// <summary>The player moved the view (drag, keys or wheel): the town game stops following the town until Home.</summary>
+    public bool UserMoved;
+    /// <summary>The last left press turned into a drag (so its release is not a click).</summary>
+    public bool LeftDragged { get; private set; }
+    /// <summary>Left-button drag pans too (the town game: there is no drawing tool on the left button).</summary>
+    public bool LeftDragPans = false;
+    /// <summary>Pixels a left press must move before it is a drag.</summary>
+    public float DragThresholdPx = 6f;
+
+    private static bool Act(string action, Key fallback)
+        => InputMap.HasAction(action) ? Input.IsActionPressed(action) : Input.IsKeyPressed(fallback);
+    private static bool ActEvent(InputEvent e, string action) => InputMap.HasAction(action) && e.IsActionPressed(action);
 
     public override void _Ready()
     {
@@ -265,11 +279,12 @@ public partial class CameraRig : Node3D
         // control has keyboard focus the arrows belong to it (moving focus, nudging a slider).
         if (GetViewport().GuiGetFocusOwner() != null) return;
         float x = 0, y = 0;
-        if (Input.IsKeyPressed(Key.Left)) x -= 1;
-        if (Input.IsKeyPressed(Key.Right)) x += 1;
-        if (Input.IsKeyPressed(Key.Up)) y -= 1;
-        if (Input.IsKeyPressed(Key.Down)) y += 1;
+        if (Act("tt_move_left", Key.Left)) x -= 1;
+        if (Act("tt_move_right", Key.Right)) x += 1;
+        if (Act("tt_move_up", Key.Up)) y -= 1;
+        if (Act("tt_move_down", Key.Down)) y += 1;
         if (x == 0 && y == 0) return;
+        UserMoved = true;
         // Screen-relative: right is the yaw's +X, screen-up is the yaw's -Z, measured in map space.
         var inv = MapXf.AffineInverse().Basis;
         var right = inv * Yaw.GlobalTransform.Basis.X;
@@ -277,6 +292,9 @@ public partial class CameraRig : Node3D
         var d = (right * x + down * y) with { Y = 0 };
         PanLocal(d.Normalized() * Camera.Size * 0.8f * dt);
     }
+
+    /// <summary>When set, Home calls this instead of switching between the book and the page (the town game: back to the town).</summary>
+    public System.Action? HomePressed;
 
     public override void _UnhandledInput(InputEvent e)
     {
@@ -287,6 +305,7 @@ public partial class CameraRig : Node3D
                 if (mb.Pressed && !mb.ShiftPressed) // Shift+wheel is reserved for tool variants
                 {
                     ZoomAt(mb.Position, mb.ButtonIndex == MouseButton.WheelUp ? 0.85f : 1f / 0.85f);
+                    UserMoved = true;
                     GetViewport().SetInputAsHandled();
                 }
                 break;
@@ -294,15 +313,29 @@ public partial class CameraRig : Node3D
                 _dragging = mb.Pressed;
                 _dragLast = mb.Position;
                 break;
+            case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.Left && LeftDragPans:
+                if (mb.Pressed) { _leftDown = true; _leftFrom = mb.Position; _dragLast = mb.Position; LeftDragged = false; }
+                else { _leftDown = false; if (_dragging && !Input.IsMouseButtonPressed(MouseButton.Right) && !Input.IsMouseButtonPressed(MouseButton.Middle)) _dragging = false; }
+                break;
+            case InputEventMouseMotion mm when _leftDown && !_dragging && mm.Position.DistanceTo(_leftFrom) > DragThresholdPx:
+                _dragging = true;
+                LeftDragged = true;
+                if (PickLocal(_dragLast, out var a0) && PickLocal(mm.Position, out var b0)) PanLocal(a0 - b0, instant: true);
+                _dragLast = mm.Position;
+                UserMoved = true;
+                GetViewport().SetInputAsHandled();
+                break;
             case InputEventMouseMotion mm when _dragging:
                 if (PickLocal(_dragLast, out var a) && PickLocal(mm.Position, out var b)) PanLocal(a - b, instant: true);
                 _dragLast = mm.Position;
+                UserMoved = true;
                 GetViewport().SetInputAsHandled();
                 break;
             case InputEventKey { Pressed: true, Echo: false } key:
-                if (key.Keycode == Key.Home && !key.ShiftPressed) { ToggleView(); GetViewport().SetInputAsHandled(); }
-                else if (key.Keycode is Key.Plus or Key.Equal or Key.KpAdd or Key.Pageup) ZoomAt(ViewportSize / 2f, 0.8f);
-                else if (key.Keycode is Key.Minus or Key.KpSubtract or Key.Pagedown) ZoomAt(ViewportSize / 2f, 1.25f);
+                if (HomePressed != null && (ActEvent(key, "tt_home_view") || key.Keycode == Key.Home)) { HomePressed(); GetViewport().SetInputAsHandled(); }
+                else if (key.Keycode == Key.Home && !key.ShiftPressed) { ToggleView(); GetViewport().SetInputAsHandled(); }
+                else if (ActEvent(key, "tt_zoom_in") || key.Keycode is Key.Plus or Key.Equal or Key.KpAdd or Key.Pageup) { ZoomAt(ViewportSize / 2f, 0.8f); UserMoved = true; }
+                else if (ActEvent(key, "tt_zoom_out") || key.Keycode is Key.Minus or Key.KpSubtract or Key.Pagedown) { ZoomAt(ViewportSize / 2f, 1.25f); UserMoved = true; }
                 break;
         }
     }

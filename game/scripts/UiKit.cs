@@ -12,6 +12,8 @@ namespace TideToll.Game;
 /// </summary>
 public static class UiKit
 {
+    /// <summary>Pixels of a bookmark tab tucked under the page edge (before scaling).</summary>
+    public const float Tuck = 9f;
     public static readonly Color Paper = Palette.Paper;
     public static readonly Color Ink = Palette.Ink;
     public static readonly Color PaperDark = Color.FromHtml("#E4D6B8");
@@ -91,7 +93,7 @@ public static class UiKit
     }
 
     /// <summary>
-    /// A bookmark tab: square on the left, where it is tucked under the page edge (ToolTabs.Tuck pixels of it lie
+    /// A bookmark tab: square on the left, where it is tucked under the page edge (Tuck pixels of it lie
     /// under the page, which the PageLip draws over it), rounded on the right.
     /// </summary>
     public static StyleBoxFlat Tab(float s, Color bg, float border, float pullOut)
@@ -100,7 +102,7 @@ public static class UiKit
         {
             BgColor = bg,
             BorderColor = Ink,
-            ContentMarginLeft = Px(s, 10 + ToolTabs.Tuck), ContentMarginRight = Px(s, 10),
+            ContentMarginLeft = Px(s, 10 + Tuck), ContentMarginRight = Px(s, 10),
             ContentMarginTop = Px(s, 5), ContentMarginBottom = Px(s, 5),
             // Pressed tabs are pulled further out of the book, to the right: shape, not only colour, says "on".
             ExpandMarginRight = Px(s, pullOut),

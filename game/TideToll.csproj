@@ -9,6 +9,10 @@
     <RootNamespace>TideToll.Game</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The retired game (two chapters, the old tools) lives in legacy/ for reference only; it is not built. -->
+    <Compile Remove="legacy/**" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The same simulation library the tests run, always built optimised: a Debug sim is three to five times
          slower per tick, which would make every run from the editor or the command line misjudge the game's speed.
          Optimisation does not change results (.NET has no fast-math), and the sim's own tests run in Release too. -->

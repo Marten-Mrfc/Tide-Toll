@@ -47,7 +47,7 @@ public static class TownRules
     public static double VillagerBase = 5, VillagerGrowth = 1.45;
     public static double PaceBase = 2, PaceGrowth = 1.035;
     public static double PaceCap = 1.5;            // Pace adds at most +150 % walking speed: factor = 1 + cap * (1 - decay ^ level)
-    public static double PaceDecay = 0.98;         // so the first level adds 3 %, later ones less and less
+    public static double PaceDecay = 0.97;         // so the first level adds 4.5 %, later ones less and less
     public static int PaceMax = 1000;
     public static readonly double[] LoadPrices = { 300, 1500, 5000 };
     public static readonly string[] LoadNames = { "Basket", "Yoke", "Handcart" };
@@ -64,12 +64,12 @@ public static class TownRules
     // ---- Renown and levels ----
     public static double RenownPerCoin = 1.0;        // renown of a purchase = price * this (at least 1)
     /// <summary>Renown needed to reach level i+1 (index 0 is level 1, always 0). Twelve levels; the last grants the charter.</summary>
-    public static readonly double[] LevelRenown = { 0, 30, 80, 180, 350, 700, 1700, 3600, 7000, 12500, 22000, 35000 };
+    public static readonly double[] LevelRenown = { 0, 20, 100, 390, 880, 1650, 2800, 4600, 7400, 11400, 17200, 25500 };
 
     // ---- The bell ----
-    public static double BellHurry = 1.5;            // speed factor while ringing
+    public static double BellHurry = 1.3;            // speed factor while ringing
     public static double BellDuration = 6;
-    public static double BellRest = 30;
+    public static double BellRest = 40;
 
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;
