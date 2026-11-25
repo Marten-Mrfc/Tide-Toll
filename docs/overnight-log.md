@@ -69,7 +69,7 @@ Limit: 20 rounds. A round is one workflow run: research, build, review.
 
 ## The owner's requests since the overnight brief
 
-- 25 November, about 09:00 UTC: "Make github build an exe for windows 11". Done with `.github/workflows/windows-build.yml` (the push of a workflow file was accepted). The lead can see runs with `gh run list --repo Marten-Mrfc/Tide-Toll` even though `gh auth status` complains. Commits whose message starts with "Snapshot" do not trigger a build, so keep using that prefix for work-in-progress commits and avoid it for finished rounds.
+- 25 November, about 09:00 UTC: "Make github build an exe for windows 11". Done with `.github/workflows/windows-build.yml` (the push of a workflow file was accepted). The first run (commit b3e453b) passed in under 2 minutes and attached `TideToll-windows-x64` (78 MB, kept until 25 December); the exe has still not been started on Windows. The lead can see runs with `gh run list --repo Marten-Mrfc/Tide-Toll` even though `gh auth status` complains. Commits whose message starts with "Snapshot" do not trigger a build, so keep using that prefix for work-in-progress commits and avoid it for finished rounds.
 
 ## Next steps
 
