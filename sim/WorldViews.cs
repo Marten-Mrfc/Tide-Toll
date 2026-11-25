@@ -110,6 +110,9 @@ public sealed partial class World
         return _predictor.Compute(change, maxPairs);
     }
 
+    /// <summary>Sets a cell's wear, as the toy's own checks do (tests only).</summary>
+    internal void SetWearForTests(int c, float w) => _wear[c] = w;
+
     // Internal access for the flow preview (same assembly), which must never write to these.
     internal float[] FieldArray(int t) => _fields[t];
     internal float[] CostArray => _cost;

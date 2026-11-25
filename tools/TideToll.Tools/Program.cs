@@ -80,9 +80,9 @@ public static class Program
         double budget = Dbl(o, "budget-ms", 5), p99Budget = Dbl(o, "p99-budget-ms", 25);
         Console.WriteLine($"tick benchmark, seed {seed}, 600 warm-up ticks then 600 timed ({(TickBench.IsRelease ? "Release" : "Debug: numbers are not representative")}, {Environment.ProcessorCount} cores, shared machine)");
         bool ok = true;
-        foreach (var (walkers, river, weather) in new[] { (200, false, false), (500, false, false), (500, true, false), (500, true, true) })
+        foreach (var (walkers, river, weather, toy) in new[] { (200, false, false, false), (500, false, false, false), (500, false, false, true), (500, true, false, false), (500, true, true, false) })
         {
-            var r = TickBench.Measure(seed, walkers, river: river, weather: weather);
+            var r = TickBench.Measure(seed, walkers, river: river, weather: weather, toy: toy);
             Console.WriteLine(TickBench.Line(r));
             if (r.MeanMs > budget || r.P99Ms > p99Budget || r.AllocatedBytes != 0) ok = false;
         }

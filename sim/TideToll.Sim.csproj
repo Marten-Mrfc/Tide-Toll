@@ -10,4 +10,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The tests set a cell's wear directly where the toy's own checks do (World.SetWearForTests). -->
+    <InternalsVisibleTo Include="TideToll.Sim.Tests" />
+  </ItemGroup>
+
 </Project>

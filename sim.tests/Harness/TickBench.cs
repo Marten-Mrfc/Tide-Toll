@@ -6,7 +6,7 @@ namespace TideToll.Sim.Testing;
 /// <summary>Tick timing: warm up, then time each tick and count bytes allocated on this thread.</summary>
 public static class TickBench
 {
-    public readonly record struct Result(int Walkers, int Ticks, double MeanMs, double P99Ms, double MaxMs, long AllocatedBytes, bool River = false, bool Weather = false);
+    public readonly record struct Result(int Walkers, int Ticks, double MeanMs, double P99Ms, double MaxMs, long AllocatedBytes, bool River = false, bool Weather = false, bool Toy = false);
 
     /// <summary>
     /// With <paramref name="river"/> the river rules are on with goods hauled, a ferry and a drawbridge with its keeper
@@ -14,10 +14,13 @@ public static class TickBench
     /// <paramref name="weather"/> as well, the flood band is under water and the river frozen for the timed ticks (both at
     /// once: the heaviest case, wading costs and ice wear together).
     /// </summary>
-    public static Result Measure(int seed, int walkers, int warmup = 600, int ticks = 600, bool river = false, bool weather = false)
+    /// With <paramref name="toy"/> the world runs the finished toy's trail model (SimParams.Toy: two views, so two
+    /// Dijkstras per field refresh) without the river.
+    public static Result Measure(int seed, int walkers, int warmup = 600, int ticks = 600, bool river = false, bool weather = false, bool toy = false)
     {
         river |= weather;
-        var w = river ? new World(seed, walkers, SimParams.Default with { River = RiverRules.Default with { StartMoney = 1000 } }) : new World(seed, walkers);
+        var w = river ? new World(seed, walkers, SimParams.Default with { River = RiverRules.Default with { StartMoney = 1000 } })
+            : new World(seed, walkers, toy ? SimParams.Toy : null);
         int draw = -1;
         if (river)
         {
@@ -45,11 +48,11 @@ public static class TickBench
         double sum = 0;
         foreach (double v in ms) sum += v;
         Array.Sort(ms);
-        return new Result(walkers, ticks, sum / ticks, ms[(int)Math.Ceiling(0.99 * ticks) - 1], ms[^1], alloc, river, weather);
+        return new Result(walkers, ticks, sum / ticks, ms[(int)Math.Ceiling(0.99 * ticks) - 1], ms[^1], alloc, river, weather, toy && !river);
     }
 
     public static string Line(Result r) =>
-        $"BENCH {r.Walkers} walkers{(r.Weather ? " + river rules, flood and ice" : r.River ? " + river rules" : "")}: {r.MeanMs:F3} ms per tick mean, p99 {r.P99Ms:F2} ms, max {r.MaxMs:F2} ms over {r.Ticks} ticks; {r.AllocatedBytes} bytes allocated";
+        $"BENCH {r.Walkers} walkers{(r.Weather ? " + river rules, flood and ice" : r.River ? " + river rules" : r.Toy ? ", toy trail model (SimParams.Toy)" : "")}: {r.MeanMs:F3} ms per tick mean, p99 {r.P99Ms:F2} ms, max {r.MaxMs:F2} ms over {r.Ticks} ticks; {r.AllocatedBytes} bytes allocated";
 
 #if DEBUG
     public static readonly bool IsRelease = false;

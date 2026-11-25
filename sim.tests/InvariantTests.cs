@@ -96,6 +96,26 @@ public class InvariantTests
         Assert.Equal(500, s.Walkers);
     }
 
+    /// <summary>The finished toy's trail model (two views, detour cap, explorers) with gravel and gates down: still allocation-free.</summary>
+    [Fact]
+    public void TickOnTheToyPresetWithGravelAndGatesAllocatesNothing()
+    {
+        var w = new World(3, 500, SimParams.Toy);
+        for (int i = 0; i < 300; i++) w.Tick();
+        var line = new List<int>();
+        w.Grid.Line4(20, 40, 40, 60, line);
+        w.PlaceGravel(line.ToArray());
+        line.Clear();
+        w.Grid.Line4(60, 20, 60, 40, line);
+        w.PlaceFence(line.ToArray());
+        w.PlaceGate(line[line.Count / 2]);
+        for (int i = 0; i < 300; i++) w.Tick();
+        long a0 = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 300; i++) w.Tick();
+        w.Stats();
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - a0);
+    }
+
     [Fact]
     public void SteppedPreviewEqualsComputedPreviewAndDoesNotTouchTheWorld()
     {

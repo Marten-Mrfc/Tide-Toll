@@ -4,22 +4,24 @@ Purpose: the engine-free simulation library. The game (`game/`), the tests (`sim
 
 Rules: no Godot types, no `System.Random`, no clock. Everything is seeded and deterministic. Grids are flat arrays indexed `y * width + x`. `World.Tick()` allocates nothing (a test checks it).
 
-It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/src/sim/`, snapshot at commit `a057b50`): same order of operations, formulas, constants and random draws. It keeps the toy's mulberry32 generator, float32 storage of wear, flow, cost and fields, and a replica of V8's `Math.hypot`, so runs can be compared with the toy bit for bit (see "Parity with the toy").
+It is a faithful port of the browser toy's simulation (`prototypes/desire-lines/src/sim/`, snapshot at commit `a057b50`, and, being synced, the finished toy's later rules: `docs/plans/sync-plan.md`, progress in `docs/plans/sync-progress.md`): same order of operations, formulas, constants and random draws. It keeps the toy's mulberry32 generator, float32 storage of wear, flow, cost and fields, and a replica of V8's `Math.hypot`, so runs can be compared with the toy bit for bit (see "Parity with the toy").
 
 ## Files
 
 | File | Toy source | What it holds |
 | --- | --- | --- |
-| `SimParams.cs` | params.ts | every tunable, same names and values; `Ground` and `GroundOf` |
+| `SimParams.cs` | params.ts | every tunable, same names; presets `Legacy` (round 2, the default until sync step A9) and `Toy` (the finished trail model); `Ground` and `GroundOf` |
 | `Rng.cs` | rng.ts | `Mulberry32`, `Hash.Hash2` |
 | `JsMath.cs` | (V8) | `Hypot` (V8's algorithm) and `Round` (JavaScript rounding) |
 | `Grid.cs` | grid.ts | grid shape, neighbour tables, `Line4` |
 | `BinaryHeap.cs`, `CostField.cs` | path.ts | the heap, Dijkstra cost-to-go fields, `CanStep`; `DijkstraRun` (the same field in bounded slices) |
 | `MapData.cs`, `MapGen.cs` | mapgen.ts | `Building`, `MapData`, `MapGen.Generate(seed)` |
 | `Walker.cs` | world.ts | `Walker` struct, `WalkState`, `Bridge` |
-| `World.cs` | world.ts | state, cost building, field refresh schedule, `Tick`, decay |
+| `World.cs` | world.ts | state, field refresh schedule (both views), `Tick`, decay (gravel floor) |
+| `WorldGround.cs` | world.ts | `CostOverride` flags, both walkers' ground (`Grounds`), `CellCosts`, `BuildCost`, blocking |
+| `FenceGates.cs` | gates.ts | `GateTarget`, gate passage, `GateCellsFor`, `GateGroup`, the refusal reasons |
 | `WorldWalk.cs` | world.ts, path.ts | trips, dwell, aim rule, footsteps and side wear, crowding speed |
-| `WorldEdit.cs` | world.ts | fence, footbridge, erase, eviction, urgent refresh |
+| `WorldEdit.cs` | world.ts | fence, gravel (with the brush's snap), gates, footbridge, erase, eviction, urgent refresh |
 | `WorldViews.cs` | world.ts | the read-only API, `Stats()`, `PreviewFlows` |
 | `Metrics.cs` | metrics.ts | footstep window, trip ring, detour, coverage, both trunk shares, first trail |
 | `FlowPreview.cs` | preview.ts | `FlowPredictor` (`Step()`, bounded `Step(maxWork)`), `WhatIf` (with `CrossingWhatIf`), `FlowPreview`, `Describe` |
@@ -49,7 +51,9 @@ ReadOnlySpan<float>  Field(int building)                // cost-to-go towards a 
 IReadOnlyList<Bridge> Bridges; MapData Map; Grid Grid; SimParams Params; Metrics Metrics
 double Time; long Ticks; int Version; int Seed; int WalkerCount; uint RngState
 Ground GroundAt(int cell); bool IsBlocked(int cell); bool CanFence(int cell)
-double CellCost(int cell, CostOverride ov = None); double TripRatePerDay(int home, int dest); int WalkersOut()
+double CellCost(int cell, CostOverride ov = None, bool frugal = false); double TripRatePerDay(int home, int dest); int WalkersOut()
+ReadOnlySpan<float>  CostX; ReadOnlySpan<float> FieldX(int building)   // the frugal walkers' view (empty unless Params.UseFrugal)
+ReadOnlySpan<byte>   Gravel, Gate, GatePair                // Walker.Explorer, Walker.Frugal
 SimStats Stats()       // DetourRatio, TrailCoverage, TrunkShare, TrunkShareD, TripsInWindow, TrailCells,
                        // Walkers, SimTime, Day, Season, Year, FirstTrailTime; allocation-free
 
@@ -57,13 +61,16 @@ SimStats Stats()       // DetourRatio, TrailCoverage, TrunkShare, TrunkShareD, T
 int     PlaceFence(ReadOnlySpan<int> cells)             // returns cells newly fenced
 Bridge? PlaceBridge(double x, double y)                 // null if no bridge fits at that river row
 bool    BridgeCellsAt(double x, double y, List<int> cells)   // the cells a bridge would cover (for a ghost); false if an end is off the map
-int     Erase(ReadOnlySpan<int> cells)                  // fences and whole bridges touching the cells
+int     Erase(ReadOnlySpan<int> cells)                  // fences (with their gates), gravel and whole bridges touching the cells
+int     PlaceGravel(ReadOnlySpan<int> cells); int GravelSnap(int cell); bool CanGravel(int cell)   // a fence over gravel takes it up
+GateTarget GateTarget(double x, double y)               // Cells (1, or a stair corner's 2), Remove, Reason (FenceGates.NoFence, LonePost, NoWay)
+bool    PlaceGate(int fenceCell); bool RemoveGate(int cell); int[]? GateCellsFor(int fenceCell)
 void    SetWalkerCount(int n)                           // clamped to 0..MaxWalkers; never allocates
 Grid.Line4(x0, y0, x1, y1, List<int> cells)             // a 4-connected fence line, clipped to the grid
 
 // Flow preview: never touches the world's state or random stream
 var p = new FlowPredictor(world);
-p.Begin(new WhatIf { Block = cells }, maxPairs: 5);     // also Open, Bridge, CloseBridge
+p.Begin(new WhatIf { Block = cells }, maxPairs: 5);     // also Open, Bridge, CloseBridge, Gravel, Ungravel, Gate, Ungate (combined per cell)
 while (p.Step()) { /* one Dijkstra per call (1 to 12 ms): spread over frames */ }
 // or bounded slices, bit-identical results: about 1000 units is 0.1 to 0.8 ms (thread CPU time, Release)
 while (p.Step(maxWork: 1000) && frameClockMs < 2) { }
@@ -323,6 +330,13 @@ Tested in `sim.tests` against `sim.tests/golden/toy-golden.json` (made from the 
 - The 20 gate seeds (101 to 120, 45 days): every table value identical.
 - Flow previews at day 20 (seeds 2 and 4): routes, rates, cost ratios and readouts identical.
 - Walker positions drift by about 1 ulp within a day, because .NET's `Math.Exp` (crowding speed) differs from V8's in the last bit on about 10% of inputs. Float32 storage absorbs it, so wear and metrics stay identical. Porting fdlibm's `exp` would make positions exact too.
+
+The finished toy (`toy-golden-v2.json`, made by `node sim.tests/golden/export.mjs --legacy <toy-r2> <final-toy>`; `ToyV2ParityTests`,
+`ToyV2ToolTests`), on `SimParams.Toy` with rain and growth off (not ported yet): every one of the 10 off traces identical for 45 days in
+wear, flow, cost, costX, frugal walkers, walker 0's first trip and final stats; the gate table on seeds 101 to 120 exactly the toy's, printed
+text included; the edits at fixed ticks (fence, gravel, gates at 0, 30, 45, 60 and 90 degrees, refusals, bridge, erase) identical every 50
+ticks; the lookup tables identical. On this machine 11 of 146 maths probes (`pow(0.5, 1/20)`, some `exp` and `pow`) differ from V8 in the last
+bit of the double; they agree at float32, where results are stored (`MathsProbesMatchV8BitForBit`, Gate, fails honestly).
 
 The Engine tab's PCG32 generator and integer costs come later and will break this parity on purpose; regenerate the goldens then.
 

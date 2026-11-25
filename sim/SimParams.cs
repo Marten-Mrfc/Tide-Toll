@@ -24,6 +24,7 @@ public sealed record SimParams
     {
         WearPerStep = 2.2, SideShare = 0.4, MinSurface = 0.45, FordCostMul = 4.0,
         ExplorerShare = 0.1, FrugalDisc = 0.3, DetourCap = 1.25, BridgeFlow = 1,
+        PreviewV2 = true,
     };
 
     /// <summary>What <c>new World(seed)</c> uses: <see cref="Legacy"/> until step A9.</summary>
@@ -120,6 +121,12 @@ public sealed record SimParams
     public double WeidmannGamma { get; init; } = 1.913;
     public double WeidmannRhoMax { get; init; } = 5.4;
     public double CellAreaM2 { get; init; } = 4;
+
+    /// <summary>
+    /// The flow preview's version (see <see cref="FlowPredictor"/>): false is round 2's, true the finished toy's (both
+    /// kinds of walker, pairs from 0.2 trips a day, the mean cost change in the readout, the gravel note).
+    /// </summary>
+    public bool PreviewV2 { get; init; }
 
     // Flow preview bookkeeping: trips per (house, destination) decay with this time constant in days.
     public double TripRateDays { get; init; } = 3;
