@@ -25,6 +25,7 @@ uniform sampler2D water_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform float map_size = 256.0;
 uniform float cells = 128.0;
 uniform float half_w = 5.0;          // river half width, metres
+uniform float tide_drop = 0.0;       // round 4: metres the water's edge draws back from the bank (low water shows wet mud)
 uniform float tile1 = 28.0;          // metres per texture tile, scale A
 uniform float tile2 = 11.3;          // scale B (rotated, not a multiple of A, so no visible repeat)
 uniform float ramp_mix = 0.2;       // the wear ramp's colour laid lightly over bare earth
@@ -234,7 +235,9 @@ void fragment() {
 	float cx = texture(river_tex, vec2(0.5, uv.y)).r;
 	float d = abs(lp.x - cx) - half_w;               // < 0 in the water
 	float aa = fwidth(d);
-	float inside = 1.0 - smoothstep(-aa, aa, d);
+	float dw = d + tide_drop;                        // the water's edge with the tide
+	float inside = 1.0 - smoothstep(-aa, aa, dw);
+	float tflat = (1.0 - smoothstep(-aa, aa, d)) * (1.0 - inside);   // the tidal flat between edge and bank
 	float ford = mask.r;
 	vec2 wuv = vec2(lp.x / 40.0, lp.y / 40.0 - time_s * 0.012);
 	vec3 wc = mix(water_col.rgb, texture(water_tex, wuv).rgb, 0.55);
@@ -288,6 +291,11 @@ void fragment() {
 		float at = band_m - 0.5;
 		float line = (1.0 - smoothstep(aa * 0.6, aa * 1.8, abs(d - at))) * step(0.1, gb) * step(0.5, fract(lp.y * 0.3));
 		c = mix(c, ink.rgb, line * 0.5 * band_mark * (1.0 - step(0.05, flood)));
+	}
+	if (tide_drop > 0.0) {
+		vec3 wetmud = mix(mud_col.rgb, water_col.rgb, 0.25 + 0.35 * smoothstep(0.0, -tide_drop, -dw)) * (0.92 + 0.12 * n2);
+		c = mix(c, wetmud, tflat * 0.9);
+		c = mix(c, paper.rgb, tflat * (1.0 - smoothstep(0.0, aa * 2.0, abs(dw))) * 0.6);  // a pale line at the water's edge
 	}
 	c = mix(c, wc, inside);
 	c = mix(c, ink.rgb, band * (1.0 - 0.55 * ford));

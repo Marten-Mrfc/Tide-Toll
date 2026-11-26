@@ -114,6 +114,7 @@ public partial class TownHud : CanvasLayer
         PauseMark.GrowVertical = Control.GrowDirection.Begin;
         PauseMark.Pressed += () => _main.Menu.Pause();
         BuildBookParts();
+        BuildRiverParts();
         _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner, _achMark };
         _fullA = -1f;
         Refresh();
@@ -184,6 +185,7 @@ public partial class TownHud : CanvasLayer
         BannerFrame((float)delta);
         HomeFrame();
         BookFrame((float)delta);
+        RiverFrame((float)delta);
     }
 
     // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
@@ -355,6 +357,7 @@ public partial class TownHud : CanvasLayer
                 Banner("The charter", "The town is granted its charter. Ring in the next age when you are ready.");
                 FocusBellGreen();
                 break;
+            default: RiverEvent(e); break;
         }
     }
 

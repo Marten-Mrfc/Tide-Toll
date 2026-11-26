@@ -85,7 +85,7 @@ public partial class TownHud
         }
     }
 
-    public static string GoodName(Good g) => g switch { Good.Water => "Water", Good.Grain => "Grain", Good.Flour => "Flour", _ => "goods" };
+    public static string GoodName(Good g) => g switch { Good.Water => "Water", Good.Grain => "Grain", Good.Flour => "Flour", Good.Wool => "Wool", Good.Cloth => "Cloth", _ => "goods" };
 
     private void RequestEvent(in TownEvent e)
     {
@@ -110,6 +110,7 @@ public partial class TownHud
             // Met: the card stays a moment, green; missed: it fades out grey.
             _reqFlash = _reqFlash > 0 ? Math.Max(0, _reqFlash - dt) : Math.Min(0, _reqFlash + dt);
         }
+        if (!r.Active && _reqFlash == 0 && RiverRequestFrame()) return;
         bool show = (r.Active || _reqFlash != 0) && _fullA > 0.01f;
         _req.Visible = show;
         if (!show) return;
@@ -149,8 +150,9 @@ public partial class TownHud
     private void HintFrame(float dt)
     {
         var t = _drv.Town;
-        string h = t.Hint;
-        int road = t.HintRoad, plot = t.HintPlot;
+        string rh = t.RiverHint;
+        string h = rh.Length > 0 ? rh : t.Hint;
+        int road = rh.Length > 0 ? -1 : t.HintRoad, plot = rh.Length > 0 ? -1 : t.HintPlot;
         _hintAge += dt;
         bool change = h.Length > 0 ? h != _hintShown && (_hintShown.Length == 0 || _hintAge >= HintHold) : _hintShown.Length > 0 && _hintAge >= HintHold;
         if (h.Length > 0 && h == _hintShown) { _hintAge = Math.Min(_hintAge, 0f); _hintRoad = road; _hintPlot = plot; }

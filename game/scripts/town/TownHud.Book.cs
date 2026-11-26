@@ -164,6 +164,7 @@ public partial class TownHud
             _main.Buildings.Peal(6f);
             Banner("A new age", "The bell rings in the next age.");
             FocusBellGreen();
+            RiverRung();
             _agePageIn = AgePageDelay;
         }
         else if (t.NextAgeRung) OpenAgePage();
@@ -186,6 +187,7 @@ public partial class TownHud
     {
         CloseAchievements();
         var t = _drv.Town;
+        if (t.InRiverAge) { OpenRiverPage(); return; }
         int paved = t.CountPaved(), roads = TownSummary.OpenRoads(t);
         long mins = (long)(t.Time / 60.0);
         string time = mins >= 60 ? $"{mins / 60} h {mins % 60} min" : $"{mins} min";

@@ -84,8 +84,10 @@ public partial class SaveTest : TownTestBase
         // Round 3: a save from the first rules (the town's own save version 1) is set aside like any unreadable save.
         Main.Saver.SaveNow();
         string v2 = FileAccess.GetFileAsString(path);
-        string v1 = v2.Replace("\\\"Version\\\":" + TownSave.CurrentVersion, "\\\"Version\\\":1")
-                      .Replace("\\u0022Version\\u0022:" + TownSave.CurrentVersion, "\\u0022Version\\u0022:1");
+        // Round 4: a first-age town saves as TownSave.FirstAgeVersion (2); only a town in the second age writes CurrentVersion (3).
+        int written = T.InRiverAge ? TownSave.CurrentVersion : TownSave.FirstAgeVersion;
+        string v1 = v2.Replace("\\\"Version\\\":" + written, "\\\"Version\\\":1")
+                      .Replace("\\u0022Version\\u0022:" + written, "\\u0022Version\\u0022:1");
         Check(v1 != v2, "the test could not find the town's save version in the file");
         using (var f = FileAccess.Open(path, FileAccess.ModeFlags.Write)) f.StoreString(v1);
         await Reload();

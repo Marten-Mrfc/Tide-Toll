@@ -132,6 +132,12 @@ if have_godot; then
   step game-playthrough tools/godot-test.sh 'PLAY PASS' timeout 1500 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/play.tscn --quit-after 400000
   note "$(grep -o 'PLAY PASS charter=[0-9.]*min buys=[0-9]*' "$LOGS/game-playthrough.log" | head -1 | sed 's/PLAY PASS //')"
   grep '^PLAY ' "$LOGS/game-playthrough.log" | grep -v 'PLAY PASS' | sed 's/^/   /'
+  # Round 4, the second age: a first-age town at its charter (the bot), real input rings in the next age (the bell,
+  # Rising, the page turning, the river's title and page); then at speed with the bot buying: every river plot and
+  # crossing drawn when given, boats where the simulation has them with their cargo, the tide dial, people waiting at
+  # the ford at high water, the ferry's raft, the drawbridge's lift, the seal and its page; a save reloaded runs on exactly.
+  step game-river tools/godot-test.sh 'RIVER PASS' timeout 900 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/river.tscn --quit-after 400000
+  note "$(grep -o 'RIVER PASS.*' "$LOGS/game-river.log" | head -1 | sed 's/RIVER PASS //' | cut -c1-90)"
   # The zoom from the tilted town out to the whole book by wheel notches (pitch, interface stages, the summary page
   # against the simulation, Home), a Pave click while tilted and a villager's height on screen, at 1920 x 1080.
   step game-book tools/godot-test.sh 'BOOK PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/book.tscn --quit-after 100000
@@ -155,12 +161,12 @@ if have_godot; then
     # The Mobile renderer, as the game uses, on Mesa lavapipe inside a virtual X display, at 1920 x 1080: the first
     # minute, the first purchase, level 3, Pave mode, level 6, Extend mode, a request, the end of the age, the zoom and
     # the menus (build/screenshots/town-*-1920x1080.png). Quick looks while working: add -- --menu-only (menus only) or
-    # -- --town-quick (stops after the request shot) or -- --age-only (the charter, achievements, summary, next age, first-age page).
+    # -- --town-quick (stops after the request shot) or -- --age-only (the charter, achievements, summary, next age, first-age page) or -- --river-only (the second age).
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-playthrough game-perf game-book game-settings game-menu game-save screenshot; do
+  for s in game-build game-smoke game-town game-playthrough game-river game-perf game-book game-settings game-menu game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

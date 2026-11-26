@@ -15,8 +15,8 @@ namespace TideToll.Game;
 /// </summary>
 public partial class TownHud
 {
-    public enum ShopGroup { People, Work, Roads, Town }
-    private static readonly string[] GroupNames = { "People", "Work", "Roads", "Town" };
+    public enum ShopGroup { People, Work, Roads, Town, River }
+    private static readonly string[] GroupNames = { "People", "Work", "Roads", "Town", "The river" };
 
     private VBoxContainer _shop = null!;
     private readonly List<Button> _marks = new();
@@ -52,6 +52,7 @@ public partial class TownHud
         ShopItemKind.Villager or ShopItemKind.Extend => ShopGroup.People,
         ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value => ShopGroup.Work,
         ShopItemKind.Pave => ShopGroup.Roads,
+        >= ShopItemKind.Ferry and <= ShopItemKind.Winch => ShopGroup.River,
         _ => ShopGroup.Town,
     };
 
@@ -88,7 +89,10 @@ public partial class TownHud
     {
         ShopItemKind.Villager => "up-villager", ShopItemKind.Pace => "up-pace", ShopItemKind.Load => "up-load",
         ShopItemKind.Pave => "up-pave", ShopItemKind.Extend => "up-extend", ShopItemKind.Tools => "up-tools",
-        ShopItemKind.Value => "up-value", ShopItemKind.BellTrack => "ui-bell", _ => "up-building",
+        ShopItemKind.Value => "up-value", ShopItemKind.BellTrack => "ui-bell",
+        ShopItemKind.Ferry or ShopItemKind.Raft or ShopItemKind.Rope => "ui-ferry", ShopItemKind.Berth => "ui-boat-berth",
+        ShopItemKind.Crane => "ui-crane", ShopItemKind.BoatPrices => "ui-boat", ShopItemKind.Toll => "ui-toll", ShopItemKind.Winch => "ui-bridge",
+        _ => "up-building",
     };
 
     private static string StandInIcon(ShopItemKind k) => k switch
@@ -189,11 +193,15 @@ public partial class TownHud
     private void Grouped(List<ShopItem> src, List<ShopItem> dst)
     {
         dst.Clear();
-        for (int g = 0; g < 4; g++)
-            foreach (var it in src) if ((int)GroupOf(it.Kind) == g) dst.Add(it);
+        for (int g = 0; g < GroupNames.Length; g++)
+            foreach (var it in src) if ((int)GroupOf(it.Kind) == g && !RiverHidden(it)) dst.Add(it);
     }
 
     private readonly List<ShopItem> _raw = new();
+
+    /// <summary>Round 4: the river's group shows only what can be bought now or soon (coin the one thing missing):
+    /// locked and finished river steps are left out, so the bookmarks fit at the end of the second age.</summary>
+    public static bool RiverHidden(in ShopItem it) => GroupOf(it.Kind) == ShopGroup.River && it.Reason.Length > 0 && it.Reason != "Not enough coin";
 
     private void ShopFrame(float dt)
     {
@@ -281,6 +289,15 @@ public partial class TownHud
         ShopItemKind.BellTrack => "The bell hurries everyone a little longer and rests a little less.",
         ShopItemKind.Extend => "One more room in a cottage: room for one more villager. Click a lit cottage.",
         ShopItemKind.Pave => "Pave one worn-in road: faster, and it carries more people. Click a lit road.",
+        ShopItemKind.Ferry => "A ferry over the river: it crosses at any tide, a few people at a time.",
+        ShopItemKind.Berth => "A second berth at the landing: two boats moor at once.",
+        ShopItemKind.Crane => "A crane at the landing: boats ask for bigger cargoes.",
+        ShopItemKind.BoatPrices => "Boats pay more for every unit.",
+        ShopItemKind.RiverValue => "This good pays more for every unit delivered.",
+        ShopItemKind.Raft => "A bigger raft: the ferry carries one more person.",
+        ShopItemKind.Rope => "A faster rope: the ferry crosses quicker.",
+        ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
+        ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
         _ => "A building for the town, placed on its plot by the town.",
     };
 
@@ -304,7 +321,7 @@ public partial class TownHud
                 _shop.AddChild(head);
                 _heads.Add(head);
             }
-            var b = MakeButton("Mark" + i, IconFor(_items[i].Kind), StandInIcon(_items[i].Kind), 15, 5);
+            var b = MakeButton("Mark" + i, (_items[i].Kind == ShopItemKind.RiverValue ? (_items[i].Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(_items[i].Kind)), StandInIcon(_items[i].Kind), 15, 5);
             int k = i;
             b.Pressed += () => Activate(k);
             b.CustomMinimumSize = new Vector2(UiKit.Px(_s, 270), 0);
@@ -336,11 +353,11 @@ public partial class TownHud
         _nextAge.Visible = (t.CanRingNextAge || t.NextAgeRung) && _fullA > 0.01f && !AgePageOpen;
         if (_nextAge.Visible)
         {
-            int ns = (t.NextAgeRung ? 1 : 0) + 2 * Settings.GameInput.Version;
+            int ns = (t.NextAgeRung ? 1 : 0) + (t.HasSeal ? 4 : 0) + 8 * Settings.GameInput.Version;
             if (ns != _nextAgeSig)
             {
                 _nextAgeSig = ns;
-                _nextAge.Text = t.NextAgeRung ? $"The first age{Settings.GameInput.Tag("tt_next_age", "   ")}\nRead its page again"
+                _nextAge.Text = t.NextAgeRung ? $"{(t.HasSeal ? "The second age" : "The river age")}{Settings.GameInput.Tag("tt_next_age", "   ")}\nRead its page again"
                                               : $"Ring in the next age{Settings.GameInput.Tag("tt_next_age", "   ")}\nThe charter is yours";
             }
             _nextAge.ResetSize();

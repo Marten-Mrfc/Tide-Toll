@@ -67,8 +67,9 @@ public partial class PlayThrough : TownTestBase
         await Key(BoundKey("tt_next_age"));
         Check(T.NextAgeRung, "the next age is rung in by its key");
         Main.Driver.SetPaused(false);
-        await Until(() => Main.Hud.AgePageOpen, 60 * 20, "the first age's page");
-        Check(Main.Hud.AgePageText.Contains("first age is complete") && Main.Hud.AgePageText.Contains("river"), "the page says the age is complete and the river comes next");
+        await Until(() => Main.Hud.AgePageOpen, 60 * 20, "the second age's page");
+        // Round 4: the ring now opens the second age; its page says what is new on the river.
+        Check(Main.Hud.AgePageText.Contains("The second age: The River") && T.InRiverAge, "the page opens the second age on the river");
         Check(Main.Audio.Music.Log.Contains(TownMusic.RisingId), "the rising theme plays");
         await Click(TestInput.Centre(Main.Hud.AgePageClose));
         Check(!Main.Hud.AgePageOpen && !Main.Menu.IsPaused, "Keep playing closes the page");

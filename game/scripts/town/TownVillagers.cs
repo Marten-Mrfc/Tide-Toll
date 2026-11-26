@@ -32,8 +32,8 @@ public partial class TownVillagers : Node3D
     };
     /// <summary>The model's height in metres (before <see cref="WalkerScale"/>), for tests.</summary>
     public float ModelHeight { get; private set; } = 2.6f;
-    private readonly MultiMeshInstance3D[] _loads = new MultiMeshInstance3D[4];
-    private readonly int[] _loadCount = new int[4];
+    private readonly MultiMeshInstance3D[] _loads = new MultiMeshInstance3D[6];
+    private readonly int[] _loadCount = new int[6];
     private float[] _x = new float[Capacity], _y = new float[Capacity], _yaw = new float[Capacity], _phase = new float[Capacity];
     private bool[] _seen = new bool[Capacity];
 
@@ -49,6 +49,8 @@ public partial class TownVillagers : Node3D
     {
         Good.Water => ModelLib.Pick("villager-cargo-water", "villager-cargo-cloth"),
         Good.Flour => ModelLib.Pick("villager-cargo-flour", "villager-cargo-grain"),
+        Good.Wool => ModelLib.Pick("villager-cargo-wool", "villager-cargo-grain"),
+        Good.Cloth => ModelLib.Pick("villager-cargo-cloth", "villager-cargo-flour"),
         _ => "villager-cargo-grain",
     };
 
@@ -86,7 +88,7 @@ public partial class TownVillagers : Node3D
             Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = ShadowDisc() },
         };
         AddChild(_shadows);
-        for (int g = 1; g <= 3; g++)
+        for (int g = 1; g <= 5; g++)
         {
             _loads[g] = ModelLib.Multi(LoadModel((Good)g), "Load" + (Good)g, Capacity);
             AddChild(_loads[g]);
@@ -132,7 +134,7 @@ public partial class TownVillagers : Node3D
             bodies.SetInstanceTransform(i, xf);
             _heads?.Multimesh.SetInstanceTransform(i, xf);
             _shadows.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * WalkerScale * (1f - bob * 0.6f)), new Vector3(pos.X, 0.04f, pos.Z)));
-            if (v.Carry != Good.None && (int)v.Carry < 4)
+            if (v.Carry != Good.None && (int)v.Carry < 6)
             {
                 int g = (int)v.Carry;
                 // Round 3: loads bigger, so Water, Grain and Flour read at the normal view.
@@ -145,7 +147,7 @@ public partial class TownVillagers : Node3D
         if (_heads != null) _heads.Multimesh.VisibleInstanceCount = n;
         _shadows.Multimesh.VisibleInstanceCount = n;
         int loads = 0;
-        for (int g = 1; g <= 3; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
+        for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
         Drawn = n;
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
