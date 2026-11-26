@@ -34,3 +34,38 @@ Checkout `build/wt/n3-art1`. Pictures: `build/n3/assets-audit/r1-p/`.
 
 - Weaver's cottage and keeper's hut not started (item 4).
 - Loads are still small at the normal view (readable by colour more than shape); the street picture crops its end cottages.
+
+## After the review (fixer, 21:36 to 22:20 UTC)
+
+Review: `assets-r1-p-review.md`. Pictures retaken into `build/n3/assets-audit/r1-p/` (reimport with
+`godot --headless --path game --import` after a generator run, or the audit pictures the old models).
+
+MUST FIX
+1. Grain: now a squat hessian sack (Packed earth, never Thatch), gathered to a Soot-brick tie, Thatch grain at its
+   ear, a Mud seam down the front (`villager.py` `sack_upright`). Fixed.
+2. Wool: a ragged bale on the left shoulder (a roll and three lumps, Limewash) with two Thatch ties standing 6 cm
+   proud. Fixed (still a few pixels at the normal view, like every load).
+3. Flour: a Limewash sack lying across both arms, one Mud band, a tied neck and ear (`sack_lying`). Fixed.
+4. Cloth: the bolt is Limewash in three broad Brick stripes with Paper ends, so it never equals a tunic. Fixed in
+   the model (no game change).
+5. Roofs: four courses a face on the main range lying on the slope (three on c, two on wings), courses on the
+   hipped ends of a, a ridge cap sagging 4 percent, a darker thatch patch on the near face (a, b), a bigger Soot-brick
+   chimney cap with a Brick pot, a flower box in the accent colour under the front window (a, b). All within 900
+   triangles (`cottage.py`). Fixed.
+6. Seams: b2's cross wing roof now runs back into the main roof (`ext=1.2`, no floating gable); c2's back cross
+   range ridge dropped 0.3 m; a valley board between c's two ranges. Fixed (c's join is still busy close up).
+7. Hat brim 0.48 m drawn (0.34 m life) with a darker underside; the back load moved 0.15 m lower and 0.12 m to the
+   side (`TownVillagers.LoadPlace`). Fixed.
+8. Street: the street's normal picture is drawn 20 percent further out (`AssetAudit.cs`, only that subject): all
+   five cottages whole. Fixed.
+
+SHOULD FIX
+- Smoke: a CPU particle puff column (5 puffs, 10 updates a second, Limewash fading to Paper) on every cottage's first
+  chimney (`TownBuildings.Cottages.cs` `SmokePuffs`). Fixed.
+- Flower box: done (with 5).
+- Weaver's cottage: Brick-tiled lean-to roof, a chimney, two thatch courses a face (`river-town.py`). Partly.
+- Collar: a pale Limewash collar on every tunic (helps the green tunic against Mud). Fixed.
+- Yoke 0.17 m thick drawn (0.12 m life), ropes 0.08 m. Fixed.
+- Skin against Trail earth: not fixed: the palette has no other skin tone; a palette change is the lead's call.
+- Black-fill pictures in the audit tool: not done (time).
+- Keeper's hut: not touched (its ranking note is minor).

@@ -57,3 +57,13 @@ Builder of the layout, checkout `build/wt/n3-ui` (branch wt/n3-ui). Spec: `layou
 | RiverTest | tide text starts "High water"/"Low water", contains "rising, highest in"/"falling, lowest in" | starts "High,"/"Low,", contains "rising\nhigh in"/"falling\nlow in" | the tide's shorter text (sheet 3) to fit the timers zone |
 | PlayThrough | click a lit bookmark at once; a click that buys nothing is a MISS | scroll the shop to the row if it is out of sight, bring the pointer, wait until the row is still (at most 2 s; if still moving, look again), click; a click refused because the row moved under it in that moment is counted and printed as REFUSED, not MISS | the sheet's rule that a row that just moved takes no click; everything else still a MISS |
 | UiAudit.cs | Marker property | `AuditMarker` virtual; `StateHook`, `AfterTour` hooks | game-layout runs the same tour with the same state ids |
+
+### 21:53 UTC: results (final for L1)
+
+./check run at 21:22 (machine load average 18 to 35):
+sim-build, sim-test ok; game-build ok; game-smoke PASS; game-town PASS; game-perf PASS (town 1x 489 B/frame, 8x 748; river 1x 1184, 8x 1511, all under the old figures 656/2014/1361/2954); game-playthrough PASS charter 33.9 min, 201 purchases (equal to before), 1 click refused on a moving row; game-river PASS; game-layout PASS (31 states x 8 canvases, 59,979 checks, 0 failures; budget at most loud 2, quiet 2); game-book PASS; game-menu PASS; game-save PASS;
+game-settings: SETTINGS PASS printed, then Godot exits with "Leaked unsafe reference" errors (code 134); the main checkout without these changes fails the same way on this machine now (1528 such lines): environmental.
+game-motion: 60 and 30 fps pass; 120 fps failed one CPU gate (tab-saving-keys frame 8.47 ms, gate 6) under load; the book and settings were not changed. Rerun alone when the machine is quiet.
+screenshot and ledger: still running at 21:53.
+
+Next: the tour's staging repairs from n3-before (lead's note 21:40) into this tour; tags as screen text (sheet 5); message queues and motion (next round); page pictures taken mid-fade at 1 fps (UiAudit waits 900 ms real time; the fade is real time with a per-frame step cap).

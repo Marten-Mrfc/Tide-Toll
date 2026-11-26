@@ -2,6 +2,17 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 22:40 UTC, for the L1 fixer: the lead's own reading of the new layout's pictures
+
+Read in `build/n3/ui-audit/l1-1920x1080-100/` (u06, u11, u15, u35) and `l1-1280x720-100/` (u13). The layout is far calmer than before: the ledger, the shop rows, the bell, the navigation and the line all sit where the sheet puts them. These are MUST FIX, beside the reviewers' lists:
+
+1. **Pages are see-through** (u15): the town, roads and villagers show through the achievements page so strongly that the text cannot be read. A page is solid paper (100 percent) and the map behind it is dimmed (sheet section 2; note of 21:05, item 1). If the picture was simply taken during the fade, make the tour wait until the page is at rest; if the page is translucent at rest, fix the page.
+2. **The strip cuts its name** (u13 at 1280 x 720 and u15: "The cha..."). Sheet section 3: the strip shows "Charter", ten small pips and "4 of 10". Use the short name; nothing in the strip ends in an ellipsis on any canvas.
+3. **The hint ring is a large filled orange disc** over the field (u13, u15). Sheet section 5: a thin wheat ring around the thing, shown only while the line shows its hint, fading in and out.
+4. **Tags are still the old 3D labels** (u35: "Grain 21 of 656 loads", "Full, leaving" in tiny white text over the river). Sheet section 5 and the note of 21:05, item 2: one tag style (a quiet paper pill, caption size on screen), shorter text for boats ("Grain 21 of 656"), hidden by the tag rules.
+5. **A group whose purchases are all finished disappears** (u35: no "The river" heading at the seal). Sheet section 3: it folds to its heading, which shows the count of done ("The river ... 5 done"), so that the same thing stays in the same place.
+6. After your fixes take u13 and u15 at both window sizes and u35 again and READ them.
+
 ## 21:44 UTC, for asset track P's fixer (you own `TownBuildings.cs`): two changes the other track needs there
 
 Track W reworked the charter stone and the mill but may not edit `game/scripts/town/TownBuildings.cs`. Please make these two changes in it (they are in W's progress file under "For the lead"):
