@@ -8,7 +8,7 @@
  ],
  "facts": [
   "49 pictures",
-  "final commit d54ebaf",
+  "final commit 9864b79",
   "first age about 33 minutes (played by real input)",
   "second age 22 to 34 minutes (bots only)",
   "everything made in code, 0 euro"
@@ -321,14 +321,15 @@
    "title": "The newest Windows build",
    "kind": "text",
    "paras": [
-    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">The build of round 5, commit d54ebaf</a>: open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
+    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45757608394\">The build of round 6, commit 9864b79</a>: open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
     "Nobody has run this exe on Windows. Everything tonight ran on Linux in a cloud machine without a graphics card."
    ],
    "items": [
     "Round 1, commit <code>55543fc</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45705589636\">run page</a>",
     "Round 2, commit <code>9298da5</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45716021068\">run page</a>",
     "Round 3, commit <code>3e7906f</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45726474639\">run page</a>",
-    "Round 5, commit <code>d54ebaf</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">run page</a>"
+    "Round 5, commit <code>d54ebaf</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">run page</a>",
+    "Round 6, commit <code>9864b79</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45757608394\">run page</a>"
    ]
   },
   {

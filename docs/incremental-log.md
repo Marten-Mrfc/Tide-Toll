@@ -78,6 +78,7 @@ Stopping
 | 2 | `9298da5` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45716021068 | success, artifact `TideToll-windows-x64` |
 | 3 | `3e7906f` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45726474639 | success, artifact `TideToll-windows-x64` |
 | 5 | `d54ebaf` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941 | success, artifact `TideToll-windows-x64` (both ages; before round 6's fixes) |
+| 6 | `9864b79` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45757608394 | success, artifact `TideToll-windows-x64` (86 MB): the final build of the night |
 
 ## Scheduled check
 
