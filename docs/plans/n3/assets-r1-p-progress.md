@@ -22,7 +22,15 @@ Checkout `build/wt/n3-art1`. Pictures: `build/n3/assets-audit/r1-p/`.
 4. Audit: subjects `street`, `cottages-all`, `villagers-group` added; `cottage-extension-1/2` and `villager-carrying-*`,
    `villager-load-step-*` now built from the game's own code (`TownBuildings.CottageNode`, `TownVillagers.Figure`).
 
+5. Ledger rows merged into assets/LEDGER.csv (`python3 tools/merge-ledger-rows.py --build`: 13 added, 10 replaced).
+6. Tests (20:50): game-perf PASS, game-smoke PASS, game-town PASS, game-save PASS, game-river PASS.
+   game-town's round-4 check "the extended cottage has no lean-to" replaced by the equal check for the new models
+   (`TownBuildings.DrawnModel(p)` is the once-extended model of its variant, footprint > 1.2x the plain one's).
+7. Audit town pass: stops at level 5, 8, 9, charter; new pictures `town-view-level-8`, `town-view-charter`.
+   `AssetAudit.Bounds` now takes nested node transforms (close framing of the code-built cottages).
+8. ./check started 20:54 UTC (log /tmp/claude-0/t/check.log).
+
 ## Left / how to resume
 
-- Tests, town pictures at level 8 and the charter, ledger rows into LEDGER.csv, ./check.
-- Weaver's cottage and keeper's hut not started.
+- Weaver's cottage and keeper's hut not started (item 4).
+- Loads are still small at the normal view (readable by colour more than shape); the street picture crops its end cottages.
