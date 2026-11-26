@@ -368,7 +368,7 @@ public partial class TownHud : CanvasLayer
         {
             case TownEventKind.Delivery: if (Settings.GameSettings.Current?.ShowCoinNumbers ?? true) Float(e.X, e.Y, e.Coin); break;
             case TownEventKind.LevelReached:
-                if (e.Level > 1) Banner($"Level {e.Level}", $"{Upper(e.Text)}.");
+                if (e.Level > 1) { Banner($"Level {e.Level}", $"{Upper(e.Text)}."); BannerClearOf(GiftPoint(e.Level)); }
                 break;
             case TownEventKind.RequestAsked: case TownEventKind.RequestMet: case TownEventKind.RequestMissed: RequestEvent(e); break;
             case TownEventKind.CottageExtended: Note(e.Level >= 2 ? "A cottage is extended again: room for one more." : "A cottage is extended: room for one more."); break;

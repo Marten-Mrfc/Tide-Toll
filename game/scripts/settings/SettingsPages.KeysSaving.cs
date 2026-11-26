@@ -70,21 +70,22 @@ public partial class SettingsPages
     private static void FitWholeRows(VBoxContainer col, float pitch, int sep)
     {
         if (col.GetParent()?.GetParent() is not ScrollContainer scroll || scroll.GetParent() is not VBoxContainer box) return;
-        bool done = false;
-        scroll.Resized += () =>
+        bool done = false, queued = false;
+        void Fit()
         {
-            if (done || scroll.Size.Y < 1) return;
+            queued = false;
+            if (done || !IsInstanceValid(scroll) || !scroll.IsInsideTree() || scroll.Size.Y < 1) return;
             float pad = scroll.GetChild<MarginContainer>(0).GetThemeConstant("margin_top") * 2f;
-            if (col.GetCombinedMinimumSize().Y + pad <= scroll.Size.Y + 0.5f) return; // everything fits: no scrolling
+            if (col.Size.Y + pad <= scroll.Size.Y + 0.5f) return; // everything fits: no scrolling
             done = true;
-            // Whole rows by their own heights (a row stacks its name over its keys in a narrow column).
-            float h = 0, y = 0;
+            // Whole rows by their laid-out heights (a row stacks its name over its keys in a narrow column).
+            float h = 0;
             foreach (var n in col.GetChildren())
             {
                 if (n is not Control c || !c.Visible) continue;
-                float end = y + c.GetCombinedMinimumSize().Y;
+                float end = c.Position.Y + c.Size.Y;
                 if (end + pad > scroll.Size.Y) break;
-                h = end; y = end + sep;
+                h = end;
             }
             h = Math.Max(h, Math.Min(pitch, scroll.Size.Y - pad)) + pad;
             int at = scroll.GetIndex();
@@ -93,7 +94,16 @@ public partial class SettingsPages
             var spacer = new Control { Name = "UnderRows", SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
             box.AddChild(spacer);
             box.MoveChild(spacer, at + 1);
-        };
+        }
+        // Measured a frame after the column is laid out (wrapped labels know their height only then).
+        void Queue()
+        {
+            if (done || queued || !scroll.IsInsideTree()) return;
+            queued = true;
+            scroll.GetTree().Connect(SceneTree.SignalName.ProcessFrame, Callable.From(Fit), (uint)ConnectFlags.OneShot);
+        }
+        scroll.Resized += Queue;
+        col.Resized += Queue;
     }
 
     public void StartCapture(string action, int slot)

@@ -83,6 +83,14 @@ The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, strai
 - `TownSaver`: `Main.Profile + town.json` (game version, camera, `TownSave` JSON), autosave from the settings, on pause and on quit (`Main.QuitGame`, also the window's close button); unreadable saves are renamed `town-unreadable-*.json`.
 - Tests: `TownTestBase` gives each test its own `Main.Profile` (`user://tests/<marker>/`, emptied first) and sets `Main.KeepWindow` (the stored window size is not applied), so the player's files never reach a test.
 
+## Round 4 fixes (input, saving, view)
+
+- While `PauseMenu.IsPaused` (closing, cover, settings, question, opening) `TownHud` takes no keys and no clicks; pausing ends Pave and Extend modes.
+- Interface cards stop the map: `TownHud.OverInterface(point)` (ledger, request card, hint, notes, banners, shop, bell, slim strip, small controls); `PaveTarget`/`ExtendTarget` find nothing there, `CameraRig.PressBlocked` starts no drag there, and Pave/Extend bring a target out from under a card.
+- `TownSaver`: autosave counts real time (`Time.GetTicksMsec`); a failed write says so in a note (`Failures`); a read that fails sets nothing aside and the save is not written over (`ReadSeam` lets tests fail a read); Delete leaves no save until the next autosave, pause or quit. The pause-time save takes the view kept from before the pause.
+- `TownDriver` counts frames up to 1 s and carries steps it could not run (bounded by `MaxBacklogSteps`); note and banner logs keep `TownHud.LogCap` lines; a new town (`Driver.Replaced`) clears perks seen, the hint marker and the request flash.
+- Print on the book in Alegreya is a plain mipmapped atlas (`BookBuilder.PlainPrint`), not MSDF: the variable font's overlapping contours left marks in a distance field.
+
 ## Assets
 
 New models and icons load by name with a named stand-in when the file is missing (`ModelLib.Pick`, `TownHud.IconOr`). Every file under `assets/` needs a row in `assets/LEDGER.csv` (source, licence, URL, where used) before it goes into the game; `./check` fails without one. See `docs/asset-pipeline.md`.

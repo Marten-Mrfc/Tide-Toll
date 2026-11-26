@@ -210,7 +210,13 @@ public partial class TownTest : TownTestBase
         foreach (int p in def.Plots)
         {
             var plot = T.Plan.Plots[p];
-            if (plot.Offer >= 0) await Until(() => Main.Buildings.PlotStaked(p), 30, $"level {level}: offer plot {p} staked");
+            if (plot.Offer >= 0)
+            {
+                await Until(() => Main.Buildings.PlotStaked(p), 30, $"level {level}: offer plot {p} staked");
+                // Round 4 (A19): the stakes are pale.
+                var stakes = Main.Buildings.FindChild($"Stakes{p}", true, false)?.GetNodeOrNull<MeshInstance3D>("Model");
+                Check(stakes?.MaterialOverride is StandardMaterial3D sm && sm.AlbedoColor.Luminance > 0.6f, $"level {level}: the stakes on plot {p} are not pale");
+            }
             else await Until(() => Main.Buildings.PlotDrawn(p), 30, $"level {level}: plot {p} drawn");
         }
         foreach (int r in def.Roads)
@@ -221,6 +227,13 @@ public partial class TownTest : TownTestBase
         bool banner = false;
         foreach (var n in Main.Hud.BannerLog) if (n.StartsWith($"Level {level}:")) banner = true;
         Check(banner, $"level {level}: a banner says what arrived");
+        // Round 4 (A18): while the banner shows, it never covers the gift it announces.
+        for (int f = 0; f < 30 && level == T.Level; f++)
+        {
+            if (Main.Hud.BannerText.StartsWith($"Level {level}:") && Main.Hud.BannerGiftScreen is { } g && Main.Hud.FullAlpha >= 1f)
+                Check(!Main.Hud.BannerRect.HasPoint(g), $"level {level}: the banner covers its gift (banner {Main.Hud.BannerRect}, gift at {g})");
+            await Frames(1);
+        }
         _gifts++;
     }
 
@@ -292,6 +305,9 @@ public partial class TownTest : TownTestBase
         Check(T.Purchases == purchases + 1, "extending is a purchase");
         Check(!Main.Hud.ExtendMode, "Extend mode ends after an extension");
         await Until(() => Main.Buildings.DrawnExtensions(p) == 1, 30, "the extended cottage drawn bigger");
+        // Round 4 (A17): the extension shows as a lean-to with its own gable beside the house.
+        var lean = Main.Buildings.FindChild($"Plot{p}", true, false)?.FindChild("LeanTo", true, false) as Node3D;
+        Check(lean != null && lean.IsVisibleInTree(), "the extended cottage has no lean-to");
         _kinds[ShopItemKind.Extend] = Got(ShopItemKind.Extend) + 1;
         _bought++;
         Main.Rig.UserMoved = false;

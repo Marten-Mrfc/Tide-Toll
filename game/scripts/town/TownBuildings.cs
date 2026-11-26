@@ -96,7 +96,10 @@ public partial class TownBuildings : Node3D
         float yaw = DoorYaw(p);
         bool side = MathF.Abs(MathF.Sin(yaw)) > 0.5f;
         var aabb = ModelLib.Mesh(model).GetAabb();
-        float ax = Math.Max(0.1f, side ? aabb.Size.Z : aabb.Size.X), az = Math.Max(0.1f, side ? aabb.Size.X : aabb.Size.Z);
+        // Round 4: an extended cottage is wider (a lean-to with its own gable) and, from the second extension, has a
+        // fenced yard behind; the footprint is fitted to the whole group.
+        float wide = p.Kind == PlotKind.Cottage && ext > 0 ? 1.5f : 1f, deep = p.Kind == PlotKind.Cottage && ext > 1 ? 1.45f : 1f;
+        float ax = Math.Max(0.1f, side ? aabb.Size.Z * deep : aabb.Size.X * wide), az = Math.Max(0.1f, side ? aabb.Size.X * wide : aabb.Size.Z * deep);
         var body = new Node3D { Name = "Body", Rotation = new Vector3(0, yaw, 0) };
         root.AddChild(body);
         if (p.Kind == PlotKind.Field)
@@ -107,7 +110,7 @@ public partial class TownBuildings : Node3D
             else body.Scale = new Vector3(fw / aabb.Size.X, 1f, fh / aabb.Size.Z) * 0.96f;
             return root;
         }
-        float s = Math.Min(fw / ax, fh / az) * (p.Kind == PlotKind.Cottage ? 0.74f + 0.1f * ext : 0.88f);
+        float s = Math.Min(fw / ax, fh / az) * (p.Kind == PlotKind.Cottage ? (ext > 0 ? 0.95f : 0.74f) : 0.88f);
         s = Math.Min(s, 1.6f);
         body.Scale = Vector3.One * s;
         if (p.Kind == PlotKind.Mill && model == "mill" && ModelLib.HasPart("mill", "Sails") && ModelLib.HasPart("mill", "Body"))
@@ -129,8 +132,64 @@ public partial class TownBuildings : Node3D
             body.AddChild(_charter);
         }
         else body.AddChild(ModelLib.Instance(model, "Model"));
+        if (p.Kind == PlotKind.Cottage && ext > 0) AddExtensions(body, aabb, ext);
         return root;
     }
+
+    /// <summary>
+    /// Round 4: what each extension adds, readable at the normal view: the first a lean-to beside the house with its
+    /// own gable (a small cottage turned side on, lower than the main roof); the second a wattle-fenced yard behind;
+    /// the third and later a woodpile by the lean-to. (No chimney model exists: see the round 4 progress notes.)
+    /// </summary>
+    private static void AddExtensions(Node3D body, Aabb main, int ext)
+    {
+        var c = main.GetCenter();
+        float shift = main.Size.X * 0.25f; // the group is centred: the house moves left, the lean-to sits right
+        body.GetNode<Node3D>("Model").Position = new Vector3(-shift, 0, 0);
+        string leanModel = ModelLib.Pick("cottage-01", "cottage-01");
+        var la = ModelLib.Mesh(leanModel).GetAabb();
+        float k = Math.Min(main.Size.Y * 0.68f / Math.Max(0.1f, la.Size.Y), main.Size.Z * 0.8f / Math.Max(0.1f, la.Size.X));
+        var lean = ModelLib.Instance(leanModel, "LeanTo");
+        lean.RotationDegrees = new Vector3(0, 90, 0);
+        lean.Scale = Vector3.One * k;
+        // Turned side on, its depth (model Z) runs along the house's X.
+        float lw = la.Size.Z * k;
+        lean.Position = new Vector3(main.End.X - shift + lw * 0.5f - main.Size.X * 0.06f, 0, c.Z) + new Vector3(-la.GetCenter().Z * k, 0, la.GetCenter().X * k);
+        body.AddChild(lean);
+        if (ext >= 2 && ModelLib.Has("fence-wattle"))
+        {
+            var fa = ModelLib.Mesh("fence-wattle").GetAabb();
+            float len = Math.Max(0.1f, fa.Size.X);
+            float yardW = main.Size.X * 1.4f, yardD = main.Size.Z * 0.42f, z0 = main.Position.Z - 0.02f * main.Size.Z, z1 = z0 - yardD;
+            float h = main.Size.Y * 0.22f / Math.Max(0.1f, fa.Size.Y);
+            float x0 = -main.Size.X * 0.5f - shift + c.X, x1 = x0 + yardW;
+            Fence(body, "YardBack", new Vector3((x0 + x1) / 2f, 0, z1), yardW / len, h, 0);
+            Fence(body, "YardLeft", new Vector3(x0, 0, (z0 + z1) / 2f), yardD / len, h, 90);
+            Fence(body, "YardRight", new Vector3(x1, 0, (z0 + z1) / 2f), yardD / len, h, 90);
+        }
+        if (ext >= 3 && ModelLib.Has("prop-woodpile"))
+        {
+            var wa = ModelLib.Mesh("prop-woodpile").GetAabb();
+            var pile = ModelLib.Instance("prop-woodpile", "Woodpile");
+            pile.Scale = Vector3.One * (main.Size.Y * 0.3f / Math.Max(0.1f, wa.Size.Y));
+            pile.Position = new Vector3(main.End.X - shift + lw * 0.6f, 0, main.End.Z - main.Size.Z * 0.1f);
+            body.AddChild(pile);
+        }
+    }
+
+    private static void Fence(Node3D body, string name, Vector3 at, float along, float h, float yawDeg)
+    {
+        var f = ModelLib.Instance("fence-wattle", name);
+        f.Scale = new Vector3(along, h, h);
+        f.RotationDegrees = new Vector3(0, yawDeg, 0);
+        f.Position = at;
+        body.AddChild(f);
+    }
+
+    /// <summary>The colour of staked plots' stakes and cord (pale new-cut wood).</summary>
+    public static readonly Color StakeColour = Color.FromHtml("#E6D5AE");
+    private static StandardMaterial3D? _paleStakes;
+    private static StandardMaterial3D PaleStakes => _paleStakes ??= new StandardMaterial3D { AlbedoColor = StakeColour, Roughness = 0.95f };
 
     private Node3D MakeStakes(Plot p)
     {
@@ -139,6 +198,8 @@ public partial class TownBuildings : Node3D
         var m = ModelLib.Instance(model, "Model");
         var aabb = ModelLib.Mesh(model).GetAabb();
         m.Scale = new Vector3(p.W * Cell / Math.Max(0.1f, aabb.Size.X) * 0.9f, 1f, p.H * Cell / Math.Max(0.1f, aabb.Size.Z) * 0.9f);
+        // Round 4: pale new-cut stakes, not the model's dark wood, so a staked plot reads as marked out, not built.
+        m.MaterialOverride = PaleStakes;
         root.AddChild(m);
         // Round 3: a small label says what will stand here, so a staked plot never reads as an editor's box.
         var label = new Label3D

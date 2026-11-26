@@ -95,8 +95,10 @@ public partial class TownTest
     {
         var ledger = Main.Hud.GetNode<Control>("Root/Ledger");
         Check(ledger.IsVisibleInTree(), "the ledger card shows");
+        for (int k = 0; k < 40 && !PavableNow(); k++) Main.Driver.Advance(15);
+        await Frames(2);
         if (!Main.Hud.PaveMode) await Key(Godot.Key.P);
-        Check(Main.Hud.PaveMode, "cards: P switches Pave mode on");
+        Check(Main.Hud.PaveMode, $"cards: P switches Pave mode on ('{Main.Hud.LastNote}')");
         int r = T.SuggestedPave();
         if (r < 0 || !Main.Hud.Pavable(r)) for (r = 0; r < T.RoadCount && !Main.Hud.Pavable(r); r++) { }
         var at = await PlaceUnder(ledger, r);
@@ -124,7 +126,8 @@ public partial class TownTest
         Check(Main.Hud.OverInterface(slip.GetGlobalRect().GetCenter()), "cards: a note slip does not count as a card");
         // Leave Pave mode, put the suggested road under the ledger, and choose Pave again: the road comes out from under it.
         await Key(Godot.Key.Escape);
-        Check(!Main.Hud.PaveMode, "cards: Esc leaves Pave mode");
+        Check(!Main.Hud.PaveMode && !Main.Menu.IsPaused, "cards: Esc leaves Pave mode");
+        for (int k = 0; k < 40 && !(T.SuggestedPave() >= 0 && Main.Hud.Pavable(T.SuggestedPave())); k++) Main.Driver.Advance(15);
         int sug = T.SuggestedPave();
         if (sug >= 0 && Main.Hud.Pavable(sug))
         {
@@ -150,7 +153,7 @@ public partial class TownTest
         var local = new Vector3((float)x * TownGround.Cell, 0, (float)y * TownGround.Cell);
         var on = card.GetGlobalRect().GetCenter();
         float size = Main.Rig.MinSize + 24f;
-        bool moved = Main.Rig.UserMoved;
+        Main.Rig.UserMoved = true; // a still view: the follow view would glide away
         Main.Rig.LookAt(local, size, instant: true);
         await Frames(3);
         for (int k = 0; k < 4; k++)
@@ -159,7 +162,6 @@ public partial class TownTest
             Main.Rig.LookAt(Main.Rig.PivotLocal + (local - under), size, instant: true);
             await Frames(3);
         }
-        Main.Rig.UserMoved = moved;
         var at = Main.Rig.LocalToScreen(local);
         Check(at.DistanceTo(on) < 12f, $"road {r} could not be put under the card (at {at}, card centre {on})");
         return at;

@@ -14,6 +14,31 @@ public partial class TownHud
     private Label _bannerHead = null!, _bannerText = null!;
     private float _bannerAge = -1;
     private Button _home = null!;
+    private Vector3? _bannerAt;
+
+    /// <summary>The banner's rectangle on screen while it shows (tests), and the gift point it keeps clear of.</summary>
+    public Rect2 BannerRect => _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
+    public Vector2? BannerGiftScreen => _bannerAt is { } a ? _main.Rig.LocalToScreen(a) : null;
+
+    /// <summary>Round 4: the banner keeps clear of this map point (the gift it announces) on screen.</summary>
+    public void BannerClearOf(Vector3? local) => _bannerAt = local;
+
+    /// <summary>The middle of what a level gives (its plots and roads), in map-local metres; null when it gives none.</summary>
+    private Vector3? GiftPoint(int level)
+    {
+        var t = _drv.Town;
+        if (level < 1 || level > t.Plan.Levels.Length) return null;
+        var lv = t.Plan.Level(level);
+        float x = 0, z = 0; int n = 0;
+        foreach (int p in lv.Plots) { var c = PlotCentre(p); x += c.X; z += c.Z; n++; }
+        foreach (int r in lv.Roads)
+        {
+            var road = t.Plan.Roads[r];
+            road.At(road.Length / 2, out double rx, out double ry, out _);
+            x += (float)rx * TownGround.Cell; z += (float)ry * TownGround.Cell; n++;
+        }
+        return n > 0 ? new Vector3(x / n, 0, z / n) : null;
+    }
 
     /// <summary>The banner's text while it shows ("" otherwise), and every banner shown (tests).</summary>
     public string BannerText => _banner.Visible ? _bannerHead.Text + ": " + _bannerText.Text : "";
@@ -44,6 +69,7 @@ public partial class TownHud
         _bannerHead.Text = head;
         _bannerText.Text = text;
         _bannerAge = 0;
+        _bannerAt = null;
         _banner.Visible = _fullA > 0.01f;
         string line = head + ": " + text;
         Log(BannerLog, line);
@@ -62,6 +88,15 @@ public partial class TownHud
         _banner.ResetSize();
         // Below the Pave or Extend banner when one shows.
         float y = UiKit.Px(_s, PaveMode || ExtendMode ? 70 : 18);
+        // Round 4: never over the gift it announces: when the gift is under the banner's place (the camera is still
+        // bringing it in, or the town lies high on the screen), the banner goes just below the gift instead.
+        if (_bannerAt is { } at)
+        {
+            var g = _main.Rig.LocalToScreen(at);
+            float pad = UiKit.Px(_s, 70);
+            if (g.Y < y + _banner.Size.Y + pad && g.Y > -pad && MathF.Abs(g.X - _built.X / 2f) < _banner.Size.X / 2f + pad)
+                y = Math.Min(g.Y + pad, _built.Y - _banner.Size.Y - UiKit.Px(_s, 120));
+        }
         _banner.Position = new Vector2((_built.X - _banner.Size.X) / 2f, y);
     }
 
