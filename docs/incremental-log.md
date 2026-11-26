@@ -108,7 +108,7 @@ One pending at a time, about every 50 minutes, held outside the container (the o
 | --- | --- | --- | --- | --- | --- |
 | A1 | Interface audit: `tools/ui-audit.sh` and its pictures (Opus), inventories from the code (Sonnet), three reviewers (Sonnet) | `wf_4b7400e5-34c`, script `build/wf/n3-ui-audit.js` | 19:57 | | |
 | A2 | Asset audit in `build/wt/assets`: `tools/asset-audit.sh` and its sheets (Opus), two rankers (Sonnet) | `wf_1cf986ba-a96`, script `build/wf/n3-asset-audit.js` | 19:58 | | |
-| A3 | The layout sheet version 1 (`docs/plans/n3/layout-sheet.md`, the lead), drawn as a mock-up in pictures (Opus, `docs/plans/n3/mockup/`), then criticised by two reviewers (Sonnet, `layout-critique-1.md`, `-2.md`) | `wf_d2d6f9d2-42b`, script `build/wf/n3-layout-mockup.js` | 20:23 | | |
+| A3 | The layout sheet version 1 (`docs/plans/n3/layout-sheet.md`, the lead), drawn as a mock-up in pictures (Opus, `docs/plans/n3/mockup/`), then criticised by two reviewers (Sonnet, `layout-critique-1.md`, `-2.md`) | `wf_d2d6f9d2-42b`, script `build/wf/n3-layout-mockup.js` | 20:03 | | |
 
 ## Decisions made for you
 
