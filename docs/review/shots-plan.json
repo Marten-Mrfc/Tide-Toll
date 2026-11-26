@@ -1,0 +1,71 @@
+{
+  "about": "The plan of the screenshot tour for the owner's review. The tour scene writes build/tour/<id>.png at 1920 x 1080 for every shot it can make, in this order, from the default town (seed 1), and build/tour/shots.json: this same structure with 'made': true or false per shot, 'shows' corrected to what is really on screen, and a 'wrong' note where the picture shows a fault. The questions are the lead's and stay as they are unless a shot shows something different from what the question asks about.",
+  "sections": [
+    { "id": "first-minute", "title": "The first minute", "shots": [
+      { "id": "a01-first-minute", "shows": "The start: one cottage, the well, one faint trail and one villager.", "question": "Is this the right way to start?" },
+      { "id": "a02-first-coin", "shows": "The first delivery: the coin number rises where the water is delivered.", "question": "Is the moment of earning clear enough?" },
+      { "id": "a03-interface", "shows": "The whole interface at level 1: coin and level bar, the next gift and the hint on the left, the shop on the right, the bell, achievements and pause at the bottom.", "question": "Is the interface the right size and in the right places?" }
+    ] },
+    { "id": "upgrades", "title": "Upgrades, one at a time", "shots": [
+      { "id": "b01-villager", "shows": "A second villager has been bought and walks the trail.", "question": "Does buying a villager show clearly on the map?" },
+      { "id": "b02-pace-and-load", "shows": "After Pace and the Basket: villagers walk faster and carry a visibly bigger load.", "question": "Can you see what these two upgrades did?" },
+      { "id": "b03-shop-lines", "shows": "The shop close up: a line you can buy, one that needs more coin with its bar, one locked until a later level, one finished, each with what it is worth in coin a minute.", "question": "Does each shop line tell you enough to choose?" },
+      { "id": "b04-extend-mode", "shows": "Extend mode: the cottages that can be extended light up and the pointed one shows its price.", "question": "Is extending a cottage by clicking it clear?" },
+      { "id": "b05-extended", "shows": "The same cottage after two extensions, beside a plain one.", "question": "Can you tell an extended cottage from a plain one?" },
+      { "id": "b06-building", "shows": "A building offer bought: the market stall stands on its staked plot.", "question": "Is it clear that the stall was your purchase and where it went?" },
+      { "id": "b07-bell", "shows": "The bell is ringing: everyone hurries and the bell shows its rest time.", "question": "Is the bell worth having as something to do with your hands?" },
+      { "id": "b08-hand", "shows": "People keep queueing at a workplace, so the shop offers an extra hand there and a marker shows where.", "question": "Is it clear why this offer appeared?" }
+    ] },
+    { "id": "levels", "title": "Levels and what they bring", "shots": [
+      { "id": "c01-level-banner", "shows": "A level is reached: the banner names the gift and the new cottage and lane appear.", "question": "Is a new level enough of a moment?" },
+      { "id": "c02-staked-plots", "shows": "Staked plots with labels show what comes next and at which level.", "question": "Do the staked plots look right (not like an editor's boxes)?" },
+      { "id": "c03-field", "shows": "The first field has arrived and villagers carry Grain.", "question": "Does the town now read as doing two kinds of work?" },
+      { "id": "c04-choice", "shows": "A choice of two: the town keeps only the boon you pick.", "question": "Is this kind of choice what you want more of?" },
+      { "id": "c05-request", "shows": "A request is running: who asks, how much of what, how much is delivered, the time left and the reward.", "question": "Do requests give you something to aim for?" },
+      { "id": "c06-touch", "shows": "A small touch has appeared by itself beside a cottage (a woodpile, a washing line or the like).", "question": "Do these small touches make the town feel alive?" },
+      { "id": "c07-mill", "shows": "The mill works: its sails turn and villagers carry Flour to the market.", "question": "Does the mill look and read right?" }
+    ] },
+    { "id": "roads", "title": "A road wearing in, then paved", "shots": [
+      { "id": "d01-trail-new", "shows": "A road just given: a faint trail.", "question": "Is a new road faint enough to look unworn but clear enough to see?" },
+      { "id": "d02-trail-worn", "shows": "The same road after villagers have used it: a firm earth track.", "question": "Can you see that it has worn in?" },
+      { "id": "d03-pave-mode", "shows": "Pave mode: the roads that can be paved light up, the pointed one shows its price, the busiest is tagged.", "question": "Is paving by clicking a road clear?" },
+      { "id": "d04-gravel", "shows": "The same road paved with gravel.", "question": "Does gravel look right?" },
+      { "id": "d05-cobbles", "shows": "A road in cobbles beside a gravel one and an earth track.", "question": "Can you tell the three surfaces apart at a glance?" },
+      { "id": "d06-crowded", "shows": "A crowded unpaved road: people bunch up and the road is tinted.", "question": "Is it clear that this road is crowded and that paving would help?" }
+    ] },
+    { "id": "end-of-first-age", "title": "The end of the first age", "shots": [
+      { "id": "e01-charter-drive", "shows": "The charter drive: the last great request of the age, filling in parts.", "question": "Is this a good last push instead of a wait?" },
+      { "id": "e02-town", "shows": "The whole town at the end of the first age.", "question": "Does the finished hamlet look like a place you built?" },
+      { "id": "e03-charter", "shows": "The charter is granted: the stone stands on the green.", "question": "Is the charter enough of a moment?" },
+      { "id": "e04-achievements", "shows": "The achievements page, opened with Tab.", "question": "Are the achievements the right kind of goals?" }
+    ] },
+    { "id": "river", "title": "The age change and the river", "shots": [
+      { "id": "f01-ring", "shows": "Ringing in the next age: the page turns to the town on the river.", "question": "Is the age change enough of a moment?" },
+      { "id": "f02-age-page", "shows": "The page that opens the second age and says what is new.", "question": "Does this page tell you what you need?" },
+      { "id": "f03-landing", "shows": "High water: a boat is moored at the landing and is being loaded; the tide dial shows the time to the turn.", "question": "Is it clear what the boat wants and how full it is?" },
+      { "id": "f04-ford", "shows": "The ford: people wade at low water (or wait on the bank at high water).", "question": "Does the tide read as something you can see and use?" },
+      { "id": "f05-pasture", "shows": "The far bank: the pasture with sheep, and the weaver on the near bank.", "question": "Do wool and cloth fit the town?" },
+      { "id": "f06-ferry", "shows": "The ferry in mid-river with riders, and queues on both banks.", "question": "Does the ferry read as a bottleneck you would want to improve?" },
+      { "id": "f07-drawbridge", "shows": "The drawbridge lifted for a boat, walkers waiting, the toll paid.", "question": "Is the drawbridge with its toll worth being the last gift?" },
+      { "id": "f08-river-shop", "shows": "The shop in the second age, with the river's own group.", "question": "Is the shop still readable with this many lines?" },
+      { "id": "f09-seal", "shows": "The town on both banks when the borough seal is granted.", "question": "Does the town on the river look like a step up from the hamlet?" },
+      { "id": "f10-seal-page", "shows": "The page that closes the second age.", "question": "Is this an acceptable ending for now?" }
+    ] },
+    { "id": "book", "title": "Zooming out to the book, and pausing", "shots": [
+      { "id": "g01-close", "shows": "The closest view: tilted, so cottages and people show their sides.", "question": "Do you want the tilted view when zoomed in?" },
+      { "id": "g02-zoom-1", "shows": "Zooming out, first step: the whole town.", "question": "Is this a good normal view to play in?" },
+      { "id": "g03-zoom-2", "shows": "Further out: the whole page, with the interface thinned to a strip.", "question": "Is the change of the interface at this point right?" },
+      { "id": "g04-book", "shows": "Fully out: the open book on the table, the town's summary and achievements on the left page, the map on the right.", "question": "Is this how the book should appear?" },
+      { "id": "g05-closing", "shows": "Pausing: the book half closed.", "question": "Does pausing by closing the book feel right?" },
+      { "id": "g06-cover", "shows": "The closed cover as the pause menu: Resume, Settings, New town, Quit.", "question": "Is the cover menu what you asked for?" },
+      { "id": "g07-new-town", "shows": "New town asks once before replacing the town.", "question": "Is this question worded and placed well?" }
+    ] },
+    { "id": "settings", "title": "Settings, as pages of the book", "shots": [
+      { "id": "h01-sound", "shows": "Settings: Sound.", "question": "Are these the volume controls you want?" },
+      { "id": "h02-display", "shows": "Settings: Display.", "question": "Are these the display options you want?" },
+      { "id": "h03-keys", "shows": "Settings: Keys, with a key being rebound and a clash to settle.", "question": "Is rebinding clear?" },
+      { "id": "h04-saving", "shows": "Settings: Saving.", "question": "Is the saving page complete enough?" },
+      { "id": "h05-big", "shows": "The game at interface size 150 percent.", "question": "Is the largest interface size usable?" }
+    ] }
+  ]
+}
