@@ -102,6 +102,7 @@ public sealed partial class Town
         else into.Add(Item(ShopItemKind.Extend, -1, "Extend a cottage", S.ExtensionsBought, ExtendPrice,
             S.Level < TownRules.ExtendFromLevel ? "Unlocks at level " + TownRules.ExtendFromLevel : "Every cottage is extended"));
         if (S.BellUnlocked) into.Add(Item(ShopItemKind.BellTrack, -1, "Louder bell", S.BellTrackLevel, BellTrackPrice, BellTrackLockReason));
+        AddHandItems(into);
     }
 
     public bool BuyTools()

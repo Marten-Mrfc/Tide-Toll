@@ -7,6 +7,7 @@ public sealed partial class Town
 {
     private void StepVillager(VillagerState v)
     {
+        if (v.RMode != 0) { StepRiverVillager(v); return; } // the second age: on the river plan
         v.PrevX = v.X; v.PrevY = v.Y;
         switch (v.Phase)
         {
@@ -23,7 +24,8 @@ public sealed partial class Town
             case VillagerPhase.Queued:
                 break;
         }
-        Place(v);
+        if (v.RMode != 0) RiverPlace(v); // the second age: stepped onto the river plan this tick
+        else Place(v);
     }
 
     /// <summary>The villager is at its target node (or idle): start work, deliver, or pick the next job.</summary>
@@ -36,6 +38,7 @@ public sealed partial class Town
             if (v.Phase == VillagerPhase.Idle) Arrive(v, depth + 1);
             return;
         }
+        if (v.RLen > 0) { RiverNext(v); return; } // the second age: the rest of a river itinerary
         if (v.Stage < 2)
         {
             var w = S.Workplaces[v.Workplace];
@@ -64,7 +67,7 @@ public sealed partial class Town
         w.Busy++;
         v.Phase = VillagerPhase.Working;
         var kind = Plan.Plots[w.Plot].Kind;
-        v.WorkLeft = kind == PlotKind.Well ? TownRules.WellWork : kind == PlotKind.Field ? TownRules.FieldWork : TownRules.MillWork;
+        v.WorkLeft = WorkTime(kind);
         int slot = 0;
         while (slot < 30 && (w.SlotMask & (1 << slot)) != 0) slot++;
         v.Slot = slot;
@@ -81,7 +84,9 @@ public sealed partial class Town
     }
 
     /// <summary>Work speed from the Tools track (1 with no Tools).</summary>
-    internal double ToolsFactor => 1 + TownRules.ToolsStep * S.ToolsLevel;
+    internal double ToolsFactor => ToolsFactorAt(S.ToolsLevel);
+    /// <summary>Rules v3: Tools work speed at a level, with the milestone at every fifth step.</summary>
+    public static double ToolsFactorAt(int level) => 1 + TownRules.ToolsStep * level + TownRules.ToolsMilestone * (level / TownRules.MilestoneEvery);
 
     private void FinishWork(VillagerState v)
     {
@@ -92,7 +97,7 @@ public sealed partial class Town
         // The first in the queue takes the place (every free place, r1 bug hunt finding 1).
         while (w.QueueLen > 0 && w.Busy < w.Places) StartWork(S.Villagers[PopQueue(w)]);
         v.Amount = LoadUnits;
-        if (v.Job == JobKind.Flour && v.Stage == 0)
+        if (v.Job is JobKind.Flour or JobKind.FlourBoat && v.Stage == 0)
         {
             v.Carry = Good.Grain;
             v.Stage = 1;
@@ -100,6 +105,7 @@ public sealed partial class Town
             if (v.Workplace < 0 || !SetRoute(v, Plan.Plots[S.Workplaces[v.Workplace].Plot].Node)) { DropJobCarry(v); return; }
             return;
         }
+        if (v.Job is JobKind.GrainBoat or JobKind.FlourBoat) { StartBoatCarry(v); return; }
         v.Carry = v.Job switch { JobKind.Water => Good.Water, JobKind.Flour => Good.Flour, _ => Good.Grain };
         v.Stage = 2;
         int dest = v.Job is JobKind.Water or JobKind.GrainHome ? Plan.Plots[v.Home].Node : Plan.Plots[_marketPlot].Node;
@@ -123,6 +129,7 @@ public sealed partial class Town
 
     internal double JobValue(JobKind j)
     {
+        if (IsRiverJob(j)) return RiverJobValue(j);
         double b = j switch
         {
             JobKind.Water => TownRules.WaterValue,
@@ -132,19 +139,26 @@ public sealed partial class Town
             _ => 0,
         };
         Good g = GoodOf(j);
-        return b * ValueFactor(g) * (S.ReqActive && S.ReqGood == g ? TownRules.RequestBonus : 1);
+        return b * ValueFactor(g) * (S.ReqActive && S.ReqGood == g ? TownRules.RequestBonus : 1) * (S.DriveActive && S.DriveGood == g ? TownRules.DriveBonus : 1);
     }
 
-    internal static Good GoodOf(JobKind j) => j switch { JobKind.Water => Good.Water, JobKind.Flour => Good.Flour, JobKind.None => Good.None, _ => Good.Grain };
+    internal static Good GoodOf(JobKind j) => j switch
+    {
+        JobKind.Water => Good.Water, JobKind.Flour or JobKind.FlourBoat => Good.Flour, JobKind.None => Good.None,
+        JobKind.WoolBoat or JobKind.WoolMarket => Good.Wool, JobKind.ClothBoat or JobKind.ClothMarket => Good.Cloth, _ => Good.Grain,
+    };
 
     /// <summary>Value multiplier of a good from its value track (1 with no levels).</summary>
-    public double ValueFactor(Good g) => 1 + TownRules.ValueStep * S.ValueLevel[(int)g];
+    public double ValueFactor(Good g) => (int)g < S.ValueLevel.Length ? ValueFactorAt(S.ValueLevel[(int)g]) * BoonValue(g) : RiverValueFactor(g);
+    /// <summary>Rules v3: value-track factor at a level, with the milestone at every fifth step (no boons).</summary>
+    public static double ValueFactorAt(int level) => 1 + TownRules.ValueStep * level + TownRules.ValueMilestone * (level / TownRules.MilestoneEvery);
 
     private void Deliver(VillagerState v)
     {
         double coin = v.Amount * JobValue(v.Job) * CoinBonus;
         Earn(coin, v.Carry);
         if (S.ReqActive && v.Carry == S.ReqGood) RequestDelivered(v.Amount);
+        if (S.DriveActive && v.Carry == S.DriveGood) DriveDelivered(v.Amount);
         S.Trips++;
         S.Delivered[(int)v.Carry] += v.Amount;
         var nd = Plan.Nodes[v.Node];
@@ -163,7 +177,7 @@ public sealed partial class Town
         int over = committed - w.Places + 1;
         if (over <= 0) return 0;
         var kind = Plan.Plots[w.Plot].Kind;
-        double work = kind == PlotKind.Well ? TownRules.WellWork : kind == PlotKind.Field ? TownRules.FieldWork : TownRules.MillWork;
+        double work = WorkTime(kind);
         return over * work / ToolsFactor / w.Places;
     }
 
@@ -188,14 +202,19 @@ public sealed partial class Town
             double wait = ExpectedWait(wi, v);
             if (kind == PlotKind.Well)
             {
-                Consider(JobKind.Water, wi, toW + wait + TownRules.WellWork / ToolsFactor + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
+                Consider(JobKind.Water, wi, toW + wait + WorkTime(PlotKind.Well) / ToolsFactor + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
                 continue;
             }
-            double baseT = toW + wait + TownRules.FieldWork / ToolsFactor;
+            double baseT = toW + wait + WorkTime(PlotKind.Field) / ToolsFactor;
             Consider(JobKind.GrainHome, wi, baseT + TravelTime(wn, home), ref best, ref bestJob, ref bestW, load);
             if (market >= 0) Consider(JobKind.GrainMarket, wi, baseT + TravelTime(wn, market), ref best, ref bestJob, ref bestW, load);
             if (market >= 0 && millNode >= 0)
-                Consider(JobKind.Flour, wi, baseT + TravelTime(wn, millNode) + ExpectedWait(mill, v) + TownRules.MillWork / ToolsFactor + TravelTime(millNode, market), ref best, ref bestJob, ref bestW, load);
+                Consider(JobKind.Flour, wi, baseT + TravelTime(wn, millNode) + ExpectedWait(mill, v) + WorkTime(PlotKind.Mill) / ToolsFactor + TravelTime(millNode, market), ref best, ref bestJob, ref bestW, load);
+        }
+        if (S.River != null)
+        {
+            ConsiderRiver(v, ref best, ref bestJob, ref bestW, load);
+            if (bestJob is JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket) return StartRiverJob(v, bestJob);
         }
         if (bestJob == JobKind.None) return false;
         v.Job = bestJob; v.Stage = 0; v.Workplace = bestW;

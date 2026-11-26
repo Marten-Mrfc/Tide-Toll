@@ -39,7 +39,7 @@ public sealed partial class Town
                 wps.Add(new WorkplaceState { Plot = p.Id, Places = places });
             }
         }
-        if (loaded != null) { S = loaded; return; }
+        if (loaded != null) { S = loaded; if (S.River != null) _rp = TownRiverPlanner.Build(plan); return; }
         S = new TownState
         {
             Seed = plan.Seed,
@@ -77,6 +77,8 @@ public sealed partial class Town
         double cpm = CoinPerMinute;
         if (cpm > S.MaxCoinPerMinute) S.MaxCoinPerMinute = cpm;
         StepRequests();
+        StepHands();
+        if (S.River != null) StepRiver();
         if (S.Tick % TownRules.TickHz == 0) CheckAchievements();
     }
 
@@ -123,6 +125,8 @@ public sealed partial class Town
         if (n == TownRules.RequestFromLevel && S.ReqNextAt < 0) S.ReqNextAt = Time + TownRules.RequestFirstDelay;
         RefreshWorkplaces();
         Emit(new TownEvent { Kind = TownEventKind.LevelReached, Level = n, Text = lv.Gift });
+        OfferChoicesAt(n);
+        if (n == Plan.MaxLevel - 1 && !S.DriveActive && !S.DriveDone) StartDrive();
         if (lv.Charter && !S.Charter)
         {
             S.Charter = true;
@@ -130,9 +134,10 @@ public sealed partial class Town
         }
     }
 
-    private void CheckLevels()
+    internal void CheckLevels()
     {
         while (S.Level < Plan.MaxLevel && S.Renown >= Plan.Level(S.Level + 1).Renown) ApplyLevel(S.Level + 1);
+        if (S.River != null) CheckRiverLevels();
     }
 
     internal bool PlotWorks(int plot)
@@ -155,7 +160,9 @@ public sealed partial class Town
         foreach (var w in S.Workplaces)
         {
             w.Open = PlotWorks(w.Plot);
-            if (Plan.Plots[w.Plot].Kind == PlotKind.Well) w.Places = TownRules.WellPlaces + (bucket >= 0 && S.OfferBought[bucket] ? TownRules.SecondBucketPlaces : 0);
+            var pk = Plan.Plots[w.Plot].Kind;
+            if (pk == PlotKind.Well) w.Places = TownRules.WellPlaces + (bucket >= 0 && S.OfferBought[bucket] ? TownRules.SecondBucketPlaces : 0) + w.Hands;
+            else w.Places = (pk == PlotKind.Field ? TownRules.FieldPlaces : TownRules.MillPlaces) + w.Hands; // rules v3: extra hands
             // A place that opens is taken at once by the head of the queue (r1 bug hunt, finding 1).
             while (w.Open && w.Busy < w.Places && w.QueueLen > 0) StartWork(S.Villagers[PopQueue(w)]);
         }
@@ -168,13 +175,14 @@ public sealed partial class Town
         get
         {
             int c = 0;
-            foreach (var p in Plan.Plots) if (p.Kind == PlotKind.Cottage && S.PlotGiven[p.Id]) c += TownRules.PerCottage + S.Extensions[p.Id];
+            foreach (var p in Plan.Plots) if (p.Kind == PlotKind.Cottage && S.PlotGiven[p.Id]) c += TownRules.PerCottage + S.Extensions[p.Id] + BoonRoom;
+            if (S.River != null) c += S.River.Cottages * TownRules.PerCottage;
             return c;
         }
     }
 
     /// <summary>Villagers a given cottage houses (PerCottage plus its extensions); 0 for anything else.</summary>
-    public int CottageRoom(int plot) => Plan.Plots[plot].Kind == PlotKind.Cottage && S.PlotGiven[plot] ? TownRules.PerCottage + S.Extensions[plot] : 0;
+    public int CottageRoom(int plot) => Plan.Plots[plot].Kind == PlotKind.Cottage && S.PlotGiven[plot] ? TownRules.PerCottage + S.Extensions[plot] + BoonRoom : 0;
 
     /// <summary>Villagers living in a cottage now.</summary>
     public int Residents(int plot)
@@ -196,6 +204,7 @@ public sealed partial class Town
         }
         var home = Plan.Plots[best];
         var v = new VillagerState { Id = S.Villagers.Length, Home = best, Node = home.Node };
+        if (S.River != null && bestN <= 0) v.RHome = RiverCottageWithRoom(); // second age: lives by the river (first-age cottage stays its errand home)
         var nd = Plan.Nodes[home.Node];
         v.X = v.PrevX = nd.X + 0.5; v.Y = v.PrevY = nd.Y + 0.5;
         var arr = new VillagerState[S.Villagers.Length + 1];

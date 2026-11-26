@@ -38,7 +38,7 @@ public sealed partial class Town
     }
 
     /// <summary>Coin one unit of a good brings now without the request bonus (Grain at the market when it works).</summary>
-    private double UnitValue(Good g)
+    internal double UnitValue(Good g)
     {
         double b = g == Good.Water ? TownRules.WaterValue : g == Good.Flour ? TownRules.FlourValue
             : _marketPlot >= 0 && PlotWorks(_marketPlot) ? TownRules.GrainMarketValue : TownRules.GrainHomeValue;
@@ -46,16 +46,16 @@ public sealed partial class Town
     }
 
     /// <summary>Units per second the workplaces of a good could turn out if every place were busy.</summary>
-    private double Capacity(Good g)
+    internal double Capacity(Good g)
     {
         double c = 0;
         foreach (var w in S.Workplaces)
         {
             if (!w.Open) continue;
             var k = Plan.Plots[w.Plot].Kind;
-            if (g == Good.Water && k == PlotKind.Well) c += w.Places * LoadUnits * ToolsFactor / TownRules.WellWork;
-            if (g == Good.Grain && k == PlotKind.Field) c += w.Places * LoadUnits * ToolsFactor / TownRules.FieldWork;
-            if (g == Good.Flour && k == PlotKind.Mill) c += w.Places * LoadUnits * ToolsFactor / TownRules.MillWork;
+            if (g == Good.Water && k == PlotKind.Well) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Well);
+            if (g == Good.Grain && k == PlotKind.Field) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Field);
+            if (g == Good.Flour && k == PlotKind.Mill) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Mill);
         }
         return c;
     }
@@ -74,7 +74,7 @@ public sealed partial class Town
             }
             return;
         }
-        if (S.ReqNextAt < 0 || Time < S.ReqNextAt || S.Charter) return;
+        if (S.ReqNextAt < 0 || Time < S.ReqNextAt || S.Charter || S.DriveActive) return; // rules v3: no new request during the charter drive
         // Which goods can be made now: Water always, Grain with a field, Flour with the mill and the market.
         int n = 1; bool grain = Capacity(Good.Grain) > 0, flour = Capacity(Good.Flour) > 0 && _marketPlot >= 0 && PlotWorks(_marketPlot);
         if (grain) n++;
@@ -145,6 +145,7 @@ public sealed partial class Town
                 if (w.QueueLen < 2) continue;
                 var kind = Plan.Plots[w.Plot].Kind;
                 HintPlot = w.Plot;
+                if (w.HandOffered) return $"A queue at the {(kind == PlotKind.Well ? "well" : kind == PlotKind.Field ? "field" : "mill")}. {HandName(i)} would help."; // rules v3
                 int bucket = OfferOf(OfferKind.SecondBucket), field2 = OfferOf(OfferKind.SecondField);
                 if (kind == PlotKind.Well && bucket >= 0 && S.OfferAvailable[bucket] && !S.OfferBought[bucket]) return "A queue at the well. A second bucket would help.";
                 if (kind == PlotKind.Field && field2 >= 0 && S.OfferAvailable[field2] && !S.OfferBought[field2]) return "A queue at the field. A second field would help.";
