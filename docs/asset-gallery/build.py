@@ -500,6 +500,23 @@ for _n, _t, _b, _w, _no in AGE2_MODELS:
     _tr, _c = town_card(_n, _t, _b, _w, _no)
     age2_tris += _tr
     age2_cards.append(_c)
+PROP_MODELS = [
+    ("prop-woodpile", "Woodpile", 150, "Six split logs with pale end grain, a chopping block with an axe in it.", {}),
+    ("prop-washing-line", "Washing line", 150, "Two posts 2 m apart and a line with three cloths folded over it.", {}),
+    ("prop-flower-bed", "Flower bed", 150, "A raised bed in a plank edge, 1.8 x 1 m, six clumps of leaves and flowers.", {}),
+    ("prop-hen-coop", "Hen coop", 150, "A plank coop on skids with a ramp, and two hens drawn 1.5x like the sheep.", {}),
+    ("prop-bench", "Bench", 150, "A plank bench with a back rail, facing +Z.", {}),
+    ("prop-beehives", "Beehives", 150, "Three banded straw skeps on a plank stand.", {}),
+    ("prop-haystack", "Haystack", 150, "A round stack with a thatch cap and a ladder on its south side.", {}),
+    ("prop-apple-tree", "Apple tree", 150, "Small round crown with red apples standing out of it and one windfall. Soft ink.", {}),
+    ("prop-handcart", "Handcart", 150, "Two-wheeled cart parked with its shafts down to the south, a sack in it.", {}),
+    ("prop-signpost", "Signpost", 150, "One post, two blank arms pointing different ways.", {}),
+]
+prop_cards, prop_tris = [], 0
+for _n, _t, _b, _w, _no in PROP_MODELS:
+    _tr, _c = town_card(_n, _t, _b, _w, _no)
+    prop_tris += _tr
+    prop_cards.append(_c)
 AGE2_ICONS = [("good-wool", "Wool"), ("good-cloth", "Cloth"), ("ui-tide-high", "Tide high"), ("ui-tide-low", "Tide low"),
               ("ui-boat-berth", "Berth"), ("ui-crane", "Crane"), ("ui-ferry", "Ferry"), ("ui-bridge", "Bridge"),
               ("ui-toll", "Toll"), ("ui-request", "Request"), ("ui-hint", "Hint"), ("ui-extend", "Extend"),
@@ -719,6 +736,12 @@ PAGE = f"""<title>Tide &amp; Toll Asset Gallery</title>
   <ul class="icons">{"".join(age2_icon_rows)}</ul>
   <figure class="wide"><img src="{age2_icon_prev}" alt="The second-age icons at 20, 40 and 80 px, on Paper above and on Ink below, rendered by Godot" loading="lazy" width="1330" height="392"><figcaption>The same files rendered by Godot at 20, 40 and 80 px, on Paper and on Ink.</figcaption></figure>
   <article class="card"><div class="body"><h3>Ledger, the same for all second-age icons</h3>{age2_icon_facts}</div></article>
+</section>
+
+<section id="props">
+  <header><h2>Town props</h2>
+  <p>Small props the town dresses itself with as it prospers (2026-11-26). {len(PROP_MODELS)} models, {prop_tris:,} triangles, each under 150. Built by <code>assets/src/models/town-props.py</code>; the free asset sites are blocked from the build container, so all of it was made in code.</p></header>
+  <div class="grid">{"".join(prop_cards)}</div>
 </section>
 
 <section id="town">

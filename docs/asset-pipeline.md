@@ -186,6 +186,10 @@ Keep every generator in `assets/src/`, deterministic (fixed seed, no clock), and
 
 `assets/src/models/river-town.py` writes the second age's pieces (`pasture`, `sheep`, `weaver-cottage`, `crane`, `seal-stone`, `tide-post`; run `python3 assets/src/models/river-town.py [name ...]` for some of them) and `assets/src/2d/icons-age2.py` its 14 icons (`--no-preview` skips the Godot preview). Nodes the game moves: `sheep.glb` "Body" and "Head" (Head pivots at the neck), `crane.glb` "Base" and "Jib" (Jib turns about its local Y at the post top, (0, 4.1, 0)). `tide-post.glb` has its origin on the mean water level and reaches 1.25 m below it. The pasture is written with `ink="soft"` like the fields. Added 2026-11-25.
 
+## Town props
+
+`assets/src/models/town-props.py` writes ten small town-dressing props, `assets/models/prop-*.glb` (woodpile, washing-line, flower-bed, hen-coop, bench, beehives, haystack, apple-tree, handcart, signpost; `python3 assets/src/models/town-props.py [name ...]`), each one mesh under 150 triangles, origin at the footprint centre on the ground, front +Z; the apple tree is written with `ink="soft"`. Added 2026-11-26.
+
 ## Second-age sounds
 
 `assets/src/audio/river-sfx.py` writes the second age's sound effects into `assets/audio/sfx/` (moor x3, cast-off x2, quay-drop x4, tide-turn x2, loom x3, sheep x3, crane x2, toll x3, seal x1; seeds 1001-1090), from voices in `assets/src/audio/_river2.py` (built on `_town.py` and `_river.py`, which stay unchanged). `assets/src/audio/river-zz-sounds-json.py` writes `assets/audio/sfx/river-sounds.json` in the form of `town-sounds.json` (volume against the coin; it fails if a file measures more than 1 dB off its table value). The older river sounds (oar-splash, boat-call, ferry-rope, drawbridge, water-ford) are not in that table. Added 2026-11-25.

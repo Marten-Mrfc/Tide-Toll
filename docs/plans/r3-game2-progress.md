@@ -16,3 +16,9 @@ Started 2026-11-25 23:37 UTC. Time box ~45 min.
 - re-read age shots, menu/settings/save tests, sim-wishes, AGENTS/README, full ./check --export
 - Age shots re-read after fixes (charter shows the bell green and stone; summary with the achievements list; first-age page). Settings and town tests pass. Docs: AGENTS.md, README.md, sim-wishes.md updated.
 - Running ./check --export (log build/check-logs/, output in scratchpad check.log).
+- 00:00 ./check --export: every step PASS except `ledger`, which fails on 10 untracked assets/models/prop-*.glb with no LEDGER.csv row. Those files were added by another agent; assets/ is not mine, so the lead must add the rows or drop the files.
+- After the check: the Pave and Extend bookmark text "P to stop" / "E to stop" now uses the keys as bound (StopKey). game-town and game-menu pass again after that change. The full ./check was not run again.
+
+## State: finished (brief done). A successor only needs to verify.
+- Missing assets: none. Every event in town-sounds.json has its own file. A bell peal for the next age uses the existing bell-long-*.wav.
+- Not done / judgement calls: "decisions a minute" counts the one-second looks where two or more kinds of item could be bought. The playthrough plays seed 1 only. The charter stone looks small at the charter view, because the model is small (assets/).

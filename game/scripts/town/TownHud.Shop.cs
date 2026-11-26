@@ -247,7 +247,7 @@ public partial class TownHud
             {
                 string price = it.Price > 0 && (it.Index >= 0 || it.Kind is not (ShopItemKind.Pave or ShopItemKind.Extend)) ? Money(it.Price) + " coin" : "";
                 string state;
-                if (mode) state = it.Kind == ShopItemKind.Pave ? "Pick a road. P to stop" : "Pick a cottage. E to stop";
+                if (mode) state = it.Kind == ShopItemKind.Pave ? $"Pick a road. {StopKey("tt_pave")}" : $"Pick a cottage. {StopKey("tt_buy_5", 1)}";
                 else if (it.Affordable) state = it.Kind == ShopItemKind.Pave ? "Choose a road" : it.Kind == ShopItemKind.Extend ? "Choose a cottage" : "Buy";
                 else if (poor) state = $"Need {Money(need)} more";
                 else state = it.Reason.Length > 0 ? it.Reason : "Not yet";
@@ -378,6 +378,22 @@ public partial class TownHud
             if (a.Length > 0 && Is(e, a)) { Activate(i); return true; }
         }
         return false;
+    }
+
+    /// <summary>"P to stop" with the key bound now (slot 1: the second key, E for Extend, when there is one).</summary>
+    private static string StopKey(string action, int slot = 0)
+    {
+        if (!InputMap.HasAction(action)) return "";
+        int i = 0; string first = "";
+        foreach (var ev in InputMap.ActionGetEvents(action))
+            if (ev is InputEventKey k)
+            {
+                string n = Settings.GameInput.KeyName(Settings.GameInput.KeyOf(k));
+                if (i == 0) first = n;
+                if (i == slot) return n + " to stop";
+                i++;
+            }
+        return first.Length > 0 ? first + " to stop" : "";
     }
 
     private static bool Is(InputEvent e, string action) => InputMap.HasAction(action) && e.IsActionPressed(action);
