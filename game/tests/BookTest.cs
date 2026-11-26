@@ -81,7 +81,9 @@ public partial class BookTest : TownTestBase
         Check(sawBook, $"the wheel reaches the book ({notches} notches, size {Main.Rig.Camera.Size:0})");
         Check(sawPage && sawSlim && slimBeforeBook, "the interface thins to the slim strip on the way out");
         Check(firstPitch < 75f && Main.Rig.PitchNow > 89.99f, $"tilted on the town ({firstPitch:0.0}), straight down at the book ({Main.Rig.PitchNow:0.00})");
-        Check(Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f, "the slim strip shows over the book");
+        // Night 3 (layout sheet section 2): with the book in view only navigation stays; the slim purse showed at the
+        // page stage (sawSlim above). Was: the slim strip shows over the book.
+        Check(!Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f && Main.Hud.PauseMark.IsVisibleInTree(), "only navigation shows over the book");
         // Round 4 (A12, A11): at the book the pause control is whole on screen and clear of both page numbers; the
         // summary is not printed from a distance field (Alegreya's overlapping contours left stray marks).
         await Frames(3);
@@ -96,7 +98,7 @@ public partial class BookTest : TownTestBase
         }
         var values = Main.Summary.GetNode<Label3D>("Values");
         Check(values.Font is FontFile ff && !ff.MultichannelSignedDistanceField, "the summary's numbers are printed from a distance field");
-        Check(Main.Hud.SlimText.Contains(TownHud.Money(T.Coin) + " coin") && Main.Hud.SlimText.Contains($"Level {T.Level}"), $"the slim strip shows coin and level ({Main.Hud.SlimText})");
+        Check(Main.Hud.SlimText.Contains(TownHud.Money(T.Coin)) && Main.Hud.SlimText.Contains($"Level {T.Level}"), $"the slim purse shows coin and level ({Main.Hud.SlimText})");
         Check(T.Time > time0 + 1, "the simulation keeps running while zoomed out");
         // The book view shows the whole book: its corners are on screen.
         foreach (var sx in new[] { -1f, 1f })

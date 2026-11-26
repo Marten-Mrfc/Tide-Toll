@@ -97,7 +97,7 @@ public partial class PlayThrough : TownTestBase
             double mins = Math.Max(1, Math.Min(charter, m1) - m0);
             GD.Print($"PLAY minutes {m0,2}-{m1 - 1,2}: purchases a minute {b / mins:0.0}  decisions a minute {d / mins:0.0}");
         }
-        GD.Print($"PLAY charter at minute {charter:0.0} (seed {_seed}): {_buys} purchases, {_paves} paved, {_extends} extended, {_bells} bells");
+        GD.Print($"PLAY charter at minute {charter:0.0} (seed {_seed}): {_buys} purchases, {_paves} paved, {_extends} extended, {_bells} bells, {_wheels} shop scrolls, {_unsettled} rows still moving, {_refused} clicks refused on a moving row");
         Check(dead.Count == 0, $"minutes with no purchase possible: {string.Join(",", dead)}");
     }
 
@@ -163,12 +163,26 @@ public partial class PlayThrough : TownTestBase
         if (byKey) { await Key(BoundKey(action)); _keysUsed++; }
         else
         {
+            // Night 3: a person scrolls the shop to the row when it is out of sight, brings the pointer to it and aims
+            // when it is still (a row that moved in the last 0.3 s takes no click; under the pointer the rows hold still).
+            await ScrollTo(i);
+            TestInput.Motion(TestInput.Centre(Main.Hud.Marks[i]));
+            await Frames(1);
+            for (int f = 0; f < 120 && !Main.Hud.RowCalm(i); f++) await Frames(1);
+            if (!Main.Hud.RowCalm(i)) { _unsettled++; return; } // still moving: look again (a person would wait)
+            if (i >= Main.Hud.ShownItems.Count || Main.Hud.ShownItems[i].Kind != it.Kind || Main.Hud.ShownItems[i].Index != it.Index) return; // the rows changed: look again
             var at = TestInput.Centre(Main.Hud.Marks[i]);
             Check(GetViewport().GetVisibleRect().HasPoint(at), $"bookmark {it.Name} is on screen");
             await Click(at); _clicks++;
         }
         if (T.Purchases > p0) { _buys++; _buyMin[Min]++; }
-        else { _misses++; P($"MISS: {(byKey ? "key" : "click")} on lit '{it.Name}' bought nothing ({Main.Hud.LastNote})"); }
+        else if (!byKey && !Main.Hud.RowCalm(i) && Main.Hud.RowDebug(i).Contains("since 0.0"))
+        {
+            // Night 3: the row moved under the click (its 1.5 s hold ran out) and took no click, as the sheet says
+            // (a row that moved in the last 0.3 s takes no click). Not a click that did something else.
+            _refused++; P($"REFUSED: the row of '{it.Name}' moved under the click; {Main.Hud.RowDebug(i)}");
+        }
+        else { _misses++; P($"MISS: {(byKey ? "key" : "click")} on lit '{it.Name}' bought nothing ({Main.Hud.LastNote}; row {i} {(i < Main.Hud.Marks.Count ? Main.Hud.Marks[i].GetGlobalRect().ToString() : "-")} calm {Main.Hud.RowCalm(i)} in view {Main.Hud.RowInView(i)} shop {Main.Hud.ShopRect} disabled {(i < Main.Hud.Marks.Count && Main.Hud.Marks[i].Disabled)} coin {T.Coin:0} price {it.Price:0}; {Main.Hud.RowDebug(i)})"); }
     }
 
     private int OfferOrdinal(int i)
@@ -221,8 +235,30 @@ public partial class PlayThrough : TownTestBase
         return false;
     }
 
+    /// <summary>The wheel over the shop until row i is in sight (only when the shop scrolls).</summary>
+    private async Task ScrollTo(int i)
+    {
+        for (int n = 0; n < 30 && Main.Hud.ShopScrolls && !Main.Hud.RowInView(i); n++)
+        {
+            var shop = Main.Hud.ShopRect;
+            var at = shop.GetCenter();
+            var b = Main.Hud.Marks[i].GetGlobalRect().Position.Y > shop.End.Y - 2 ? MouseButton.WheelDown : MouseButton.WheelUp;
+            TestInput.Motion(at);
+            await Frames(1);
+            TestInput.Button(at, b, true);
+            TestInput.Button(at, b, false);
+            await Frames(1);
+            _wheels++;
+        }
+    }
+
+    private int _wheels, _unsettled, _refused;
+
     private async Task<bool> Extend(int i)
     {
+        await ScrollTo(i);
+        for (int f = 0; f < 120 && !Main.Hud.RowCalm(i); f++) await Frames(1);
+        if (!Main.Hud.RowCalm(i) || i >= Main.Hud.ShownItems.Count || Main.Hud.ShownItems[i].Kind != ShopItemKind.Extend) return false;
         await Click(TestInput.Centre(Main.Hud.Marks[i])); _clicks++;
         if (!Main.Hud.ExtendMode) { P($"note: Extend mode did not open ({Main.Hud.LastNote})"); return false; }
         int p = T.SuggestedExtend();

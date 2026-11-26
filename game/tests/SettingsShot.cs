@@ -47,12 +47,12 @@ public partial class SettingsShot : Node
             var file = dir + name + ".png";
             if (img.SavePng(file) != Error.Ok) throw new Exception("could not save " + file);
             GD.Print($"SETTINGS SHOT PASS {file} {img.GetWidth()}x{img.GetHeight()}");
-            GetTree().Quit(0);
+            TestInput.QuitClean(this, 0);
         }
         catch (Exception e)
         {
             GD.PrintErr("SETTINGS SHOT FAIL: " + e.Message);
-            GetTree().Quit(1);
+            TestInput.QuitClean(this, 1);
         }
     }
 

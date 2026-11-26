@@ -32,7 +32,6 @@ public partial class UiAudit
 
         // u30: its first minute (the landing given).
         _bot.PlayOn = true;
-        _bot.NoPave = true; // until u36, so a worn road is there to point at
         await FollowView();
         await Settle(600);
         await Calm(10000);
@@ -66,61 +65,67 @@ public partial class UiAudit
             TestInput.Motion(new Vector2(GetWindow().Size.X / 2f, GetWindow().Size.Y - 8));
         }
         else NotMade("u36", "Pave mode (second age)", "no pavable road before the seal");
-        _bot.NoPave = false;
-
     }
 
-    private static bool IsSkipper(Town t) => t.Request.Active && (t.Request.WhoName ?? "").Contains("skipper", StringComparison.OrdinalIgnoreCase);
+    /// <summary>A skipper's request is open: a boat that asks for goods, not gone or leaving (what the request card
+    /// shows while no town request runs; skippers' requests are not <c>Town.Request</c>).</summary>
+    private static bool SkipperAsks(Town t)
+    {
+        if (!t.InRiverAge) return false;
+        for (int i = 0; i < t.BoatCount; i++)
+        {
+            var b = t.Boat(i);
+            if (b.Request && b.Phase is not (BoatPhase.Gone or BoatPhase.Leaving)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>A request of either kind is running (the town's or a skipper's).</summary>
+    private static bool AnyRequest(Town t) => t.Request.Active || SkipperAsks(t);
+
+    private bool SkipperCardShown => Main.Hud.RequestCardText.Contains("skipper", StringComparison.OrdinalIgnoreCase);
 
     private async Task SecondAgeLate()
     {
-        // u32: the middle: ferry, tide dial, a skipper's request.
-        await Early(t => (t.Ferry.Built && t.Request.Active && IsSkipper(t)) || t.Level >= 22, 60);
-        if (!(T.Ferry.Built && IsSkipper(T))) await Early(t => (t.Ferry.Built || t.Level >= 22) && t.Request.Active, 60);
-        if (!T.HasSeal)
+        // u32: the middle: the ferry, the tide dial, a skipper's request on the card. Staged on the ferry standing and a
+        // skipper asking (bounded at level 24, never past the seal); at rest; then the card must show the skipper.
+        bool ferry = false, card = false;
+        for (int tries = 0; tries < 4 && !card && !T.HasSeal; tries++)
         {
+            ferry = await Early(t => (t.CrossingExists(RiverLinkKind.Ferry) && SkipperAsks(t)) || t.Level >= 24, 90);
+            if (!ferry && !T.HasSeal) ferry = await Early(t => t.CrossingExists(RiverLinkKind.Ferry), 60);
+            if (T.HasSeal || !T.CrossingExists(RiverLinkKind.Ferry)) break;
             await ClosePage(); await ClearChoice();
             await FollowView();
             await Settle(500);
             await Calm(8000);
-            await Shot("u32", "Second age middle: ferry, tide dial, request", $"bot until the ferry was built and a request ran (skipper's={IsSkipper(T)}: '{T.Request.WhoName}'), level {T.Level}; tide dial={Main.Hud.TideVisible}");
+            card = await WaitFor(() => SkipperCardShown, 6000);
+            if (!card && T.Level >= 24) break;
         }
-        else NotMade("u32", "Second age middle", "the seal came first");
+        if (!T.HasSeal && T.CrossingExists(RiverLinkKind.Ferry))
+            await Shot("u32", "Second age middle: ferry, tide dial, skipper's request",
+                $"bot until the ferry stood and a skipper asked (Town.Boat(i).Request), at rest, then waited for the card to name the skipper: card shows skipper={SkipperCardShown} ('{Main.Hud.RequestCardText}'), town request={T.Request.Active}, level {T.Level}; tide dial={Main.Hud.TideVisible}");
+        else NotMade("u32", "Second age middle", T.HasSeal ? "the seal came first" : "no ferry");
 
-        // u35: the busiest moment of the second age.
-        await Busiest("u35", "Busiest moment (second age)", T.Level + 1, Math.Min(T.Level + 4, T.MaxLevel - 3));
+        // u35: the busiest moment of the second age: a level-up in the middle of the age (20..24) with a request (the
+        // town's or a skipper's) running, 1.2 s after, nothing cleared.
+        await Busiest("u35", "Busiest moment (second age)", 20, 24, AnyRequest);
 
-        // u34: late, drawbridge and toll, at rest.
-        if (await Early(t => (t.CrossingExists(RiverLinkKind.Drawbridge) && t.Tolls > 0) || t.Level >= t.MaxLevel - 2, 240))
+        // u34: late, drawbridge and toll, at rest. Staged on the drawbridge standing (never past the seal), then a short
+        // bounded wait for the first toll.
+        if (await Early(t => t.CrossingExists(RiverLinkKind.Drawbridge), 240))
         {
+            await Early(t => t.Tolls > 0, 6);
             await ClosePage(); await ClearChoice();
             await FollowView();
             await Settle(500);
             await Calm();
-            await Shot("u34", "Second age late at rest (drawbridge, toll)", $"bot until the drawbridge stood and a toll was paid, or level MaxLevel-2: drawbridge={T.CrossingExists(RiverLinkKind.Drawbridge)} tolls={T.Tolls}, level {T.Level}");
+            await Shot("u34", "Second age late at rest (drawbridge, toll)", $"bot until the drawbridge stood (CrossingExists(Drawbridge)), then up to 6 game minutes for a toll; at rest: drawbridge={T.CrossingExists(RiverLinkKind.Drawbridge)} tolls={T.Tolls}, level {T.Level}");
         }
         else NotMade("u34", "Second age late at rest", "no drawbridge before the seal");
 
-        // u37: the seal drive card: the second age has no drive of its own in this build (only the charter drive);
-        // the nearest: the last level before the seal, at rest, with whatever card shows.
-        if (T.HasSeal) NotMade("u37", "Seal drive card", "no drive runs in the second age (Drive is the charter drive only) and the seal had come");
-        else if (await Early(t => t.Drive.Active || t.Level >= t.MaxLevel - 1, 240) && T.Drive.Active)
-        {
-            await ClosePage(); await FollowView(); await Settle(400); await Calm(8000);
-            await Shot("u37", "Seal drive card", $"a drive ran in the second age ({T.DriveText}); card={Main.Hud.DriveCardVisible}");
-        }
-        else
-        {
-            int last = T.Level;
-            await Early(t => t.Level >= t.MaxLevel - 1, 240);
-            if (T.HasSeal) { NotMade("u37", "Seal drive card", "no drive in the second age; the seal came before the last level could be shown at rest"); goto seal; }
-            await ClosePage(); await ClearChoice();
-            await FollowView(); await Settle(400); await Calm(8000);
-            await Shot("u37", "Seal drive card (nearest: last level before the seal)",
-                $"NOT the drive: the simulation runs no drive in the second age (Drive is the charter drive only). Nearest: level {T.Level} (from {last}), just before the seal, at rest; drive card={Main.Hud.DriveCardVisible}");
-        }
+        // (u37, the seal drive card, is not in the tour: the second age has no drive.)
 
-        seal:
         // u39 before the seal would show the river achievements in play; taken after the seal below.
         // u38: the borough seal moment and its page.
         if (await Fast(t => t.HasSeal, 600))

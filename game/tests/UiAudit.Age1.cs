@@ -129,23 +129,26 @@ public partial class UiAudit
 
     /// <summary>Plays level by level from minLevel until a level-up comes with a request running; the picture is taken
     /// 1.2 s after the level-up (banner, notes, coin numbers, request card, whatever the game shows).</summary>
-    private async Task Busiest(string id, string title, int minLevel, int maxLevel)
+    private async Task Busiest(string id, string title, int minLevel, int maxLevel, Func<Town, bool>? running = null)
     {
+        running ??= t => t.Request.Active;
         int lv = Math.Max(T.Level + 1, minLevel);
         string how = "";
         for (; lv <= maxLevel; lv++)
         {
             int want = lv;
             await Fast(t => t.Level >= want || t.HasSeal, 60);
-            if (T.Request.Active || lv == maxLevel)
+            if (T.HasSeal) break;
+            if (running(T) || lv == maxLevel)
             {
                 await FollowView();
                 await Wait(1200);
-                how = $"bot played level by level from {minLevel}; at the level-up to {T.Level} a request was running={T.Request.Active}; taken 1.2 s after the level-up at normal speed, nothing cleared: banner='{Main.Hud.BannerText}', notes={Main.Hud.NotesShown}, request card={Main.Hud.RequestCardVisible}, choice={Main.Hud.ChoiceCardVisible}, drive={Main.Hud.DriveCardVisible}";
+                how = $"bot played level by level from {minLevel}; at the level-up to {T.Level} a request was running={running(T)} (town's={T.Request.Active}); taken 1.2 s after the level-up at normal speed, nothing cleared: banner='{Main.Hud.BannerText}', notes={Main.Hud.NotesShown}, request card={Main.Hud.RequestCardVisible}, choice={Main.Hud.ChoiceCardVisible}, drive={Main.Hud.DriveCardVisible}";
                 break;
             }
         }
-        await Shot(id, title, how);
+        if (T.HasSeal) NotMade(id, title, $"the seal came before a level-up in {minLevel}..{maxLevel} with a request");
+        else await Shot(id, title, how);
         await ClearChoice();
     }
 

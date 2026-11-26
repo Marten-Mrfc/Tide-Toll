@@ -115,8 +115,11 @@ public partial class TownTest
         await Frames(10);
         Check(!Main.Hud.AchievementsOpen && Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
         var mark = Main.Hud.Mark(ShopItemKind.Hand, w);
-        Check(mark != null && mark.Text.Contains(T.HandName(w)), "the offer has a bookmark in the shop");
+        Check(mark != null && Main.Hud.MarkText(mark).Contains(T.HandName(w)), "the offer has a row in the shop");
         int hands = T.HandsBought(w);
+        // Night 3: a row that moved in the last 0.3 s takes no click (layout sheet section 3): aim when it is still.
+        int mi = -1; for (int i = 0; i < Main.Hud.Marks.Count; i++) if (Main.Hud.Marks[i] == mark) mi = i;
+        await Until(() => Main.Hud.RowCalm(mi), 120, "the hand's row comes to rest");
         var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
         await Click(markRect.GetCenter());
         Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");

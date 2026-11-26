@@ -38,13 +38,13 @@ public abstract partial class TownTestBase : Node
             await TestInput.Frames(this, 3);
             await Run();
             GD.Print(Marker + " " + string.Join(" ", Notes));
-            GetTree().Quit(0);
+            TestInput.QuitClean(this, 0);
         }
         catch (Exception e)
         {
             GD.Print("FAIL: " + e.Message);
             GD.Print(e.StackTrace ?? "");
-            GetTree().Quit(1);
+            TestInput.QuitClean(this, 1);
         }
     }
 

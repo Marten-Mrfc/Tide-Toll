@@ -24,8 +24,29 @@ public static class TestInput
 
     public static void Key(Key key, bool shift = false)
     {
-        Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true, ShiftPressed = shift });
-        Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false, ShiftPressed = shift });
+        using (var down = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true, ShiftPressed = shift }) Input.ParseInputEvent(down);
+        using (var up = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false, ShiftPressed = shift }) Input.ParseInputEvent(up);
+    }
+
+    /// <summary>
+    /// Night 3: the tests' common way out. Wrappers of engine objects that nothing holds any more (key events made for a
+    /// rebinding, events read back from the InputMap) are released before the engine stops: a full collection, the
+    /// pending finalizers, a second collection, then two frames so the released references reach the engine. Under
+    /// load the engine could exit before the collector had run and report each of them as "Leaked unsafe reference".
+    /// An object still held by managed code (a true leak: a static list, a live field) is not collected by this and is
+    /// still reported, so the test still fails on it.
+    /// </summary>
+    public static async void QuitClean(Node n, int code)
+    {
+        var tree = n.GetTree();
+        for (int i = 0; i < 2; i++)
+        {
+            System.GC.Collect();
+            System.GC.WaitForPendingFinalizers();
+            System.GC.Collect();
+            await n.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        }
+        tree.Quit(code);
     }
 
     /// <summary>Waits n process frames (input parsed in one frame is handled by the next).</summary>

@@ -32,7 +32,8 @@ public partial class Smoke : TownTestBase
         Check(T.CoinEarned > 0, "coin earned in the first 30 seconds");
         Check(Main.Villagers.Drawn == T.VillagerCount, "every villager drawn");
         Check(Main.Ground.Uploads > 5, "the ground was uploaded");
-        Check(Main.Hud.CoinText.EndsWith(" coin"), "coin shown");
+        // Night 3: the purse shows the amount beside the coin sign (an icon), never the word "coin" (layout sheet section 4).
+        Check(Main.Hud.CoinText == TownHud.Money(System.Math.Floor(T.Coin)), $"coin shown ({Main.Hud.CoinText})");
         Check(Main.Hud.FloatersStarted > 0, "a +N floated at a delivery");
         Notes.Add($"game_s={ran:0.0} coin={T.CoinEarned:0} trips={T.Trips} uploads={Main.Ground.Uploads}");
         SlowFramesKeepGameTime();

@@ -6,27 +6,18 @@ using TideToll.Sim.Town;
 namespace TideToll.Game;
 
 /// <summary>
-/// The shop side of the interface (round 3, rules v2): every shop item the simulation lists is a bookmark down the
-/// right edge, in four groups (People, Work, Roads, Town). A bookmark shows its name, track level, its own key, the
-/// price and either "Buy", how much coin is still needed (with a bar filling toward the price), a locked step with its
-/// reason ("Unlocks at level 9") or a finished track. The Pave and Extend bookmarks switch their click modes
-/// (TownHud.Pave.cs, TownHud.Extend.cs) instead of buying. The bell is at the bottom left with its rest time, and the
-/// charter's "Ring in the next age" above it.
+/// The shop's data, keys and rows' content (round 3, rules v2; night 3 layout in TownHud.ShopRows.cs and ShopRow.cs):
+/// every shop item the simulation lists, grouped People / Work / Roads / Town / The river, each with its own key. The
+/// Pave and Extend rows switch their click modes (TownHud.Pave.cs, TownHud.Extend.cs) instead of buying.
 /// </summary>
 public partial class TownHud
 {
     public enum ShopGroup { People, Work, Roads, Town, River }
     private static readonly string[] GroupNames = { "People", "Work", "Roads", "Town", "The river" };
 
-    private VBoxContainer _shop = null!;
     private readonly List<Button> _marks = new();
-    private readonly List<ColorRect> _markBars = new();
-    private readonly List<Control> _heads = new();
     private readonly List<ShopItem> _items = new();
     private readonly List<ShopItem> _shown = new();
-    private Button _bell = null!, _nextAge = null!;
-    private int[] _markSig = Array.Empty<int>();
-    private int _bellKey = int.MinValue, _bellKeysVersion = -1, _nextAgeSig = -1;
 
     /// <summary>The bookmark button for a shop item kind (first one; tests), or null.</summary>
     public Button? Mark(ShopItemKind kind)
@@ -40,12 +31,11 @@ public partial class TownHud
         for (int i = 0; i < _shown.Count && i < _marks.Count; i++) if (_shown[i].Kind == kind && (kind is ShopItemKind.Pave or ShopItemKind.Extend || _shown[i].Index == index)) return _marks[i];
         return null;
     }
-    /// <summary>The fill of a bookmark's bar toward its price (0..1; tests).</summary>
-    public float MarkBar(int i) => i >= 0 && i < _markBars.Count && _markBars[i].Visible ? _markBars[i].Size.X / Math.Max(1f, _marks[i].Size.X - 2f) : 0f;
+    /// <summary>The fill of a row's "not yet" line toward its price (0..1; tests).</summary>
+    public float MarkBar(int i) => i >= 0 && i < _rowOrder.Count && _rowOrder[i].State == ShopRow.PillState.NotYet ? _rowOrder[i].FillK : 0f;
+    /// <summary>The rows shown, in order (locked and finished purchases are not rows), and their buttons.</summary>
     public IReadOnlyList<ShopItem> ShownItems => _shown;
     public IReadOnlyList<Button> Marks => _marks;
-    public Button BellButton => _bell;
-    public Button NextAgeButton => _nextAge;
 
     public static ShopGroup GroupOf(ShopItemKind k) => k switch
     {
@@ -86,6 +76,9 @@ public partial class TownHud
     private static readonly Dictionary<(string, ShopItemKind), string> _keyLabels = new();
     private static int _keyLabelVersion = int.MinValue;
 
+    /// <summary>The one key printed in a row's key cap: the action's first bound key ("" none).</summary>
+    public static string FirstKey(string action) => KeyLabel(action, ShopItemKind.Villager);
+
     private static string MakeKeyLabel(string action, ShopItemKind kind)
     {
         if (action == "" || !InputMap.HasAction(action)) return "";
@@ -110,6 +103,14 @@ public partial class TownHud
         _ => "up-building",
     };
 
+    /// <summary>Sheet section 4: the shop's own icons by name (the asset track draws them; stand-ins until then).</summary>
+    public static string ShopIconName(in ShopItem it) => "shop-" + it.Kind switch
+    {
+        ShopItemKind.Value or ShopItemKind.RiverValue => "value-" + GoodName((Good)it.Index).ToLowerInvariant(),
+        ShopItemKind.BellTrack => "bell",
+        _ => it.Kind.ToString().ToLowerInvariant(),
+    };
+
     private static string StandInIcon(ShopItemKind k) => k switch
     {
         ShopItemKind.Villager => "ui-reputation", ShopItemKind.Pace => "ui-speed", ShopItemKind.Load => "ui-boat",
@@ -125,67 +126,20 @@ public partial class TownHud
 
     private void BuildShop()
     {
-        _compactShop = false; _tightShop = false;
-        _shop = new VBoxContainer { Name = "Shop", MouseFilter = Control.MouseFilterEnum.Ignore };
-        _shop.AddThemeConstantOverride("separation", UiKit.Px(_s, 4));
-        _root.AddChild(_shop);
-        _marks.Clear();
-        _markBars.Clear();
-        _heads.Clear();
-        _shown.Clear();
-        _markSig = Array.Empty<int>();
-        _bellKey = int.MinValue; _nextAgeSig = -1;
-
-        _bell = MakeButton("Bell", "ui-bell", "ui-sound-on");
-        _bell.Pressed += RingBell;
-        _root.AddChild(_bell);
-        _nextAge = MakeButton("NextAge", "ui-achievement", "ui-reputation");
-        _nextAge.Pressed += NextAgePressed;
-        _nextAge.Visible = false;
-        _root.AddChild(_nextAge);
+        BuildShopCard();
+        BuildTimers();
     }
 
-    private Button MakeButton(string name, string icon, string standIn, float fontPx = 16, float margin = 8)
-    {
-        var b = new Button
-        {
-            Name = name, Alignment = HorizontalAlignment.Left, FocusMode = Control.FocusModeEnum.None,
-            Icon = IconOr(icon, standIn), ExpandIcon = false, ClipText = false,
-            TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
-        };
-        b.AddThemeConstantOverride("icon_max_width", UiKit.Px(_s, 26));
-        b.AddThemeConstantOverride("h_separation", UiKit.Px(_s, 9));
-        b.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, fontPx));
-        // Bookmarks: paper slips with an ink edge; a slip that can be bought now is brighter.
-        var normal = UiKit.Card(_s, UiKit.Paper, 1.5f);
-        normal.SetContentMarginAll(UiKit.Px(_s, margin));
-        var hover = UiKit.Card(_s, UiKit.PaperHover, 2f);
-        hover.SetContentMarginAll(UiKit.Px(_s, margin));
-        var pressed = UiKit.Card(_s, UiKit.Pressed, 2.5f);
-        pressed.SetContentMarginAll(UiKit.Px(_s, margin));
-        var off = UiKit.Card(_s, UiKit.PaperDark, 1f);
-        off.SetContentMarginAll(UiKit.Px(_s, margin));
-        off.BorderColor = UiKit.FadedInk;
-        b.AddThemeStyleboxOverride("normal", normal);
-        b.AddThemeStyleboxOverride("hover", hover);
-        b.AddThemeStyleboxOverride("pressed", pressed);
-        b.AddThemeStyleboxOverride("hover_pressed", pressed);
-        b.AddThemeStyleboxOverride("disabled", off);
-        b.AddThemeColorOverride("font_disabled_color", UiKit.Ink.Lerp(UiKit.Paper, 0.25f));
-        b.MouseEntered += () => _main.Audio.UiHover();
-        return b;
-    }
 
-    private void RingBell()
-    {
-        if (!_drv.Town.RingBell()) Note(_drv.Town.Level < 2 ? "The bell comes at level 2." : $"The bell is resting: {Math.Ceiling(_drv.Town.BellWait)} s.");
-    }
-
-    /// <summary>Buys the shown item at a bookmark (the Pave and Extend bookmarks toggle their modes instead).</summary>
+    /// <summary>Buys the shown item at a row (the Pave and Extend rows toggle their modes instead).</summary>
     public void Activate(int i)
     {
         if (i < 0 || i >= _shown.Count) return;
-        var it = _shown[i];
+        ActivateItem(_shown[i]);
+    }
+
+    private void ActivateItem(ShopItem it)
+    {
         if (it.Kind == ShopItemKind.Pave) { _main.Audio.UiPress(); SetPaveMode(!PaveMode); return; }
         if (it.Kind == ShopItemKind.Extend) { _main.Audio.UiPress(); SetExtendMode(!ExtendMode); return; }
         // Read the item afresh: prices change after every purchase.
@@ -225,104 +179,98 @@ public partial class TownHud
         var t = _drv.Town;
         t.ShopItems(_raw);
         Grouped(_raw, _items);
-        if (!SameSet(_items, _shown) || _marks.Count != _items.Count) RebuildMarks();
-        _shown.Clear();
-        _shown.AddRange(_items);
-        if (_markSig.Length != _items.Count) { _markSig = new int[_items.Count]; for (int j = 0; j < _markSig.Length; j++) _markSig[j] = int.MinValue; }
+        SyncRows(t, PointerOverShop());
         int offer = 0;
-        for (int i = 0; i < _items.Count; i++)
+        for (int i = 0; i < _rowOrder.Count; i++)
         {
-            var it = _items[i];
-            var b = _marks[i];
+            var r = _rowOrder[i];
+            var it = r.Item;
+            // Pave's pill shows the cheapest road that can be paved now ("from"; no tip shows less).
+            if (it.Kind == ShopItemKind.Pave) it.Price = CheapestPave(it.Price);
             int ord = it.Kind == ShopItemKind.Building ? offer++ : 0;
-            // At the last level a step that "unlocks at a later level" never will: show it as finished for this age.
-            bool lastLevel = it.Reason == "Unlocks at a later level" && t.Level >= t.MaxLevel;
-            bool locked = IsLocked(it) && !lastLevel, done = IsFinished(it) || lastLevel, poor = it.Reason == "Not enough coin";
-            // The bar toward the price: only while coin is the one thing missing.
-            var bar = _markBars[i];
-            bar.Visible = poor && it.Price > 0;
-            if (bar.Visible)
-            {
-                float k = (float)Math.Clamp(t.Coin / it.Price, 0, 1);
-                float h = UiKit.Px(_s, 4);
-                bar.Position = new Vector2(1, b.Size.Y - h - 1);
-                bar.Size = new Vector2(Math.Max(0, (b.Size.X - 2) * k), h);
-            }
-            // Rebuild the bookmark's text only when something it shows changed (round 2: no strings per frame).
-            long need = poor ? (long)Math.Floor(Math.Max(1, it.Price - t.Coin)) : 0;
+            bool poor = it.Reason == "Not enough coin";
             bool mode = it.Kind == ShopItemKind.Pave ? PaveMode : it.Kind == ShopItemKind.Extend && ExtendMode;
+            var st = mode ? ShopRow.PillState.On : it.Affordable ? ShopRow.PillState.Affordable : poor ? ShopRow.PillState.NotYet : ShopRow.PillState.Blocked;
+            long need = poor ? (long)Math.Floor(Math.Max(1, it.Price - t.Coin)) : 0;
             int worth = WorthTenths(it.Worth);
-            int sig = HashCode.Combine((int)it.Kind, it.Level, (long)Math.Floor(it.Price), it.Affordable, it.Reason, need, mode, ord);
-            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId(), Settings.GameInput.Version, worth, locked, done);
-            if (sig == _markSig[i]) continue;
-            _markSig[i] = sig;
-            string key = KeyLabel(ActionFor(it, ord), it.Kind);
-            string keyPart = key.Length > 0 ? $"   [{key}]" : "";
-            string name = it.Kind switch
+            int sig = HashCode.Combine((int)it.Kind, it.Level, (long)Math.Floor(it.Price), (int)st, it.Reason, need, ord, worth);
+            sig = HashCode.Combine(sig, it.Name, Settings.GameInput.Version, r.Tall);
+            r.Button.Disabled = !(it.Affordable || mode);
+            if (sig != r.Sig)
             {
-                ShopItemKind.Pave => "Pave a road",
-                ShopItemKind.Extend => "Extend a cottage",
-                _ => it.Name,
-            };
-            bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
-            string lvl = track && it.Level > 0 ? $", level {it.Level}" : "";
-            string text;
-            // Round 6: finished and locked lines fold to one short line, so the column (both ages' groups) stays short and
-            // clear of the map's middle (the river group was squeezed into the bottom right).
-            if (done) text = $"{name}{lvl}: done";
-            else if (locked) text = $"{name}: {Lower(ShortLock(it.Reason))}";
-            else
-            {
-                string price = it.Price > 0 && (it.Index >= 0 || it.Kind is not (ShopItemKind.Pave or ShopItemKind.Extend)) ? Money(it.Price) + " coin" : "";
-                string state;
-                if (mode) state = it.Kind == ShopItemKind.Pave ? $"Pick a road. {StopKey("tt_pave")}" : $"Pick a cottage. {StopKey("tt_buy_5", 1)}";
-                else if (it.Affordable) state = it.Kind == ShopItemKind.Pave ? "Choose a road" : it.Kind == ShopItemKind.Extend ? "Choose a cottage" : "Buy";
-                else if (poor) state = $"Need {Money(need)} more";
-                else state = it.Reason.Length > 0 ? it.Reason : "Not yet";
-                text = $"{name}{lvl}{keyPart}\n{(price.Length > 0 ? price + ": " : "")}{state}";
-                // Round 6: when even the smaller bookmarks would run under the achievements card, the worth line goes
-                // (it stays in the tooltip).
-                if (worth > 0 && !_tightShop) text += "\n" + WorthText(worth);
+                r.Sig = sig;
+                RowContent(r, it, ord, st, need, worth);
             }
-            b.Text = text;
-            b.Disabled = !(it.Affordable || mode);
-            b.Modulate = locked || done ? new Color(1, 1, 1, 0.75f) : Colors.White;
-            // Round 6: a folded line is smaller and its icon narrower.
-            b.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, locked || done ? 13 : _compactShop ? 13 : 15));
-            b.AddThemeConstantOverride("icon_max_width", UiKit.Px(_s, locked || done ? 18 : 26));
-            b.TooltipText = worth > 0 && _tightShop ? Tooltip(it) + " " + WorthText(worth) + "." : Tooltip(it);
+            if (st == ShopRow.PillState.NotYet) r.SetFill(it.Price > 0 ? (float)Math.Clamp(t.Coin / it.Price, 0, 1) : 0f);
         }
-        // Lay out: bookmarks down the right edge, the bell bottom left, the next age above it.
-        var vp = _built;
-        _shop.Size = new Vector2(UiKit.Px(_s, 280), 0);
-        _shop.Position = new Vector2(vp.X - _shop.Size.X - UiKit.Px(_s, 14), UiKit.Px(_s, 10));
-        BellFrame(vp);
-        // Round 5: with the worth line every bookmark is three lines; when the column would run off the screen, the
-        // bookmarks are set smaller (kept so until the interface is built again).
-        // Round 6: the room is down to the achievements card (it was the screen's bottom, so at 150 percent the column ran
-        // under the card); a second step drops the worth lines.
-        // (The card is placed by BookFrame after this; until it has its place the old bound holds.)
-        bool achPlaced = _achMark != null && IsInstanceValid(_achMark) && _achMark.Size.Y > 0 && _achMark.Position.Y > vp.Y * 0.5f;
-        float room = (achPlaced ? _achMark!.Position.Y : vp.Y - UiKit.Px(_s, 80)) - UiKit.Px(_s, 10) - _shop.Position.Y;
-        if (_shop.GetCombinedMinimumSize().Y > room)
+        LayoutShop(dt, t);
+        FoldFrame(t);
+        AffordFrame();
+        PulseFrame(dt);
+    }
+
+    private void RowContent(ShopRow r, in ShopItem it, int ord, ShopRow.PillState st, long need, int worth)
+    {
+        if (r.Icon.Texture == null)
+            r.Icon.Texture = IconOr(ShopIconName(it), it.Kind == ShopItemKind.RiverValue ? (it.Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(it.Kind))
+                             ?? IconOr(StandInIcon(it.Kind), "ui-coin");
+        // Each part is set only when it changed (the signature changes with every coin while saving up).
+        string key = FirstKey(ActionFor(it, ord));
+        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0; }
+        bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
+        string name = RowName(it);
+        int step = track && it.Level > 0 ? it.Level : 0;
+        if (name != r.NameShown || step != r.StepShown)
         {
-            if (!_compactShop) { _compactShop = true; RebuildMarks(); _markSig = Array.Empty<int>(); }
-            else if (!_tightShop) { _tightShop = true; _markSig = Array.Empty<int>(); }
+            r.NameShown = name; r.StepShown = step;
+            r.Name.Text = name;
+            r.Step.Text = step > 0 ? step.ToString(Inv) : "";
+            r.PlaceStep();
+        }
+        string w = worth > 0 ? WorthLine(worth) : "";
+        string state = st switch
+        {
+            ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a lit road" : "Click a lit cottage",
+            ShopRow.PillState.NotYet => $"{Money(need)} short",
+            ShopRow.PillState.Blocked => it.Reason.Length > 0 ? it.Reason : "Not yet",
+            _ => "",
+        };
+        string line = w.Length > 0 && state.Length > 0 ? w + " · " + state : w + state;
+        // An optional caption is dropped whole, never cut: the worth goes first (it stays in the tooltip).
+        if (state.Length > 0 && TextWidth(r.Line2, line) > r.Line2.Size.X) line = state;
+        if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
+        if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
+        string price = st == ShopRow.PillState.On ? "On" : it.Price > 0 && !double.IsInfinity(it.Price) ? (it.Kind == ShopItemKind.Pave ? "from " : "") + UiKit.Short(it.Price)
+            : it.Kind == ShopItemKind.Pave ? "no road" : "–"; // L1 fix: a blocked Pave says why, not an empty box
+        if (price != r.PriceShown)
+        {
+            r.PriceShown = price;
+            r.Price.Text = price;
+            r.FromPrice(it.Kind == ShopItemKind.Pave);
+            r.FitPrice();
         }
     }
 
-    /// <summary>Round 6: the bell card while it rings.</summary>
+    private double CheapestPave(double fallback)
+    {
+        var t = _drv.Town;
+        double best = double.MaxValue;
+        for (int r = 0; r < t.RoadCount; r++) if (Pavable(r)) best = Math.Min(best, t.PavePrice(r));
+        return best < double.MaxValue ? best : fallback;
+    }
+
+    private static string RowName(in ShopItem it) => it.Kind switch
+    {
+        ShopItemKind.Pave => "Pave a road",
+        ShopItemKind.Extend => "Extend a cottage",
+        _ => it.Name,
+    };
+
+    /// <summary>"+3.7 a minute": what one more is worth (line 2 of a row).</summary>
+    public static string WorthLine(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} a minute" : $"+{Money(tenths / 10)} a minute";
+
+    /// <summary>Round 6: the bell's whole sentence while it rings (its tooltip).</summary>
     public static string BellRingingText(int left, int restAfter) => restAfter > 0 ? $"Ringing: {left} s left, then rests {restAfter} s" : $"Ringing: {left} s left, ready again after";
-
-    private bool _tightShop;
-    /// <summary>The worth lines are dropped so the column fits above the achievements card (tests).</summary>
-    public bool TightShop => _tightShop;
-    /// <summary>The shop column's rectangle on screen (tests: clear of the achievements card).</summary>
-    public Rect2 ShopRect => _shop.GetGlobalRect();
-
-    private bool _compactShop;
-    /// <summary>The bookmarks are set smaller so the column fits (tests).</summary>
-    public bool CompactShop => _compactShop;
 
     /// <summary>Call when key bindings changed, so the bookmarks print the new keys.</summary>
     /// <summary>Kept for callers: the keys are reprinted by themselves when the bindings change (GameInput.Version).</summary>
@@ -334,6 +282,9 @@ public partial class TownHud
 
     /// <summary>Round 6: "Unlocks at level 25" reads "level 25" on a folded line.</summary>
     private static string ShortLock(string reason) => reason.StartsWith("Unlocks at ") ? reason.Substring("Unlocks at ".Length) : reason;
+
+    /// <summary>"Unlocks at level 7" reads "at level 7" on a group's heading line.</summary>
+    private static string FoldLock(string reason) => reason.StartsWith("Unlocks ") ? reason.Substring("Unlocks ".Length) : reason;
 
     private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
 
@@ -363,74 +314,6 @@ public partial class TownHud
 
     public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 
-    private void RebuildMarks()
-    {
-        foreach (var m in _marks) { _shop.RemoveChild(m); m.QueueFree(); }
-        foreach (var h in _heads) { _shop.RemoveChild(h); h.QueueFree(); }
-        _marks.Clear();
-        _markBars.Clear();
-        _heads.Clear();
-        int group = -1;
-        for (int i = 0; i < _items.Count; i++)
-        {
-            int g = (int)GroupOf(_items[i].Kind);
-            if (g != group)
-            {
-                group = g;
-                var head = UiKit.Text(GroupNames[g], _s, _compactShop ? 14 : 17, UiKit.Serif);
-                head.HorizontalAlignment = HorizontalAlignment.Right;
-                head.Name = "Group" + GroupNames[g];
-                _shop.AddChild(head);
-                _heads.Add(head);
-            }
-            var b = MakeButton("Mark" + i, (_items[i].Kind == ShopItemKind.RiverValue ? (_items[i].Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(_items[i].Kind)), StandInIcon(_items[i].Kind), _compactShop ? 13 : 15, _compactShop ? 3 : 5);
-            int k = i;
-            b.Pressed += () => Activate(k);
-            b.CustomMinimumSize = new Vector2(UiKit.Px(_s, 270), 0);
-            var bar = new ColorRect { Name = "Bar", Color = new Color(Palette.Thatch, 0.9f), MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-            b.AddChild(bar);
-            _shop.AddChild(b);
-            _marks.Add(b);
-            _markBars.Add(bar);
-        }
-    }
-
-    private void BellFrame(Vector2 vp)
-    {
-        var t = _drv.Town;
-        bool unlocked = t.Level >= 2 || t.BellRings > 0 || t.BellReady || t.BellWait > 0;
-        // Round 6: while it rings the card says the seconds left and the rest after (the ring ends at start + duration, the
-        // bell is ready at start + rest, so the ring's end is BellWait - BellRest + BellDuration from now).
-        int ringLeft = t.BellRinging ? Math.Max(1, (int)Math.Ceiling(t.BellWait - t.BellRest + t.BellDuration)) : 0;
-        int restAfter = t.BellRinging ? Math.Max(0, (int)Math.Ceiling(t.BellRest - t.BellDuration)) : 0;
-        int key = !unlocked ? -1 : t.BellRinging ? -(10000 + ringLeft * 1000 + Math.Min(999, restAfter)) : t.BellReady ? -3 : (int)Math.Ceiling(t.BellWait);
-        if (Settings.GameInput.Version != _bellKeysVersion) { _bellKeysVersion = Settings.GameInput.Version; _bellKey = int.MinValue; }
-        if (key != _bellKey)
-        {
-            _bellKey = key;
-            string state = key == -1 ? "Comes at level 2" : key <= -10000 ? BellRingingText(ringLeft, restAfter) : key == -3 ? "Ring it" : $"Rests {key} s";
-            _bell.Text = $"The bell{Settings.GameInput.Tag("tt_bell", "   ")}\n{state}";
-            _bell.TooltipText = "Ring the bell: everyone hurries for a few seconds, then it rests.";
-        }
-        _bell.Disabled = !t.BellReady;
-        _bell.Size = new Vector2(UiKit.Px(_s, 250), 0);
-        _bell.ResetSize();
-        _bell.Position = new Vector2(UiKit.Px(_s, 16), vp.Y - _bell.Size.Y - UiKit.Px(_s, 16));
-        _nextAge.Visible = (t.CanRingNextAge || t.NextAgeRung) && _fullA > 0.01f && !AgePageOpen;
-        if (_nextAge.Visible)
-        {
-            int ns = (t.NextAgeRung ? 1 : 0) + (t.HasSeal ? 4 : 0) + 8 * Settings.GameInput.Version;
-            if (ns != _nextAgeSig)
-            {
-                _nextAgeSig = ns;
-                _nextAge.Text = t.NextAgeRung ? $"{(t.HasSeal ? "The second age" : "The river age")}{Settings.GameInput.Tag("tt_next_age", "   ")}\nRead its page again"
-                                              : $"Ring in the next age{Settings.GameInput.Tag("tt_next_age", "   ")}\nThe charter is yours";
-            }
-            _nextAge.ResetSize();
-            _nextAge.Position = new Vector2(UiKit.Px(_s, 16), _bell.Position.Y - _nextAge.Size.Y - UiKit.Px(_s, 8));
-        }
-    }
-
     public override void _UnhandledInput(InputEvent e)
     {
         // Round 4: while the book is closing, closed, on the settings pages or opening, the town's interface takes no
@@ -454,7 +337,8 @@ public partial class TownHud
         ExtendInput(e);
     }
 
-    /// <summary>The bookmark whose own key this is, if one is shown.</summary>
+    /// <summary>The purchase whose own key this is: a row (offers take F, G, H in the order the rows show them), or a
+    /// locked step that is not a row (its key still answers with why, as before).</summary>
     private bool ActivateByKey(InputEvent e)
     {
         int offer = 0;
@@ -463,6 +347,12 @@ public partial class TownHud
             int ord = _shown[i].Kind == ShopItemKind.Building ? offer++ : 0;
             string a = ActionFor(_shown[i], ord);
             if (a.Length > 0 && Is(e, a)) { Activate(i); return true; }
+        }
+        for (int i = 0; i < _items.Count; i++)
+        {
+            if (_items[i].Kind == ShopItemKind.Building) continue;
+            string a = ActionFor(_items[i], 0);
+            if (a.Length > 0 && Is(e, a)) { ActivateItem(_items[i]); return true; }
         }
         return false;
     }

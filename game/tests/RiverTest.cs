@@ -186,9 +186,10 @@ public partial class RiverTest : TownTestBase
         }
         // The tide dial.
         string tide = Main.Hud.TideText;
-        if (t.HighWater) { Check(tide.StartsWith("High water"), "dial at high water: " + tide); _tideHigh++; }
-        else if (t.FordOpen) { Check(tide.StartsWith("Low water"), "dial at low water: " + tide); _tideLow++; }
-        Check(tide.Contains(t.TideRising ? "rising, highest in" : "falling, lowest in"), "dial names the next turn: " + tide);
+        // Night 3: the tide's shorter text in the timers zone ("High, falling" / "low in 1:14"; layout sheet section 3).
+        if (t.HighWater) { Check(tide.StartsWith("High,"), "dial at high water: " + tide); _tideHigh++; }
+        else if (t.FordOpen) { Check(tide.StartsWith("Low,"), "dial at low water: " + tide); _tideLow++; }
+        Check(tide.Contains(t.TideRising ? "rising\nhigh in" : "falling\nlow in"), "dial names the next turn: " + tide);
         // People wait at the ford at high water: drawn where they stand on the bank.
         if (t.CrossingExists(RiverLinkKind.Ford) && !t.FordOpen && t.CrossingWaiting(RiverLinkKind.Ford, 0) + t.CrossingWaiting(RiverLinkKind.Ford, 1) > 0) _fordWaitSeen++;
         var f = t.Ferry;

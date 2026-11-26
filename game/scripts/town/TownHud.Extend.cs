@@ -125,16 +125,14 @@ public partial class TownHud
         if (HoverCottage >= 0)
         {
             int room = t.CottageRoom(HoverCottage);
-            string tip = $"Extend this cottage: {Money(t.ExtendPrice)} coin. Rooms {room} to {room + 1}.";
-            if (_hoverTip.Text != tip) { _hoverTip.Text = tip; _hoverTip.ResetSize(); }
+            SetCoinText(_hoverTip, "Extend this cottage: ", t.ExtendPrice, $". Rooms {room} to {room + 1}.");
             _hoverTip.Position = TipBeside(PlotScreenRect(t.Plan.Plots[HoverCottage]));
         }
         int sug = t.SuggestedExtend();
         _suggest.Visible = sug >= 0 && Extendable(sug);
         if (_suggest.Visible)
         {
-            string s = $"Suggested: {Money(t.ExtendPrice)} coin";
-            if (_suggest.Text != s) { _suggest.Text = s; _suggest.ResetSize(); }
+            SetCoinText(_suggest, "Suggested: ", t.ExtendPrice, "");
             _suggest.Position = PlotScreen(sug) - new Vector2(_suggest.Size.X / 2f, _suggest.Size.Y + UiKit.Px(_s, 24));
         }
         int sig = t.ExtensionsBought * 1000 + sug + 7 * t.Level;

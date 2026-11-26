@@ -121,9 +121,9 @@ public partial class TownTest
         // A note slip is a card too.
         Main.Hud.Note("A note to click on.");
         await Frames(2);
-        var notes = Main.Hud.GetNode<Control>("Root/Notes");
-        var slip = notes.GetChild<Control>(notes.GetChildCount() - 1);
-        Check(Main.Hud.OverInterface(slip.GetGlobalRect().GetCenter()), "cards: a note slip does not count as a card");
+        // Night 3: the note is the ledger's note section.
+        var slip = Main.Hud.GetNode<Control>("Root/Ledger/NoteSection");
+        Check(Main.Hud.OverInterface(slip.GetGlobalRect().GetCenter()), "cards: the note section does not count as a card");
         // Leave Pave mode, put the suggested road under the ledger, and choose Pave again: the road comes out from under it.
         await Key(Godot.Key.Escape);
         Check(!Main.Hud.PaveMode && !Main.Menu.IsPaused, "cards: Esc leaves Pave mode");

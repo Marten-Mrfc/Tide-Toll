@@ -10,7 +10,7 @@ public partial class SettingsTest
 {
     private static bool Fires(string action, Key key)
     {
-        var e = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true };
+        using var e = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true };
         return InputMap.EventIsAction(e, action, true);
     }
 

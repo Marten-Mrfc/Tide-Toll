@@ -46,26 +46,24 @@ public partial class TownHud
     {
         _iconHigh = IconOr("ui-tide-high", "ui-boat");
         _iconLow = IconOr("ui-tide-low", "ui-boat");
+        // Night 3: the tide in the timers zone (bottom left, beside the bell): the dial, "High, falling", "low in 1:14".
         _tide = new PanelContainer { Name = "Tide", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-        var box = UiKit.Card(_s, new Color(UiKit.Paper, 0.95f), 1.2f);
-        box.SetContentMarginAll(UiKit.Px(_s, 7));
-        _tide.AddThemeStyleboxOverride("panel", box);
-        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", UiKit.Px(_s, 8));
-        _tide.AddChild(row);
-        _tideIcon = new TextureRect
-        {
-            Texture = _iconHigh, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = Vector2.One * UiKit.Px(_s, 34), MouseFilter = Control.MouseFilterEnum.Ignore,
-            TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
-        };
-        row.AddChild(_tideIcon);
-        _tideDial = new Control { Name = "Dial", CustomMinimumSize = Vector2.One * UiKit.Px(_s, 40), MouseFilter = Control.MouseFilterEnum.Ignore };
+        _tide.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Card, 0));
+        var holder = new Control { Name = "Box", MouseFilter = Control.MouseFilterEnum.Ignore };
+        _tide.AddChild(holder);
+        _tideIcon = UiKit.IconRect(_s, _iconHigh);
+        _tideIcon.Visible = false;
+        holder.AddChild(_tideIcon);
+        _tideDial = new Control { Name = "Dial", MouseFilter = Control.MouseFilterEnum.Ignore, Position = new Vector2(UiKit.U(_s, 6), UiKit.U(_s, 6)), Size = Vector2.One * UiKit.U(_s, 36) };
         _tideDial.Draw += DrawDial;
-        row.AddChild(_tideDial);
-        _tideText = UiKit.Text("", _s, 16, UiKit.UiBold);
-        row.AddChild(_tideText);
-        _tide.TooltipText = "The tide. Boats come at high water; the ford can be walked at low water.";
+        holder.AddChild(_tideDial);
+        _tideText = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont);
+        _tideText.Name = "State";
+        _tideText.AutowrapMode = TextServer.AutowrapMode.Off;
+        _tideText.MaxLinesVisible = 2;
+        _tideText.Position = new Vector2(UiKit.U(_s, 48), UiKit.U(_s, 2));
+        _tideText.Size = new Vector2(Zones.Tide.Size.X - UiKit.U(_s, 52), UiKit.U(_s, 44));
+        holder.AddChild(_tideText);
         _root.AddChild(_tide);
         _tideSig = int.MinValue;
 
@@ -158,14 +156,13 @@ public partial class TownHud
         {
             _tideSig = sig;
             string state = t.HighWater ? "High water" : t.FordOpen ? "Low water" : t.TideRising ? "The tide is rising" : "The tide is falling";
-            _tideText.Text = t.TideRising ? $"{state}\nrising, highest in {secs / 60}:{secs % 60:00}" : $"{state}\nfalling, lowest in {secs / 60}:{secs % 60:00}";
+            string lvl = t.HighWater ? "High" : t.FordOpen ? "Low" : t.TideLevel >= 0.5 ? "High" : "Low";
+            _tideText.Text = t.TideRising ? $"{lvl}, rising\nhigh in {secs / 60}:{secs % 60:00}" : $"{lvl}, falling\nlow in {secs / 60}:{secs % 60:00}";
+            _ = state;
             _tideIcon.Texture = t.TideLevel >= 0.5 ? _iconHigh : _iconLow;
             _tideDial.QueueRedraw();
         }
         else if (_drv.StepsRun % 10 == 0) _tideDial.QueueRedraw();
-        _tide.ResetSize();
-        var led = _ledger.GetRect();
-        _tide.Position = new Vector2(led.End.X + UiKit.Px(_s, 10), led.Position.Y);
     }
 
     /// <summary>River events in the interface: coin numbers at the landing and the toll, the seal's moment.</summary>
@@ -203,9 +200,7 @@ public partial class TownHud
         if (best < 0) return false;
         var v = t.Boat(best);
         _req.Visible = true;
-        _req.Position = new Vector2(UiKit.Px(_s, 16), (_ledger != null ? _ledger.GetRect().End.Y : 180) + UiKit.Px(_s, 8));
-        _req.Modulate = new Color(1, 1, 1, _fullA);
-        _reqBox.BgColor = new Color(UiKit.Paper, 0.96f);
+        _req.Modulate = Colors.White;
         int secs = (int)Math.Ceiling(v.Patience);
         int sig = HashCode.Combine(v.Id, v.Loaded, v.Want, secs, (int)v.Phase, 77);
         if (sig != _reqSig)
@@ -214,13 +209,12 @@ public partial class TownHud
             _reqWho.Text = $"Request from the skipper {v.Skipper}";
             _reqAsk.Text = $"{v.Want} {GoodName(v.Good)} at the landing";
             _reqDone.Text = v.Phase == BoatPhase.Moored ? $"Loaded {v.Loaded} of {v.Want}, leaves in {secs} s" : "Waiting for a berth";
-            _reqReward.Text = $"Pays {Money(t.BoatUnitPrice(v.Good))} coin a unit, more when filled";
+            _reqReward.Text = $"Pays {Money(t.BoatUnitPrice(v.Good))} a unit, more when filled";
+            _reqDone.AddThemeColorOverride("font_color", UiKit.MutedNumber);
+            _reqTintDirty = true;
         }
         float k = (float)Math.Clamp(v.PatienceMax > 0 ? v.Patience / v.PatienceMax : 0, 0, 1);
-        var sz = _reqBarBack.Size;
-        _reqBar.Position = new Vector2(1, 1);
-        _reqBar.Size = new Vector2(Math.Max(0, (sz.X - 2) * k), Math.Max(0, sz.Y - 2));
-        _reqBar.Color = k < 0.25f ? UiKit.Warn : UiKit.Focus;
+        SetGoalBar(v.Want > 0 ? Math.Min(v.Loaded, v.Want) / (float)v.Want : 0, k, _reqDone, UiKit.MutedNumber);
         return true;
     }
 

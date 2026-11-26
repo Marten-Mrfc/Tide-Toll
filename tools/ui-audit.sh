@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The interface audit tour: one town (seed 1) from the first minute to the borough seal, one picture per interface
-# state (u01..u41) and per state a JSON of every visible interface control (rect in window pixels, text, opacity,
+# state (u01..u41, no u37) and per state a JSON of every visible interface control (rect in window pixels, text, opacity,
 # group), under xvfb with the game's renderer (as tools/tour.sh).
 #   tools/ui-audit.sh [--res=1920x1080] [--scale=80|100|150] [--only=u01,u07] [--out=DIR] [--no-build]
 #   default DIR: build/n3/ui-audit/<res>-<scale>. Then: python3 tools/ui-audit-report.py DIR  (writes DIR/report.md)
@@ -46,7 +46,7 @@ run() {
 args=(); [ -n "$ONLY" ] && args+=("$ONLY")
 run "${args[@]}"; code=$?
 if [ "$code" != 0 ] && [ -z "$ONLY" ] && ! grep -q '^FAIL:' "$OUT/audit.log" && [ ! -f "$OUT/shots.json" ]; then
-  missing=$(python3 -c 'import os,sys; ids=["u%02d"%i for i in list(range(1,26))+list(range(30,42))]; print(",".join(i for i in ids if not os.path.exists(os.path.join(sys.argv[1], i+".png"))))' "$OUT")
+  missing=$(python3 -c 'import os,sys; ids=["u%02d"%i for i in [i for i in list(range(1,26))+list(range(30,42)) if i!=37]]; print(",".join(i for i in ids if not os.path.exists(os.path.join(sys.argv[1], i+".png"))))' "$OUT")
   echo "ui-audit: Godot stopped without a verdict (crash?); retaking: $missing"
   mv "$OUT/audit.log" "$OUT/audit-crashed.log"
   run --only="$missing"; code=$?

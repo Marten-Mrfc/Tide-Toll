@@ -10,7 +10,7 @@ namespace TideToll.Game;
 /// rebuilt when the window size changes, so text is rasterised at its real size and stays sharp.
 /// Icons are the SVG files rasterised at the size they are shown.
 /// </summary>
-public static class UiKit
+public static partial class UiKit
 {
     /// <summary>Pixels of a bookmark tab tucked under the page edge (before scaling).</summary>
     public const float Tuck = 9f;

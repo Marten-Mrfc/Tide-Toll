@@ -115,11 +115,9 @@ public partial class TownTest : TownTestBase
         var items = Main.Hud.ShownItems;
         for (int i = 0; i < items.Count && i < Main.Hud.Marks.Count; i++)
         {
-            string text = Main.Hud.Marks[i].Text;
-            int a = text.IndexOf('['), b = text.IndexOf(']');
-            if (a < 0 || b < a) continue; // a finished track shows no key
-            string key = text.Substring(a + 1, b - a - 1);
-            Check(seen.Add(key), $"two bookmarks share the key [{key}]");
+            string key = Main.Hud.RowKey(i);
+            if (key.Length == 0) continue; // a row without a key keeps the empty column
+            Check(seen.Add(key), $"two rows share the key [{key}]");
         }
     }
 
@@ -172,6 +170,8 @@ public partial class TownTest : TownTestBase
         var items = Main.Hud.ShownItems;
         for (int j = 0; j < items.Count; j++) if (items[j].Kind == it.Kind && items[j].Index == it.Index) i = j;
         if (i < 0) return;
+        // Night 3: a row that moved in the last 0.3 s takes no click (layout sheet section 3): aim when it is still.
+        await Until(() => Main.Hud.RowCalm(i), 120, "the row comes to rest");
         var b = Main.Hud.Marks[i];
         long purchases = T.Purchases;
         int villagers = T.VillagerCount, pace = T.PaceLevel, load = T.LoadLevel, built = Main.Buildings.BuiltCount;
@@ -240,7 +240,12 @@ public partial class TownTest : TownTestBase
         for (int f = 0; f < 30 && level == T.Level; f++)
         {
             if (Main.Hud.BannerText.StartsWith($"Level {level}:") && Main.Hud.BannerGiftScreen is { } g && Main.Hud.FullAlpha >= 1f)
-                Check(!Main.Hud.BannerRect.HasPoint(g), $"level {level}: the banner covers its gift (banner {Main.Hud.BannerRect}, gift at {g})");
+            {
+                // Night 3: the banner has one fixed place, the Message zone (layout sheet section 2; the gift may lie
+                // under it: "a zone never moves"). Was: the banner never covers its gift.
+                var z = new HudZones(GetViewport().GetVisibleRect().Size, Main.Hud.UiScale);
+                Check(Main.Hud.BannerRect.IsEqualApprox(z.Banner), $"level {level}: the banner {Main.Hud.BannerRect} is not in the Message zone {z.Banner} (gift at {g})");
+            }
             await Frames(1);
         }
         _gifts++;
@@ -257,9 +262,11 @@ public partial class TownTest : TownTestBase
         Check(card.Contains(r.Amount + " " + good), $"the card names the amount and good ({card})");
         Check(card.Contains(r.WhoName.ToLowerInvariant().Substring(4)), $"the card names who asks ({card})");
         Check(card.Contains($"Delivered {Math.Min(r.Delivered, r.Amount)} of {r.Amount}"), $"the card shows what is delivered ({card})");
-        Check(card.Contains(TownHud.Money(r.RewardCoin) + " coin"), $"the card shows the reward ({card})");
-        float bar = Main.Hud.RequestTimeBar, want = (float)(r.SecondsLeft / r.Seconds);
-        Check(Math.Abs(bar - want) < 0.08f, $"the time bar shows the time left ({bar:0.00} vs {want:0.00})");
+        Check(card.Contains("Reward: " + TownHud.Money(r.RewardCoin)), $"the card shows the reward ({card})");
+        float bar = Main.Hud.RequestCountBar, want = Math.Min(r.Delivered, r.Amount) / (float)Math.Max(1, r.Amount);
+        Check(Math.Abs(bar - want) < 0.08f, $"the goal bar shows the count delivered ({bar:0.00} vs {want:0.00})");
+        float left = Main.Hud.RequestTimeBar, wantLeft = (float)(r.SecondsLeft / r.Seconds);
+        Check(Math.Abs(left - wantLeft) < 0.08f, $"the goal knows the time left ({left:0.00} vs {wantLeft:0.00})");
         _requestChecks++;
     }
 
@@ -347,7 +354,7 @@ public partial class TownTest : TownTestBase
         TestInput.Motion(at);
         await Frames(3);
         int tip = Main.Hud.HoverRoad;
-        Check(tip >= 0 && Main.Hud.HoverTipText.Contains("coin"), $"hovering a road names it with its price (hover {tip})");
+        Check(tip >= 0 && Main.Hud.HoverTipText.Contains(TownHud.Money(T.PavePrice(tip))), $"hovering a road names it with its price (hover {tip}, '{Main.Hud.HoverTipText}')");
         double coin = T.Coin, price = T.PavePrice(tip);
         var s0 = T.RoadInfo(tip).Surface;
         await Click(at);
@@ -371,7 +378,8 @@ public partial class TownTest : TownTestBase
         Check(Main.Buildings.BellSwing > 0, "the bell swings");
         Check(Main.Hud.BellButton.Disabled, "the bell rests after ringing");
         // Round 6: while it rings the card says the time left and the rest after.
-        if (T.BellRinging) Check(Main.Hud.BellButton.Text.Contains(" s left, then rests "), $"the ringing bell's card says the time left: {Main.Hud.BellButton.Text}");
+        // Night 3: the bell shows the seconds left; its tooltip has the whole sentence (layout sheet section 3).
+        if (T.BellRinging) Check(Main.Hud.BellTipText.Contains(" s left, then rests "), $"the ringing bell's tooltip says the time left and the rest: {Main.Hud.BellTipText}");
         await LayoutChecks();
     }
 
@@ -381,7 +389,10 @@ public partial class TownTest : TownTestBase
     {
         await Frames(3);
         var h = Main.Hud;
-        if (h.RequestRect.Size.Y > 0) Check(!h.LedgerRect.Intersects(h.RequestRect), $"the ledger {h.LedgerRect} and the request card {h.RequestRect} overlap");
+        // Night 3: the request is the ledger's goal section (inside the ledger, in its own rectangle), and the shop ends
+        // above navigation (layout sheet section 2).
+        var z = new HudZones(GetViewport().GetVisibleRect().Size, h.UiScale);
+        if (h.RequestRect.Size.Y > 0) Check(h.LedgerRect.Encloses(h.RequestRect) && h.RequestRect.IsEqualApprox(z.Goal), $"the request {h.RequestRect} is the ledger's goal section {z.Goal}");
         var ach = h.AchievementsMark;
         if (ach.Visible) Check(h.ShopRect.End.Y <= ach.GetGlobalRect().Position.Y + 1, $"the shop {h.ShopRect} runs under the achievements card {ach.GetGlobalRect()}");
         var kept = h.LabelsShownRects;
