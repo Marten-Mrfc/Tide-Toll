@@ -73,6 +73,7 @@ public partial class TownTest : TownTestBase
                 Notes.Add($"worn={firm:0.00}");
                 wornSeen = true;
             }
+            if (T.ChoiceOpen && !_boonByClick) { await BoonByClick(); continue; }
             if (f % 20 == 0) { CheckRequestCard(); await CheckHint(); }
             if (Got(ShopItemKind.Pave) == 0 && PavableNow()) { await PaveByClick(); continue; }
             if (Got(ShopItemKind.Extend) == 0 && Main.Hud.Mark(ShopItemKind.Extend) is { Disabled: false }) { await ExtendByClick(); continue; }
@@ -87,6 +88,7 @@ public partial class TownTest : TownTestBase
         Check(_hintChecks > 0, "a hint was given and its line checked");
         Notes.Add($"level={T.Level} bought={_bought} {Kinds()} gifts={_gifts} requests={_requestChecks} hints={_hintChecks} markers={_markerChecks} time={T.Time:0}s");
 
+        await RulesV3();
         await PaveAtTheEndOfTheAge();
     }
 

@@ -102,3 +102,13 @@ Work on branch `claude/prototype-1`. Do not edit `docs/overnight-log.md` unless 
 ## The second age (round 4)
 
 `scripts/town/River*.cs` draw and sound the river (plots, crossings, tide via the ground shader's `tide_drop`, boats, seal); `TownHud.River.cs` holds the tide dial, the ring's page turn, the river and seal pages and skippers' requests. River positions are already at cell centres (draw `x * Cell`). See `docs/plans/r4-river-handover.md`.
+
+## Round 5 (rules v3 in the game)
+
+- `TownHud.Choice.cs`: the choice of two (card at the top centre, two halves with icon, name, line, worth; click or `tt_choose_a` Z / `tt_choose_b` X; the town runs on), the charter drive's card (bar in tenths, under the request card; notes stack below it), milestone notes, the extra hands' "+ hand" markers over workplaces, touch notes (one in four, never a banner).
+- `TownTouches.cs`: the simulation's touches (`Town.Touch(i)`) as `prop-*.glb` at their spots, popping in; a loaded town shows them at once.
+- `TownGround.Lanes.cs`: river lanes are worn into the ground like roads, from `RiverLink.Px/Py` (any number of points), wearing in over `LaneWearSeconds`.
+- Shop: `ShopItem.Locked` / `Finished` (no reason parsing), a third line "+N coin a minute" from `ShopItem.Worth`; the column goes compact (13 px) when it would run off the screen. `Pavable`/`Extendable` use `CanPaveNow`/`CanExtendNow`.
+- Summary page and achievements page follow the age (second age: its level, boats filled, tolls, the river's 16 achievements); the boons held are listed on the summary.
+- Allocation: never pass a string where Godot wants a `StringName` in per-frame code (cache `static readonly StringName`): each call makes a tracked object, and the tracker's growth cost 1.3 MB in one frame (game-perf). `Perf.cs` prints the largest frame and the node that allocated it.
+- `TownDriver.RunBotUntil`: checks the condition before the bot acts (to leave a choice open for a test).

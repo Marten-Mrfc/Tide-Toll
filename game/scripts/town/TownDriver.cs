@@ -69,6 +69,18 @@ public partial class TownDriver : Node
         return n;
     }
 
+    /// <summary>
+    /// Round 5: like <see cref="RunBot"/>, but the condition is checked after each step and before the bot acts, so a
+    /// moment the bot would answer at once (a choice of two offered) is left open for the player.
+    /// </summary>
+    public int RunBotUntil(TownBot bot, Func<Town, bool> until, int maxTicks)
+    {
+        int n = 0;
+        if (until(Town)) return 0;
+        while (n < maxTicks) { Town.Step(); n++; StepsRun++; if (until(Town)) break; bot.Act(Town); }
+        return n;
+    }
+
     public void SetSpeed(double s) => Speed = Math.Clamp(s, 0.25, 256);
     public void SetPaused(bool p) => Paused = p;
 

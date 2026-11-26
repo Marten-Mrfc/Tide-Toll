@@ -42,6 +42,8 @@ public static class GameInput
         new("tt_offer_3", "Buy a third building", Key.H, Key.None),
         new("tt_achievements", "Achievements", Key.Tab, Key.None),
         new("tt_next_age", "Ring in the next age", Key.N, Key.None),
+        new("tt_choose_a", "Take the left boon", Key.Z, Key.None),
+        new("tt_choose_b", "Take the right boon", Key.X, Key.None),
     };
 
     public static int IndexOf(string action)

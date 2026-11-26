@@ -124,6 +124,7 @@ public partial class TownHud : CanvasLayer
         }
         BuildBookParts();
         BuildRiverParts();
+        BuildChoiceParts();
         _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner, _achMark };
         _fullA = -1f;
         Refresh();
@@ -195,6 +196,7 @@ public partial class TownHud : CanvasLayer
         HomeFrame();
         BookFrame((float)delta);
         RiverFrame((float)delta);
+        ChoiceFrame((float)delta);
     }
 
     // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
@@ -304,7 +306,8 @@ public partial class TownHud : CanvasLayer
     {
         if (!Visible) return false;
         if (Over(_ledger, p) || Over(_req, p) || Over(_hint, p) || Over(_banner, p) || Over(_shop, p) || Over(_bell, p)
-            || Over(_nextAge, p) || Over(_slim, p) || Over(_paveBanner, p) || Over(_achMark, p) || Over(PauseMark, p) || Over(_home, p))
+            || Over(_nextAge, p) || Over(_slim, p) || Over(_paveBanner, p) || Over(_achMark, p) || Over(PauseMark, p) || Over(_home, p)
+            || Over(_choice, p) || Over(_drive, p))
             return true;
         for (int i = 0; i < _noteList.Count; i++)
             if (IsInstanceValid(_noteList[i].label) && Over(_noteList[i].label.GetParent() as Control, p)) return true;
@@ -347,6 +350,7 @@ public partial class TownHud : CanvasLayer
     private void StepNotes(float dt)
     {
         float top = _req.Visible ? _req.GetRect().End.Y : _ledger != null ? _ledger.GetRect().End.Y : 180;
+        if (_drive != null && _drive.Visible) top = Math.Max(top, _drive.GetRect().End.Y);
         _notes.Position = new Vector2(UiKit.Px(_s, 16), top + UiKit.Px(_s, 10));
         for (int i = _noteList.Count - 1; i >= 0; i--)
         {
@@ -385,7 +389,7 @@ public partial class TownHud : CanvasLayer
                 Banner("The charter", "The town is granted its charter. Ring in the next age when you are ready.");
                 FocusBellGreen();
                 break;
-            default: RiverEvent(e); break;
+            default: if (!ChoiceEvent(e)) RiverEvent(e); break;
         }
     }
 

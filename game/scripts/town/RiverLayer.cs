@@ -235,7 +235,7 @@ public partial class RiverLayer : Node3D
         switch (l.Kind)
         {
             case RiverLinkKind.Lane:
-                root.AddChild(Ribbon(l, 1.2f, Palette.TrailEarth.Lerp(Palette.BentGrass, 0.25f)));
+                // Round 5: lanes are worn into the ground by TownGround (TownGround.Lanes.cs), like the first age's roads.
                 break;
             case RiverLinkKind.Ford:
             {

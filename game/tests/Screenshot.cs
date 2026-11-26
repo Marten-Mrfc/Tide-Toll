@@ -28,6 +28,7 @@ public partial class Screenshot : TownTestBase
         // --age-only: straight to the charter and the end-of-age shots (quick look at the end of the age).
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--age-only") >= 0) { await EndOfAge(bot); await NextAge(); return; }
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--river-only") >= 0) { await RiverShots(); return; }
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--v3-only") >= 0) { await V3Shots(); return; }
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--menu-only") >= 0) { Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 10); await MenuShots(); return; }
 
         // The first minute, as a player sees it.
@@ -68,7 +69,7 @@ public partial class Screenshot : TownTestBase
         await Shot("level-6");
 
         // Round 3: Extend mode with the suggested cottage hovered, and a running request with its card.
-        Main.Driver.RunBot(bot, t => t.SuggestedExtend() >= 0 && t.Coin >= t.ExtendPrice && t.CanExtend(t.SuggestedExtend(), out _), 20 * 60 * 30);
+        Main.Driver.RunBot(bot, t => t.SuggestedExtend() >= 0 && t.CanExtendNow(t.SuggestedExtend()), 20 * 60 * 30);
         Main.Driver.SetPaused(true);
         await Frames(10);
         Main.Hud.SetExtendMode(true);
@@ -91,6 +92,10 @@ public partial class Screenshot : TownTestBase
 
         await NextAge();
         await MenuShots();
+        // Round 5: back out of the menu before the next town (the river shots used to run behind the closed cover).
+        await ResumeFromMenu();
+        Main.Driver.Reset(1);
+        await V3Shots();
         Main.Driver.Reset(1);
         await RiverShots();
         Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");

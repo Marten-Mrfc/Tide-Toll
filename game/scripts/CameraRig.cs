@@ -94,8 +94,11 @@ public partial class CameraRig : Node3D
     /// <summary>Pixels a left press must move before it is a drag.</summary>
     public float DragThresholdPx = 6f;
 
-    private static bool Act(string action, Key fallback)
+    private static bool Act(StringName action, Key fallback)
         => InputMap.HasAction(action) ? Input.IsActionPressed(action) : Input.IsKeyPressed(fallback);
+    // Round 5: cached names. A string passed where Godot wants a StringName makes a new tracked StringName on every call;
+    // eight a frame filled Godot's tracker of disposables, whose growth cost 1.3 MB in one frame (game-perf at 1x).
+    private static readonly StringName MoveLeft = "tt_move_left", MoveRight = "tt_move_right", MoveUp = "tt_move_up", MoveDown = "tt_move_down";
     private static bool ActEvent(InputEvent e, string action) => InputMap.HasAction(action) && e.IsActionPressed(action);
 
     public override void _Ready()
@@ -324,10 +327,10 @@ public partial class CameraRig : Node3D
         // control has keyboard focus the arrows belong to it (moving focus, nudging a slider).
         if (GetViewport().GuiGetFocusOwner() != null) return;
         float x = 0, y = 0;
-        if (Act("tt_move_left", Key.Left)) x -= 1;
-        if (Act("tt_move_right", Key.Right)) x += 1;
-        if (Act("tt_move_up", Key.Up)) y -= 1;
-        if (Act("tt_move_down", Key.Down)) y += 1;
+        if (Act(MoveLeft, Key.Left)) x -= 1;
+        if (Act(MoveRight, Key.Right)) x += 1;
+        if (Act(MoveUp, Key.Up)) y -= 1;
+        if (Act(MoveDown, Key.Down)) y += 1;
         if (x == 0 && y == 0) return;
         UserMoved = true;
         // Screen-relative: right is the yaw's +X, screen-up is the yaw's -Z, measured in map space.

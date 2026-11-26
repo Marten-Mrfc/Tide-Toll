@@ -74,6 +74,20 @@ public partial class TownHud
     /// <summary>The key printed on a bookmark: the action's first key (rebinding shows), plus P for Pave.</summary>
     public static string KeyLabel(string action, ShopItemKind kind)
     {
+        // Round 5: cached per binding version. Reading the InputMap makes Godot objects (the action's events) that the
+        // engine glue tracks; at 8x every bookmark's text changes nearly every frame and that tracking grew by 1.3 MB.
+        if (_keyLabelVersion != Settings.GameInput.Version) { _keyLabels.Clear(); _keyLabelVersion = Settings.GameInput.Version; }
+        if (_keyLabels.TryGetValue((action, kind), out var cached)) return cached;
+        string made = MakeKeyLabel(action, kind);
+        _keyLabels[(action, kind)] = made;
+        return made;
+    }
+
+    private static readonly Dictionary<(string, ShopItemKind), string> _keyLabels = new();
+    private static int _keyLabelVersion = int.MinValue;
+
+    private static string MakeKeyLabel(string action, ShopItemKind kind)
+    {
         if (action == "" || !InputMap.HasAction(action)) return "";
         string k = "";
         foreach (var ev in InputMap.ActionGetEvents(action))
@@ -92,6 +106,7 @@ public partial class TownHud
         ShopItemKind.Value => "up-value", ShopItemKind.BellTrack => "ui-bell",
         ShopItemKind.Ferry or ShopItemKind.Raft or ShopItemKind.Rope => "ui-ferry", ShopItemKind.Berth => "ui-boat-berth",
         ShopItemKind.Crane => "ui-crane", ShopItemKind.BoatPrices => "ui-boat", ShopItemKind.Toll => "ui-toll", ShopItemKind.Winch => "ui-bridge",
+        ShopItemKind.Regulars => "ui-value", ShopItemKind.Hand => "up-villager",
         _ => "up-building",
     };
 
@@ -99,16 +114,18 @@ public partial class TownHud
     {
         ShopItemKind.Villager => "ui-reputation", ShopItemKind.Pace => "ui-speed", ShopItemKind.Load => "ui-boat",
         ShopItemKind.Pave => "tool-gravel", ShopItemKind.Extend => "up-building", ShopItemKind.Tools => "up-load",
-        ShopItemKind.Value => "ui-coin", ShopItemKind.BellTrack => "ui-sound-on", _ => "ui-new-map",
+        ShopItemKind.Value => "ui-coin", ShopItemKind.BellTrack => "ui-sound-on", ShopItemKind.Regulars => "ui-coin",
+        ShopItemKind.Hand => "ui-reputation", _ => "ui-new-map",
     };
 
     /// <summary>A step that cannot be bought yet: locked by level or by a building still to come.</summary>
-    public static bool IsLocked(in ShopItem it) => it.Reason.StartsWith("Unlocks at level") || it.Reason.StartsWith("Comes with");
-    /// <summary>A track bought to its end.</summary>
-    public static bool IsFinished(in ShopItem it) => it.Reason.EndsWith("reached") || it.Reason.Contains("at its best");
+    public static bool IsLocked(in ShopItem it) => it.Locked;
+    /// <summary>A track bought to its end (round 5: the simulation's flags, no longer read from the reason's words).</summary>
+    public static bool IsFinished(in ShopItem it) => it.Finished;
 
     private void BuildShop()
     {
+        _compactShop = false;
         _shop = new VBoxContainer { Name = "Shop", MouseFilter = Control.MouseFilterEnum.Ignore };
         _shop.AddThemeConstantOverride("separation", UiKit.Px(_s, 4));
         _root.AddChild(_shop);
@@ -201,7 +218,7 @@ public partial class TownHud
 
     /// <summary>Round 4: the river's group shows only what can be bought now or soon (coin the one thing missing):
     /// locked and finished river steps are left out, so the bookmarks fit at the end of the second age.</summary>
-    public static bool RiverHidden(in ShopItem it) => GroupOf(it.Kind) == ShopGroup.River && it.Reason.Length > 0 && it.Reason != "Not enough coin";
+    public static bool RiverHidden(in ShopItem it) => GroupOf(it.Kind) == ShopGroup.River && (it.Locked || it.Finished);
 
     private void ShopFrame(float dt)
     {
@@ -234,8 +251,9 @@ public partial class TownHud
             // Rebuild the bookmark's text only when something it shows changed (round 2: no strings per frame).
             long need = poor ? (long)Math.Floor(Math.Max(1, it.Price - t.Coin)) : 0;
             bool mode = it.Kind == ShopItemKind.Pave ? PaveMode : it.Kind == ShopItemKind.Extend && ExtendMode;
+            int worth = WorthTenths(it.Worth);
             int sig = HashCode.Combine((int)it.Kind, it.Level, (long)Math.Floor(it.Price), it.Affordable, it.Reason, need, mode, ord);
-            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId(), Settings.GameInput.Version);
+            sig = HashCode.Combine(sig, it.Name, b.GetInstanceId(), Settings.GameInput.Version, worth, locked, done);
             if (sig == _markSig[i]) continue;
             _markSig[i] = sig;
             string key = KeyLabel(ActionFor(it, ord), it.Kind);
@@ -246,7 +264,7 @@ public partial class TownHud
                 ShopItemKind.Extend => "Extend a cottage",
                 _ => it.Name,
             };
-            bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack;
+            bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
             string lvl = track && it.Level > 0 ? $", level {it.Level}" : "";
             string text;
             if (done) text = $"{name}{lvl}\nFinished: {(lastLevel ? "all done this age" : Lower(it.Reason))}";
@@ -260,6 +278,7 @@ public partial class TownHud
                 else if (poor) state = $"Need {Money(need)} more";
                 else state = it.Reason.Length > 0 ? it.Reason : "Not yet";
                 text = $"{name}{lvl}{keyPart}\n{(price.Length > 0 ? price + ": " : "")}{state}";
+                if (worth > 0) text += "\n" + WorthText(worth);
             }
             b.Text = text;
             b.Disabled = !(it.Affordable || mode);
@@ -271,11 +290,27 @@ public partial class TownHud
         _shop.Size = new Vector2(UiKit.Px(_s, 280), 0);
         _shop.Position = new Vector2(vp.X - _shop.Size.X - UiKit.Px(_s, 14), UiKit.Px(_s, 10));
         BellFrame(vp);
+        // Round 5: with the worth line every bookmark is three lines; when the column would run off the screen, the
+        // bookmarks are set smaller (kept so until the interface is built again).
+        if (!_compactShop && _shop.GetCombinedMinimumSize().Y > vp.Y - UiKit.Px(_s, 80))
+        {
+            _compactShop = true;
+            RebuildMarks();
+            _markSig = Array.Empty<int>();
+        }
     }
+
+    private bool _compactShop;
+    /// <summary>The bookmarks are set smaller so the column fits (tests).</summary>
+    public bool CompactShop => _compactShop;
 
     /// <summary>Call when key bindings changed, so the bookmarks print the new keys.</summary>
     /// <summary>Kept for callers: the keys are reprinted by themselves when the bindings change (GameInput.Version).</summary>
     public void KeysChanged() { }
+
+    /// <summary>Round 5: the simulation's worth (coin a minute) as shown: tenths below 10, whole numbers above.</summary>
+    public static int WorthTenths(double w) => w <= 0.05 ? 0 : w < 10 ? (int)Math.Round(w * 10) : (int)Math.Round(w) * 10;
+    public static string WorthText(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} coin a minute" : $"+{Money(tenths / 10)} coin a minute";
 
     private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
 
@@ -298,8 +333,12 @@ public partial class TownHud
         ShopItemKind.Rope => "A faster rope: the ferry crosses quicker.",
         ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
         ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
+        ShopItemKind.Regulars => RegularsHelp,
+        ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
         _ => "A building for the town, placed on its plot by the town.",
     };
+
+    public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 
     private void RebuildMarks()
     {
@@ -315,13 +354,13 @@ public partial class TownHud
             if (g != group)
             {
                 group = g;
-                var head = UiKit.Text(GroupNames[g], _s, 17, UiKit.Serif);
+                var head = UiKit.Text(GroupNames[g], _s, _compactShop ? 14 : 17, UiKit.Serif);
                 head.HorizontalAlignment = HorizontalAlignment.Right;
                 head.Name = "Group" + GroupNames[g];
                 _shop.AddChild(head);
                 _heads.Add(head);
             }
-            var b = MakeButton("Mark" + i, (_items[i].Kind == ShopItemKind.RiverValue ? (_items[i].Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(_items[i].Kind)), StandInIcon(_items[i].Kind), 15, 5);
+            var b = MakeButton("Mark" + i, (_items[i].Kind == ShopItemKind.RiverValue ? (_items[i].Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(_items[i].Kind)), StandInIcon(_items[i].Kind), _compactShop ? 13 : 15, _compactShop ? 3 : 5);
             int k = i;
             b.Pressed += () => Activate(k);
             b.CustomMinimumSize = new Vector2(UiKit.Px(_s, 270), 0);
@@ -379,6 +418,7 @@ public partial class TownHud
             else if (Is(e, "tt_achievements")) ToggleAchievements();
             else if ((Is(e, "tt_pause") || k.Keycode == Key.Escape) && (AchievementsOpen || AgePageOpen)) { CloseAchievements(); CloseAgePage(); }
             else if ((Is(e, "tt_pause") || k.Keycode == Key.Escape) && (PaveMode || ExtendMode)) { SetPaveMode(false); SetExtendMode(false); }
+            else if (ChoiceKey(e)) { }
             else if (!ActivateByKey(e)) handled = false;
             if (handled) GetViewport().SetInputAsHandled();
             return;

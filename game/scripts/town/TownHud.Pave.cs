@@ -100,7 +100,7 @@ public partial class TownHud
     public bool Pavable(int r)
     {
         var t = _drv.Town;
-        return t.RoadOpen(r) && t.CanPave(r, out _) && t.Coin >= t.PavePrice(r);
+        return t.RoadOpen(r) && t.CanPaveNow(r);
     }
 
     private Vector3? SuggestedRoadPoint()

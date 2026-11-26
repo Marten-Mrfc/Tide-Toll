@@ -51,6 +51,7 @@ public partial class PlayThrough : TownTestBase
         {
             await Frames(1);
             if (T.Level > level) { level = T.Level; P($"LEVEL {level}"); }
+            if (T.Drive.Active && !_driveSeen) { await Frames(2); _driveSeen = Main.Hud.DriveCardVisible && Main.Hud.DriveCardText.Contains(T.Drive.Name); P($"DRIVE {Main.Hud.DriveCardText}"); }
             if (T.Time < next) continue;
             next = T.Time + 1.0;
             Main.Driver.SetPaused(true);
@@ -58,6 +59,7 @@ public partial class PlayThrough : TownTestBase
             Main.Driver.SetPaused(false);
         }
         Check(T.HasCharter, $"the charter within {_capMin} game minutes (level {T.Level})");
+        CheckRulesV3();
         double charter = T.Time / 60.0;
         Main.Driver.SetPaused(true);
         await Frames(5);
@@ -110,6 +112,7 @@ public partial class PlayThrough : TownTestBase
         ShopItemKind.Extend => t.VillagerCount >= t.Housing ? 1 : 6,
         ShopItemKind.Villager => 2,
         ShopItemKind.Load => 3,
+        ShopItemKind.Hand => 3,
         ShopItemKind.Pave => 4,
         ShopItemKind.Tools => 5,
         ShopItemKind.Value => 5,
@@ -119,6 +122,7 @@ public partial class PlayThrough : TownTestBase
 
     private async Task Act()
     {
+        if (T.ChoiceOpen) await Choose();
         for (int round = 0; round < 8; round++)
         {
             await Frames(1);

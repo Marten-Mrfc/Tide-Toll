@@ -46,7 +46,7 @@ public partial class TownHud
     public bool Extendable(int plot)
     {
         var t = _drv.Town;
-        return t.CanExtend(plot, out _) && t.Coin >= t.ExtendPrice;
+        return t.CanExtendNow(plot);
     }
 
     private bool AnyExtendable()

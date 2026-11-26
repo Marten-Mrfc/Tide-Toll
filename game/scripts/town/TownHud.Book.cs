@@ -19,6 +19,31 @@ public partial class TownHud
     private readonly Label[] _achName = new Label[32], _achState = new Label[32];
     private readonly ColorRect[] _achFill = new ColorRect[32];
     private readonly Control[] _achBack = new Control[32];
+    // Round 5: the page shows the age the town is in (the river's 16 in the second age, with the first age's count).
+    private readonly Label[] _achDesc = new Label[32];
+    private readonly Control[] _achCell = new Control[32];
+    private int _achBuiltCount;
+    private bool _achRiver;
+    private static AchievementView Ach(Town t, bool river, int i) => river ? t.RiverAchievement(i) : t.Achievement(i);
+    private static int AchCount(Town t, bool river) => river ? t.RiverAchievementCount : t.AchievementCount;
+
+    /// <summary>Puts the age's achievements into the page's cells (names, descriptions); cells beyond its count hide.</summary>
+    private void AchAge(Town t)
+    {
+        _achRiver = t.InRiverAge;
+        int n = AchCount(t, _achRiver);
+        for (int i = 0; i < _achBuiltCount; i++)
+        {
+            bool on = i < n;
+            _achCell[i].Visible = on;
+            if (!on) continue;
+            var a = Ach(t, _achRiver, i);
+            _achName[i].Text = a.Name;
+            _achDesc[i].Text = a.Description;
+            _achCell[i].TooltipText = a.Description;
+        }
+        _achShown = -1;
+    }
     private Button _achMark = null!, _achClose = null!, _ageClose = null!;
     private int _achShown = -1, _achSig = -1;
     private double _achClock;
@@ -79,6 +104,8 @@ public partial class TownHud
             cell.AddChild(row);
             var desc = UiKit.Text(a.Description, _s, 13, UiKit.UiFont, UiKit.FadedInk);
             cell.AddChild(desc);
+            _achDesc[i] = desc;
+            _achCell[i] = cell;
             var back = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(0, UiKit.Px(_s, 5)) };
             var bs = UiKit.Card(_s, UiKit.PaperDark, 0.6f);
             bs.SetContentMarginAll(0);
@@ -89,6 +116,8 @@ public partial class TownHud
             cell.AddChild(back);
             grid.AddChild(cell);
         }
+        _achBuiltCount = n;
+        AchAge(_drv.Town);
         _achClose = new Button { Name = "Close", FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         _achClose.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, 16));
         _achClose.Pressed += CloseAchievements;
@@ -210,12 +239,13 @@ public partial class TownHud
         var t = _drv.Town;
         if (_agePageIn > 0) { _agePageIn -= dt; if (_agePageIn <= 0) OpenAgePage(); }
         // The bookmark, bottom right beside the pause control: shown while zoomed in.
-        int got = TownSummary.Achieved(t);
-        int sig = got + 1000 * Settings.GameInput.Version;
+        if (t.InRiverAge != _achRiver) AchAge(t);
+        int got = _achRiver ? TownSummary.RiverAchieved(t) : TownSummary.Achieved(t);
+        int sig = got + 1000 * Settings.GameInput.Version + (_achRiver ? 500 : 0);
         if (sig != _achSig)
         {
             _achSig = sig;
-            _achMark.Text = $"Achievements{Settings.GameInput.Tag("tt_achievements", "   ")}\n{got} of {t.AchievementCount}";
+            _achMark.Text = $"Achievements{Settings.GameInput.Tag("tt_achievements", "   ")}\n{got} of {AchCount(t, _achRiver)}{(_achRiver ? " on the river" : "")}";
             _achClose.Text = "Close" + Settings.GameInput.Tag("tt_achievements");
             PauseMark.Text = "Pause" + Settings.GameInput.Tag("tt_pause");
             _home.Text = "Back to the town" + Settings.GameInput.Tag("tt_home_view");
@@ -239,10 +269,10 @@ public partial class TownHud
         _achClock += dt;
         if (_achClock < 0.5) return;
         _achClock = 0;
-        int n = Math.Min(t.AchievementCount, _achName.Length);
+        int n = Math.Min(AchCount(t, _achRiver), _achBuiltCount);
         for (int i = 0; i < n; i++)
         {
-            var a = t.Achievement(i);
+            var a = Ach(t, _achRiver, i);
             string st = AchievementState(a);
             if (_achState[i].Text != st) _achState[i].Text = st;
             _achName[i].Modulate = a.Unlocked ? Colors.White : new Color(1, 1, 1, 0.75f);
@@ -252,7 +282,13 @@ public partial class TownHud
             _achFill[i].Size = new Vector2(Math.Max(0, (sz.X - 2) * k), Math.Max(0, sz.Y - 2));
             _achFill[i].Color = a.Unlocked ? Palette.Thatch : new Color(Palette.Thatch, 0.55f);
         }
-        if (got != _achShown) { _achShown = got; _achHead.Text = $"Achievements, {got} of {t.AchievementCount}"; }
+        if (got != _achShown)
+        {
+            _achShown = got;
+            _achHead.Text = _achRiver
+                ? $"Achievements of the river, {got} of {t.RiverAchievementCount}. The first age: {TownSummary.Achieved(t)} of {t.AchievementCount}"
+                : $"Achievements, {got} of {t.AchievementCount}";
+        }
     }
 
     private string? _paveHelp, _extendHelp;

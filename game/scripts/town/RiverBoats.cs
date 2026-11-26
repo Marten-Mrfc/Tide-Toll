@@ -58,7 +58,7 @@ public partial class RiverBoats : Node3D
             _cargo[i] = new MeshInstance3D[CargoSlots];
             _label[i] = new Label3D
             {
-                Name = "Wants", Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 40, PixelSize = 0.03f,
+                Name = "Wants", Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 36, PixelSize = 0.026f,
                 Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.95f), OutlineSize = 16, Font = UiKit.UiBold,
                 Position = new Vector3(0, 5.5f, 0), DoubleSided = true,
             };
@@ -148,20 +148,21 @@ public partial class RiverBoats : Node3D
             _row[i].Visible = !barge; _barge[i].Visible = barge;
             bool moving = v.Phase is BoatPhase.Arriving or BoatPhase.Leaving;
             _wake[i].Visible = moving;
+            // Round 5: the label stands over the water east of the boat (the quay is on the west bank), clear of both.
+            _label[i].Position = b.Basis.Inverse() * new Vector3(barge ? 7.5f : 5.5f, barge ? 4f : 3.5f, 0);
             int sig = HashCode.Combine(v.Id, v.Loaded, v.Want, (int)v.Phase, (int)v.Good, v.Request);
             if (sig == _sig[i]) continue;
             _sig[i] = sig;
             if (_cargoGood[i] != v.Good || _cargo[i][0] == null || _cargo[i][0].GetParent() != b) SetCargo(i, v.Good, barge);
             int show = v.Want <= 0 ? 0 : (int)Math.Ceiling(CargoSlots * Math.Min(1.0, v.Loaded / (double)v.Want));
             for (int k = 0; k < CargoSlots; k++) _cargo[i][k].Visible = k < show;
-            string who = v.Request ? $"{v.Skipper}: " : "";
+            // Round 5: short labels (the skipper's name is on the request card).
             _label[i].Text = v.Phase switch
             {
-                BoatPhase.Leaving => v.Loaded >= v.Want ? $"{who}full, leaving" : $"{who}leaving with {v.Loaded} {v.Good}",
-                BoatPhase.Waiting => $"{who}{v.Good} {v.Loaded} of {v.Want}, waits for a berth",
-                _ => $"{who}{v.Good} {v.Loaded} of {v.Want}",
+                BoatPhase.Leaving => v.Loaded >= v.Want ? "Full, leaving" : $"Leaving, {v.Loaded} {v.Good}",
+                BoatPhase.Waiting => $"{v.Good} {v.Loaded}/{v.Want}, waiting",
+                _ => $"{v.Good} {v.Loaded}/{v.Want}",
             };
-            _label[i].Position = new Vector3(0, barge ? 6.5f : 5f, 0);
         }
     }
 }

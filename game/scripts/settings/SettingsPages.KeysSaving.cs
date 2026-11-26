@@ -19,10 +19,11 @@ public partial class SettingsPages
     {
         // Round 4: rows closer together and the left column one row longer than the right (which also holds the note
         // and Restore defaults), so the 25 actions fit at 100 percent without scrolling; where a column must still
-        // scroll, its window shows whole rows only (FitWholeRows).
+        // scroll, its window shows whole rows only (FitWholeRows). Round 5: 27 actions (the two boon keys), so rows of
+        // 36 px 5 px apart: 14 rows take less height than round 4's 13 rows of 40 px 6 px apart.
         int half = (GameInput.Actions.Length + 1) / 2;
-        float rowPx = 40;
-        int sep = UiKit.Px(s, 6);
+        float rowPx = 36;
+        int sep = UiKit.Px(s, 5);
         left.AddThemeConstantOverride("separation", sep);
         right.AddThemeConstantOverride("separation", sep);
         for (int i = 0; i < GameInput.Actions.Length; i++)
@@ -50,6 +51,7 @@ public partial class SettingsPages
                 row.AddChild(b);
             }
             Row(col, a.Label, row, s, null, 330);
+            row.CustomMinimumSize = new Vector2(row.CustomMinimumSize.X, rowPx * s);
         }
         var note = UiKit.Text(_capture != null ? "Press the new key. Esc cancels." : "Esc always goes back from these pages.", s, 16, null, UiKit.FadedInk);
         note.Name = "KeysNote";
@@ -59,8 +61,8 @@ public partial class SettingsPages
             "Put every key back as it was at first");
         restore.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         right.AddChild(restore);
-        FitWholeRows(left, Mathf.Max(rowPx * s, 40 * s) + sep, sep);
-        FitWholeRows(right, Mathf.Max(rowPx * s, 40 * s) + sep, sep);
+        FitWholeRows(left, rowPx * s + sep, sep);
+        FitWholeRows(right, rowPx * s + sep, sep);
     }
 
     /// <summary>

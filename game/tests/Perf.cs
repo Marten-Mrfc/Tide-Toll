@@ -39,6 +39,46 @@ public partial class Perf : TownTestBase
         }
     }
 
+    /// <summary>Round 5: allocation per node between probes placed in Main's child order (information for the gates).</summary>
+    private partial class AllocProbe : Node
+    {
+        public static long Last;
+        public string After = "";
+        public long Biggest;
+        public override void _Process(double delta)
+        {
+            long now = GC.GetAllocatedBytesForCurrentThread();
+            long d = now - Last;
+            Last = now;
+            if (d > Biggest) Biggest = d;
+        }
+    }
+    private readonly System.Collections.Generic.List<AllocProbe> _allocProbes = new();
+    private void PlaceAllocProbes()
+    {
+        var kids = Main.GetChildren();
+        for (int i = kids.Count - 1; i >= 0; i--)
+        {
+            var p = new AllocProbe { Name = "AllocProbe" + i, After = kids[i].Name };
+            Main.AddChild(p);
+            Main.MoveChild(p, i + 1);
+            _allocProbes.Add(p);
+        }
+    }
+    private string AllocReport()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var p in _allocProbes) if (p.Biggest > 20000) sb.Append(p.After).Append(' ').Append(p.Biggest).Append("; ");
+        return sb.ToString();
+    }
+
+    private string EventKinds()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var e in Main.Driver.Events) sb.Append(e.Kind).Append(' ');
+        return sb.ToString();
+    }
+
     protected override async Task Run()
     {
         var sw = Stopwatch.StartNew();
@@ -58,6 +98,7 @@ public partial class Perf : TownTestBase
         var start = new Probe { Name = "PerfStart", ProcessPriority = -100000 };
         var end = new Probe { Name = "PerfEnd", ProcessPriority = 100000, IsEnd = true, Other = start };
         AddChild(start); AddChild(end);
+        PlaceAllocProbes();
         bool ok = true;
         foreach (var (speed, budget) in new[] { (1.0, Budget1x), (8.0, Budget8x) })
         {
@@ -70,12 +111,12 @@ public partial class Perf : TownTestBase
             long big = 0; int bigAt = -1, bigCount = 0; string bigWhat = ""; int saves0 = Main.Saver.Saves;
             for (int i = 0; i < n; i++)
             {
-                int tc0 = town.TouchCount; string n0 = Main.Hud.LastNote;
-                long f0 = GC.GetTotalAllocatedBytes(false);
+                int tc0 = town.TouchCount; string n0 = Main.Hud.LastNote; int ms0 = Main.Audio.Music.Starts;
+                long f0 = GC.GetTotalAllocatedBytes(false), m0 = GC.GetAllocatedBytesForCurrentThread();
                 await Frames(1);
-                long f = GC.GetTotalAllocatedBytes(false) - f0;
+                long f = GC.GetTotalAllocatedBytes(false) - f0, fm = GC.GetAllocatedBytesForCurrentThread() - m0;
                 if (f > 20000) bigCount++;
-                if (f > big) { big = f; bigAt = i; bigWhat = $"touches {tc0}->{town.TouchCount} note before '{n0}' level {town.Level} note '{Main.Hud.LastNote}'"; }
+                if (f > big) { big = f; bigAt = i; bigWhat = $"main thread {fm} bytes; touches {tc0}->{town.TouchCount} music starts {ms0}->{Main.Audio.Music.Starts} '{Main.Audio.Music.Current}' events {EventKinds()} note before '{n0}' level {town.Level} note '{Main.Hud.LastNote}'"; }
                 sum += end.LastMs;
                 worst = Math.Max(worst, end.LastMs);
             }
@@ -87,6 +128,7 @@ public partial class Perf : TownTestBase
             GD.Print($"PERF {speed:0}x largest frame allocation {big} bytes at frame {bigAt} ({bigWhat}); frames over 20 KB: {bigCount}; autosaves {Main.Saver.Saves - saves0}, clock {Main.Saver.Clock:0.0} s (information)");
             GD.Print($"PERF town {town.VillagerCount} villagers {speed:0}x: cpu ms/frame mean {mean:0.000} worst {worst:0.00} (gate mean < {budget}) {(pass ? "ok" : "OVER")}; game s {town.Time - t0:0.0}; bytes/frame {perFrame} (gate < {gate})");
         }
+        GD.Print($"PERF largest allocation in one frame by the node before each probe: {AllocReport()} (information)");
         // For information: the same at 8x with the interface switched off, to show what the interface costs.
         Main.Hud.ProcessMode = ProcessModeEnum.Disabled;
         await Frames(30);

@@ -208,6 +208,7 @@ public partial class TownGround : MeshInstance3D
                 revealing = true;
             }
         }
+        if (LanesFrame(town, delta)) revealing = true;
         _since += delta;
         // While a road draws itself in, upload every frame so the line grows smoothly.
         if (revealing || _since >= 1.0 / UploadsPerSecond) Upload();
@@ -243,6 +244,7 @@ public partial class TownGround : MeshInstance3D
                 if (cb > _crowd[c]) _crowd[c] = cb;
             }
         }
+        LanesUpload(town);
         for (int i = 0; i < _shown.Length; i++)
         {
             // Growth eases; a reveal front (target far above shown) is followed fast so the line draws itself.

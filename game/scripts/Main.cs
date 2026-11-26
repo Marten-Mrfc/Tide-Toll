@@ -25,6 +25,7 @@ public partial class Main : Node3D
     public TownBuildings Buildings { get; private set; } = null!;
     public TownVillagers Villagers { get; private set; } = null!;
     public RiverLayer River { get; private set; } = null!;
+    public TownTouches Touches { get; private set; } = null!;
     public RiverBoats Boats { get; private set; } = null!;
     public RiverAudio RiverSound { get; private set; } = null!;
     public InkOutline Ink { get; private set; } = null!;
@@ -97,6 +98,7 @@ public partial class Main : Node3D
         PlantTrees();
         Driver.Replaced += PlantTrees;
         Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
+        Touches = new TownTouches(); MapOrigin.AddChild(Touches); Touches.Init(Driver);
         River = new RiverLayer(); MapOrigin.AddChild(River); River.Init(this);
         Boats = new RiverBoats(); MapOrigin.AddChild(Boats); Boats.Init(Driver);
         RiverSound = new RiverAudio(); AddChild(RiverSound); RiverSound.Init(Driver);

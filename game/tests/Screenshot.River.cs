@@ -63,6 +63,7 @@ public partial class Screenshot
         Main.Follow(instant: true);
         await Frames(4);
         await Shot("river-seal");
+        await RiverPauseShots();
         await Until(() => Main.Hud.AgePageOpen, 2000, "the seal's page");
         await Frames(5);
         await Shot("river-seal-page");

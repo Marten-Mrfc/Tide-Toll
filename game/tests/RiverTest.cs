@@ -81,6 +81,7 @@ public partial class RiverTest : TownTestBase
         Check(Main.RiverSound.Played.ContainsKey("seal-granted"), "the seal sound");
         await Until(() => Main.Hud.SealPageShown, 600, "the seal's page");
         Check(Main.Hud.AgePageText.Contains("The second age is complete") && Main.Hud.AgePageText.Contains("not in the game yet"), "the seal's page: " + Main.Hud.AgePageText);
+        await PauseInTheSecondAge();
         // Seed 1 with the payback bot: nobody uses the ford in the whole age (docs/plans/sim-wishes.md); then nothing waits.
         Check(T.Crossings(RiverLinkKind.Ford) == 0 || _fordWaitTicks > 0, $"people wait at the ford at high water (ticks {_fordWaitTicks}, at checks {_fordWaitSeen}, ford crossings {T.Crossings(RiverLinkKind.Ford)})");
         // The seal can come before any boat has passed the new drawbridge: play on until one does.
@@ -152,7 +153,14 @@ public partial class RiverTest : TownTestBase
             if (!given && rp.Plots[i].Level == next && t.Level < t.MaxLevel) Check(Main.River.PlotStaked(i), $"river plot {i} staked before level {next}");
         }
         for (int i = 0; i < rp.Links.Length; i++)
+        {
             if (t.RiverLinkOpen(i)) Check(Main.River.LinkDrawn(i), $"river link {i} ({rp.Links[i].Kind}) drawn when open");
+            // Round 5: a lane open and drawn in is worn into the ground (TownGround), at least as a faint trail.
+            if (t.RiverLinkOpen(i) && rp.Links[i].Kind == RiverLinkKind.Lane && _checks > 1)
+                Check(Main.Ground.LaneReveal(i) > 0f, $"lane {i} (level {rp.Links[i].Level}, {rp.Links[i].Px.Length} points) open and drawn in by the ground");
+            if (t.RiverLinkOpen(i) && rp.Links[i].Kind == RiverLinkKind.Lane && Main.Ground.LaneReveal(i) >= 1f)
+                Check(Main.Ground.LaneShown(i) > TownGround.TrailWear * 0.5f, $"lane {i} worn into the ground (drawn wear {Main.Ground.LaneShown(i):0.00}, reveal {Main.Ground.LaneReveal(i):0.00})");
+        }
         float a = Main.Driver.Alpha;
         for (int i = 0; i < t.BoatCount; i++)
         {

@@ -23,3 +23,9 @@
   good would keep the interface's frame allocation flat.
 - Boat cargo wants are large (300 to 1000 units at the seal), so the deck's six cargo pieces fill slowly; fine, but a
   coarser "units" for boats might read better.
+
+## Round 5, the game (r5-game)
+- Lanes carry no wear of their own (no `RiverLinkInfo` with wear, worn in or crowding): the game wears a lane in by time since it opened (`TownGround.LaneWearSeconds`). A wear figure per lane, like `RoadInfo`, would let lanes show their real use.
+- `Town.Choice` builds a `ChoiceView` with four strings per read; the game reads it only while a choice is open, so it costs nothing in play, but a cached view would be cleaner.
+- `HandName(w)` builds its string per call (the game caches it per marker).
+- The seal's page still says the next age is "not in the game yet"; `SecondAgeCompleteText` exists but the game's page was not switched to it in round 5.

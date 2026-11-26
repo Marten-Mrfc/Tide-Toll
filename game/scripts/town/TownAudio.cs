@@ -75,6 +75,8 @@ public partial class TownAudio : Node
     /// <summary>Main gives the view (centre on the map in metres, the camera's size, the size of the normal play view).</summary>
     public void SetView(Func<(Vector3 centre, float size, float play)> view) => _view = view;
 
+    /// <summary>Round 5: a moment's cue by its id in town-sounds.json (a boon, a milestone, the charter drive).</summary>
+    public bool Moment(string id) => Cue(id, _ui, ref UiSounds);
     public void UiHover() => Cue("ui-hover", _ui, ref UiSounds);
     public void UiPress() => Cue("ui-press", _ui, ref UiSounds);
     public void UiTab() => Cue("ui-tab", _ui, ref UiSounds);
