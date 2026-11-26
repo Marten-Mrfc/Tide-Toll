@@ -162,7 +162,10 @@ if have_godot; then
     # minute, the first purchase, level 3, Pave mode, level 6, Extend mode, a request, the end of the age, the zoom and
     # the menus (build/screenshots/town-*-1920x1080.png). Quick looks while working: add -- --menu-only (menus only) or
     # -- --town-quick (stops after the request shot) or -- --age-only (the charter, achievements, summary, next age, first-age page) or -- --river-only (the second age).
-    step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 1200 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
+    # Round 5: also -- --v3-only (choice, boon, touch, hand, drive, summary with boons). The full run takes about 20 to 25
+    # minutes on the shared 4-CPU machine with lavapipe (the river shots now render the riverside, not the closed cover),
+    # so the safety cap is 2400 s (it was 1200 s).
+    step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 2400 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else

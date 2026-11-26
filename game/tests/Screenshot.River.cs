@@ -63,11 +63,13 @@ public partial class Screenshot
         Main.Follow(instant: true);
         await Frames(4);
         await Shot("river-seal");
-        await RiverPauseShots();
         await Until(() => Main.Hud.AgePageOpen, 2000, "the seal's page");
         await Frames(5);
         await Shot("river-seal-page");
         Main.Hud.CloseAgePage();
+        // Round 5: pause with the view widened to both banks (after the seal's page: pausing closes a page that is
+        // still to open, and the wait for it then ran until the step's time cap).
+        await RiverPauseShots();
 
         // The drawbridge lifted for a boat.
         Main.Driver.RunBot(bot, t => t.DrawbridgeAngle > 1.0, 20 * 60 * 60);
