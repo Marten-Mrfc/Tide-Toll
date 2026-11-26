@@ -171,7 +171,7 @@ public partial class TownTest
     private static Town EndOfAge(int seed)
     {
         var town = new Town(seed);
-        var bot = new TownBot(BotKind.Payback, 1) { NoPave = true };
+        var bot = new TownBot(BotKind.Payback, 1) { NoPave = true, NoHands = true };
         var events = new System.Collections.Generic.List<TownEvent>();
         int ticks = 0;
         while (!town.HasCharter && ticks < 20 * 60 * 60 * 10) { town.Step(); bot.Act(town); ticks++; if (ticks % 600 == 0) town.DrainEvents(events); }

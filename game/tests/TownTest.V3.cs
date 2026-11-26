@@ -41,7 +41,7 @@ public partial class TownTest
     private async Task RulesV3()
     {
         Check(_boonByClick, "the level-4 choice was picked by a click");
-        var bot = new TownBot(BotKind.Payback, 1);
+        var bot = new TownBot(BotKind.Payback, 1) { NoHands = true }; // the hand below is bought by a click, never by the bot first
         Main.Driver.SetSpeed(1);
 
         // The next choice by its key (X: the right-hand boon).
@@ -104,7 +104,9 @@ public partial class TownTest
         int w = -1;
         Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
         for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
-        Check(w >= 0, "a hand is offered at a queued workplace");
+        var wps = new System.Text.StringBuilder();
+        for (int i = 0; i < T.WorkplaceCount; i++) { var v = T.Workplace(i); wps.Append($" [{i} open {v.Open} places {v.Places} busy {v.Busy} queue {v.QueueLength} hands {T.HandsBought(i)} offered {T.HandOffered(i)}]"); }
+        Check(w >= 0, $"a hand is offered at a queued workplace (level {T.Level}, time {T.Time:0}, workplaces{wps})");
         for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
         // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
         if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
@@ -120,6 +122,6 @@ public partial class TownTest
         Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");
         _bought++; _kinds[ShopItemKind.Hand] = Got(ShopItemKind.Hand) + 1;
 
-        Notes.Add($"boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
+        Notes.Add($"hand0={hands} boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
     }
 }

@@ -18,8 +18,8 @@ public sealed class TownBot
     /// <summary>The saving bot waits for its best pick up to this many seconds of income (rules v2).</summary>
     public const double SaverSeconds = 40;
     public BotKind Kind { get; }
-    /// <summary>Test switches: never ring the bell; never pave.</summary>
-    public bool NoBell, NoPave;
+    /// <summary>Test switches: never ring the bell; never pave; never buy an extra hand (a test that buys the offer itself).</summary>
+    public bool NoBell, NoPave, NoHands;
     /// <summary>The second age: ring in the next age at the charter and play on (off by default: the bots stop at the charter, as before).</summary>
     public bool PlayOn;
     private Mulberry32 _rng;
@@ -44,6 +44,8 @@ public sealed class TownBot
         t.ShopItems(_items);
         if (NoPave)
             for (int i = _items.Count - 1; i >= 0; i--) if (_items[i].Kind == ShopItemKind.Pave) _items.RemoveAt(i);
+        if (NoHands)
+            for (int i = _items.Count - 1; i >= 0; i--) if (_items[i].Kind == ShopItemKind.Hand) _items.RemoveAt(i);
         int pick = Kind switch { BotKind.Cheapest => Cheapest(), BotKind.Payback => Payback(t, SaveSeconds), BotKind.Saver => Payback(t, SaverSeconds), _ => RandomPick() };
         return pick >= 0 && t.Buy(_items[pick]);
     }
