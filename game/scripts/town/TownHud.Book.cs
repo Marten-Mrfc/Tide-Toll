@@ -120,7 +120,7 @@ public partial class TownHud
         AchAge(_drv.Town);
         _achClose = new Button { Name = "Close", FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         _achClose.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, 16));
-        _achClose.Pressed += CloseAchievements;
+        _achClose.Pressed += () => CloseAchievements();
         col.AddChild(_achClose);
 
         _agePanel = Page("FirstAgePage", 820);
@@ -135,7 +135,7 @@ public partial class TownHud
         ac.AddChild(_ageText);
         _ageClose = new Button { Name = "KeepPlaying", FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         _ageClose.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, 18));
-        _ageClose.Pressed += CloseAgePage;
+        _ageClose.Pressed += () => CloseAgePage();
         ac.AddChild(_ageClose);
         _achShown = -1; _achSig = -1;
     }
@@ -168,18 +168,19 @@ public partial class TownHud
         _main.Audio.UiTab();
     }
 
-    public void CloseAchievements()
+    /// <summary>Closes the achievements page; <paramref name="quiet"/>: without its sound (the pause menu, once the interface has faded out).</summary>
+    public void CloseAchievements(bool quiet = false)
     {
         if (_achPanel == null || !_achPanel.Visible) return;
         _achPanel.Visible = false;
-        _main.Audio.UiTab();
+        if (!quiet) _main.Audio.UiTab();
     }
 
-    public void CloseAgePage()
+    public void CloseAgePage(bool quiet = false)
     {
         if (_agePanel == null || !_agePanel.Visible) return;
         _agePanel.Visible = false;
-        _main.Audio.PageTurn();
+        if (!quiet) _main.Audio.PageTurn();
     }
 
     /// <summary>The Ring bookmark or its key: rings the next age in the first time, opens the age page afterwards.</summary>
@@ -237,7 +238,7 @@ public partial class TownHud
     private void BookFrame(float dt)
     {
         var t = _drv.Town;
-        if (_agePageIn > 0) { _agePageIn -= dt; if (_agePageIn <= 0) OpenAgePage(); }
+        if (_agePageIn > 0 && HoldPageTurnAt < 0) { _agePageIn -= dt; if (_agePageIn <= 0) OpenAgePage(); }
         // The bookmark, bottom right beside the pause control: shown while zoomed in.
         if (t.InRiverAge != _achRiver) AchAge(t);
         int got = _achRiver ? TownSummary.RiverAchieved(t) : TownSummary.Achieved(t);

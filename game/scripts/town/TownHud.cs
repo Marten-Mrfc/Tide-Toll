@@ -79,7 +79,7 @@ public partial class TownHud : CanvasLayer
         // The interface size setting is the window's content scale (applied by the settings); build in canvas units from
         // the window's real height, so the size is not counted twice.
         _s = UiKit.ScaleFor(GetWindow().Size.Y);
-        _root = new Control { Name = "Root", MouseFilter = Control.MouseFilterEnum.Ignore, Theme = UiKit.MakeTheme(_s) };
+        _root = new Control { Name = "Root", MouseFilter = Control.MouseFilterEnum.Ignore, Theme = UiKit.MakeTheme(_s), Modulate = new Color(1, 1, 1, _fade) };
         _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_root);
 
@@ -313,7 +313,8 @@ public partial class TownHud : CanvasLayer
         if (stage != _lastStage)
         {
             // Turning to the whole book (and back) sounds like a page.
-            if (_lastStage != (Main.ZoomStage)(-1) && (stage == Main.ZoomStage.Book || _lastStage == Main.ZoomStage.Book)) _main.Audio.PageTurn();
+            // Not while the book closes or opens for the pause menu: that motion has its own sounds.
+            if (_lastStage != (Main.ZoomStage)(-1) && (stage == Main.ZoomStage.Book || _lastStage == Main.ZoomStage.Book) && (_main.Menu == null || !_main.Menu.IsPaused)) _main.Audio.PageTurn();
             _lastStage = stage;
         }
         _slim.Visible = a < 1f;
@@ -330,6 +331,22 @@ public partial class TownHud : CanvasLayer
     }
 
     private Control?[] _fullParts = Array.Empty<Control?>();
+    private float _fade = 1f;
+
+    /// <summary>
+    /// The whole interface's opacity, 0..1: PauseMenu fades it out as the book closes and in as it opens (BookMotion),
+    /// rather than switching it off in one frame.
+    /// </summary>
+    public float Fade
+    {
+        get => _fade;
+        set
+        {
+            if (value == _fade) return;
+            _fade = value;
+            if (_root != null && IsInstanceValid(_root)) _root.Modulate = new Color(1, 1, 1, value);
+        }
+    }
     private Main.ZoomStage _lastStage = (Main.ZoomStage)(-1);
 
     /// <summary>

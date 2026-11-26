@@ -43,7 +43,10 @@ public partial class RiverTest : TownTestBase
         Check(T.NextAgeRung && T.InRiverAge, "the key rang in the second age");
         Check(Main.Audio.Music.Current == TownMusic.RisingId || Main.Audio.Music.Log.Contains(TownMusic.RisingId) || Main.Audio.Music.Log.Exists(s => s.Contains("Rising")), "Tide and Toll, Rising plays");
         Check(Main.Hud.PageTurning, "the page turns over the town");
-        Check(Main.Hud.PageTitle == TownHud.RiverTitle, "the right page takes the river's title: " + Main.Hud.PageTitle);
+        // Round 7: the title (and the river) change under the turning page, once it covers the screen, not before it.
+        Check(Main.Hud.PageTitle != TownHud.RiverTitle && !Main.River.Built, "the river's title or the river showed before the page covered the town");
+        await Until(() => Main.Hud.PageTitle == TownHud.RiverTitle, 600, "the right page takes the river's title: " + Main.Hud.PageTitle);
+        Check(Main.Hud.PageCovering, "the title changed before the page covered the town");
         await Until(() => Main.Hud.AgePageOpen, 600, "the second age's page");
         Check(Main.Hud.AgePageText.Contains("The second age: The River") && !Main.Hud.AgePageText.Contains("not in the game yet"), "the second age's page: " + Main.Hud.AgePageText);
         await Click(Main.Hud.AgePageClose.GetGlobalRect().GetCenter());

@@ -273,7 +273,8 @@ public partial class Main : Node3D
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
         if (vp != _limitsFor) SetZoomLimits();
         Ink.Update(Rig.Camera, vp);
-        Summary.Watched = Rig.Camera.Size >= Rig.PlaySize * 0.8f;
+        // Round 7: not while the menu has the book (the town stands still; PauseMenu writes the page before each motion).
+        Summary.Watched = Rig.Camera.Size >= Rig.PlaySize * 0.8f && !Menu.IsPaused;
         float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y;
         // Villagers read as people: a little over life size close in, and kept about 15 px across as the view zooms
         // out (the people are the point of the game), up to three times life size.

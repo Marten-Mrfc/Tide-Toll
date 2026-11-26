@@ -210,6 +210,40 @@ public partial class CameraRig : Node3D
         if (instant) { Camera.Size = _targetSize; ApplyPitch(); SetPivotLocal(_target); }
     }
 
+    /// <summary>The pivot the view eases toward (map-local, y = 0).</summary>
+    public Vector3 TargetPivot => _target;
+
+    /// <summary>
+    /// A staged move (PauseMenu, BookMotion) places the camera itself each frame: the view is set at once, without the
+    /// pan limits, and the target with it, so the follow easing has nothing left to do (no exponential chase).
+    /// </summary>
+    public void Place(Vector3 local, float size)
+    {
+        _anchored = false;
+        _dragging = false;
+        _leftDown = false;
+        _targetSize = size;
+        _target = new Vector3(local.X, 0, local.Z);
+        Camera.Size = size;
+        ApplyPitch();
+        SetPivotLocal(_target);
+    }
+
+    /// <summary>
+    /// While the book closes or opens its front board stands up to 310 m above the pages, beyond the near plane of the
+    /// tight 200..400 m depth range the ink pass likes. Deep moves the orthographic camera back along its own axis (the
+    /// picture does not change) and widens the range to hold the standing board; the ink pass reads linear depth, so
+    /// only its precision changes.
+    /// </summary>
+    public void SetDeep(bool deep)
+    {
+        float z = deep ? Distance + 200f : Distance;
+        if (Camera.Position.Z == z) return;
+        Camera.Position = new Vector3(0, 0, z);
+        Camera.Near = z - (deep ? 340f : 100f);
+        Camera.Far = z + 100f;
+    }
+
     private void Finish(bool instant)
     {
         _anchored = false;

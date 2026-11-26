@@ -99,6 +99,7 @@ public partial class Screenshot
         Check(Math.Abs(r.GetCenter().X - vp.X / 2) < vp.X * 0.05f && Math.Abs(r.GetCenter().Y - vp.Y / 2) < vp.Y * 0.05f, $"the closed cover is centred ({r.GetCenter()})");
         await Shot("river-paused");
         Main.Menu.OpenSettings();
+        await Until(() => !Main.Menu.Motion.Running, 2000, "the settings spread at rest");
         await Frames(10);
         await Shot("river-paused-settings");
         Main.Menu.Pages!.Close();

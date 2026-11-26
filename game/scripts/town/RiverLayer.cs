@@ -326,6 +326,8 @@ public partial class RiverLayer : Node3D
     {
         var t = _drv.Town;
         if (!t.InRiverAge) return;
+        // Round 7: a river rung in this moment appears under the turning page, once it covers the screen.
+        if (_plan == null && !_main.Hud.PageCovering) return;
         if (_plan == null) Build(t.RiverPlan!);
         var rp = _plan!;
         float dt = (float)delta;

@@ -47,7 +47,7 @@ public partial class SettingsPages
                 if (key == Key.None && !waiting) b.AddThemeColorOverride("font_color", UiKit.FadedInk);
                 if (waiting) b.AddThemeStyleboxOverride("normal", SettingsLook.Slip(s, UiKit.Pressed, 2.5f));
                 b.Pressed += () => StartCapture(a.Name, sl);
-                _controls[$"keys.{a.Name}.{sl}"] = b;
+                Target[$"keys.{a.Name}.{sl}"] = b;
                 row.AddChild(b);
             }
             Row(col, a.Label, row, s, null, 330);
@@ -57,7 +57,7 @@ public partial class SettingsPages
         note.Name = "KeysNote";
         note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         right.AddChild(note);
-        var restore = PageButton("keys.restore", "Restore defaults", s, () => { CancelCapture(); Store.RestoreDefaultKeys(); Build(); FocusName("keys.restore"); },
+        var restore = PageButton("keys.restore", "Restore defaults", s, () => { CancelCapture(); Store.RestoreDefaultKeys(); Refresh(KeysAt); FocusName("keys.restore"); },
             "Put every key back as it was at first");
         restore.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         right.AddChild(restore);
@@ -111,7 +111,7 @@ public partial class SettingsPages
     public void StartCapture(string action, int slot)
     {
         _capture = (action, slot);
-        Build();
+        Refresh(KeysAt);
         FocusName($"keys.{action}.{slot}");
     }
 
@@ -120,7 +120,7 @@ public partial class SettingsPages
         if (_capture == null) return;
         var c = _capture.Value;
         _capture = null;
-        if (_frame != null && Section == "Keys") { Build(); FocusName($"keys.{c.action}.{c.slot}"); }
+        if (_frame != null) { Refresh(KeysAt); FocusName($"keys.{c.action}.{c.slot}"); }
     }
 
     private void Captured(InputEventKey e)
@@ -140,7 +140,7 @@ public partial class SettingsPages
             Store.SwapKey(action, slot, same.action, same.slot);
         else
             Store.SetKey(action, slot, key);
-        Build();
+        Refresh(KeysAt);
         FocusName($"keys.{action}.{slot}");
     }
 
@@ -150,35 +150,38 @@ public partial class SettingsPages
         var auto = new ChoiceButton(AutosaveNames, Math.Max(0, Array.IndexOf(GameSettings.AutosaveChoices, Store.AutosaveMinutes)), s)
         { TooltipText = "How often the game saves by itself" };
         auto.Chosen += i => Store.SetAutosaveMinutes(GameSettings.AutosaveChoices[i]);
-        _controls["saving.autosave"] = auto;
+        Target["saving.autosave"] = auto;
         Row(left, "Autosave", auto, s, null, 250);
 
         bool have = Saves != null;
         var save = PageButton("saving.save", "Save now", s, () =>
         {
             _savingNote = Saves!.SaveNow() ? "Saved." : "The game could not be saved.";
-            Build(); FocusName("saving.save");
+            Refresh(SavingAt); FocusName("saving.save");
         }, "Write the town down now");
         save.Disabled = !have;
-        Row(left, LastSaveText(), save, s, null, 220);
+        var saveRow = Row(left, LastSaveText(), save, s, null, 220);
+        _lastSaveLabel = saveRow.GetChild(0).GetChild<Label>(0);
 
         var load = PageButton("saving.load", "Load the last save", s, () =>
         {
             _savingNote = Saves!.LoadLast() ? "The last save is loaded." : "There is no save to load.";
-            Build(); FocusName("saving.load");
+            Refresh(SavingAt); FocusName("saving.load");
         }, "Go back to the town as it was last saved");
         load.Disabled = !have || !Saves!.HasSave;
+        _loadButton = load;
         Row(left, "Go back to the last save", load, s, null, 220);
-        if (_savingNote.Length > 0)
-        {
-            var n = UiKit.Text(_savingNote, s, 17, UiKit.UiBold, UiKit.Ink);
-            n.Name = "SavingNote";
-            left.AddChild(n);
-        }
+        // Always made, shown only with a note in it (the page is kept between visits: RefreshSaving updates it).
+        var n = UiKit.Text(_savingNote, s, 17, UiKit.UiBold, UiKit.Ink);
+        n.Name = "SavingNote";
+        n.Visible = _savingNote.Length > 0;
+        left.AddChild(n);
+        _savingNoteLabel = n;
 
         Heading(right, "The save file", s);
         var del = PageButton("saving.delete", "Delete the save", s, () => OpenSlip("delete"), "Remove the save from this computer");
         del.Disabled = !have || !Saves!.HasSave;
+        _deleteButton = del;
         Row(right, "Start again from nothing", del, s, "You are asked before anything is removed.", 220);
         var where = UiKit.Text("Where it lives", s, 19);
         right.AddChild(where);
@@ -186,6 +189,28 @@ public partial class SettingsPages
         path.Name = "SavePath";
         path.AutowrapMode = TextServer.AutowrapMode.Arbitrary;
         right.AddChild(path);
+    }
+
+    private Label? _lastSaveLabel, _savingNoteLabel;
+    private Button? _loadButton, _deleteButton;
+
+    /// <summary>
+    /// The Saving page as the disk is now, without building it again (the pages are kept while put away, and the save
+    /// changes meanwhile): the last save's time, Load and Delete offered only with a save, the note.
+    /// </summary>
+    private void RefreshSaving()
+    {
+        if (_lastSaveLabel == null || !IsInstanceValid(_lastSaveLabel)) return;
+        bool have = Saves != null, any = have && Saves!.HasSave;
+        string last = LastSaveText();
+        if (_lastSaveLabel.Text != last) _lastSaveLabel.Text = last;
+        if (_loadButton != null && IsInstanceValid(_loadButton)) _loadButton.Disabled = !any;
+        if (_deleteButton != null && IsInstanceValid(_deleteButton)) _deleteButton.Disabled = !any;
+        if (_savingNoteLabel != null && IsInstanceValid(_savingNoteLabel))
+        {
+            if (_savingNoteLabel.Text != _savingNote) _savingNoteLabel.Text = _savingNote;
+            _savingNoteLabel.Visible = _savingNote.Length > 0;
+        }
     }
 
     private string LastSaveText()
@@ -199,7 +224,7 @@ public partial class SettingsPages
     private void OpenSlip(string kind)
     {
         _slip = kind;
-        Build();
+        Refresh();
         FocusName("slip.0");
     }
 
@@ -208,6 +233,7 @@ public partial class SettingsPages
         var blocker = new ColorRect { Name = "Blocker", Color = new Color(UiKit.Ink, 0.35f), MouseFilter = MouseFilterEnum.Stop };
         blocker.SetAnchorsPreset(LayoutPreset.FullRect);
         _frame!.AddChild(blocker);
+        _slipBlocker = blocker;
         var card = new PanelContainer { Name = "Slip" };
         var cardBox = UiKit.Card(s, UiKit.Paper, 2f);
         cardBox.SetContentMarginAll(UiKit.Px(s, 26));
@@ -251,6 +277,7 @@ public partial class SettingsPages
         row.AddChild(bYes);
         row.AddChild(bNo);
         _frame.AddChild(card);
+        _slipCard = card;
         // Keep the keyboard inside the slip.
         foreach (var (b, o) in new[] { (bYes, bNo), (bNo, bYes) })
         {
@@ -326,12 +353,12 @@ public partial class SettingsPages
             case "delete":
                 Saves?.DeleteSave();
                 _slip = ""; _savingNote = "The save is deleted.";
-                Build(); FocusName("saving.save"); break;
+                Refresh(SavingAt); FocusName("saving.save"); break;
             case "clash":
                 _slip = "";
                 Store.SwapKey(_clash.action, _clash.slot, _clash.other, _clash.otherSlot);
                 // The swap gave this slot the other's key, which is the key just pressed.
-                Build(); FocusName($"keys.{_clash.action}.{_clash.slot}"); break;
+                Refresh(KeysAt); FocusName($"keys.{_clash.action}.{_clash.slot}"); break;
         }
     }
 
@@ -340,8 +367,8 @@ public partial class SettingsPages
         switch (_slip)
         {
             case "keep": RevertDisplay(); break;
-            case "delete": _slip = ""; Build(); FocusName("saving.delete"); break;
-            case "clash": _slip = ""; Build(); FocusName($"keys.{_clash.action}.{_clash.slot}"); break;
+            case "delete": _slip = ""; Refresh(SavingAt); FocusName("saving.delete"); break;
+            case "clash": _slip = ""; Refresh(KeysAt); FocusName($"keys.{_clash.action}.{_clash.slot}"); break;
         }
     }
 }

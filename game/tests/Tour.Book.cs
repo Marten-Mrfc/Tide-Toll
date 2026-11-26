@@ -63,11 +63,12 @@ public partial class Tour
         Main.Rig.UserMoved = false;
         await Wait(800);
         Main.Menu.Pause();
-        Main.Cover.Hold(0.45f);
+        // Round 7: the closing is one timeline (PauseMenu.Motion); held a little past half way, the board part way down.
+        Main.Menu.HoldAt(0.55f);
         await Wait(1500);
         await PageGone();
         await Shot("g05-closing");
-        Main.Cover.Close();
+        Main.Menu.HoldAt(-1f);
         await WaitFor(() => Main.Menu.CoverShown, 20000);
         await Wait(400);
         Check(Main.Menu.CoverShown, "g06: the cover menu shows");
@@ -87,6 +88,7 @@ public partial class Tour
             var pages = Main.Menu.Pages!;
             pages.ShowSection(SettingsPages.Sections[i]);
             await Frames(4);
+            await WaitFor(() => !Main.Menu.Motion.Running && !pages.Turning, 5000);
             if (SettingsPages.Sections[i] == "Keys")
             {
                 // Rebind Pave by clicking its key and pressing Space, the bell's key: the clash asks what to do.
@@ -116,6 +118,7 @@ public partial class Tour
         await Key(Godot.Key.Enter);
         await Frames(4);
         Check(Main.Menu.QuestionShown, "the New town question");
+        await WaitFor(() => !Main.Menu.Motion.Running, 5000);
         await Wait(400);
         await PageGone();
         await Shot("g07-new-town");

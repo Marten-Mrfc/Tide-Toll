@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One command for everything that can be verified automatically. Exits non-zero if any step fails.
 #   ./check                 sim build + fast tests (Release), Godot C# build, the town's headless smoke, game-town and the whole-age playthrough
-#                           (real input) and perf tests, screenshots at 1920x1080, ledger
+#                           (real input) and perf tests, the menus and the book's motion, screenshots at 1920x1080, ledger
 #   ./check --no-screenshot skip the rendered screenshot (no xvfb, or in a hurry)
 #   ./check --gate          also run the long statistical runs: gate tables, toy comparison, Category=Gate tests (~6 min)
 #   ./check --bench         also run the tick benchmark in Release (fails only above a generous budget)
@@ -149,6 +149,13 @@ if have_godot; then
   # volume, coin numbers, a rebound key), New town asks and gives a new seed at level 1, the interface's pause control.
   step game-menu tools/godot-test.sh 'MENU PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/menu.tscn --quit-after 100000
   note "$(grep -o 'MENU PASS.*' "$LOGS/game-menu.log" | head -1 | sed 's/MENU PASS //' | cut -c1-90)"
+  # Round 7, the book's motion: every transition (pause, resume, cover to settings, each tab forwards and backwards,
+  # settings back to the cover, the New town question, resume after the settings, and impatient Esc, Enter, clicks and
+  # tab changes mid-way) through real input, sampled every frame at fixed 60 fps: continuity, eased ends, the parts'
+  # overlaps and lengths, nothing on screen switched on or off, no allocation or CPU hitch, the save outside the motion,
+  # the end states; then at 30 and 120 fps: the same lengths (two frames) and the same end states (tools/motion-check.sh).
+  step game-motion env GODOT="$GODOT" tools/motion-check.sh
+  note "$(grep -o 'MOTION RATES PASS' "$LOGS/game-motion.log" | head -1) $(grep -o 'alloc-max=[0-9]*B cpu-max=[0-9.]*ms' "$LOGS/motion-60.log" | head -1)"
   # Saving: the town at level 2+ with a paved road saved and the scene loaded again (same state, camera, runs on), a
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
@@ -169,7 +176,7 @@ if have_godot; then
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-playthrough game-river game-perf game-book game-settings game-menu game-save screenshot; do
+  for s in game-build game-smoke game-town game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

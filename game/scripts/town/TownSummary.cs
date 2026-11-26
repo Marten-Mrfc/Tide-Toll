@@ -86,6 +86,15 @@ public partial class TownSummary : Node3D
     {
         _clock += delta;
         if (!Watched || _clock < 0.5) return;
+        UpdateNow();
+    }
+
+    /// <summary>
+    /// Writes the page now (round 7: PauseMenu, in the frame before a transition's first, so the left page turning with
+    /// the board shows the town as it is and its text never changes while it moves).
+    /// </summary>
+    public void UpdateNow()
+    {
         _clock = 0;
         var t = _drv.Town;
         _sb.Clear();

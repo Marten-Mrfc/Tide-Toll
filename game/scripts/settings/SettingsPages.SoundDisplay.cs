@@ -51,7 +51,7 @@ public partial class SettingsPages
             };
             row.AddChild(slider);
             row.AddChild(value);
-            _controls["sound." + bus] = slider;
+            Target["sound." + bus] = slider;
             Row(col, BusLabels[i], row, s, BusNotes[i], 300);
         }
 
@@ -59,7 +59,7 @@ public partial class SettingsPages
         Heading(right, "When you look away", s);
         var mute = new SwitchButton(Store.MuteWhenInactive) { TooltipText = "Silence the game while another window is in front" };
         mute.Switched += Store.SetMuteWhenInactive;
-        _controls["sound.mute"] = mute;
+        Target["sound.mute"] = mute;
         Row(right, "Mute when the window is not active", mute, s, "The game goes quiet while you use another window.", 120);
         var hint = UiKit.Text("Every change is kept at once. You hear a short coin when you let go of a slider.", s, 16, null, UiKit.FadedInk);
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -75,7 +75,7 @@ public partial class SettingsPages
         var shownRes = trial ? _trialRes : Store.Resolution;
         var mode = new ChoiceButton(ModeNames, (int)shownMode, s) { TooltipText = "Windowed, borderless full screen or full screen" };
         mode.Chosen += i => TryDisplay((WindowMode)i, Store.Resolution);
-        _controls["display.mode"] = mode;
+        Target["display.mode"] = mode;
         Row(left, "Window mode", mode, s, null, 290);
 
         var sizes = Applier.Display.Resolutions(Store.Resolution);
@@ -86,19 +86,19 @@ public partial class SettingsPages
             Disabled = shownMode != WindowMode.Windowed, TooltipText = "The size of the window when it is not full screen",
         };
         res.Chosen += i => TryDisplay(Store.WindowMode, sizes[i]);
-        _controls["display.resolution"] = res;
+        Target["display.resolution"] = res;
         Row(left, "Resolution", res, s, shownMode == WindowMode.Windowed ? null : "Used in windowed mode.", 290);
 
         var vsync = new SwitchButton(Store.Vsync) { TooltipText = "Wait for the screen between frames: no tearing" };
         vsync.Switched += Store.SetVsync;
-        _controls["display.vsync"] = vsync;
+        Target["display.vsync"] = vsync;
         Row(left, "VSync", vsync, s, "Stops tearing. Turn it off if the game feels slow to answer.", 120);
 
         var fpsNames = new[] { "30", "60", "120", "None" };
         var fps = new ChoiceButton(fpsNames, Array.IndexOf(GameSettings.FrameLimits, Store.FrameLimit), s)
         { TooltipText = "The most frames drawn each second" };
         fps.Chosen += i => Store.SetFrameLimit(GameSettings.FrameLimits[i]);
-        _controls["display.fps"] = fps;
+        Target["display.fps"] = fps;
         Row(left, "Frame limit", fps, s, null, 160);
 
         Heading(right, "Reading the page", s);
@@ -107,17 +107,17 @@ public partial class SettingsPages
         var ui = new ChoiceButton(sizeNames.ToArray(), (Store.InterfaceSize - GameSettings.MinInterface) / 10, s)
         { TooltipText = "How large the writing and buttons are" };
         ui.Chosen += i => Store.SetInterfaceSize(GameSettings.MinInterface + 10 * i);
-        _controls["display.interface"] = ui;
+        Target["display.interface"] = ui;
         Row(right, "Interface size", ui, s, "Makes all writing and buttons larger or smaller.", 160);
 
         var coins = new SwitchButton(Store.ShowCoinNumbers) { TooltipText = "A small number rises where coins are paid" };
         coins.Switched += Store.SetShowCoinNumbers;
-        _controls["display.coins"] = coins;
+        Target["display.coins"] = coins;
         Row(right, "Show coin numbers at deliveries", coins, s, null, 120);
 
         var follow = new SwitchButton(Store.FollowTown) { TooltipText = "The view moves with the town as it grows, until you move it" };
         follow.Switched += Store.SetFollowTown;
-        _controls["display.follow"] = follow;
+        Target["display.follow"] = follow;
         Row(right, "The view follows the town", follow, s, "Until you move the view yourself.", 120);
     }
 
@@ -145,7 +145,7 @@ public partial class SettingsPages
         _slip = "";
         Store.SetWindowMode(_trialMode);
         Store.SetResolution(_trialRes);
-        Build();
+        Refresh(DisplayAt);
         FocusName(_trialMode != _prevMode ? "display.mode" : "display.resolution");
     }
 
@@ -155,7 +155,7 @@ public partial class SettingsPages
         if (_slip != "keep") return;
         _slip = "";
         Applier.Display.ApplyWindow(GetWindow(), _prevMode, _prevRes);
-        Build();
+        Refresh(DisplayAt);
         FocusName(_trialMode != _prevMode ? "display.mode" : "display.resolution");
     }
 }

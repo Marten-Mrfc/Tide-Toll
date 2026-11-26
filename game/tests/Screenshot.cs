@@ -160,11 +160,12 @@ public partial class Screenshot : TownTestBase
         Main.Follow(instant: true);
         await Frames(10);
         Main.Menu.Pause();
-        Main.Cover.Hold(0.3f);
+        // Round 7: the closing is one timeline (PauseMenu.Motion): held where the board is about a third of the way down.
+        Main.Menu.HoldAt(0.52f);
         var t1 = Time.GetTicksMsec();
         while (Time.GetTicksMsec() - t1 < 1500) await Frames(1);
         await Shot("book-half-closed");
-        Main.Cover.Close();
+        Main.Menu.HoldAt(-1f);
         await Until(() => Main.Menu.CoverShown, 2000, "the cover menu");
         await Frames(5);
         await Shot("cover-menu");
@@ -174,15 +175,19 @@ public partial class Screenshot : TownTestBase
             Main.Menu.OpenSettings();
             await Frames(3);
             Main.Menu.Pages!.ShowSection(section);
+            // Round 7: the spread arrives and its pages turn over a fraction of a second; shoot it at rest.
+            await Until(() => !Main.Menu.Motion.Running && !Main.Menu.SettingsSpread.Turning, 2000, "the settings spread at rest");
             await Frames(10);
             await Shot("settings-" + section.ToLowerInvariant());
             Main.Menu.Pages!.Close();
+            await Until(() => Main.Menu.CoverShown, 2000, "the cover after the settings");
             await Frames(5);
         }
         Main.Menu.NewTownButton.GrabFocus();
         await Key(Godot.Key.Enter);
         await Frames(5);
         Check(Main.Menu.QuestionShown, "the New town question");
+        await Until(() => !Main.Menu.Motion.Running, 2000, "the question at rest");
         await Shot("new-town-question");
         await Key(Godot.Key.Escape);
         await Frames(3);

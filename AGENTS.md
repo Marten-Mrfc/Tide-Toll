@@ -45,7 +45,9 @@ Instructions for AI coding agents (Claude reads this through CLAUDE.md). Keep it
 ## Checks
 
 ```
-./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-playthrough (the whole age), game-perf, game-book (the zoom), screenshots, ledger
+./check                 # sim build + fast tests (Release), Godot build, game-smoke, game-town (real input), game-playthrough (the whole age), game-perf, game-book (the zoom), game-menu, game-motion, screenshots, ledger
+tools/motion-check.sh   # game-motion alone: the book's transitions sampled every frame at 60, 30 and 120 fps (~1 min)
+tools/motion-strips.sh  # frame strips of each transition (xvfb, Mobile renderer, 1920 x 1080): build/motion/*.png contact sheets
 ./check --gate          # gate tables, comparison with the toy, 45-day traces, preview agreement (~6 min)
 ./check --bench         # ms per tick at 200 and 500 walkers in Release; fails only above 5 ms mean / 25 ms p99
 dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"
@@ -112,3 +114,10 @@ Work on branch `claude/prototype-1`. Do not edit `docs/overnight-log.md` unless 
 - Summary page and achievements page follow the age (second age: its level, boats filled, tolls, the river's 16 achievements); the boons held are listed on the summary.
 - Allocation: never pass a string where Godot wants a `StringName` in per-frame code (cache `static readonly StringName`): each call makes a tracked object, and the tracker's growth cost 1.3 MB in one frame (game-perf). `Perf.cs` prints the largest frame and the node that allocated it.
 - `TownDriver.RunBotUntil`: checks the condition before the bot acts (to leave a choice open for a test).
+
+## Round 7 (the book's motion)
+
+- Every staged transition is one `BookMotion` timeline (fixed length, real time, eased curves; `game/scripts/BookMotion.cs`) that every part reads: `PauseMenu.Motion.cs` (interface `TownHud.Fade`, camera `CameraRig.Place`, board `BookCover.Set`, models' sinking, lettering, question, settings spread). Never switch something on screen with `Visible` during a transition: fade, move or cover it; a new transition starts from wherever the parts are. No exponential chase for staged moves. The pause's save is written in the frame after the motion's last.
+- `BookCover`: the left half of the open book (page, stack, half the binding) turns over as one piece; models sink flat (MapOrigin y scale). `CameraRig.SetDeep` widens the depth range while the board stands up.
+- `SettingsPages` is built once (PauseMenu, at start-up) with all four sections under `SectionMask`s; a tab change is a page turn (`SettingsPages.Turn.cs`, `PageLeaf`); only a window or interface size change rebuilds it. `PauseMenu.Pages` is non-null only in `State.Settings`; `SettingsSpread` is the kept instance.
+- `game-motion` (`MotionTest*.cs`, `tools/motion-check.sh`): continuity, eased ends, overlaps, lengths, no Visible flip while showing, allocation and CPU per frame, end states, impatient input, and the same lengths and end states at 30, 60 and 120 fps. Progress and timings: `docs/plans/book-motion-progress.md`.

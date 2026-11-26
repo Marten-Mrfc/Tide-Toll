@@ -19,7 +19,7 @@ public partial class TownHud
     private TextureRect _tideIcon = null!;
     private Label _tideText = null!;
     private Control _tideDial = null!;
-    private ColorRect _wipe = null!, _wipeEdge = null!;
+    private PageLeaf _wipe = null!;
     private float _wipeT = -1;
     private int _tideSig = int.MinValue;
     private bool _titleRiver, _sealPage;
@@ -30,6 +30,16 @@ public partial class TownHud
     public bool TideVisible => _tide.Visible;
     public float TideNeedle { get; private set; }
     public bool PageTurning => _wipeT >= 0;
+    /// <summary>
+    /// Round 7: the turning page covers the whole screen from half way: what the new age changes on screen (the right
+    /// page's title, the river, the tide dial) changes only from then on, under the leaf.
+    /// </summary>
+    public bool PageCovering => _wipeT < 0 || _wipeT >= WipeSeconds * 0.5f;
+    /// <summary>The age-change leaf's moving edge on screen (canvas x) and whether it is drawn (tests and frame strips).</summary>
+    public float PageLeafEdge => _wipe.Edge;
+    public bool PageLeafShown => _wipe.Visible;
+    /// <summary>Frame strips: the page turn stands at this many seconds in (negative lets it run).</summary>
+    public float HoldPageTurnAt = -1f;
     public bool SealPageShown => AgePageOpen && _sealPage;
 
     private void BuildRiverParts()
@@ -59,10 +69,34 @@ public partial class TownHud
         _root.AddChild(_tide);
         _tideSig = int.MinValue;
 
-        _wipe = new ColorRect { Name = "PageTurn", Color = new Color(UiKit.Paper, 0.97f), MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-        _wipeEdge = new ColorRect { Name = "PageEdge", Color = new Color(Palette.Ink, 0.35f), MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        // Round 7: an opaque leaf of the book's paper with a curled, shaded edge and its shadow (PageLeaf), not a
+        // see-through rectangle: nothing behind it shows through.
+        _wipe = new PageLeaf { Name = "PageTurn", Opaque = true, S = _s, Visible = false };
+        _wipe.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _root.AddChild(_wipe);
-        _root.AddChild(_wipeEdge);
+        if (_wipeT >= 0) { PlaceWipe(); _root.MoveChild(_wipe, _root.GetChildCount() - 1); }
+    }
+
+    /// <summary>
+    /// The leaf sweeps in from the right edge (its left edge moving, the curl and its shadow on that side) until it covers
+    /// the whole screen half way, then slides on off to the left (its right edge moving). Eased in and out; its shading
+    /// grows from nothing and goes back to nothing, so it neither appears nor leaves in one frame.
+    /// </summary>
+    private void PlaceWipe()
+    {
+        float k = Math.Clamp(_wipeT / WipeSeconds, 0f, 1f);
+        float e = BookMotion.Smoother(k);
+        float w = _built.X, x = w * (1f - 2f * e);
+        float lift = Math.Clamp(4f * Math.Min(e, 1f - e), 0f, 1f);
+        var area = new Rect2(0, 0, w, _built.Y);
+        // First half: the leaf hangs from the right edge and its left edge comes in; then it is held at the left edge
+        // and its right edge goes out.
+        if (x >= 0) _wipe.Place(area, w + 2f, x, lift);
+        else _wipe.Place(area, -2f, w + x, lift);
+        if (!_wipe.Visible && k < 1f) _wipe.Visible = true;
+        // Over every card, also those the new age builds again while the leaf covers them.
+        int last = _root.GetChildCount() - 1;
+        if (_wipe.GetIndex() != last) _root.MoveChild(_wipe, last);
     }
 
     /// <summary>The dial: a ring with high water at the top and low at the foot, the needle at the tide now.</summary>
@@ -86,8 +120,10 @@ public partial class TownHud
     private void RiverRung()
     {
         _wipeT = 0;
+        // Over every card of the interface (some are made after it).
+        _root.MoveChild(_wipe, _root.GetChildCount() - 1);
         _main.Audio.PageTurn();
-        SetPageTitle(true);
+        // The title changes under the leaf (RiverFrame), once it covers the page.
     }
 
     private void SetPageTitle(bool river)
@@ -103,23 +139,14 @@ public partial class TownHud
     private void RiverFrame(float dt)
     {
         var t = _drv.Town;
-        if (t.InRiverAge != _titleRiver) SetPageTitle(t.InRiverAge);
         if (_wipeT >= 0)
         {
-            _wipeT += dt;
-            float k = Math.Clamp(_wipeT / WipeSeconds, 0f, 1f);
-            // A page sweeps over from the right edge to the left and away, its edge shadowed.
-            float e = k * k * (3f - 2f * k);
-            float w = _built.X;
-            float x = w * (1f - 2f * e);
-            _wipe.Visible = _wipeEdge.Visible = k < 1f;
-            _wipe.Position = new Vector2(Math.Max(0, x), 0);
-            _wipe.Size = new Vector2(Math.Max(0, Math.Min(w, w - x) - Math.Max(0, -x)), _built.Y);
-            _wipeEdge.Position = new Vector2(x - UiKit.Px(_s, 10), 0);
-            _wipeEdge.Size = new Vector2(UiKit.Px(_s, 10), _built.Y);
-            if (k >= 1f) _wipeT = -1;
+            _wipeT = HoldPageTurnAt >= 0 ? Math.Min(HoldPageTurnAt, WipeSeconds) : _wipeT + Math.Min(dt, BookMotion.MaxStep);
+            PlaceWipe();
+            if (_wipeT >= WipeSeconds) { _wipeT = -1; _wipe.Visible = false; }
         }
-        bool show = t.InRiverAge && _fullA > 0.01f;
+        if (t.InRiverAge != _titleRiver && PageCovering) SetPageTitle(t.InRiverAge);
+        bool show = t.InRiverAge && _fullA > 0.01f && PageCovering;
         _tide.Visible = show;
         if (!show) return;
         _tide.Modulate = new Color(1, 1, 1, _fullA);

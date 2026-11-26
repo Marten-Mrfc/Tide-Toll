@@ -32,8 +32,8 @@ public partial class RiverTest
         await Frames(5);
         Check(Main.Menu.Pages != null && Main.Menu.Now == PauseMenu.State.Settings, "the settings open from the cover in the second age");
         await Key(Godot.Key.Escape);
-        await Frames(5);
-        Check(Main.Menu.CoverShown, "Esc on the settings goes back to the cover");
+        // Round 7: the way back to the cover is a staged closing of the book (about a second).
+        await Until(() => Main.Menu.CoverShown, 600, "Esc on the settings goes back to the cover");
         await Click(TestInput.Centre(Main.Menu.ResumeButton));
         await Until(() => !Main.Menu.IsPaused, 3000, "the book to open again");
         await Frames(60);

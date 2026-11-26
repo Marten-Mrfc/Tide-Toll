@@ -89,8 +89,8 @@ public partial class MenuTest : TownTestBase
         foreach (var k in new[] { Godot.Key.P, Godot.Key.E, Godot.Key.Key4, Godot.Key.Key2 }) await Key(k);
         Check(!Main.Hud.PaveMode && !Main.Hud.ExtendMode && T.Coin == coin, "a game key acted on the settings pages");
         await Key(Godot.Key.Escape);
-        await Frames(3);
-        Check(M.CoverShown, "Esc did not leave the settings pages");
+        // Round 7: the spread fades and the book closes over about a second (game-motion times it).
+        await Until(() => M.CoverShown, 600, "Esc did not leave the settings pages");
         // Resume: no mode on, and the next Esc pauses at once.
         await Key(Godot.Key.Escape);
         // A key while the book opens does nothing either.
@@ -163,14 +163,17 @@ public partial class MenuTest : TownTestBase
         Check(Main.Audio.UiSounds > ui0, "no interface sound on the menu");
         await Key(Godot.Key.Escape);
         await Frames(3);
-        Check(M.Pages == null && M.CoverShown, "Esc on the settings pages did not return to the cover");
+        Check(M.Pages == null, "Esc on the settings pages did not leave them");
+        // Round 7: back to the cover is a closing of the book now (about a second), not one frame.
+        await Until(() => M.CoverShown, 600, "Esc on the settings pages did not return to the cover");
         Check(T.Tick == tick, "the settings pages let the town run");
         // The same with the Back control.
         await Key(Godot.Key.Enter);
         await Frames(3);
         Check(M.Pages != null, "Enter did not reopen the settings");
         await ClickC((Control)M.Pages!.Controls["back"]);
-        Check(M.Pages == null && M.CoverShown, "Back did not return to the cover");
+        Check(M.Pages == null, "Back did not leave the settings pages");
+        await Until(() => M.CoverShown, 600, "Back did not return to the cover");
 
         // Settings changed on the pages take effect in the game.
         await Key(Godot.Key.Enter);
@@ -200,7 +203,7 @@ public partial class MenuTest : TownTestBase
         await Frames(5);
         Check(MathF.Abs(GetWindow().ContentScaleFactor - 1.5f) < 1e-3f, "interface 150 % did not set the content scale");
         await ClickC((Control)pages.Controls["back"]);
-        Check(M.CoverShown, "Back did not return to the cover after the changes");
+        await Until(() => M.CoverShown, 600, "Back did not return to the cover after the changes");
 
         // Resume (Enter on Resume): the book opens, the town runs, the camera is back where it was.
         M.ResumeButton.GrabFocus();
