@@ -78,27 +78,8 @@ public partial class TownTest
         await Until(() => Main.Touches.Popping == 0, 300, "the touch to settle");
         Check(!Main.Hud.BannerLog.Exists(l => l.Contains(TownHud.TouchNote(T.Touch(before).Kind))), "a touch never has a banner");
 
-        // An extra hand: offered in the shop and over its workplace, bought by a click.
-        int w = -1;
-        Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
-        for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
-        Check(w >= 0, "a hand is offered at a queued workplace");
-        for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
-        // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
-        if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
-        Main.Rig.UserMoved = false;
-        Main.Follow(instant: true);
-        await Frames(10);
-        Check(!Main.Hud.AchievementsOpen && Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
-        var mark = Main.Hud.Mark(ShopItemKind.Hand, w);
-        Check(mark != null && mark.Text.Contains(T.HandName(w)), "the offer has a bookmark in the shop");
-        int hands = T.HandsBought(w);
-        var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
-        await Click(markRect.GetCenter());
-        Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");
-        _bought++; _kinds[ShopItemKind.Hand] = Got(ShopItemKind.Hand) + 1;
-
-        // The charter drive: its own card, a bar that fills in parts, met.
+        // The charter drive: its own card, a bar that fills in parts, met. (Before the hand: a hand offered only late in
+        // the age would let the bot meet the whole drive unseen.)
         Main.Driver.RunBotUntil(bot, t => t.Drive.Active, 20 * 60 * 60 * 10);
         Check(T.Drive.Active, "the charter drive starts at level 15");
         await Frames(3);
@@ -119,6 +100,26 @@ public partial class TownTest
         Check(T.Drive.Done && partSeen, "the drive filled in parts and was met");
         await Frames(3);
         Check(!Main.Hud.DriveCardVisible && Main.Hud.NoteLog.Exists(l => l.Contains("charter drive is met")), "the met drive leaves a note and its card goes");
+        // An extra hand: offered in the shop and over its workplace, bought by a click.
+        int w = -1;
+        Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
+        for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
+        Check(w >= 0, "a hand is offered at a queued workplace");
+        for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
+        // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
+        if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
+        Main.Rig.UserMoved = false;
+        Main.Follow(instant: true);
+        await Frames(10);
+        Check(!Main.Hud.AchievementsOpen && Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
+        var mark = Main.Hud.Mark(ShopItemKind.Hand, w);
+        Check(mark != null && mark.Text.Contains(T.HandName(w)), "the offer has a bookmark in the shop");
+        int hands = T.HandsBought(w);
+        var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
+        await Click(markRect.GetCenter());
+        Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");
+        _bought++; _kinds[ShopItemKind.Hand] = Got(ShopItemKind.Hand) + 1;
+
         Notes.Add($"boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
     }
 }
