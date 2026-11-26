@@ -32,6 +32,7 @@ public partial class UiAudit
 
         // u30: its first minute (the landing given).
         _bot.PlayOn = true;
+        _bot.NoPave = true; // until u36, so a worn road is there to point at
         await FollowView();
         await Settle(600);
         await Calm(10000);
@@ -65,10 +66,17 @@ public partial class UiAudit
             TestInput.Motion(new Vector2(GetWindow().Size.X / 2f, GetWindow().Size.Y - 8));
         }
         else NotMade("u36", "Pave mode (second age)", "no pavable road before the seal");
+        _bot.NoPave = false;
 
+    }
+
+    private static bool IsSkipper(Town t) => t.Request.Active && (t.Request.WhoName ?? "").Contains("skipper", StringComparison.OrdinalIgnoreCase);
+
+    private async Task SecondAgeLate()
+    {
         // u32: the middle: ferry, tide dial, a skipper's request.
-        bool skipper = await Early(t => t.Ferry.Built && t.Request.Active && IsSkipper(t), 90);
-        if (!skipper) await Early(t => t.Ferry.Built && t.Request.Active, 60);
+        bool skipper = await Early(t => t.Ferry.Built && t.Request.Active && IsSkipper(t), 60);
+        if (!skipper) await Early(t => (t.Ferry.Built || t.Level >= 22) && t.Request.Active, 60);
         if (!T.HasSeal)
         {
             await ClosePage(); await ClearChoice();
@@ -81,12 +89,7 @@ public partial class UiAudit
 
         // u35: the busiest moment of the second age.
         await Busiest("u35", "Busiest moment (second age)", T.Level + 1, T.Level + 4);
-    }
 
-    private static bool IsSkipper(Town t) => t.Request.Active && (t.Request.WhoName ?? "").Contains("skipper", StringComparison.OrdinalIgnoreCase);
-
-    private async Task SecondAgeLate()
-    {
         // u34: late, drawbridge and toll, at rest.
         if (await Early(t => t.CrossingExists(RiverLinkKind.Drawbridge) && t.Tolls > 0, 240) || await Early(t => t.CrossingExists(RiverLinkKind.Drawbridge), 60))
         {
