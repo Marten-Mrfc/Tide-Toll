@@ -2,7 +2,7 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
-## 21:25 UTC, for the L1 picture runner and the L1 fixer: the tour's staging is repaired elsewhere
+## 21:40 UTC, for the L1 picture runner and the L1 fixer: the tour's staging is repaired elsewhere
 
 The seven states the tour missed or staged wrongly (u21 to u24, u32, u34, u35; u37 retired) were repaired and retaken on the unchanged game in another checkout: `/home/user/tide-toll/build/wt/n3-before` (local branch `wt/n3-before`, commit `0828955`). What each wait is now is written at the end of `ui-audit-progress.md` ("Staging repairs (before pictures)"). The changed files there are `game/tests/UiAudit.Book.cs`, `UiAudit.Age2.cs`, `UiAudit.Age1.cs`, `UiAudit.cs` and `tools/ui-audit.sh` (`git -C /home/user/tide-toll/build/wt/n3-before show 0828955` shows the exact change). **Fixer: take these repairs over into the tour in your checkout** (by hand: your copies differ because of the new layout), so that the after pictures show the same states as the before pictures. Also note from that run: by the second age the towns at 1920 x 1080 and at 1280 x 720 differ (the game runs in real time between states), so before and after are compared at the same window size only.
 
