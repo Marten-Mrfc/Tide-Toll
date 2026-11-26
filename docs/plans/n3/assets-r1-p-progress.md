@@ -69,3 +69,11 @@ SHOULD FIX
 - Skin against Trail earth: not fixed: the palette has no other skin tone; a palette change is the lead's call.
 - Black-fill pictures in the audit tool: not done (time).
 - Keeper's hut: not touched (its ranking note is minor).
+
+./check 21:52 to (unfinished at 22:37 UTC, machine load 10 to 14 on 4 cores): sim-build, sim-test, godot-nuget,
+sync-assets, game-build, game-smoke, game-town, game-perf (PERF PASS), game-playthrough, game-river, game-book,
+game-menu, game-save passed; game-settings printed SETTINGS PASS then aborted at exit (exit 134, leaked StyleBoxFlat
+and InputEventKey references; rerun alone 22:26: SETTINGS PASS, then the same leak lines fail the error filter: not
+this track's code); game-motion failed on CPU per frame under load (6.33 ms and 6.79 ms against the gate 6); the
+screenshot step was still running after 37 minutes. To do: rerun game-motion and the screenshot step on a quiet machine.
+After pictures as JPEG (quality 85): docs/review/n3/after/assets/ (74 files, every before name of this track covered).
