@@ -2,6 +2,14 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 21:10 UTC, for the layout builder and the L1 fixer: from your own picture `l1-wip/u10.png`
+
+It is already much calmer than before. Three things to change:
+
+1. **Shop rows have no frame at rest.** In the picture every row is a box with a heavy ink border and every pill has another: with eight affordable rows the shop is the loudest thing on screen. The shop sheet is the card; rows inside it are divided by air only (sheet section 4: a button's border belongs to hover, 3, and pressed). An affordable pill is solid wheat with no ink border (the fill is the signal); a "not yet" or blocked pill has a 1 px muted border.
+2. **Coin numbers need their ink edge and their size** (20, bold): "+8" at the top of the picture can hardly be seen on the grass.
+3. **Empty ledger sections:** draw the faint ruled lines (ink at about 8 percent, one every 24) so that blank paper reads as an account book and not as a card that failed to load.
+
 ## 21:05 UTC, for the layout builder and the L1 fixer (interface track)
 
 The three audit reviewers have finished (`audit-ui-1.md`, `-2.md`, `-3.md`; each has "the ten worst problems" in its section 3 and "what must be kept" in section 4). They confirm the sheet. What they add to it:
