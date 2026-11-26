@@ -50,7 +50,8 @@ public partial class TownTest
         Check(T.ChoiceOpen, "the bot played on to the next choice");
         await Frames(3);
         var c = T.Choice;
-        Check(Main.Hud.ChoiceCardVisible && Main.Hud.ChoiceCardText.Contains(c.BName), "the second choice's card");
+        Check(Main.Hud.ChoiceCardVisible && Main.Hud.ChoiceCardText.Contains(c.BName),
+            $"the second choice's card (open {T.ChoiceOpen}, choice {c.Choice}, achievements {Main.Hud.AchievementsOpen}, age page {Main.Hud.AgePageOpen}, text '{Main.Hud.ChoiceCardText}')");
         await Key(Godot.Key.X);
         await Frames(2);
         Check(T.ChoicePicked(c.Choice) == (int)c.B, $"key X takes the right-hand boon {c.BName}");
@@ -83,10 +84,12 @@ public partial class TownTest
         for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
         Check(w >= 0, "a hand is offered at a queued workplace");
         for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
+        // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
+        if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
         Main.Rig.UserMoved = false;
         Main.Follow(instant: true);
         await Frames(10);
-        Check(Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
+        Check(!Main.Hud.AchievementsOpen && Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
         var mark = Main.Hud.Mark(ShopItemKind.Hand, w);
         Check(mark != null && mark.Text.Contains(T.HandName(w)), "the offer has a bookmark in the shop");
         int hands = T.HandsBought(w);

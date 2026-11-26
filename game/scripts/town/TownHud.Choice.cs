@@ -140,6 +140,8 @@ public partial class TownHud
         _handLayer = new Control { Name = "HandMarks", MouseFilter = Control.MouseFilterEnum.Ignore };
         _handLayer.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _root.AddChild(_handLayer);
+        // Under every card and page: markers belong to the map.
+        _root.MoveChild(_handLayer, _floatLayer.GetIndex() + 1);
         _handMarks.Clear();
     }
 
@@ -164,6 +166,7 @@ public partial class TownHud
     private void ChoiceFrame(float dt)
     {
         var t = _drv.Town;
+        // Shown over everything, the achievements page too (it starts below the card): a choice is never missed.
         bool show = t.ChoiceOpen;
         _choice.Visible = show;
         if (show)
@@ -234,7 +237,7 @@ public partial class TownHud
     {
         var t = _drv.Town;
         int n = t.WorkplaceCount, used = 0;
-        bool show = _fullA > 0.01f;
+        bool show = _fullA > 0.01f && !AchievementsOpen && !AgePageOpen;
         for (int w = 0; w < n && show; w++)
         {
             if (!t.HandOffered(w)) continue;
