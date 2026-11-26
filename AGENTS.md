@@ -61,7 +61,7 @@ TIDETOLL_RIVER_PRESET=legacy dotnet test sim.tests -c Release --filter "FullyQua
 
 ## Game tests
 
-`game/tests/`: `settings.tscn` (the settings pages alone), `menu.tscn` (pause, cover menu, settings joined, New town), `save.tscn` (save, reload, damaged save, quit paths), `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `play.tscn` (game-playthrough: the whole age through clicks and keys like a person, `PlayThrough.cs`), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
+`game/tests/`: `settings.tscn` (the settings pages alone), `menu.tscn` (pause, cover menu, settings joined, New town), `save.tscn` (save, reload, damaged save, quit paths), `smoke.tscn`, `town.tscn` (real input through `TestInput`), `perf.tscn` (end-of-age town by `TownBot`; CPU and allocation gates), `play.tscn` (game-playthrough: the whole age through clicks and keys like a person, `PlayThrough.cs`), `river.tscn` (game-river, round 4: a charter town rung into the second age by its key, then at speed with the bot: river plots, boats and cargo, tide dial, ferry raft, drawbridge lift, the seal, save and reload; `RiverTest.cs`), `book.tscn` (wheel zoom from the tilted town to the book, the summary page, Pave while tilted, at 1920 x 1080), `screenshot.tscn` (run under xvfb with `--resolution`), all on `TownTestBase` (prints the marker or `FAIL:` and quits 0 or 1). `tools/godot-test.sh MARKER cmd...` fails on any error line. Run one alone: `tools/godot-test.sh 'TOWN PASS' godot --headless --path game --audio-driver Dummy res://tests/town.tscn`.
 
 ## The view (round 2)
 
@@ -98,3 +98,7 @@ New models and icons load by name with a named stand-in when the file is missing
 ## Git
 
 Work on branch `claude/prototype-1`. Do not edit `docs/overnight-log.md` unless asked.
+
+## The second age (round 4)
+
+`scripts/town/River*.cs` draw and sound the river (plots, crossings, tide via the ground shader's `tide_drop`, boats, seal); `TownHud.River.cs` holds the tide dial, the ring's page turn, the river and seal pages and skippers' requests. River positions are already at cell centres (draw `x * Cell`). See `docs/plans/r4-river-handover.md`.

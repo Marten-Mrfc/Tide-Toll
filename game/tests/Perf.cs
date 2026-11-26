@@ -53,6 +53,7 @@ public partial class Perf : TownTestBase
         for (int i = 0; i < 600; i++) { town.Step(); bot.Act(town); }
         town.DrainEvents(events);
         double botMs = sw.Elapsed.TotalMilliseconds;
+        string charterTown = TownSave.Save(town);
         Main.Driver.Adopt(town);
         var start = new Probe { Name = "PerfStart", ProcessPriority = -100000 };
         var end = new Probe { Name = "PerfEnd", ProcessPriority = 100000, IsEnd = true, Other = start };
@@ -87,6 +88,7 @@ public partial class Perf : TownTestBase
         GD.Print($"PERF 8x without the interface: bytes/frame {(GC.GetTotalAllocatedBytes(false) - a0) / 300} (information)");
         Main.Hud.ProcessMode = ProcessModeEnum.Inherit;
         GD.Print($"PERF bot to the charter: {botMs:0} ms CPU for {ticks} ticks, level {town.Level}, {town.VillagerCount} villagers, {town.RoadsPaved} roads paved");
+        ok &= await RiverPerf(charterTown, end);
         Check(ok, "CPU time or allocation per frame over budget");
     }
 }

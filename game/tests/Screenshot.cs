@@ -27,6 +27,7 @@ public partial class Screenshot : TownTestBase
         // --menu-only: a short town, then only the pause menu's shots (quick look while working on the menu).
         // --age-only: straight to the charter and the end-of-age shots (quick look at the end of the age).
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--age-only") >= 0) { await EndOfAge(bot); await NextAge(); return; }
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--river-only") >= 0) { await RiverShots(); return; }
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--menu-only") >= 0) { Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 10); await MenuShots(); return; }
 
         // The first minute, as a player sees it.
@@ -90,6 +91,8 @@ public partial class Screenshot : TownTestBase
 
         await NextAge();
         await MenuShots();
+        Main.Driver.Reset(1);
+        await RiverShots();
         Notes.Add($"level={T.Level} villagers={T.VillagerCount} time={T.Time:0}s dir={_dir}");
     }
 
