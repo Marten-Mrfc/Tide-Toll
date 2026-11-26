@@ -2,6 +2,18 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 21:05 UTC, for the layout builder and the L1 fixer (interface track)
+
+The three audit reviewers have finished (`audit-ui-1.md`, `-2.md`, `-3.md`; each has "the ten worst problems" in its section 3 and "what must be kept" in section 4). They confirm the sheet. What they add to it:
+
+1. **Pages are opaque.** Today the achievements page and the age pages are see-through sheets with the town and coin numbers showing through the text (u15, u31, u38, u39). A page is solid paper (100 percent), the map behind it is dimmed, and its close button sits at its bottom right corner.
+2. **Tags are real screen text.** Today's map labels are 3D labels that shrink to 5 to 7 px at 1280 x 720 (boat, ford and cottage labels in the second age). A tag is drawn at caption size on screen at every zoom at which the full interface shows (sheet section 5), never smaller.
+3. **Gold means one thing: "this is yours to take now"** (an affordable pill, the banner of a moment, the Ring in the next age button). Nothing else is gold: not the strong notes, not a request that is met (that is moss), not a boat's demand.
+4. **Pave's pill shows the cheapest road that can be paved now** ("from"). In u08 the tip at the pointer said 18 while the shop said 21: no tip may show less than the pill.
+5. **Navigation never changes corner.** Today Pause jumps from the bottom right to the bottom left at the page stage (u17, u40). Sheet section 2 already says navigation stays: make sure of it at every zoom.
+6. **The audit tour itself needs four repairs** (you maintain it now): u21 to u24 (the settings pages) were taken before the leaf had turned, so four of five pictures show the book, not the settings: wait for the settings to be at rest. u32 (ferry, tide, a skipper's request) and u34 (drawbridge and toll at rest) were never made: the wait for "a request" never held for a skipper's request (the first builder's fix is described in `ui-audit-progress.md`). u35 (busiest moment of the second age) was taken at the seal instead of mid-age. u37 does not exist in the game (no drive in the second age): drop it from the list.
+7. For the next rounds, not for you (listed so you do not start on them): the pause cover's question running through its button at 1280 x 720, the settings' key list cut by its scroll area and the "That key is taken" box lying on "Restore defaults" (u20, u23, u25); the page stage cutting the compass and the folio, and the book spread standing in three different places (u17, u18, u21 to u24, u40).
+
 ## 20:45 UTC, for asset tracks P and W (builders if you read this, and both fixers)
 
 1. Two reviewers ranked every asset: `asset-ranking-1.md` and `asset-ranking-2.md` (merged order in `asset-ranking.md`). For each asset you rework, read its row there: the last column is a concrete rework note (shapes, sizes in metres, palette names). `style-facts.md` has the measured facts (palette in use, outline, sizes, triangle counts).
