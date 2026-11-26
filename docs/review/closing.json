@@ -1,0 +1,278 @@
+{
+ "title": "Tide & Toll Night Review",
+ "eyebrow": "Tide & Toll, the overnight rebuild, 26 November 2026",
+ "heading": "A town that grows one path at a time",
+ "intro": [
+  "This is the incremental rebuild you asked for, in play order: one town (the default one, Dunstead) from its first minute to the borough seal at the end of the second age. Every picture was taken from the final build by one command, on a cloud machine with a software renderer, at 1920 x 1080.",
+  "Under each picture is one line saying what it shows and one question. Press Yes or No, then <strong>Copy my answers</strong>, paste them into the chat and say continue. Where a picture shows a fault I already know of, its line says so."
+ ],
+ "facts": [
+  "pictures in play order",
+  "final commit d54ebaf",
+  "first age about 33 minutes (played by real input)",
+  "second age 22 to 34 minutes (bots only)",
+  "everything made in code, 0 euro"
+ ],
+ "closing": [
+  {
+   "id": "build",
+   "title": "The newest Windows build",
+   "kind": "text",
+   "paras": [
+    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">The build of round 5, commit d54ebaf</a>: open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
+    "Nobody has run this exe on Windows. Everything tonight ran on Linux in a cloud machine without a graphics card."
+   ],
+   "items": [
+    "Round 1, commit <code>55543fc</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45705589636\">run page</a>",
+    "Round 2, commit <code>9298da5</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45716021068\">run page</a>",
+    "Round 3, commit <code>3e7906f</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45726474639\">run page</a>",
+    "Round 5, commit <code>d54ebaf</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">run page</a>"
+   ]
+  },
+  {
+   "id": "honest",
+   "title": "What is fun and what is not, in my honest view",
+   "kind": "two",
+   "columns": [
+    {
+     "title": "Fun",
+     "items": [
+      "The first twenty minutes of the first age. Something new arrives every minute or two, several kinds of thing are within reach at once, and a whole age played by real input counted 3 to 4 decisions a minute.",
+      "Decisions made on the map itself: paving a road and extending a cottage by clicking it.",
+      "The choice of two boons, four times an age. It is the one place where two players end with different towns.",
+      "Requests and the charter drive: a goal a minute or two away, and a last push for the charter instead of a wait.",
+      "Zooming out until the town is a page in a book, and closing the book to pause.",
+      "Watching the river: boats mooring and loading, the queue at the ferry, the drawbridge lifting."
+     ]
+    },
+    {
+     "title": "Not fun yet",
+     "items": [
+      "Minutes 20 to 30 of the first age: under 2 decisions a minute.",
+      "Apart from the four boons, every player ends up buying the same things. Only the order differs.",
+      "Most upgrade steps are 3 to 4 percent and are felt only in the coin figure. The cheap ladder called Regulars may read as filler.",
+      "The second age has not been played through with real input by anyone. Its numbers come from bots, and its margins are thin: on ten further towns, 7 of 40 runs missed a pacing target a little.",
+      "In the second age the landing earns three quarters or more of all coin, so the first age's market matters little.",
+      "The ford matters on only about half of the towns.",
+      "Nothing has been heard. The music and the sounds were checked by measurement only."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "decisions",
+   "title": "Decisions made for you",
+   "kind": "table",
+   "numbered": true,
+   "head": [
+    "#",
+    "Decision",
+    "Why"
+   ],
+   "rows": [
+    [
+     "1",
+     "The design doc is rewritten at the very start of round 1, beside the first builder, from the same brief",
+     "The doc is updated first, without the build waiting for it"
+    ],
+    [
+     "2",
+     "New text goes at the top of the Gameplay, UX and Build Plan tabs; everything older stays below a heading \"Earlier direction\". Nothing is deleted. A short note at the top of the Overview tab says the direction changed",
+     "You asked to keep the old design; a note on the Overview stops the tabs contradicting each other"
+    ],
+    [
+     "3",
+     "Levels are reached by buying upgrades: every purchase adds renown to the level bar",
+     "Your wording: coin buys upgrades, upgrades reach milestones"
+    ],
+    [
+     "4",
+     "Roads have a comfortable number of walkers; above it they slow down. Workplaces have a few places and villagers queue",
+     "Without some pushback \"more villagers\" is always the right answer and there is nothing to decide"
+    ],
+    [
+     "5",
+     "Paving is bought per road by clicking a worn-in road on the map",
+     "It keeps one decision on the map itself now that roads are no longer drawn"
+    ],
+    [
+     "6",
+     "A town bell the player can ring for a short hurry, with a rest time",
+     "Something to do with your hands while saving up"
+    ],
+    [
+     "7",
+     "The town is laid out from a seed; seed 1 is the default town, \"New town\" takes a new seed",
+     "Replay value for free, and tests can check 100 towns"
+    ],
+    [
+     "8",
+     "The old simulation and its fast tests stay and keep running. The old game scenes move to <code>game/legacy/</code> and leave the build; their game tests are retired and listed in <code>docs/plans/retired-tests.md</code>",
+     "The second age may reuse the river code; the old scenes cannot run beside the new game"
+    ],
+    [
+     "9",
+     "No earnings while the game is closed; it continues where it stopped",
+     "Simplest honest behaviour for a first version"
+    ],
+    [
+     "10",
+     "A few new models and icons are made in code tonight (mill, bell, flour sack, interface icons), with ledger rows",
+     "The mill and the new buttons have no art yet"
+    ],
+    [
+     "11",
+     "The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2",
+     "It does not depend on the new simulation, so it need not wait"
+    ],
+    [
+     "12",
+     "Rules v2 after the first balance report: walking speed and the other upgrade tracks are finite (about 20 clear steps, not 170 taps); new tracks for working speed, the value of each good, and the bell; cottages can be extended by clicking them; unpaved roads clog sooner; about 16 levels instead of 12; timed requests (\"12 Grain within 90 seconds\") as goals a minute or two away; one line of advice at a time",
+     "The first numbers made 80 percent of all purchases the same cheap speed upgrade: a tap-fest with one right answer"
+    ],
+    [
+     "13",
+     "New sound effects are made in code for buying, levels, gifts, paving, requests, the book and the interface, with ledger rows",
+     "The new loop had no sounds of its own, and feedback at the moment of earning is most of what makes such a game pleasant"
+    ],
+    [
+     "14",
+     "The pause piece \"Still Pages\" stays 2 dB quieter than the other music, as its composer chose",
+     "A paused book should be quieter"
+    ],
+    [
+     "15",
+     "Zoomed in, the camera tilts so buildings and villagers show their sides, and flattens to straight down as you zoom out to the page and the book",
+     "From straight above, villagers are dark dots and every cottage is the same square roof; the first screenshots showed it plainly. You can say no to this in the review"
+    ],
+    [
+     "16",
+     "Roads are smoothed into curves in the town plan, and paved roads are drawn narrower",
+     "The first plan's lanes had sharp zigzags and the cobbles looked as wide as the cottages"
+    ],
+    [
+     "17",
+     "Requests adapt: each one met makes the next a little harder, each one missed a little easier",
+     "A fixed difficulty was too easy on some towns and too hard on others"
+    ],
+    [
+     "18",
+     "Upgrade steps unlock with town levels (a few steps of each track per level) instead of all being for sale from the start",
+     "Otherwise the tracks are bought out by minute 15 and the last ten minutes have little to buy"
+    ],
+    [
+     "19",
+     "The worth of the bell and the share of requests met are measured as averages over ten towns, with wide limits for any single town",
+     "A single run has only about a dozen requests, so one run is too noisy to hold to a narrow band"
+    ],
+    [
+     "20",
+     "The purchase-rate target (4 a minute early, 2 a minute later) is checked on the three players the design brief names (cheapest, best payback, random). The saving bot, added later, waits on purpose, so it gets its own checks instead: it buys every kind of thing, finishes in 25 to 40 minutes, and never goes 90 seconds without buying",
+     "A floor on purchases per minute measures nothing for a player whose plan is to wait; the three original players must still meet it on every town with no exceptions"
+    ],
+    [
+     "21",
+     "The bell's worth is measured on frozen towns (same town, five minutes, no purchases, with and without ringing)",
+     "Two whole games with and without the bell buy different things, and that noise was larger than the bell"
+    ],
+    [
+     "22",
+     "The second age is designed (<code>docs/plans/age2-design.md</code>): a landing where boats buy goods, a tide that decides when boats come and when the ford can be walked, wool and cloth from the far bank, and crossings that arrive in order (ford, ferry, footbridge, drawbridge with a toll), ending with the borough seal",
+     "You asked for the river, boats and crossings to come back as the second age; this is how they fit a game where things are given by levels"
+    ],
+    [
+     "23",
+     "Rules v3 for the first age: at about four levels the town chooses one of two boons and keeps it for good; the last stretch before the charter is a \"charter drive\" request instead of a wait; every shop item says how much coin a minute it would add; a workplace where people keep queueing offers an extra place",
+     "The second balance report: every player ends up buying the same 158 things, so the only choice is the order. Choices of two make each town the player's own"
+    ],
+    [
+     "24",
+     "Small touches: as the town prospers, woodpiles, washing lines, flower beds, hen coops, benches, beehives, haystacks, apple trees, handcarts and signposts appear by themselves beside cottages and lanes. They cost nothing and do nothing",
+     "The late levels left up to five minutes with nothing new on the map; numbers alone could not fix that, and a town that dresses itself is pleasant to watch"
+    ],
+    [
+     "25",
+     "The upgrade tracks of the first age go on through the second age, a few steps per level",
+     "Otherwise players run out of cheap things to buy and wait"
+    ],
+    [
+     "26",
+     "Touches also arrive on a timer: if nothing new has appeared for about three minutes, one comes anyway",
+     "The builder found that tying them to coin alone still left gaps of four to five minutes on some towns"
+    ],
+    [
+     "27",
+     "\"Regulars\": a cheap purchase that is always on sale in the first age; each regular customer makes every delivery pay 0.4 percent more",
+     "The last red pacing test needed something small to buy in every minute; numbers alone only moved the gaps around. If it feels like filler when you play, say so in the review"
+    ],
+    [
+     "28",
+     "Villagers housed in the cottages by the river and on the far bank still walk home to a first-age cottage",
+     "Making them live by the river safely in every state of the tide could not be built and tested tonight; the builder left it out rather than half done"
+    ],
+    [
+     "29",
+     "Round 4 and round 5 have no Windows build of their own: three lines of work were merged in round 4 and made whole in round 5 and 6, and only a tree that passed the whole check is pushed as a finished round",
+     "You asked for an exe only for finished rounds"
+    ],
+    [
+     "30",
+     "The ford is used on about half of the towns, including the default one; on the others villagers find other work until the ferry comes",
+     "Making it certain on every town broke another target (the landing's share of income); the builder kept the tested state"
+    ]
+   ]
+  },
+  {
+   "id": "needs",
+   "title": "Needs you",
+   "kind": "text",
+   "items": [
+    "<strong>Play it on a real Windows machine.</strong> Nothing was run on Windows or on a real graphics card tonight: every picture and timing comes from a software renderer in a cloud machine. Frame rate, sound, window modes and resolutions are untested on real hardware.",
+    "<strong>Listen to the music and the sounds.</strong> Six music pieces and about 70 new sound effects were made and checked by measurement only. Nobody has heard them.",
+    "<strong>Watch for a crash.</strong> Godot crashed with a segfault in 2 of 8 runs of the screenshot tour on this machine's software renderer (once just after the book closed for a pause, once at the age-change page). It never happened in a check run. If the exe crashes on your machine at those moments, that is this.",
+    "<strong>Free asset sites are blocked from this machine</strong> (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org), so every asset was made in code instead of first looking for a free one, as you asked. If you want that search, those hosts have to be allowed in the environment's network settings.",
+    "<strong>The exe is not signed</strong>, so Windows SmartScreen will warn on first start (\"More info\", then \"Run anyway\")."
+   ]
+  },
+  {
+   "id": "music",
+   "title": "Music to listen to",
+   "kind": "music",
+   "paras": [
+    "You called the first theme perfect. The other five were made in code with the same instruments, mix and loudness, and nobody has heard them. In the game the first four rotate, Still Pages plays while the book is closed, and Rising plays once when the next age is rung in."
+   ],
+   "tunes": [
+    {
+     "file": "assets/audio/music/theme-hamlet-draft.ogg",
+     "title": "Tide & Toll theme",
+     "note": "the one you know: D Dorian, 64 beats a minute, 45 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-ferry-morning.ogg",
+     "title": "Ferry Morning",
+     "note": "new: D Mixolydian, 68 beats a minute, 74 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-long-field.ogg",
+     "title": "The Long Field",
+     "note": "new: A Aeolian, 64 beats a minute, 79 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-low-meadow.ogg",
+     "title": "Low Meadow",
+     "note": "new: D Aeolian, 60 beats a minute, 72 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-theme-rising.ogg",
+     "title": "Tide and Toll, Rising",
+     "note": "new, for the age change: the theme made grander, 49 seconds, with an ending"
+    },
+    {
+     "file": "assets/audio/music/music-still-pages.ogg",
+     "title": "Still Pages",
+     "note": "new, for the paused book: quieter and sparser, 60 seconds, loops"
+    }
+   ]
+  }
+ ]
+}
