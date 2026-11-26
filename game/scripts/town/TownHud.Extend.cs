@@ -127,7 +127,7 @@ public partial class TownHud
             int room = t.CottageRoom(HoverCottage);
             string tip = $"Extend this cottage: {Money(t.ExtendPrice)} coin. Rooms {room} to {room + 1}.";
             if (_hoverTip.Text != tip) { _hoverTip.Text = tip; _hoverTip.ResetSize(); }
-            _hoverTip.Position = _pointer + new Vector2(UiKit.Px(_s, 16), UiKit.Px(_s, 12));
+            _hoverTip.Position = TipBeside(PlotScreenRect(t.Plan.Plots[HoverCottage]));
         }
         int sug = t.SuggestedExtend();
         _suggest.Visible = sug >= 0 && Extendable(sug);
@@ -156,6 +156,35 @@ public partial class TownHud
         _paveIm.SurfaceEnd();
         LitCottages = lit;
     }
+
+    /// <summary>Round 6: a plot's screen rect, ground to roof (the price tip and coin numbers keep clear of it).</summary>
+    private Rect2 PlotScreenRect(Plot p)
+    {
+        float C = TownGround.Cell;
+        var r = new Rect2(_main.Rig.LocalToScreen(new Vector3(p.X * C, 0, p.Y * C)), Vector2.Zero);
+        foreach (float h in new[] { 0f, 7f })
+            foreach (var (x, z) in new[] { (p.X, p.Y), (p.X + p.W, p.Y), (p.X, p.Y + p.H), (p.X + p.W, p.Y + p.H) })
+                r = r.Expand(_main.Rig.LocalToScreen(new Vector3(x * C, h, z * C)));
+        return r;
+    }
+
+    /// <summary>
+    /// Round 6: the price tip sits beside the pointer, past the target's side (right, or left near the screen's right
+    /// edge), level with the pointer: never over the cottage roof or the people at its door.
+    /// </summary>
+    private Vector2 TipBeside(Rect2 target)
+    {
+        var sz = _hoverTip.Size;
+        float gap = UiKit.Px(_s, 14);
+        float x = Math.Max(_pointer.X + UiKit.Px(_s, 24), target.End.X + gap);
+        if (x + sz.X > _built.X - UiKit.Px(_s, 8)) x = Math.Min(_pointer.X - UiKit.Px(_s, 24), target.Position.X - gap) - sz.X;
+        float y = Math.Clamp(_pointer.Y - sz.Y / 2f, UiKit.Px(_s, 8), _built.Y - sz.Y - UiKit.Px(_s, 8));
+        return new Vector2(x, y);
+    }
+
+    /// <summary>The price tip's screen rect (tests: clear of the hovered cottage).</summary>
+    public Rect2 HoverTipRect => _hoverTip.GetGlobalRect();
+    public Rect2 HoverCottageRect => HoverCottage >= 0 ? PlotScreenRect(_drv.Town.Plan.Plots[HoverCottage]) : new Rect2();
 
     /// <summary>A band round a plot's footprint, just outside it.</summary>
     private void Frame(Plot p, float width, Color c)

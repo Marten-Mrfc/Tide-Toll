@@ -192,7 +192,9 @@ public partial class TownHud
             var vp = _built;
             var size = _choice.GetCombinedMinimumSize();
             _choice.Size = size;
-            _choice.Position = new Vector2((vp.X - size.X) / 2f, UiKit.Px(_s, 14));
+            // Round 6: under the Pave or Extend banner while one shows (the card lay over it).
+            float top = _paveBanner.Visible ? _paveBanner.Position.Y + _paveBanner.Size.Y + UiKit.Px(_s, 8) : UiKit.Px(_s, 14);
+            _choice.Position = new Vector2((vp.X - size.X) / 2f, top);
             float pulse = 0.5f + 0.5f * MathF.Sin((float)_drv.AnimTime * 3f);
             _choice.Modulate = new Color(1, 1, 1, 0.94f + 0.06f * pulse);
         }

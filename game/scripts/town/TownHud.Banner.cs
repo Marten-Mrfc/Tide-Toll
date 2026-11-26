@@ -49,14 +49,14 @@ public partial class TownHud
     {
         _banner = new PanelContainer { Name = "Banner", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         var box = UiKit.Card(_s, new Color(UiKit.Pressed, 0.97f), 2.5f);
-        box.SetContentMarginAll(UiKit.Px(_s, 12));
-        box.ContentMarginLeft = box.ContentMarginRight = UiKit.Px(_s, 28);
+        box.SetContentMarginAll(UiKit.Px(_s, 8));
+        box.ContentMarginLeft = box.ContentMarginRight = UiKit.Px(_s, 22);
         _banner.AddThemeStyleboxOverride("panel", box);
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         _banner.AddChild(col);
-        _bannerHead = UiKit.Text("", _s, 34, UiKit.Serif);
+        _bannerHead = UiKit.Text("", _s, 28, UiKit.Serif); // round 6: smaller (was 34)
         _bannerHead.HorizontalAlignment = HorizontalAlignment.Center;
-        _bannerText = UiKit.Text("", _s, 20, UiKit.UiBold);
+        _bannerText = UiKit.Text("", _s, 18, UiKit.UiBold);
         _bannerText.HorizontalAlignment = HorizontalAlignment.Center;
         col.AddChild(_bannerHead);
         col.AddChild(_bannerText);
@@ -88,14 +88,14 @@ public partial class TownHud
         _banner.ResetSize();
         // Below the Pave or Extend banner when one shows.
         float y = UiKit.Px(_s, PaveMode || ExtendMode ? 70 : 18);
-        // Round 4: never over the gift it announces: when the gift is under the banner's place (the camera is still
-        // bringing it in, or the town lies high on the screen), the banner goes just below the gift instead.
+        // Round 6: never over the gift it announces and never in the middle of the view: at the top edge, or, when the
+        // gift lies under that place, at the bottom edge (above the Home control), never just below the gift.
         if (_bannerAt is { } at)
         {
             var g = _main.Rig.LocalToScreen(at);
-            float pad = UiKit.Px(_s, 70);
-            if (g.Y < y + _banner.Size.Y + pad && g.Y > -pad && MathF.Abs(g.X - _built.X / 2f) < _banner.Size.X / 2f + pad)
-                y = Math.Min(g.Y + pad, _built.Y - _banner.Size.Y - UiKit.Px(_s, 120));
+            float pad = UiKit.Px(_s, 60);
+            if (g.Y < y + _banner.Size.Y + pad && MathF.Abs(g.X - _built.X / 2f) < _banner.Size.X / 2f + pad)
+                y = _built.Y - _banner.Size.Y - UiKit.Px(_s, 70);
         }
         _banner.Position = new Vector2((_built.X - _banner.Size.X) / 2f, y);
     }

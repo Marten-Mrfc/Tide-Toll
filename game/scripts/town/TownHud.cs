@@ -16,7 +16,7 @@ namespace TideToll.Game;
 public partial class TownHud : CanvasLayer
 {
     public const int MaxNotes = 3, MaxFloaters = 32;
-    public const float NoteSeconds = 7f, FloatSeconds = 1.8f, BannerSeconds = 6f;
+    public const float NoteSeconds = 7f, FloatSeconds = 1.8f, BannerSeconds = 3.5f; // round 6: banners 6 s to 3.5 s
 
     private Main _main = null!;
     private TownDriver _drv = null!;
@@ -33,6 +33,8 @@ public partial class TownHud : CanvasLayer
     private readonly Label[] _floaters = new Label[MaxFloaters];
     private readonly Vector3[] _floatAt = new Vector3[MaxFloaters];
     private readonly float[] _floatAge = new float[MaxFloaters];
+    private readonly double[] _floatCoin = new double[MaxFloaters];
+    private readonly Vector2[] _floatCell = new Vector2[MaxFloaters];
     private int _floatNext;
 
     /// <summary>Notes shown so far (tests), the text of the newest, floaters started.</summary>
@@ -87,7 +89,8 @@ public partial class TownHud : CanvasLayer
         for (int i = 0; i < MaxFloaters; i++)
         {
             // Round 3: gold with a dark edge, a little bigger, rising and fading.
-            var l = UiKit.Text("", _s, 24, UiKit.UiBold, Color.FromHtml("#F2C14E"));
+            // Round 6: bigger (34), one number per delivery spot (see Float), lifted clear of the building's roof.
+            var l = UiKit.Text("", _s, 34, UiKit.UiBold, Color.FromHtml("#F2C14E"));
             l.AddThemeColorOverride("font_outline_color", Color.FromHtml("#3A2A10"));
             l.AddThemeConstantOverride("outline_size", UiKit.Px(_s, 6));
             l.Visible = false;
@@ -127,6 +130,7 @@ public partial class TownHud : CanvasLayer
         BuildChoiceParts();
         _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner, _achMark };
         _fullA = -1f;
+        _labelCards = Array.Empty<Control?>(); // round 6: the cards the map's labels keep clear of, taken again after a rebuild
         Refresh();
     }
 
@@ -197,7 +201,37 @@ public partial class TownHud : CanvasLayer
         BookFrame((float)delta);
         RiverFrame((float)delta);
         ChoiceFrame((float)delta);
+        ColumnFrame();
+        LabelsFrame((float)delta);
     }
+
+    /// <summary>
+    /// Round 6: the left column (ledger, request or river request, drive, notes) is stacked once a frame, last, from the
+    /// cards' minimum sizes, so a hint that wraps to more lines or a card that grows this frame never lies under the next
+    /// card (the hint line was cut by the request card). The ledger shrinks back when its hint goes.
+    /// </summary>
+    private void ColumnFrame()
+    {
+        if (_ledger == null) return;
+        float gap = UiKit.Px(_s, 8);
+        _ledger.ResetSize();
+        float y = _ledger.Position.Y + Math.Max(_ledger.Size.Y, _ledger.GetCombinedMinimumSize().Y) + gap;
+        for (int k = 0; k < 2; k++)
+        {
+            Control? c = k == 0 ? _req : _drive;
+            if (c == null || !IsInstanceValid(c) || !c.Visible) continue;
+            c.ResetSize();
+            c.Position = new Vector2(c.Position.X, y);
+            y += Math.Max(c.Size.Y, c.GetCombinedMinimumSize().Y) + gap;
+        }
+        _notes.Position = new Vector2(UiKit.Px(_s, 16), y + UiKit.Px(_s, 2));
+        ColumnBottom = y;
+    }
+
+    /// <summary>Where the left column's cards end (tests: nothing in the column overlaps).</summary>
+    public float ColumnBottom { get; private set; }
+    public Rect2 LedgerRect => _ledger?.GetGlobalRect() ?? new Rect2();
+    public Rect2 RequestRect => _req.Visible ? _req.GetGlobalRect() : new Rect2();
 
     // Last values shown, so text is rebuilt only when a value changes (round 2: no strings built per frame).
     private long _shownCoin = -1, _shownRate = -1, _shownRenown = -1, _shownNextRenown = -1;
@@ -287,7 +321,9 @@ public partial class TownHud : CanvasLayer
         {
             _slim.Modulate = new Color(1, 1, 1, 1f - a);
             _slim.ResetSize();
-            _slim.Position = new Vector2((_built.X - _slim.Size.X) / 2f, UiKit.Px(_s, 10));
+            // Round 6: bottom left, over the left page's blank foot (in the top middle it lay over the map's title, top
+            // left over the town's name).
+            _slim.Position = new Vector2(UiKit.Px(_s, 16), _built.Y - _slim.Size.Y - UiKit.Px(_s, 12));
         }
         if (!_scrollHintShown && size >= slim) _scrollHintShown = true; // found it alone: no hint needed
         if (!_scrollHintShown && _drv.Town.Time >= ScrollHintAt) { _scrollHintShown = true; Note(ScrollHint); }
@@ -429,11 +465,27 @@ public partial class TownHud : CanvasLayer
 
     // ------------------------------------------------------------------ floating coin
 
+    /// <summary>Coin numbers on screen now (tests: one number per spot, none while a mode points at something).</summary>
+    public int FloatersVisible { get { int n = 0; for (int i = 0; i < MaxFloaters; i++) if (_floatAge[i] > 0 && _floaters[i].Visible) n++; return n; } }
+
     private void Float(double x, double y, double coin)
     {
+        // Round 6: a delivery where a number is still rising adds to it (it was drawn twice, a faded copy above).
+        var cell = new Vector2((float)x, (float)y);
+        for (int j = 0; j < MaxFloaters; j++)
+        {
+            if (_floatAge[j] <= 0 || _floatCell[j].DistanceSquaredTo(cell) > 4f) continue; // any number still showing there
+            _floatCoin[j] += coin;
+            _floatAge[j] = Math.Min(_floatAge[j], 0.3f); // drops back a little and shows full again, no jump to the start
+            _floaters[j].Text = "+" + Money(Math.Max(1, _floatCoin[j]));
+            return;
+        }
         int i = _floatNext;
         _floatNext = (_floatNext + 1) % MaxFloaters;
-        _floatAt[i] = new Vector3((float)x * TownGround.Cell, 3f, (float)y * TownGround.Cell);
+        _floatCell[i] = cell;
+        _floatCoin[i] = coin;
+        // Round 6: anchored above the building (higher and a little north), so it clears the door and the people there.
+        _floatAt[i] = new Vector3((float)x * TownGround.Cell, 9f, ((float)y - 1.5f) * TownGround.Cell);
         _floatAge[i] = 0.0001f;
         _floaters[i].Text = "+" + Money(Math.Max(1, coin));
         _floaters[i].Visible = true;
@@ -448,9 +500,13 @@ public partial class TownHud : CanvasLayer
             _floatAge[i] += dt;
             var l = _floaters[i];
             if (_floatAge[i] > FloatSeconds) { _floatAge[i] = 0; l.Visible = false; continue; }
+            // Round 6: hidden while Pave or Extend points at something (they lay over the lit cottage and the tip).
+            bool modeOn = PaveMode || ExtendMode;
+            if (l.Visible == modeOn) l.Visible = !modeOn;
+            if (modeOn) continue;
             var at = _main.Rig.LocalToScreen(_floatAt[i]);
             float k = _floatAge[i] / FloatSeconds;
-            l.Position = at - new Vector2(l.Size.X / 2f, UiKit.Px(_s, 24) + k * UiKit.Px(_s, 36));
+            l.Position = at - new Vector2(l.Size.X / 2f, UiKit.Px(_s, 44) + k * UiKit.Px(_s, 36));
             l.Modulate = new Color(1, 1, 1, Math.Clamp((1f - k) * 2f, 0f, 1f));
         }
     }
