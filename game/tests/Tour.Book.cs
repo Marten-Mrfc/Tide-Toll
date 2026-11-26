@@ -10,6 +10,15 @@ namespace TideToll.Game.Tests;
 /// Every setting changed is put back (checked).</summary>
 public partial class Tour
 {
+    /// <summary>Last pass: g01 and g02 were taken with the second age's page still open. Any open page is closed
+    /// (Esc) and gone before every picture in the book section.</summary>
+    private async Task PageGone()
+    {
+        await ClosePage();
+        await WaitFor(() => !Main.Hud.AgePageOpen, 5000);
+        await Frames(2);
+    }
+
     private async Task BookAndMenus()
     {
         await FollowView();
@@ -22,23 +31,31 @@ public partial class Tour
         Main.Rig.LookAt(pivot, Main.Rig.MinSize, instant: true);
         await Settle(1200);
         await Calm();
+        await PageGone();
         await Shot("g01-close");
 
         // g02: one wheel step out from the follow view's size: the whole town (the normal view).
         Main.Rig.LookAt(pivot, play, instant: true);
         await Wait(1200);
+        await PageGone();
         await Shot("g02-zoom-1");
 
         // g03: the whole page, the interface thinned to the strip.
         Main.Rig.LookAt(pivot, Main.Rig.PlaySize, instant: true);
         await WaitFor(() => Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f, 5000);
+        // Last pass: g03 caught the book mid-opening, the left page cut off. Wait until the view has settled at the
+        // whole-page stage: the camera at its size, the play view reached, the cover still.
+        await WaitFor(() => Math.Abs(Main.Rig.Camera.Size - Main.Rig.TargetSize) < 0.5f && Main.Rig.InPlayView && !Main.Cover.Moving
+                            && Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f, 8000);
         await Wait(600);
         if (!Main.Hud.SlimVisible) Wrong("g03-zoom-2", "The slim strip was not showing.");
+        await PageGone();
         await Shot("g03-zoom-2");
 
         // g04: fully out, the open book.
         Main.Rig.LookAt(pivot, Main.Rig.MaxSize, instant: true);
         await Wait(1500);
+        await PageGone();
         await Shot("g04-book");
 
         // g05: pausing (Esc): the book half closed.
@@ -48,11 +65,13 @@ public partial class Tour
         Main.Menu.Pause();
         Main.Cover.Hold(0.45f);
         await Wait(1500);
+        await PageGone();
         await Shot("g05-closing");
         Main.Cover.Close();
         await WaitFor(() => Main.Menu.CoverShown, 20000);
         await Wait(400);
         Check(Main.Menu.CoverShown, "g06: the cover menu shows");
+        await PageGone();
         await Shot("g06-cover");
 
         // h01..h04: the settings pages from the cover's Settings.
@@ -76,6 +95,7 @@ public partial class Tour
                 await Frames(4);
                 if (pages.Slip != "clash") Wrong("h03-keys", "No clash was shown for Space.");
                 await Wait(500);
+                await PageGone();
                 await Shot(ids[i]);
                 await Key(Godot.Key.Escape); // cancels the clash: nothing changes
                 await Frames(3);
@@ -84,6 +104,7 @@ public partial class Tour
             else
             {
                 await Wait(500);
+                await PageGone();
                 await Shot(ids[i]);
             }
             await Key(Godot.Key.Escape); // "Esc always goes back from these pages."
@@ -96,6 +117,7 @@ public partial class Tour
         await Frames(4);
         Check(Main.Menu.QuestionShown, "the New town question");
         await Wait(400);
+        await PageGone();
         await Shot("g07-new-town");
         await Key(Godot.Key.Escape);
         await Frames(4);
@@ -107,6 +129,7 @@ public partial class Tour
         await FollowView();
         await Settle(1000);
         await Calm();
+        await PageGone();
         await Shot("h05-big");
         Main.Menu.Pause();
         await WaitFor(() => Main.Menu.CoverShown, 20000);

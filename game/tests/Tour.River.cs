@@ -15,8 +15,11 @@ public partial class Tour
         await FollowView();
         await Calm();
         await Key(Godot.Key.N);
-        await WaitFor(() => Main.Hud.PageTurning, 5000);
-        await Wait(300);
+        // Last pass: f01 was caught half-way through the wipe. Taken before the wipe, with the ring's banner plainly up;
+        // if the wipe has already begun, after it, once it has finished.
+        await WaitFor(() => Main.Hud.PageTurning || Main.Hud.BannerText != "", 5000);
+        if (Main.Hud.PageTurning) await WaitFor(() => !Main.Hud.PageTurning, 15000);
+        await Frames(3);
         await Shot("f01-ring");
         if (!await WaitFor(() => Main.Hud.AgePageOpen, 30000))
         {
@@ -77,8 +80,12 @@ public partial class Tour
             || await Early(t => t.Ferry.Built && t.Ferry.Aboard > 0, 30))
         {
             await ClosePage();
-            await Look(T.Ferry.X, T.Ferry.Y, 40f);
-            await Settle(400);
+            // Last pass: f06 showed the footbridge's label. The ferry framed with the raft away from both banks, people
+            // waiting, no banner over it.
+            await Calm(8000);
+            await WaitFor(() => T.Ferry.Pos > 0.25 && T.Ferry.Pos < 0.75 && T.Ferry.WaitingNear + T.Ferry.WaitingFar >= 1 && Main.Hud.BannerText == "", 30000);
+            await Look(T.Ferry.X, T.Ferry.Y, 30f);
+            await Frames(3);
             await Shot("f06-ferry");
         }
         else NotMade("f06-ferry", "the ferry never carried anyone before the seal (bought by the bot at level 22 or not at all)");

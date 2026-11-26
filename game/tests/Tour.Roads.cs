@@ -63,7 +63,10 @@ public partial class Tour
             await LookRoad(crowd, 34f);
             await Settle(1500);
             await Calm(8000);
-            crowd = Crowded(T) >= 0 ? Crowded(T) : crowd;
+            // Last pass: d06 showed nothing crowded. Only while a road has been crowded for several seconds, framed on it.
+            await WaitFor(() => Crowded(T) >= 0, 30000);
+            if (Crowded(T) >= 0 && Crowded(T) != crowd) { crowd = Crowded(T); await LookRoad(crowd, 34f); await Frames(3); }
+            if (Crowded(T) < 0) Wrong("d06-crowded", "No road had stayed crowded for the hint's seconds when the picture was taken.");
             await Shot("d06-crowded");
             Notes.Add($"crowded road {crowd} crowding {info.Crowding:0.00}");
         }
@@ -119,7 +122,7 @@ public partial class Tour
         {
             if (!t.RoadOpen(r)) continue;
             var i = t.RoadInfo(r);
-            if (i.Surface == Surface.Track && i.Crowding > most && i.Walkers >= 3) { most = i.Crowding; best = r; }
+            if (i.Surface == Surface.Track && i.Crowding > most && i.Walkers >= 3 && t.CrowdedSeconds(r) >= Town.CrowdHintSeconds) { most = i.Crowding; best = r; }
         }
         return best;
     }

@@ -275,7 +275,8 @@ public partial class TownGround : MeshInstance3D
             var info = town.RoadInfo(r);
             float v = info.Surface != Surface.Track ? PavedWear : info.WornIn ? WornWear : TrailWear + WearSpan * (float)info.Wear;
             float front = _reveal[r] * (float)(town.Plan.Roads[r].Length + 3.0);
-            float crowd = (float)Math.Clamp((info.Crowding - 0.85) / 0.9, 0, 1);
+            // Last pass: only a lasting crowd tints a road (the same wait as the hint), never two walkers passing on a trail.
+            float crowd = town.CrowdedSeconds(r) < Town.CrowdHintSeconds ? 0f : (float)Math.Clamp((info.Crowding - 0.85) / 0.9, 0, 1);
             byte cb = (byte)(crowd * 255f);
             if (cb > 0) anyCrowd = true;
             var cells = _cells[r];

@@ -130,12 +130,22 @@ public partial class TownBuildings : Node3D
             // so the charter read only as a banner. It now stands in the green's front corner, clear of the frame, about
             // 0.45 of the green's width across (at least 3 m), large enough to see at the normal view.
             var sa = ModelLib.Mesh(stone).GetAabb();
-            float want = Math.Max(3f, 0.45f * Math.Min(fw, fh));
+            // Last pass: it still read as a small green blob beside the frame. Larger (at least 4 m), its base lifted onto
+            // the green (the model's origin is not at its foot), set well clear of the frame toward the view, and the
+            // pale stone set on every one of the model's own surfaces as well as the override, unshaded-bright enough
+            // that the grass light cannot turn it green.
+            float want = Math.Max(4f, 0.55f * Math.Min(fw, fh));
             float cs = want / Math.Max(0.1f, Math.Max(sa.Size.X, sa.Size.Z)) / s;
             _charter.Scale = Vector3.One * cs;
-            _charter.Position = new Vector3(fw * 0.34f / s, 0, fh * 0.34f / s);
+            _charter.Position = new Vector3(fw * 0.36f / s, -sa.Position.Y * cs, fh * 0.36f / s);
             // Round 6: pale dressed stone, so it stands out from the grass (it read green-grey before).
-            if (_charter is GeometryInstance3D cg) cg.MaterialOverride = PaleStone;
+            if (_charter is GeometryInstance3D cg)
+            {
+                cg.MaterialOverride = PaleStone;
+                if (_charter is MeshInstance3D cm && cm.Mesh != null)
+                    for (int si = 0; si < cm.Mesh.GetSurfaceCount(); si++) cm.SetSurfaceOverrideMaterial(si, PaleStone);
+                cg.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+            }
             _charter.Visible = false;
             _charterBase = _charter.Position;
             _charterScale = _charter.Scale;
@@ -203,7 +213,7 @@ public partial class TownBuildings : Node3D
     private static StandardMaterial3D? _paleStakes, _paleStone;
     /// <summary>The charter stone's colour (pale dressed stone, light against the grass).</summary>
     public static readonly Color CharterStoneColour = Color.FromHtml("#F0EADB");
-    private static StandardMaterial3D PaleStone => _paleStone ??= new StandardMaterial3D { AlbedoColor = CharterStoneColour, Roughness = 0.9f };
+    private static StandardMaterial3D PaleStone => _paleStone ??= new StandardMaterial3D { AlbedoColor = CharterStoneColour, Roughness = 0.9f, EmissionEnabled = true, Emission = CharterStoneColour, EmissionEnergyMultiplier = 0.35f };
     private static StandardMaterial3D PaleStakes => _paleStakes ??= new StandardMaterial3D { AlbedoColor = StakeColour, Roughness = 0.95f };
 
     private Node3D MakeStakes(Plot p)
@@ -366,7 +376,7 @@ public partial class TownBuildings : Node3D
             {
                 _charterT += dt;
                 float k = Math.Clamp(_charterT / 1.4f, 0f, 1f), e = 1f - (1f - k) * (1f - k) * (1f - k);
-                _charter.Position = new Vector3(_charterBase.X, (1f - e) * 9f, _charterBase.Z);
+                _charter.Position = new Vector3(_charterBase.X, _charterBase.Y + (1f - e) * 9f, _charterBase.Z);
                 _charter.Scale = _charterScale * (0.5f + 0.5f * e);
             }
         }
