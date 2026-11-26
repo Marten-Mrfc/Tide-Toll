@@ -28,6 +28,10 @@ public partial class BookCover : Node3D
     public static Vector2 ClosedSize => new(BookBuilder.CoverSize.X / 2f, BookBuilder.CoverSize.Y);
 
     private Node3D? _town;
+    private Transform3D _leftHome;
+    private MeshInstance3D _endpaper = null!;
+    /// <summary>Whether the left page (the town's summary) is drawn now (tests: W10).</summary>
+    public bool LeftPageShown => _leftPage.Visible;
 
     /// <summary>The board over the book; <paramref name="town"/> (the map's models) is hidden while the board lies on it.</summary>
     public void Init(Node3D book, Node3D? town = null)
@@ -36,6 +40,7 @@ public partial class BookCover : Node3D
         Name = "FrontCover";
         book.AddChild(this);
         _leftPage = book.GetNode<Node3D>("LeftPage");
+        _leftHome = _leftPage.Transform;
         _base = book.GetNode<MeshInstance3D>("Cover");
         _baseScale = _base.Scale; _basePos = _base.Position;
         // The hinge sits on the spine a little above the pages, so the board clears them as it swings.
@@ -55,6 +60,7 @@ public partial class BookCover : Node3D
             Position = new Vector3(size.X / 2f, -0.25f, 0), MaterialOverride = Palette.Matte(Palette.Paper.Darkened(0.04f)),
         };
         _hinge.AddChild(paper);
+        _endpaper = paper;
         // Gilt rules tooled into the leather (the lettering itself is the menu's, drawn over it).
         var gilt = Palette.Matte(PauseMenu.Gilt);
         float inset = 16f, w = 1.6f;
@@ -93,7 +99,18 @@ public partial class BookCover : Node3D
     {
         bool open = Amount <= 0f && !Moving;
         Visible = !open;
-        _leftPage.Visible = open;
+        // Round 6 (W10): the left page (the summary) is the board's inside: it stays drawn and turns over with the
+        // board until the cover is down, rather than vanishing as the board starts to move. The endpaper, which would
+        // lie over it, shows only once the book is shut (it is then face down anyway).
+        bool shut = Amount >= 1f && !Moving;
+        _leftPage.Visible = !shut;
+        _endpaper.Visible = shut;
+        var h = _hinge.Position;
+        var turn = new Transform3D(new Basis(new Vector3(0, 0, 1), Mathf.DegToRad(-180f * Amount)), Vector3.Zero);
+        // It rides on the board's inside face (the board's box would otherwise hide it): lifted to just above the hinge.
+        var home = _leftHome;
+        if (Amount > 0f) home.Origin = new Vector3(home.Origin.X, h.Y + 0.6f, home.Origin.Z);
+        _leftPage.Transform = new Transform3D(Basis.Identity, h) * turn * new Transform3D(Basis.Identity, -h) * home;
         // Trees and buildings stand taller than the hinge: hide them once the board is nearly down on them.
         if (_town != null) _town.Visible = Amount < 0.8f;
         // The left half of the base board goes with the front board.

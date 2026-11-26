@@ -98,7 +98,7 @@ public partial class TownBuildings : Node3D
         var aabb = ModelLib.Mesh(model).GetAabb();
         // Round 4: an extended cottage is wider (a lean-to with its own gable) and, from the second extension, has a
         // fenced yard behind; the footprint is fitted to the whole group.
-        float wide = p.Kind == PlotKind.Cottage && ext > 0 ? 1.5f : 1f, deep = p.Kind == PlotKind.Cottage && ext > 1 ? 1.45f : 1f;
+        float wide = p.Kind == PlotKind.Cottage && ext > 1 ? 1.8f : p.Kind == PlotKind.Cottage && ext > 0 ? 1.5f : 1f, deep = 1f;
         float ax = Math.Max(0.1f, side ? aabb.Size.Z * deep : aabb.Size.X * wide), az = Math.Max(0.1f, side ? aabb.Size.X * wide : aabb.Size.Z * deep);
         var body = new Node3D { Name = "Body", Rotation = new Vector3(0, yaw, 0) };
         root.AddChild(body);
@@ -134,6 +134,8 @@ public partial class TownBuildings : Node3D
             float cs = want / Math.Max(0.1f, Math.Max(sa.Size.X, sa.Size.Z)) / s;
             _charter.Scale = Vector3.One * cs;
             _charter.Position = new Vector3(fw * 0.34f / s, 0, fh * 0.34f / s);
+            // Round 6: pale dressed stone, so it stands out from the grass (it read green-grey before).
+            if (_charter is GeometryInstance3D cg) cg.MaterialOverride = PaleStone;
             _charter.Visible = false;
             _charterBase = _charter.Position;
             _charterScale = _charter.Scale;
@@ -146,13 +148,15 @@ public partial class TownBuildings : Node3D
 
     /// <summary>
     /// Round 4: what each extension adds, readable at the normal view: the first a lean-to beside the house with its
-    /// own gable (a small cottage turned side on, lower than the main roof); the second a wattle-fenced yard behind;
+    /// own gable (a small cottage turned side on, lower than the main roof); the second (round 6) a second lean-to on the other side;
     /// the third and later a woodpile by the lean-to. (No chimney model exists: see the round 4 progress notes.)
     /// </summary>
     private static void AddExtensions(Node3D body, Aabb main, int ext)
     {
         var c = main.GetCenter();
-        float shift = main.Size.X * 0.25f; // the group is centred: the house moves left, the lean-to sits right
+        // Round 6 (W7): two extensions add a second lean-to on the other side (a long row of three gables), so one and
+        // two extensions differ plainly from above; the row is centred, the house in the middle.
+        float shift = ext >= 2 ? 0f : main.Size.X * 0.25f; // one extension: the house moves left, the lean-to sits right
         body.GetNode<Node3D>("Model").Position = new Vector3(-shift, 0, 0);
         string leanModel = ModelLib.Pick("cottage-01", "cottage-01");
         var la = ModelLib.Mesh(leanModel).GetAabb();
@@ -164,17 +168,15 @@ public partial class TownBuildings : Node3D
         float lw = la.Size.Z * k;
         lean.Position = new Vector3(main.End.X - shift + lw * 0.5f - main.Size.X * 0.06f, 0, c.Z) + new Vector3(-la.GetCenter().Z * k, 0, la.GetCenter().X * k);
         body.AddChild(lean);
-        if (ext >= 2 && ModelLib.Has("fence-wattle"))
+        if (ext >= 2)
         {
-            var fa = ModelLib.Mesh("fence-wattle").GetAabb();
-            float len = Math.Max(0.1f, fa.Size.X);
-            float yardW = main.Size.X * 1.4f, yardD = main.Size.Z * 0.42f, z0 = main.Position.Z - 0.02f * main.Size.Z, z1 = z0 - yardD;
-            float h = main.Size.Y * 0.22f / Math.Max(0.1f, fa.Size.Y);
-            float x0 = -main.Size.X * 0.5f - shift + c.X, x1 = x0 + yardW;
-            Fence(body, "YardBack", new Vector3((x0 + x1) / 2f, 0, z1), yardW / len, h, 0);
-            Fence(body, "YardLeft", new Vector3(x0, 0, (z0 + z1) / 2f), yardD / len, h, 90);
-            Fence(body, "YardRight", new Vector3(x1, 0, (z0 + z1) / 2f), yardD / len, h, 90);
+            var lean2 = ModelLib.Instance(leanModel, "LeanTo2");
+            lean2.RotationDegrees = new Vector3(0, -90, 0);
+            lean2.Scale = Vector3.One * k;
+            lean2.Position = new Vector3(main.Position.X - lw * 0.5f + main.Size.X * 0.06f, 0, c.Z) + new Vector3(la.GetCenter().Z * k, 0, -la.GetCenter().X * k);
+            body.AddChild(lean2);
         }
+        // Round 6 (W7): the wattle yard behind is gone: thin fences under the ink outline read, from above, as a dark box.
         if (ext >= 3 && ModelLib.Has("prop-woodpile"))
         {
             var wa = ModelLib.Mesh("prop-woodpile").GetAabb();
@@ -191,12 +193,17 @@ public partial class TownBuildings : Node3D
         f.Scale = new Vector3(along, h, h);
         f.RotationDegrees = new Vector3(0, yawDeg, 0);
         f.Position = at;
+        // Round 6 (W7): the yard fence in pale new-cut wood: dark wattle read, from above, as a dark box round the house.
+        f.MaterialOverride = PaleStakes;
         body.AddChild(f);
     }
 
     /// <summary>The colour of staked plots' stakes and cord (pale new-cut wood).</summary>
     public static readonly Color StakeColour = Color.FromHtml("#E6D5AE");
-    private static StandardMaterial3D? _paleStakes;
+    private static StandardMaterial3D? _paleStakes, _paleStone;
+    /// <summary>The charter stone's colour (pale dressed stone, light against the grass).</summary>
+    public static readonly Color CharterStoneColour = Color.FromHtml("#F0EADB");
+    private static StandardMaterial3D PaleStone => _paleStone ??= new StandardMaterial3D { AlbedoColor = CharterStoneColour, Roughness = 0.9f };
     private static StandardMaterial3D PaleStakes => _paleStakes ??= new StandardMaterial3D { AlbedoColor = StakeColour, Roughness = 0.95f };
 
     private Node3D MakeStakes(Plot p)
@@ -370,6 +377,8 @@ public partial class TownBuildings : Node3D
     private bool _loadedWithCharter = true;
     private Vector3 _charterBase, _charterScale = Vector3.One;
     /// <summary>The charter stone's size across on the map in metres (tests: large enough to see).</summary>
+    /// <summary>Whether the charter stone is drawn in pale stone (tests).</summary>
+    public bool CharterPale => _charter is GeometryInstance3D g && g.MaterialOverride == PaleStone;
     public float CharterSize => _charter == null ? 0f : _charterScale.X * ((Node3D)_charter.GetParent()).Scale.X * Math.Max(ModelLib.Mesh(ModelLib.Pick("charter-stone", "well")).GetAabb().Size.X, ModelLib.Mesh(ModelLib.Pick("charter-stone", "well")).GetAabb().Size.Z);
     /// <summary>The charter stone is still coming down (tests and screenshots).</summary>
     public bool CharterArriving => _charter != null && _charter.Visible && _charterT < 1.4f;

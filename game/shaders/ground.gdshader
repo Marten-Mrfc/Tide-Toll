@@ -65,7 +65,7 @@ uniform vec4 cobble_stone : source_color = vec4(0.537, 0.522, 0.494, 1.0); // #8
 uniform vec4 cobble_joint : source_color = vec4(0.302, 0.278, 0.247, 1.0); // #4D473F
 uniform float crowd_on = 0.0;        // any crowded road (the town game)
 uniform sampler2D crowd_tex : filter_linear, repeat_disable;               // R8 128x128: how far over its comfort a road is, 0..1
-uniform vec4 crowd_col : source_color = vec4(0.878, 0.455, 0.173, 1.0);    // the heat map's orange, laid on lightly
+uniform vec4 crowd_col : source_color = vec4(0.800, 0.243, 0.133, 1.0);    // round 6 (W8): a strong brick red, never the pave mode's blue
 uniform vec3 shadow_tint = vec3(0.70, 0.74, 0.86);
 uniform float bank_px = 1.6;         // ink bank line width in screen pixels
 
@@ -141,6 +141,10 @@ void fragment() {
 	float height = 0.50 * n2 + 0.32 * n1 + 0.18 * stroke;
 	float worn = clamp((core - 0.25) / 0.50, 0.0, 1.0) * 1.3 - 0.15;
 	float bare = smoothstep(height - 0.10, height + 0.10, worn);
+	// Round 6 (W5): a just-given trail is faint but plainly there: a narrow, mostly unbroken line of soil down its
+	// middle (broken only where tall tufts stand), so a new road reads at the normal view before it wears in.
+	float line_soil = smoothstep(0.15, 0.27, core) * smoothstep(0.22, 0.42, 0.55 * n2 + 0.30 * stroke + 0.15 * n1 + 0.12) * 0.85;
+	bare = max(bare, line_soil);
 	// The soil is light and mottled (trail earth lifted toward the paper), streaked along the walking direction.
 	vec3 earth = mix(two(g2, lp), paper.rgb, 0.16) * (0.92 + 0.10 * n2 + 0.06 * n1);
 	earth *= 0.96 + 0.08 * stroke;
@@ -228,7 +232,7 @@ void fragment() {
 	// Crowding: a road over its comfort takes a warm wash, stronger the more crowded, only on the road itself.
 	if (crowd_on > 0.0) {
 		float cr = texture(crowd_tex, m / map_size).r * smoothstep(0.15, 0.35, core);
-		c = mix(c, crowd_col.rgb, cr * 0.6);
+		c = mix(c, crowd_col.rgb, clamp(cr * 1.8, 0.0, 1.0) * 0.8);
 	}
 
 	// river: signed distance to the bank from the per-row centre line

@@ -63,6 +63,7 @@ public partial class PlayThrough : TownTestBase
         // Round 6 (W1): the charter stone stands on the bell green, large enough to see at the normal view.
         await Frames(120);
         Check(Main.Buildings.CharterShown && Main.Buildings.CharterSize >= 2.9f, $"the charter stone stands on the green, {Main.Buildings.CharterSize:0.0} m across");
+        Check(Main.Buildings.CharterPale, "the charter stone is pale dressed stone, light against the grass");
         double charter = T.Time / 60.0;
         Main.Driver.SetPaused(true);
         await Frames(5);
