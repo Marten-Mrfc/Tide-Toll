@@ -252,16 +252,32 @@ public static class BookBuilder
     }
 
     /// <summary>Printed text lying flat on the page, reading north-up; <paramref name="size100"/> is the em in centimetres.</summary>
+    private static FontFile? _plainPrint;
+    /// <summary>A copy of the font with mipmapped glyphs, for print on the page that is not a distance field.</summary>
+    public static FontFile PlainPrint(FontFile f)
+    {
+        if (_plainPrint != null && _plainPrint.ResourceName == f.ResourcePath) return _plainPrint;
+        var m = (FontFile)f.Duplicate();
+        m.GenerateMipmaps = true;
+        m.Oversampling = 1f;
+        m.ResourceName = f.ResourcePath;
+        return _plainPrint = m;
+    }
+
     public static Label3D AddLabel(Node3D parent, string name, string text, Vector3 pos, int size100, Color c, FontFile font)
     {
         // An MSDF font: one small atlas, crisp at every zoom. FontSize 100 px at size100 / 10000 m per pixel.
+        // Round 4: not for Alegreya: the variable font's overlapping contours leave stray marks in a distance field
+        // ("2:" after digits, dots over letters), so it is printed from a plain 100 px atlas with mipmaps.
+        bool plain = font == UiKit.Serif;
         var l = new Label3D
         {
             Name = name,
             Text = text,
             Position = pos,
             RotationDegrees = new Vector3(-90, 0, 0),
-            Font = UiKit.PrintFont(font),
+            Font = plain ? PlainPrint(font) : UiKit.PrintFont(font),
+            TextureFilter = plain ? BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic : BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
             FontSize = 100,
             PixelSize = size100 / 10000f,
             Modulate = c,

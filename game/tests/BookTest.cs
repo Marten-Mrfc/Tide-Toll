@@ -82,6 +82,20 @@ public partial class BookTest : TownTestBase
         Check(sawPage && sawSlim && slimBeforeBook, "the interface thins to the slim strip on the way out");
         Check(firstPitch < 75f && Main.Rig.PitchNow > 89.99f, $"tilted on the town ({firstPitch:0.0}), straight down at the book ({Main.Rig.PitchNow:0.00})");
         Check(Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f, "the slim strip shows over the book");
+        // Round 4 (A12, A11): at the book the pause control is whole on screen and clear of both page numbers; the
+        // summary is not printed from a distance field (Alegreya's overlapping contours left stray marks).
+        await Frames(3);
+        var mark = Main.Hud.PauseMark.GetGlobalRect();
+        var vis = GetViewport().GetVisibleRect();
+        Check(vis.Encloses(mark), $"the pause control is cut by the window's edge ({mark})");
+        foreach (var page in new[] { "LeftPage", "RightPage" })
+        {
+            var folio = Main.Book.GetNode<Label3D>(page + "/Folio");
+            var at = Main.Rig.Camera.UnprojectPosition(folio.GlobalPosition);
+            Check(!mark.Grow(24).HasPoint(at), $"the pause control covers the {page} number (control {mark}, number at {at})");
+        }
+        var values = Main.Summary.GetNode<Label3D>("Values");
+        Check(values.Font is FontFile ff && !ff.MultichannelSignedDistanceField, "the summary's numbers are printed from a distance field");
         Check(Main.Hud.SlimText.Contains(TownHud.Money(T.Coin) + " coin") && Main.Hud.SlimText.Contains($"Level {T.Level}"), $"the slim strip shows coin and level ({Main.Hud.SlimText})");
         Check(T.Time > time0 + 1, "the simulation keeps running while zoomed out");
         // The book view shows the whole book: its corners are on screen.

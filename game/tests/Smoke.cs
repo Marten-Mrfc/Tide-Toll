@@ -35,5 +35,34 @@ public partial class Smoke : TownTestBase
         Check(Main.Hud.CoinText.EndsWith(" coin"), "coin shown");
         Check(Main.Hud.FloatersStarted > 0, "a +N floated at a delivery");
         Notes.Add($"game_s={ran:0.0} coin={T.CoinEarned:0} trips={T.Trips} uploads={Main.Ground.Uploads}");
+        SlowFramesKeepGameTime();
+        LogsAreCapped();
+    }
+
+    /// <summary>
+    /// Round 4 (r4-review A10): a slow frame at high speed loses no game time: a 0.6 s frame at 64x owes 384 steps,
+    /// more than one frame may run; the rest run in the next frames.
+    /// </summary>
+    private void SlowFramesKeepGameTime()
+    {
+        var d = new TownDriver();
+        d.Reset(5);
+        d.SetSpeed(64);
+        d._Process(0.6);
+        Check(d.StepsRun == d.MaxStepsPerFrame, $"a slow frame ran {d.StepsRun} steps, not the cap {d.MaxStepsPerFrame}");
+        for (int i = 0; i < 5; i++) d._Process(0);
+        long want = (long)System.Math.Round(0.6 * 64 * TownRules.TickHz);
+        Check(System.Math.Abs(d.StepsRun - want) <= 1, $"a 0.6 s frame at 64x ran {d.StepsRun} steps in all, not {want}");
+        d.Free();
+        Notes.Add($"slow-frame={want}steps");
+    }
+
+    /// <summary>Round 4 (A10): the note and banner logs keep their last lines only.</summary>
+    private void LogsAreCapped()
+    {
+        for (int i = 0; i < TownHud.LogCap + 50; i++) { Main.Hud.Note("Smoke note " + i); Main.Hud.Banner("Level", "smoke " + i); }
+        Check(Main.Hud.NoteLog.Count <= TownHud.LogCap && Main.Hud.BannerLog.Count <= TownHud.LogCap,
+            $"the logs grow without limit (notes {Main.Hud.NoteLog.Count}, banners {Main.Hud.BannerLog.Count})");
+        Check(Main.Hud.BannerLog[^1] == "Level: smoke " + (TownHud.LogCap + 49), "the banner log lost its newest line");
     }
 }

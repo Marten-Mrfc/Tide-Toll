@@ -58,6 +58,18 @@ public partial class SettingsTest
         await Key(Godot.Key.B);
         Check(_rt.Store.KeyFor("tt_bell", 1) == Godot.Key.B && Fires("tt_bell", Godot.Key.B), "B in the bell's second slot");
 
+        // Round 4 (A4): Ring in the next age is a listed, rebindable action with N, and N clashes with it.
+        Check(_pages.Controls.ContainsKey("keys.tt_next_age.0") && FindLabel(_pages, "Ring in the next age") != null, "Ring in the next age is not on the Keys page");
+        Check(Fires("tt_next_age", Godot.Key.N), "N should ring in the next age at first");
+        await Click("keys.tt_bell.0");
+        await Key(Godot.Key.N);
+        Check(_pages.Slip == "clash" && FindLabel(_pages, "Ring in the next age") != null, "binding N to the bell does not ask about Ring in the next age");
+        await Key(Godot.Key.Escape);
+        Check(_rt.Store.KeyFor("tt_next_age", 0) == Godot.Key.N, "the clash cancelled changed the next-age key");
+        await Click("keys.tt_next_age.0");
+        await Key(Godot.Key.J);
+        Check(Fires("tt_next_age", Godot.Key.J) && !Fires("tt_next_age", Godot.Key.N), "Ring in the next age could not be rebound to J");
+
         await Click("keys.restore");
         Check(_rt.Store.KeyFor("tt_pave", 0) == Godot.Key.P && _rt.Store.KeyFor("tt_bell", 0) == Godot.Key.Space
               && _rt.Store.KeyFor("tt_bell", 1) == Godot.Key.None, "Restore defaults");

@@ -79,7 +79,7 @@ Stopping
 
 ## Scheduled check
 
-- Pending: `trig_01PpRc4poy3igKzu46dAMars`, fires 00:14 UTC on 26 November. (Earlier ones fired and were handled.)
+- Pending: `trig_01ASwrwyQhTafTw3F36qu9xk`, fires 01:00 UTC on 26 November. (Earlier ones fired and were handled.)
 
 ## Rounds
 

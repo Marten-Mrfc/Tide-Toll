@@ -219,6 +219,13 @@ public partial class TownHud
             _home.Text = "Back to the town" + Settings.GameInput.Tag("tt_home_view");
             _paveHelp = null;
         }
+        // Round 4: the pause control sits bottom right while zoomed in; once the page or the book is in view it moves up
+        // beside the slim strip, clear of the book's corner and its page number.
+        PauseMark.ResetSize();
+        float pm = UiKit.Px(_s, 16);
+        PauseMark.Position = _slim.Visible && _fullA < 0.5f
+            ? new Vector2(_slim.Position.X + _slim.Size.X + UiKit.Px(_s, 14), _slim.Position.Y + (_slim.Size.Y - PauseMark.Size.Y) / 2f)
+            : new Vector2(_built.X - PauseMark.Size.X - pm, _built.Y - PauseMark.Size.Y - pm);
         _achMark.Visible = _fullA > 0.01f && !AgePageOpen;
         _achMark.Modulate = new Color(1, 1, 1, _fullA);
         _achMark.ResetSize();

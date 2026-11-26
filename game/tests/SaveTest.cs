@@ -37,8 +37,30 @@ public partial class SaveTest : TownTestBase
         return sb.ToString();
     }
 
+    private async Task ClickC(Control c)
+    {
+        var p = GetViewport().GetFinalTransform() * c.GetGlobalRect().GetCenter();
+        await Click(p);
+        await Frames(2);
+    }
+
+    /// <summary>Round 4 (A6): the autosave clock counts real time, also when the engine's frame time runs slow.</summary>
+    private async Task AutosaveCountsRealTime()
+    {
+        Check((Settings.GameSettings.Current?.AutosaveMinutes ?? 0) > 0, "autosave is on by default");
+        await Frames(2);
+        double c0 = Main.Saver.Clock; ulong t0 = Time.GetTicksMsec();
+        Engine.TimeScale = 0.1; // every frame's delta is a tenth of the real time, as on a machine the engine clamps
+        for (int i = 0; i < 40; i++) { OS.DelayMsec(15); await Frames(1); }
+        Engine.TimeScale = 1;
+        double real = (Time.GetTicksMsec() - t0) / 1000.0, counted = Main.Saver.Clock - c0;
+        Check(counted > real * 0.8 && counted < real * 1.2, $"the autosave counted {counted:0.00} s in {real:0.00} s of real time");
+        Notes.Add($"autosave-clock={counted:0.00}/{real:0.00}s");
+    }
+
     protected override async Task Run()
     {
+        await AutosaveCountsRealTime();
         // Play at speed to level 2 with a road paved.
         var bot = new TownBot(BotKind.Payback, 1);
         Main.Driver.SetSpeed(64);
@@ -66,6 +88,35 @@ public partial class SaveTest : TownTestBase
         await Frames(30);
         Check(T.Tick > tick, "the reloaded town does not run on");
         Notes.Add($"level {T.Level} paved {T.RoadsPaved} villagers {T.VillagerCount}");
+
+        // Round 4 (A7): pause by Esc, then the process ends without a clean quit: the town opens at the view the
+        // player had before pausing, not the closed book's.
+        Main.Rig.UserMoved = true;
+        Main.Rig.LookAt(Main.Rig.PivotLocal + new Vector3(5, 0, -3), 64f, instant: true);
+        await Frames(5);
+        var pivotP = Main.Rig.PivotLocal; float sizeP = Main.Rig.Camera.Size;
+        await Key(Godot.Key.Escape);
+        await Until(() => Main.Menu.CoverShown, 600, "the cover menu");
+        await Reload();
+        Check(Main.Rig.UserMoved && Main.Rig.PivotLocal.DistanceTo(pivotP) < 0.5f && MathF.Abs(Main.Rig.Camera.Size - sizeP) < 0.5f,
+            $"after a pause and an unclean end the view is {Main.Rig.PivotLocal} size {Main.Rig.Camera.Size} (was {pivotP} size {sizeP})");
+
+        // Round 4 (A9): a save that cannot be written says so; a read that fails sets nothing aside and writes nothing over it.
+        string tmpPath = Main.Saver.SavePath + ".tmp";
+        DirAccess.MakeDirRecursiveAbsolute(tmpPath); // a folder where the save is written first: the write fails
+        Check(!Main.Saver.SaveNow(), "a save that could not be written reported success");
+        Check(Main.Hud.LastNote.StartsWith("The town could not be saved"), $"no note for a save that could not be written ('{Main.Hud.LastNote}')");
+        DirAccess.RemoveAbsolute(tmpPath);
+        Check(Main.Saver.SaveNow(), "saving works again");
+        string good = FileAccess.GetFileAsString(Main.Saver.SavePath);
+        int goodSeed = Main.Driver.Seed;
+        TownSaver.ReadSeam = _ => null;
+        try { await Reload(); } finally { TownSaver.ReadSeam = null; }
+        Check(FileAccess.FileExists(Main.Saver.SavePath) && Main.Saver.SetAside == "", "a save that failed to read was set aside");
+        Check(Main.StartNote.Contains("could not be read from the disk"), $"no note for a failed read ('{Main.StartNote}')");
+        Check(!Main.Saver.SaveNow() && FileAccess.GetFileAsString(Main.Saver.SavePath) == good, "the new town was saved over a save that failed to read");
+        await Reload();
+        Check(Main.Driver.Seed == goodSeed && Main.StartNote == "", "the good save did not load once the disk read it again");
 
         // A damaged save: a new town, a note, the file set aside.
         string path = Main.Saver.SavePath;
@@ -103,14 +154,33 @@ public partial class SaveTest : TownTestBase
         await Key(Godot.Key.Enter);
         Check(Main.QuitRequests == 2 && FileAccess.FileExists(path), "Quit did not save");
 
-        // Delete the save (the Saving page's action after it confirms): a new town; the settings stay.
+        // Delete the save on the Saving page with real clicks (round 4, A5): a new town, the settings stay, and no save is
+        // left: the page says so and offers no Load until the new town is saved (pausing saves it).
         var store = Settings.GameSettings.Current!;
         store.SetVolume("Effects", 33);
         int seed2 = Main.Driver.Seed;
-        Main.Saver.DeleteSave();
+        Check(Main.Menu.CoverShown, "the cover menu after Quit was held");
+        Main.Menu.SettingsButton.GrabFocus();
+        await Key(Godot.Key.Enter);
+        await Frames(3);
+        var pages = Main.Menu.Pages!;
+        pages.ShowSection("Saving");
+        await Frames(3);
+        await ClickC(pages.Controls["saving.delete"]);
+        await ClickC(pages.Controls["slip.0"]);
         Check(Main.Driver.Seed != seed2 && T.Level == 1, "deleting the save did not start a new town");
         Check(store.Volume("Effects") == 33 && FileAccess.FileExists(Main.Profile + "settings.cfg"), "deleting the save touched the settings");
-        // Load the last save from the page.
+        Check(!Main.Saver.HasSave, "Delete left a save");
+        Check(((Button)pages.Controls["saving.load"]).Disabled, "Load is offered after Delete");
+        // Changed in round 4 (A5): there is no save after Delete, so loading finds none (it loaded the new town before).
+        Check(!Main.Saver.LoadLast(), "LoadLast found a save after Delete");
+        await ClickC(pages.Controls["back"]);
+        await Key(Godot.Key.Escape);
+        await Until(() => Main.Menu.Now == PauseMenu.State.Playing, 600, "the book open again");
+        Check(!Main.Saver.HasSave, "Resume wrote a save");
+        await Key(Godot.Key.Escape);
+        await Until(() => Main.Menu.CoverShown, 600, "the cover menu");
+        Check(Main.Saver.HasSave, "pausing the new town did not save it");
         Check(Main.Saver.LoadLast(), "LoadLast failed");
     }
 }

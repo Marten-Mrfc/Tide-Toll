@@ -114,6 +114,14 @@ public partial class TownHud : CanvasLayer
         PauseMark.GrowHorizontal = Control.GrowDirection.Begin;
         PauseMark.GrowVertical = Control.GrowDirection.Begin;
         PauseMark.Pressed += () => _main.Menu.Pause();
+        // Round 4: a whole card (the bookmark style has no left edge, which read as clipped), placed every frame.
+        foreach (var (state, bg, w) in new[] { ("normal", UiKit.Paper, 1.5f), ("hover", UiKit.PaperHover, 1.5f), ("pressed", UiKit.Pressed, 2f), ("hover_pressed", UiKit.Pressed, 2f) })
+        {
+            var box = UiKit.Card(_s, bg, w);
+            box.ContentMarginLeft = box.ContentMarginRight = UiKit.Px(_s, 12);
+            box.ContentMarginTop = box.ContentMarginBottom = UiKit.Px(_s, 5);
+            PauseMark.AddThemeStyleboxOverride(state, box);
+        }
         BuildBookParts();
         _fullParts = new Control?[] { _ledger, _notes, _shop, _bell, _nextAge, _floatLayer, _banner, _achMark };
         _fullA = -1f;
@@ -379,6 +387,10 @@ public partial class TownHud : CanvasLayer
     }
 
     private readonly HashSet<string> _perksSeen = new();
+    /// <summary>Perk notes shown in this town so far (tests: a new town starts at 0).</summary>
+    public int PerksNoted => _perksSeen.Count;
+    /// <summary>A request card's Done or Time ran out flash is showing (tests).</summary>
+    public bool RequestFlashing => _reqFlash != 0;
 
     /// <summary>The note and banner logs keep the last <see cref="LogCap"/> lines (round 4: they grew without limit).</summary>
     public const int LogCap = 200;

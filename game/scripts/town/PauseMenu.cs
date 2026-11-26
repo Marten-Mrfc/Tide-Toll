@@ -126,10 +126,13 @@ public partial class PauseMenu : CanvasLayer
         frame.SetCornerRadiusAll(UiKit.Px(s, 3));
         var plain = (StyleBoxFlat)frame.Duplicate();
         plain.DrawCenter = false; plain.BorderColor = new Color(0, 0, 0, 0);
+        // Round 4: on the New town question both choices wear a dim gilt frame before the pointer is on them.
+        var choice = (StyleBoxFlat)frame.Duplicate();
+        choice.BgColor = new Color(Gilt, 0.04f); choice.BorderColor = new Color(GiltDim, 0.85f);
         foreach (var b in new[] { _resume, _settings, _newTown, _quit, _yes, _no })
         {
             b.AddThemeFontSizeOverride("font_size", UiKit.FontPx(s, b.GetParent() == _ask ? 34 : 44));
-            b.AddThemeStyleboxOverride("normal", plain);
+            b.AddThemeStyleboxOverride("normal", b.GetParent() == _ask ? choice : plain);
             b.AddThemeStyleboxOverride("hover", frame);
             b.AddThemeStyleboxOverride("pressed", frame);
             b.AddThemeStyleboxOverride("focus", frame);

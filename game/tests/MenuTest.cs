@@ -44,6 +44,71 @@ public partial class MenuTest : TownTestBase
         await Frames(30);
     }
 
+    /// <summary>
+    /// Round 4 (r4-review A1, A2): game keys do nothing under the closed cover, on the settings pages or while the book
+    /// closes; Extend mode ends when the game pauses; a click on the table beside the closed book does nothing; after
+    /// Resume no mode is on and the next Esc pauses.
+    /// </summary>
+    private async Task KeysUnderTheCover()
+    {
+        // Extend mode on by its key (the bot plays until a cottage can be extended and paid for).
+        Main.Driver.RunBot(new TideToll.Sim.Town.TownBot(TideToll.Sim.Town.BotKind.Payback, 1),
+            t => t.SuggestedExtend() >= 0 && t.Coin >= t.ExtendPrice, 60 * 60 * 30);
+        Check(T.SuggestedExtend() >= 0 && T.Coin >= T.ExtendPrice, $"the bot found no cottage to extend (level {T.Level}, '{T.ExtendLockReason}')");
+        Main.Driver.SetPaused(true); // the town stands still while the test looks (Resume below unpauses it)
+        await Frames(5);
+        await Key(Godot.Key.E);
+        Check(Main.Hud.ExtendMode, $"E did not switch Extend mode on ('{Main.Hud.LastNote}')");
+        await ClickC(Main.Hud.PauseMark);
+        await Until(() => M.CoverShown, 600, "the cover after the pause control in Extend mode");
+        Check(!Main.Hud.ExtendMode, "Extend mode survived the pause");
+
+        // Clicks on the table beside the closed book, and on a cottage there, do nothing.
+        double coin = T.Coin; int level = T.Level, people = T.VillagerCount;
+        var cover = M.CoverRect();
+        int plot = T.SuggestedExtend();
+        foreach (var p in new[] { cover.Position + new Vector2(-80, cover.Size.Y / 2), cover.End + new Vector2(60, -40), new Vector2(40, 1040), Main.Hud.PlotScreen(plot) })
+        {
+            if (cover.HasPoint(p)) continue;
+            await Click(p);
+        }
+        // Game keys under the cover: Pave, Extend, a purchase, the bell, a building, achievements.
+        foreach (var k in new[] { Godot.Key.P, Godot.Key.E, Godot.Key.Key4, Godot.Key.Key5, Godot.Key.Key2, Godot.Key.Key1, Godot.Key.Space, Godot.Key.F, Godot.Key.Tab })
+        {
+            if (k == Godot.Key.Space) continue; // Space presses the focused cover item (Resume), as a button should
+            await Key(k);
+        }
+        Check(!Main.Hud.PaveMode && !Main.Hud.ExtendMode && !Main.Hud.AchievementsOpen, "a game key switched a mode or page on under the closed cover");
+        Check(T.Coin == coin && T.Level == level && T.VillagerCount == people, "a key or click under the closed cover bought something");
+        Check(M.CoverShown, "the cover went away");
+        // The same on the settings pages.
+        M.SettingsButton.GrabFocus();
+        await Key(Godot.Key.Enter);
+        await Frames(3);
+        Check(M.Pages != null, "the settings pages did not open");
+        foreach (var k in new[] { Godot.Key.P, Godot.Key.E, Godot.Key.Key4, Godot.Key.Key2 }) await Key(k);
+        Check(!Main.Hud.PaveMode && !Main.Hud.ExtendMode && T.Coin == coin, "a game key acted on the settings pages");
+        await Key(Godot.Key.Escape);
+        await Frames(3);
+        Check(M.CoverShown, "Esc did not leave the settings pages");
+        // Resume: no mode on, and the next Esc pauses at once.
+        await Key(Godot.Key.Escape);
+        // A key while the book opens does nothing either.
+        await Key(Godot.Key.P);
+        Check(M.Now != PauseMenu.State.Playing || !Main.Hud.PaveMode, "P acted while the book was opening");
+        await Resumed();
+        Check(!Main.Hud.PaveMode && !Main.Hud.ExtendMode, "a mode was on after Resume");
+        await Key(Godot.Key.Escape);
+        // While the book closes, P does nothing.
+        await Key(Godot.Key.P);
+        await Until(() => M.CoverShown, 600, "Esc after Resume did not pause");
+        Check(!Main.Hud.PaveMode, "P acted while the book was closing");
+        await Key(Godot.Key.Escape);
+        await Resumed();
+        Check(!Main.Hud.PaveMode && !M.IsPaused, "after the cover, a mode was on or the game stayed paused");
+        Notes.Add("cover-keys=ok");
+    }
+
     protected override async Task Run()
     {
         Main.Driver.Advance(30);
@@ -158,6 +223,8 @@ public partial class MenuTest : TownTestBase
         await Resumed();
         Check(!Main.Driver.Paused, "Esc on the cover did not resume");
 
+        await KeysUnderTheCover();
+
         // The pause control in the interface.
         await ClickC(Main.Hud.PauseMark);
         await Until(() => M.CoverShown, 600, "the cover after the pause control");
@@ -168,13 +235,23 @@ public partial class MenuTest : TownTestBase
         M.NewTownButton.GrabFocus();
         await Key(Godot.Key.Enter);
         Check(M.QuestionShown && M.QuestionText == PauseMenu.Question, "New town did not ask");
+        // Round 4 (A13): both choices look like buttons before the pointer is on them (a frame in their normal state).
+        foreach (var b in new[] { M.YesButton, M.NoButton })
+            Check(b.GetThemeStylebox("normal") is StyleBoxFlat f && f.BorderColor.A > 0.3f && f.BorderWidthTop > 0, $"'{b.Text}' has no frame of its own");
         await Key(Godot.Key.Escape);
         Check(M.CoverShown && Main.Driver.Seed == seed, "Esc on the question did not keep the town");
         M.NewTownButton.GrabFocus();
         await Key(Godot.Key.Enter);
         Check(GetViewport().GuiGetFocusOwner() == M.NoButton, "the question should start on Keep this town");
+        // Round 4 (A8): the new town starts clean: no perk silenced, no hint marker or request flash from the old town.
+        bool clean = false; string was = $"perks {Main.Hud.PerksNoted} hint '{Main.Hud.HintText}' marker {Main.Hud.HintMarkerVisible} flash {Main.Hud.RequestFlashing}";
+        void Replaced() => clean = Main.Hud.PerksNoted == 0 && Main.Hud.HintText == "" && !Main.Hud.HintMarkerVisible && !Main.Hud.RequestFlashing;
+        Main.Driver.Replaced += Replaced;
         await Key(Godot.Key.Up);
         await Key(Godot.Key.Enter);
+        Main.Driver.Replaced -= Replaced;
+        Check(clean, $"New town kept the old town's perks, hint or request flash (before: {was})");
+        Notes.Add("before-new: " + was);
         await Resumed();
         Check(Main.Driver.Seed != seed && T.Level == 1, $"New town gave seed {Main.Driver.Seed} level {T.Level}");
         Check(store.KeyFor("tt_pause", 0) == Godot.Key.K && store.Volume("Music") == 40, "New town touched the settings");
