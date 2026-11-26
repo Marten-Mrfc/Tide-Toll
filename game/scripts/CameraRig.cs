@@ -87,7 +87,7 @@ public partial class CameraRig : Node3D
     public bool UserMoved;
     /// <summary>While the book is closed (the pause menu) the camera ignores the player's keys, wheel and drags.</summary>
     public bool InputLocked;
-    /// <summary>The last left press turned into a drag (so its release is not a click).</summary>
+    /// <summary>The last left press turned into a drag, or started on an interface card (round 5), so its release is not a click on the map.</summary>
     public bool LeftDragged { get; private set; }
     /// <summary>Left-button drag pans too (the town game: there is no drawing tool on the left button).</summary>
     public bool LeftDragPans = false;
@@ -364,7 +364,7 @@ public partial class CameraRig : Node3D
                 _dragLast = mb.Position;
                 break;
             case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.Left && LeftDragPans:
-                if (mb.Pressed && (PressBlocked?.Invoke(mb.Position) ?? false)) { _leftDown = false; LeftDragged = false; }
+                if (mb.Pressed && (PressBlocked?.Invoke(mb.Position) ?? false)) { _leftDown = false; LeftDragged = true; }
                 else if (mb.Pressed) { _leftDown = true; _leftFrom = mb.Position; _dragLast = mb.Position; LeftDragged = false; }
                 else { _leftDown = false; if (_dragging && !Input.IsMouseButtonPressed(MouseButton.Right) && !Input.IsMouseButtonPressed(MouseButton.Middle)) _dragging = false; }
                 break;

@@ -67,14 +67,15 @@ public partial class Perf : TownTestBase
             const int n = 600;
             long alloc0 = GC.GetTotalAllocatedBytes(false);
             double t0 = town.Time;
-            long big = 0; int bigAt = -1, bigCount = 0, saves0 = Main.Saver.Saves;
+            long big = 0; int bigAt = -1, bigCount = 0; string bigWhat = ""; int saves0 = Main.Saver.Saves;
             for (int i = 0; i < n; i++)
             {
+                int tc0 = town.TouchCount; string n0 = Main.Hud.LastNote;
                 long f0 = GC.GetTotalAllocatedBytes(false);
                 await Frames(1);
                 long f = GC.GetTotalAllocatedBytes(false) - f0;
                 if (f > 20000) bigCount++;
-                if (f > big) { big = f; bigAt = i; }
+                if (f > big) { big = f; bigAt = i; bigWhat = $"touches {tc0}->{town.TouchCount} note before '{n0}' level {town.Level} note '{Main.Hud.LastNote}'"; }
                 sum += end.LastMs;
                 worst = Math.Max(worst, end.LastMs);
             }
@@ -83,7 +84,7 @@ public partial class Perf : TownTestBase
             long perFrame = alloc / n, gate = speed > 1 ? AllocGate8x : AllocGate1x;
             bool pass = mean < budget && perFrame < gate;
             ok &= pass;
-            GD.Print($"PERF {speed:0}x largest frame allocation {big} bytes at frame {bigAt}; frames over 20 KB: {bigCount}; autosaves {Main.Saver.Saves - saves0}, clock {Main.Saver.Clock:0.0} s (information)");
+            GD.Print($"PERF {speed:0}x largest frame allocation {big} bytes at frame {bigAt} ({bigWhat}); frames over 20 KB: {bigCount}; autosaves {Main.Saver.Saves - saves0}, clock {Main.Saver.Clock:0.0} s (information)");
             GD.Print($"PERF town {town.VillagerCount} villagers {speed:0}x: cpu ms/frame mean {mean:0.000} worst {worst:0.00} (gate mean < {budget}) {(pass ? "ok" : "OVER")}; game s {town.Time - t0:0.0}; bytes/frame {perFrame} (gate < {gate})");
         }
         // For information: the same at 8x with the interface switched off, to show what the interface costs.
