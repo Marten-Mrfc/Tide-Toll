@@ -59,6 +59,14 @@ tools/sync-assets.sh                                              # copy into ga
 - 20:20 UTC: town pass added (bot stops at levels 5, 9, the charter, then the seal). Found and fixed: Main's follow view took the camera back whenever UserMoved was reset (all town and book pictures showed the whole map); the close framing cut fields (now uses the turned box); the scale villager hid small things in close-ups (now only in -normal).
 - Findings from the index so far: 15 sounds not named by any cue table or game script (place-01..06, erase-01..06, boat-turn-away-01..03); models over the 500-triangle guide: drawbridge-lift 1188 (landmark limit 1,500), mill 638, barge 594; files not named in game/scripts: fence-gate, field-sprouting, reeds, villager-cargo-timber and 22 icons (tool-*, several ui-*).
 
+- 20:40 UTC: final run done (about 8 minutes: 66 model subjects, then the town played to the seal with stops at levels 3, 5, 9 and the charter; `ASSET AUDIT PASS`). 95 subjects x 2 pictures, 9 textures, 53 icons, 151 sounds; 31 sheets read; 190 JPEG copies in `docs/review/n3/before/assets/` (8.8 MB). The command: `tools/asset-audit.sh --jpeg=/home/user/tide-toll/docs/review/n3/before/assets`.
+- Seen on the sheets (faults of the game, left as they are): an Okabe orange ring round the mill and a new cottage in play (a state marker drawn on the models); world labels ("Grain 0 of 1998 loads", "Leaving, Cloth 256 of 398 loads", "The market, to buy") in the river and plot pictures; the table and the leather are one flat colour close up; the second bundle of Load step 2/3 sits on the back and cannot be seen from the play view; villager-cargo-timber has no use in code (no timber good).
+
+## Left to do
+
+- `road-worn` (a worn-in track): no road was worn in and still unpaved at any stop of the bot's run (the bot paves early); needs a stop before paving or a hand-played road.
+- Boats loaded and empty as separate subjects; touches and plot stakes where the town puts them (only the market's stakes, `town-market-early`); the charter and seal stones in place.
+
 ## Not pictured (and why)
 
 - "+ hand" markers: an interface label (`TownHud.Choice.cs:252`), not a 3D thing; belongs to the interface audit.
