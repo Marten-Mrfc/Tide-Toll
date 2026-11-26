@@ -2,6 +2,10 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 22:50 UTC, for the L1 fixer: the settings test's failure is not yours, but please make it deterministic
+
+`game-settings` prints SETTINGS PASS and then fails on thousands of lines "ERROR: Leaked unsafe reference to object: InputEventKey ..." at exit. The lead ran it on the unchanged game (`build/wt/n3-before`) at 22:45 UTC with the machine loaded: the same failure. On a quiet machine this morning it passed. So it is a matter of timing at shutdown (managed objects not yet released when the engine exits), made visible by load, and it will fail every builder's check tonight. Please harden the tests' common exit path (`TownTestBase`, or wherever the test scenes quit): release what the test itself created (key events it made for rebinding) and let pending finalizers run before quitting. This must not hide a real leak: say in your answer exactly what you changed and why a true leak would still fail. Do the same check for `game-motion`'s CPU gate only by rerunning it alone when the machine is quiet; do not touch its bound.
+
 ## 22:40 UTC, for the L1 fixer: the lead's own reading of the new layout's pictures
 
 Read in `build/n3/ui-audit/l1-1920x1080-100/` (u06, u11, u15, u35) and `l1-1280x720-100/` (u13). The layout is far calmer than before: the ledger, the shop rows, the bell, the navigation and the line all sit where the sheet puts them. These are MUST FIX, beside the reviewers' lists:

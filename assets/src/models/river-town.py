@@ -289,53 +289,45 @@ def crane_jib():
 def seal_stone():
     rng = random.Random(SEED)
     m = glb.Mesh()
-    m.add_box((0, 0, 0), (3.8, 0.25, 3.8), "Concrete", top="Concrete")                  # lower step
-    m.add_box((0, 0.25, 0), (2.9, 0.25, 2.9), "Concrete", bottom=False)                 # upper step
-    m.add_box((0, 0.5, 0), (1.7, 0.3, 1.7), "Wet mudflat", bottom=False)                # plinth base moulding
-    m.add_box((0, 0.8, 0), (1.4, 1.3, 1.4), "Concrete", bottom=False)                   # plinth
-    m.add_box((0, 2.1, 0), (1.7, 0.24, 1.7), "Wet mudflat", bottom="Wet mudflat")       # cornice
-    # sunken carved panels on all four faces: a dark panel and a raised lozenge (front: three lines of carving)
-    for k, (nx, nz) in enumerate(((0, 1), (1, 0), (0, -1), (-1, 0))):
-        d = 0.71
-        tx, tz = (1, 0) if nz else (0, 1)
-        def Q(u, y, dd=d):
-            return (nx * dd + tx * u, y, nz * dd + tz * u)
-        m.add_poly([Q(-0.45, 1.0), Q(0.45, 1.0), Q(0.45, 1.9), Q(-0.45, 1.9)], "Wet mudflat", facing=(nx, 0, nz))
-        if k == 0:
-            for y, w in ((1.72, 0.6), (1.5, 0.6), (1.28, 0.4)):
-                m.add_box((0, y, d), (w, 0.08, 0.08), "Concrete", bottom="Concrete")
-        else:
-            m.add_poly([Q(0.0, 1.18, d + 0.04), Q(0.22, 1.45, d + 0.04), Q(0.0, 1.72, d + 0.04),
-                        Q(-0.22, 1.45, d + 0.04)], "Concrete", facing=(nx, 0, nz))
-    # four corner stones on the upper step (small posts, so the platform reads as a place)
-    for sx in (-1, 1):
-        for sz in (-1, 1):
-            stone(m, rng, (sx * 1.6, 0.25, sz * 1.6), 0.16, 0.3, n=5)
-    # the seal: a red disc tilted back 30 degrees on a cradle, raised rim and a ship in relief
-    cy, tilt, R = 2.95, math.radians(30), 0.78
+    # review r1: it read as a square block (a plinth or a crate); now round steps, a round drum 1.6 m high and the
+    # seal disc standing on top, wider than the drum, so its silhouette is a coin on a post
+    m.add_cylinder((0, 0, 0), 1.9, 0.25, "Concrete", segments=12, cap_bottom=False)    # lower step
+    m.add_cylinder((0, 0.25, 0), 1.4, 0.25, "Concrete", segments=10, cap_bottom=False)  # upper step
+    m.add_cylinder((0, 0.5, 0), 0.62, 0.22, "Wet mudflat", segments=10, cap_bottom=False)   # base moulding
+    m.add_frustum((0, 0.72, 0), 0.48, 0.42, 1.38, "Concrete", segments=10, cap_bottom=False)  # the drum
+    for y in (1.15, 1.75):                                                               # carved bands
+        m.add_cylinder((0, y, 0), 0.475 - (y - 0.72) * 0.04, 0.1, "Wet mudflat", segments=10, cap_top=False,
+                       cap_bottom=False)
+    m.add_cylinder((0, 2.1, 0), 0.56, 0.16, "Wet mudflat", segments=10, cap_bottom=True)   # cornice
+    for k in range(4):                                                                   # four corner stones
+        a = math.pi / 4 + k * math.pi / 2
+        stone(m, rng, (math.cos(a) * 1.55, 0.25, math.sin(a) * 1.55), 0.16, 0.3, n=5)
+    # the seal: a River-blue disc tilted back 30 degrees on a cradle, raised rim and a ship in relief
+    cy, tilt, R = 2.96, math.radians(18), 0.68
+    k = R / 0.78                                      # the ship and rim were drawn for a 0.78 m disc
     up = (0, math.cos(tilt), -math.sin(tilt))         # disc's 'up' in its plane
     nrm = (0, math.sin(tilt), math.cos(tilt))         # disc's front normal
 
     def D(u, v, w=0.0):
         return (u, cy + v * up[1] + w * nrm[1], v * up[2] + w * nrm[2])
-    m.add_box((0, 2.34, 0), (1.1, 0.24, 0.7), "Wet mudflat", bottom=False)            # cradle
+    m.add_box((0, 2.26, 0), (0.7, 0.12, 0.5), "Wet mudflat", bottom=False)            # cradle
     n = 12
     ang = [2 * math.pi * (i + 0.5) / n for i in range(n)]
     front = [D(R * math.cos(a), R * math.sin(a), 0.14) for a in ang]
     back = [D(R * math.cos(a), R * math.sin(a), -0.14) for a in ang]
-    loft(m, back, front, "Brick", centre=D(0, 0))
-    cap(m, back, "Soot brick", facing=tuple(-c for c in nrm))
-    cap(m, front, "Brick", facing=nrm)
-    inner = [D(0.62 * math.cos(a), 0.62 * math.sin(a), 0.2) for a in ang]
-    inner0 = [D(0.62 * math.cos(a), 0.62 * math.sin(a), 0.14) for a in ang]
-    loft(m, inner0, inner, "Soot brick", centre=D(0, 0, 0.17), inward=True)              # rim step down
-    cap(m, [D(0.62 * math.cos(a), 0.62 * math.sin(a), 0.15) for a in ang], "Soot brick", facing=nrm)
-    # ship in relief on the sunken face: hull, mast and a square sail (Brick on Soot brick)
-    m.add_poly([D(-0.42, -0.12, 0.2), D(0.42, -0.12, 0.2), D(0.28, -0.34, 0.2), D(-0.28, -0.34, 0.2)], "Brick",
+    loft(m, back, front, "River", centre=D(0, 0))
+    cap(m, back, "Deep water", facing=tuple(-c for c in nrm))
+    cap(m, front, "River", facing=nrm)
+    inner = [D(0.62 * k * math.cos(a), 0.62 * k * math.sin(a), 0.2) for a in ang]
+    inner0 = [D(0.62 * k * math.cos(a), 0.62 * k * math.sin(a), 0.14) for a in ang]
+    loft(m, inner0, inner, "Deep water", centre=D(0, 0, 0.17), inward=True)              # rim step down
+    cap(m, [D(0.62 * k * math.cos(a), 0.62 * k * math.sin(a), 0.15) for a in ang], "Deep water", facing=nrm)
+    # ship in relief on the sunken face: hull, mast and a square sail (Paper on Deep water; night 3: the borough seal is River blue)
+    m.add_poly([D(-0.42 * k, -0.12 * k, 0.2), D(0.42 * k, -0.12 * k, 0.2), D(0.28 * k, -0.34 * k, 0.2), D(-0.28 * k, -0.34 * k, 0.2)], "Paper",
                facing=nrm)
-    m.add_poly([D(-0.04, -0.12, 0.2), D(0.04, -0.12, 0.2), D(0.04, 0.42, 0.2), D(-0.04, 0.42, 0.2)], "Brick",
+    m.add_poly([D(-0.04 * k, -0.12 * k, 0.2), D(0.04 * k, -0.12 * k, 0.2), D(0.04 * k, 0.42 * k, 0.2), D(-0.04 * k, 0.42 * k, 0.2)], "Paper",
                facing=nrm)
-    m.add_poly([D(-0.26, 0.02, 0.21), D(0.26, 0.02, 0.21), D(0.22, 0.34, 0.21), D(-0.22, 0.34, 0.21)], "Limewash",
+    m.add_poly([D(-0.26 * k, 0.02 * k, 0.21), D(0.26 * k, 0.02 * k, 0.21), D(0.22 * k, 0.34 * k, 0.21), D(-0.22 * k, 0.34 * k, 0.21)], "Limewash",
                facing=nrm)
     return m
 
@@ -371,7 +363,7 @@ BUILDS = [
     ("weaver-cottage", weaver_cottage(), 560, "Near bank: weaver's cottage (Wool to Cloth; loom in the open lean-to)"),
     ("crane", [("Base", crane_base()), ("Jib", crane_jib(), None, (0.0, PIVOT_Y, 0.0))], 500,
      "Landing: treadwheel crane upgrade (nodes Base and Jib, Jib turns about its local Y at the post top)"),
-    ("seal-stone", seal_stone(), 600, "Town green: borough seal stone (ends the second age)"),
+    ("seal-stone", seal_stone(), 600, "Town green: borough seal stone, the seal in River blue (ends the second age)"),
     ("tide-post", tide_post(), 200, "River: tide post in the shallows (painted level marks, water plane shows the tide)"),
 ]
 

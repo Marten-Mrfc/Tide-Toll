@@ -24,6 +24,7 @@ public partial class AssetAudit : TownTestBase
 
     private string _dir = "";
     private HashSet<string>? _only;
+    private bool _noTown;
     private Vector2 _spot = new(104, 24);
     private readonly List<string> _lines = new();
 
@@ -35,6 +36,7 @@ public partial class AssetAudit : TownTestBase
         foreach (var a in OS.GetCmdlineUserArgs())
         {
             if (a.StartsWith("--out-dir=")) _dir = a[10..];
+            else if (a == "--no-town") _noTown = true;
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
             {
@@ -67,7 +69,7 @@ public partial class AssetAudit : TownTestBase
             await Shoot(s, playSize, walker);
             made++;
         }
-        await TownShots(playSize);
+        if (!_noTown) await TownShots(playSize);
         System.IO.File.WriteAllLines(System.IO.Path.Combine(_dir, _only == null ? "models.jsonl" : "models-only.jsonl"), _lines);
         Notes.Add($"made={made} dir={_dir}");
     }
@@ -130,7 +132,8 @@ public partial class AssetAudit : TownTestBase
             }
             return n;
         }, false));
-        list.Add(new Subject("trees-group", "code: game/scripts/town/TownTrees.cs (tree-oak, tree-poplar, tree-willow)", TreeGroup, true));
+        list.Add(new Subject("trees-group", "code: game/scripts/town/TownTrees.cs (tree-oak, -poplar, -willow, -birch, -hawthorn)", TreeGroup, true));
+        list.Add(new Subject("wood-and-field", "code: the five tree kinds beside the three field states, with a villager", WoodAndField, true));
         return list;
     }
 
@@ -139,10 +142,29 @@ public partial class AssetAudit : TownTestBase
         var n = new Node3D { Name = "Subject" };
         (string m, float x, float z, float yaw)[] at =
         {
-            ("tree-oak", -3f, 1f, 0f), ("tree-poplar", 2.5f, -2f, 1f), ("tree-willow", 3f, 3.5f, 2f), ("tree-oak", -1f, -4.5f, 2.5f), ("tree-poplar", -5.5f, -2.5f, 0.5f),
+            ("tree-oak", -3f, 1f, 0f), ("tree-poplar", 2.5f, -2f, 1f), ("tree-willow", 3f, 3.5f, 2f), ("tree-birch", -1f, -4.5f, 2.5f), ("tree-hawthorn", -5.5f, -2.5f, 0.5f),
         };
         foreach (var (m, x, z, yaw) in at)
             n.AddChild(new MeshInstance3D { Mesh = ModelLib.Mesh(m), Position = new Vector3(x, 0, z), Rotation = new Vector3(0, yaw, 0) });
+        return n;
+    }
+
+    /// <summary>Night 3: a wood of the five kinds at the edge of three fields (sprouting, ripe, stubble), a villager between.</summary>
+    private Node3D WoodAndField()
+    {
+        var n = new Node3D { Name = "Subject" };
+        (string m, float x, float z, float yaw)[] at =
+        {
+            ("tree-oak", -14f, -9f, 0f), ("tree-birch", -10f, -10.5f, 1f), ("tree-poplar", -6f, -11f, 2f), ("tree-hawthorn", -2f, -10f, 0.3f),
+            ("tree-willow", 2.5f, -10.5f, 2.5f), ("tree-hawthorn", 6f, -10f, 3.1f), ("tree-oak", 10f, -11f, 1.4f), ("tree-birch", 14f, -10f, 0.7f),
+            ("field-sprouting", -11f, 0f, 0f), ("field-ripe", 0f, 0f, 0f), ("field-stubble", 11f, 0f, 0f),
+        };
+        foreach (var (m, x, z, yaw) in at)
+        {
+            var mi = new MeshInstance3D { Mesh = ModelLib.Mesh(m), Position = new Vector3(x, 0, z), Rotation = new Vector3(0, yaw, 0) };
+            if (m.StartsWith("field")) mi.Scale = new Vector3(0.66f, 1f, 0.66f);
+            n.AddChild(mi);
+        }
         return n;
     }
 

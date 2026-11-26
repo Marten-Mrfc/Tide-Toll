@@ -95,6 +95,7 @@ public partial class Main : Node3D
 
         Ground = new TownGround(); MapOrigin.AddChild(Ground); Ground.Init(Driver);
         Buildings = new TownBuildings(); MapOrigin.AddChild(Buildings); Buildings.Init(Driver);
+        var sails = new MillSails(); sails.Init(Driver); AddChild(sails);   // night 3: every "Sails" node turns, slowly when idle
         PlantTrees();
         Driver.Replaced += PlantTrees;
         Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
