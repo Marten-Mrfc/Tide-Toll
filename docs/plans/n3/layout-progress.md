@@ -30,3 +30,30 @@ Builder of the layout, checkout `build/wt/n3-ui` (branch wt/n3-ui). Spec: `layou
 - 9 Zoomed out: slim purse in the purse's place; book in view: only navigation.
 - 10 game-layout: `game/tests/LayoutTest.cs` (subclass of UiAudit: same state ids), `LayoutRules.cs`, `LayoutFixture.cs`, `layout.tscn`; step in `tools/check.sh` after game-town. The HUD is rebuilt per canvas by `TownHud.ForceCanvas(canvas, s)`.
 - Left: run whole checks; pictures.
+
+### 21:20 UTC: lead's notes of 21:05 and 21:10 applied
+
+- Rows have no frame at rest (`UiKit.StyleRow`: air; hover border 3; pressed darker); affordable pill solid wheat, no border; not-yet and blocked 1 px muted (blocked dashed).
+- Coin numbers 20 bold wheat with a 6-unit ink edge. Faint ruled lines in the ledger (ink 8 percent, every 24; `RuledLines` in TownHud.Ledger.cs).
+- Pages opaque (paper 100 percent), close button at the bottom right, a scrim (`Scrim`) under every zone dims the map only while a page shows.
+- Gold: the drive's pips and achievement progress are river; done is moss.
+- Pave's pill: the cheapest road that can be paved now ("from"); the word takes the coin's place in the pill.
+- Navigation never changes corner (it stays bottom right at every zoom). Not done from the notes: tags as screen text (item 8, map), the audit tour's four repairs (u21-u24 wait, u32/u34 skipper request, u35 mid-age, drop u37).
+
+### Tests changed (old assertion -> new assertion, why)
+
+| Test | Old | New | Why |
+| --- | --- | --- | --- |
+| Smoke.cs | `CoinText.EndsWith(" coin")` | `CoinText == Money(floor(Coin))` | the purse shows the amount beside the coin sign, never the word "coin" (sheet 4) |
+| TownTest.cs BellByKey | bell button text contains " s left, then rests " | `BellTipText` contains it | the bell shows "7 s" over a bar; the whole sentence is its tooltip (sheet 3) |
+| TownTest.cs LayoutChecks | ledger and request card do not overlap | request rect is the ledger's goal section (`HudZones.Goal`) and inside the ledger | the request is a section of the ledger now (sheet 2) |
+| TownTest.cs CheckKeysUnique | keys parsed from "[k]" in the bookmark text | `RowKey(i)` unique | rows carry the key in a key cap, no text button |
+| TownTest.cs CheckRequestCard | reward contains "N coin" | contains "Reward: N" | no word "coin" with amounts (sheet 4) |
+| TownTest.cs level gifts | banner never covers its gift | banner rect is the Message zone | a zone never moves (sheet 2, critique 2 "dies with the fixed zone") |
+| TownTest.cs ClickMark, TownTest.V3 hand | click at once | wait `RowCalm(i)` (at most 2 s) then click | a row that moved in the last 0.3 s takes no click (sheet 3) |
+| TownTest.V3 hand | `mark.Text` contains the hand's name | `MarkText(mark)` contains it | rows have no button text |
+| TownTest.Pave CardsStopClicks | `Root/Notes` slip counts as a card | `Root/Ledger/NoteSection` counts as a card | notes are the ledger's note section |
+| BookTest | slim strip shows over the book; slim text contains "N coin" | at the book only navigation shows (slim hidden, pause shown); slim text contains N and the level | sheet 2 "with the book in view only navigation stays"; no word "coin" |
+| RiverTest | tide text starts "High water"/"Low water", contains "rising, highest in"/"falling, lowest in" | starts "High,"/"Low,", contains "rising\nhigh in"/"falling\nlow in" | the tide's shorter text (sheet 3) to fit the timers zone |
+| PlayThrough | click a lit bookmark at once; a click that buys nothing is a MISS | scroll the shop to the row if it is out of sight, bring the pointer, wait until the row is still (at most 2 s; if still moving, look again), click; a click refused because the row moved under it in that moment is counted and printed as REFUSED, not MISS | the sheet's rule that a row that just moved takes no click; everything else still a MISS |
+| UiAudit.cs | Marker property | `AuditMarker` virtual; `StateHook`, `AfterTour` hooks | game-layout runs the same tour with the same state ids |

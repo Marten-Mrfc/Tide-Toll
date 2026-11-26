@@ -38,6 +38,18 @@ old mill: changed .glb files were not re-imported), the `trees-group` subject no
 2. `TownBuildings.cs`, the sails: they turn only while `t.PlotWorking(mill)`; the brief asks for always slowly, faster
    while it works. Wanted in the `if (_sails != null && millWorks)` block: `if (_sails != null) { float rate = millWorks ? 1.2f : 0.25f; _sailAngle = (_sailAngle + dt * rate * (float)Math.Min(_drv.Speed, 4)) % (MathF.PI * 2f); _sails.Rotation = new Vector3(0, 0, _sailAngle); }`.
 
+## Pictures read (r1-w)
+
+- mill-normal/close: a tall dark tower with a red cap and four pale upright sails facing the view; tallest thing; reads as a windmill. In town (town-mill-close) it stands to its plot's door yaw.
+- market-stall: goods show at the normal view (red basket, green cabbages, sack, cheeses, loaves) in front of the striped awning.
+- trees-group, wood-and-field: five kinds tell apart (round oak, white-trunked birch, columnar poplar, weeping willow, dark hawthorn with red haws). Fault: the light caps on the oak and poplar read as flat pentagon plateaus close up (a little geometric).
+- fields: sprouting = brown furrows with green dashes; ripe = a gold patch with combed lines and three stooks on a cut strip; stubble = pale rows with stooks and sheaves; soft edges with a grass headland, no plank frame. The sprouting one is still the most "planky".
+- charter stone: standing stone with a red seal on a paved, ringed patch, taller than the villager. In the town the game's PaleStone override makes the seal pale (For the lead, 1).
+- seal stone: blue seal disc on the stepped plinth. well, bell post: trodden patch, thatch courses (the well's course bar sits a little proud of the roof).
+- town-view-level-5/-9/-charter (new town-pass subjects): the whole first-age town; the trees and fields show; the town itself is mostly the other track's cottages.
+
 ## Not done
 
-See the final section of this file (updated at the end).
+- Pasture and sheep (item 6): not started.
+- The sails turn only while the mill works (TownBuildings, not mine): For the lead, 2.
+- The tree sway is a shader (`TreeSway.cs`); it shows only in the running game, not in the audit's tree pictures (they use the plain material).

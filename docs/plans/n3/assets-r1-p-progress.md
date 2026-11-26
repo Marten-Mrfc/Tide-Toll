@@ -28,7 +28,7 @@ Checkout `build/wt/n3-art1`. Pictures: `build/n3/assets-audit/r1-p/`.
    (`TownBuildings.DrawnModel(p)` is the once-extended model of its variant, footprint > 1.2x the plain one's).
 7. Audit town pass: stops at level 5, 8, 9, charter; new pictures `town-view-level-8`, `town-view-charter`.
    `AssetAudit.Bounds` now takes nested node transforms (close framing of the code-built cottages).
-8. ./check started 20:54 UTC (log /tmp/claude-0/t/check.log).
+8. ./check 20:54 to 21:34 UTC: every step up to screenshot passed except game-settings (crash, exit 139; rerun alone during the screenshot step: timing fail 11.6 s vs 10) and game-motion (CPU per frame 6.6 to 13 ms vs gate 6 under load); the run was stopped by the 40-minute limit inside the screenshot step. To do: rerun game-settings, tools/motion-check.sh and the screenshot step alone.
 
 ## Left / how to resume
 

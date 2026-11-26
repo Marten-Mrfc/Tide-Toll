@@ -61,3 +61,53 @@ u38 seal + page, u39 Tab, u40/u41 stages.
   and its wrong picture is deleted. Made: 34 of 37 at both sizes. Next: stage u32 on the skipper's request card
   (`RequestCardText` holding "skipper") or on the ferry alone, and stage u34 on `CrossingExists(Drawbridge)` up to level
   26, then `--only=u32,u34,u35,u37`.
+
+## Staging repairs (before pictures)
+
+Repair builder, 21:05-21:50 UTC, checkout `build/wt/n3-before` (the game as the owner played it). Tour files only, no
+game code. Changed: `game/tests/UiAudit.Book.cs` (settings loop in `MenusAndBook`, new `SpreadRestNow`, `SpreadAtRest`),
+`game/tests/UiAudit.Age2.cs` (`SecondAgeLate` rewritten up to the seal; new `SkipperAsks`, `AnyRequest`,
+`SkipperCardShown`; `IsSkipper` removed), `game/tests/UiAudit.Age1.cs` (`Busiest` takes an optional "request running"
+predicate, stops at the seal and marks the state not made there), `game/tests/UiAudit.cs` (`Retired` = {u37}, dropped
+from shots.json in `WriteShots`), `tools/ui-audit.sh` (crash-retake list skips u37). All paths under
+`/home/user/tide-toll/build/wt/n3-before/`.
+
+- **u21..u24 (settings Sound, Display, Keys, Saving).** Open: wait up to 60 s for the cover at rest (`CoverShown` and
+  the pause motion not running); focus the cover's Settings and press Enter, up to three tries of 15 s each until
+  `PauseMenu.Pages` is non-null; if still null and the menu is in `State.Cover`, call `PauseMenu.OpenSettings()` (the
+  button's own action; the how-line says so). Then wait (up to 40 s) until the spread is at rest for three frames
+  running: `PauseMenu.Now == State.Settings`, `PauseMenu.Motion.Running` false, `SettingsPages.Arrival >= 1` (the
+  arriving leaf has turned), `SettingsPages.Turning` false and `TurnProgress >= 1`. Only then `ShowSection(section)`,
+  and wait for the same rest condition again (the tab's page turn ended), then 500 ms and 3 frames, check it still
+  holds, and take the picture; otherwise the state is marked not made with the values. After the picture, Esc and wait
+  up to 60 s for the cover at rest. Cause of the old fault: the section was chosen while the arriving leaf was still
+  turning (`ShowSection` then jumps without a turn) and the picture waited only 5 s for the motion, so under load the
+  book still showed. Under tonight's load (load average about 40) Enter on the cover also did not open the settings
+  within 3 x 10 s: hence the longer waits and the `OpenSettings()` fallback. In another checkout: if the settings
+  spread has other names, wait on "menu in its settings state, its transition ended, arriving page fully down, no tab
+  turn under way".
+- **u32 (second age middle: ferry, tide dial, skipper's request).** A skipper's request is not `Town.Request`: it is a
+  boat with `Town.Boat(i).Request` true whose phase is not Gone or Leaving (that is what the request card shows while no
+  town request runs). Wait (bot at speed, never past the seal) for `CrossingExists(RiverLinkKind.Ferry)` and such a boat,
+  or level 24; if that ended without, wait for the ferry alone. Then close pages, clear the choice, follow view, settle,
+  calm (8 s), and wait up to 6 s for the request card text (`TownHud.RequestCardText`) to contain "skipper"; if not,
+  go round again (four tries, stopping at level 24). Picture taken whenever the ferry stands and the seal has not come.
+- **u35 (busiest moment, second age).** `Busiest(id, title, 20, 24, AnyRequest)`: level by level from max(level+1, 20)
+  to 24, the picture 1.2 s after the first level-up at which a request of either kind runs (the town's
+  `Request.Active` or a skipper asking, as above), or at the level-up to 24 if none; nothing cleared. Never at the
+  seal (not made then). It runs right after u32 (the ferry comes at level 22, so in practice levels 23 and 24).
+- **u34 (second age late at rest: drawbridge and toll).** Wait (never past the seal) for
+  `CrossingExists(RiverLinkKind.Drawbridge)` (it comes at level 27 in this build, the last level before the seal);
+  then up to 6 game minutes more for `Tolls > 0`; then close pages, clear the choice, follow view, settle, calm, picture.
+  The old condition also accepted "level >= MaxLevel-2" but it was never reached because u32's fallback waited on a town
+  request (`Request.Active`), which the second age hardly runs, until the seal.
+- **u37** removed from the tour (`Retired` in `UiAudit.cs`; the old entry is dropped from an existing shots.json; the
+  crash-retake list in `tools/ui-audit.sh` skips it). There is no drive in the second age.
+- **Results (21:39).** Retaken at both sizes (u32, u34, u35 in a run started 21:05; u21..u24 again in runs started
+  21:27 and 21:31 after the longer cover waits). 36 of 36 states made at both sizes, all seven pictures read:
+  u21..u24 show the settings spread at rest on the right section; u32 level 22, ferry, tide dial, the card "Request
+  from the skipper Isolde"; u34 level 27, drawbridge up river, a toll paid, a skipper's request; u35 level 24 banner
+  1.2 s after the level-up with notes and coin numbers; at 1920 a skipper's request runs (Wenna), at 1280 none did at
+  levels 23 or 24 (the tour fell back to the level-up to 24; the how-line says request running=False). The two sizes
+  are different towns by the second age (real-time play between states). Reports rebuilt; JPEGs of the 1920 run in
+  `docs/review/n3/before/ui/` (36, no u37).
