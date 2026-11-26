@@ -246,7 +246,7 @@
     ],
     [
      "29",
-     "Round 4 and round 5 have no Windows build of their own: three lines of work were merged in round 4 and made whole in round 5 and 6, and only a tree that passed the whole check is pushed as a finished round",
+     "Round 4 has no Windows build of its own: its three lines of work were merged and then made whole in round 5, and only a tree that passed the whole check is pushed as a finished round",
      "You asked for an exe only for finished rounds"
     ],
     [
