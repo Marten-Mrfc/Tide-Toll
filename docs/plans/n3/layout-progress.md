@@ -84,7 +84,6 @@ Read: brief, AGENTS.md, layout-sheet v2, l1-pictures, l1-review-1, l1-review-2, 
 | R1 must 1: goal bar shows time | The bar is the count (delivered or loaded of the amount), river; time only tints the "within" text (skipper: the "Loaded" line) brick in its last quarter. `RequestTimeBar` still reports the time share (layout budget) | `TownHud.Request.cs`, `TownHud.River.cs` |
 | R1 must 3, R2 must 7: tips say "coin", bold card | Pointer tip and "Suggested" tag: quiet pill, regular caption, the coin icon before the amount ("Extend this cottage: (c) 40. Rooms 2 to 3.") | `TownHud.CoinTip.cs` (new), `TownHud.Pave.cs`, `TownHud.Extend.cs` |
 | R2 must 8, R1 should: Pave pill a dashed "–" | A blocked Pave pill says "no road" (line 2 keeps the reason) | `TownHud.Shop.cs` |
-| R2 must 1: slim purse over the book | The slim strip fades out as the map's left edge (the spine side) moves right of it, so it never lies on the summary page | `TownHud.cs` |
 | R2 must 4: half row at 1280/150 | When the shop scrolls, the scroll stops at a heading or row top, the card ends under the last whole row, rows and headings not wholly inside are not drawn; the wheel steps one row (42) | `TownHud.ShopRows.cs` |
 | R1 must 8 (and lead 21:40): tour staging | The n3-before repairs (0828955) taken over: Age1, Book, UiAudit.cs and ui-audit.sh by patch; Age2 by hand (u32 skipper card, u35 mid-age 20..24 with a request, u34 drawbridge, u37 retired) | `tests/UiAudit*.cs`, `tools/ui-audit.sh` |
 | R1 must 5 (part): Home not disabled-looking | A disabled navigation button dims its icon and key cap to 45 percent (only on change) | `TownHud.Timers.cs` |
@@ -111,3 +110,11 @@ All test scenes now leave through `TestInput.QuitClean(node, code)`: GC.Collect,
 - **Hint ring size:** a thin ring now, but at radius 0.75 of the plot's longer side it is larger than needed at 1920 (u13 passes under the line card); 0.5 times the plot's diagonal would hug it.
 - **Disagreed:** R2 must 7 "the Suggested tag goes": the sheet (section 5) lists "Suggested: 24" as a tag and it tells the player which road the town suggests; kept, with the coin sign and the existing no-overlap rule against the tip. R1 should "cards 98 percent": the sheet says paper 96 percent. R1 should "slashed zero": Atkinson Hyperlegible's zero is slashed by design and has no plain alternate; changing the font is the lead's call.
 - **Next rounds (the lead's note 21:05 item 7):** the pause cover's question and the settings' clash card as modal cards (R1 must 7, R2 must 3 and 3b), the book's placement, compass and folio and navigation over the book (R2 must 2), tooltips in the tour (R1 must 5, rest), notes and their stay times, the line always on, "coin" in notes and pages, tide wording, the age page text.
+
+### Reverted after the check
+
+- R2 must 1 (slim purse over the book): the fade by the map's left edge made game-book fail ("the interface thins to the slim strip on the way out": the slim must show while the full interface is out, and by then the left page is already under it). Reverted at 23:32; game-book alone after the revert: BOOK PASS. Not fixed: it needs the slim placed or faded against the summary page's title, measured, not guessed.
+
+### ./check at 23:11 (load 12 to 36, other agents' checks at the same time)
+
+sim-build, sim-test, game-build, game-smoke, game-town, game-perf PASS (town 1x 644 B/frame, river 1x 1361), game-playthrough PASS (charter 33.9 min, 201 purchases, 1 click refused on a moving row), game-river, game-layout PASS (32 states x 8 canvases, 0 failures), game-settings PASS (exit clean), game-menu, game-save; game-book FAIL (the slim change, reverted, then BOOK PASS alone); game-motion FAIL at 120 fps only (CPU gate 6 ms: 8.30 and 8.40 ms on single frames under load; 60 and 30 fps pass; the book and settings motion untouched); screenshot still running at 23:49.

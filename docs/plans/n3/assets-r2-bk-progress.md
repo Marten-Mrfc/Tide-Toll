@@ -48,7 +48,9 @@ first-age subjects stops after the charter.
 
 - PlayThrough "the charter stone is pale dressed stone": `TownBuildings.CharterPale` was "the PaleStone override is set".
   The override is what hid the Brick seal, so it is now: the stand-in under the pale override, or the charter-stone model
-  with no override over its own Concrete stone (lighter than Meadow). The test line itself is unchanged.
+  with no override over its own Concrete stone (#A9A69C, lighter than Meadow #7FA35B: luminance 0.65 against 0.59).
+  The test line itself is unchanged. My first version asked for 0.1 more luminance and failed in ./check
+  (game-playthrough, 23:28); the bound is now "lighter than the grass".
 - TownTest "the stakes are pale" is unchanged; the stakes' MaterialOverride is now the model's own (soft ink) palette
   material, whose albedo is white (the colours are the pale Trail earth / Paper / Limewash of the atlas).
 
