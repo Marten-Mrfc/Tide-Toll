@@ -5,7 +5,7 @@ import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-NAMES = ["pause", "resume", "settings-open", "tab-forward", "tab-back", "settings-close", "question", "age-page"]
+NAMES = ["pause", "resume", "settings-open", "tab-forward", "tab-back", "settings-close", "question", "age-page", "achievements", "age-panel"]
 COLS, ROWS, W, H, GAP = 4, 3, 640, 360, 6
 
 

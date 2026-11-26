@@ -18,6 +18,9 @@ public partial class SettingsPages
     /// <summary>Turns started so far (tests: each turn's leaf is a leaf of its own).</summary>
     public int Turns { get; private set; }
 
+    /// <summary>Seconds until the page now turning lands (0 at rest).</summary>
+    public float TurnLeft => _from >= 0 ? (1f - _turnT) * TurnSeconds / (_queued >= 0 ? QueuedPace : 1f) : 0f;
+
     private void StartTurn(int from, int to)
     {
         _from = from;
@@ -63,6 +66,8 @@ public partial class SettingsPages
         var c = _clip[i];
         if (c == null) return;
         if (!c.Visible) c.Visible = true;
+        // While the spread arrives or leaves, nothing of it is drawn ahead of that leaf (SettingsPages.Arrive.cs).
+        x0 = Math.Max(x0, ArrivalFloor);
         c.SetRegion(new Rect2(x0, 0, Math.Max(0f, x1 - x0), _canvas.Y));
     }
 
@@ -106,6 +111,7 @@ public partial class SettingsPages
         float lift = 1f - Math.Abs(x - spine) / Math.Max(1f, half);
         _leaf?.Place(SpreadArea, spine, x, Math.Clamp(lift, 0f, 1f));
         for (int k = 0; k < 4; k++) SetRibbonOut(k, BookMotion.Mix(_ribbonFrom[k], k == _showing ? 1f : 0f, e));
+        if (_arrive < 1f) { _pagesMask?.SetRegion(new Rect2(ArrivalFloor, 0, _canvas.X - ArrivalFloor, _canvas.Y)); for (int k = 0; k < 4; k++) PlaceRibbon(k, _arrive); }
     }
 
     private void SetRest()
@@ -128,6 +134,7 @@ public partial class SettingsPages
         LeafEdge = _fwd ? LeftEdge : RightEdge;
         _leaf?.Place(SpreadArea, Spine, Spine, 0f);
         for (int k = 0; k < 4; k++) SetRibbonOut(k, k == _showing ? 1f : 0f);
+        ApplyArrival();
     }
 
     private void SetRibbonOut(int i, float v)
@@ -136,6 +143,7 @@ public partial class SettingsPages
         if (_ribbons[i] is not { } b || !IsInstanceValid(b)) return;
         float wdt = RibbonWidth(i);
         if (Math.Abs(b.Size.X - wdt) > 0.01f) b.Size = new Vector2(wdt, b.Size.Y);
+        RibbonLook(i);
     }
 }
 
@@ -164,5 +172,8 @@ public partial class SectionMask : Control
     public override void _Draw()
     {
         if (Region.Size.X > 0f && Region.Size.Y > 0f) DrawRect(Region, Colors.White);
+        // An empty region must still draw something: a clipping item that draws nothing does not clip its children at
+        // all (round 8: the whole spread showed before its leaf started). One pixel off the canvas clips them away.
+        else DrawRect(new Rect2(-4, -4, 1, 1), Colors.White);
     }
 }

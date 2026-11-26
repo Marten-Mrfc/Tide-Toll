@@ -207,7 +207,13 @@ public partial class MotionTest
             case Kind.FromSettings:
                 Len(kind == Kind.Close ? 1.1f : 0.9f, kind == Kind.Close ? 1.4f : 1.25f);
                 if (kind == Kind.Close) Check(hud.last > 0 && When(hud.last) <= 0.3f, $"{name}: the interface fades out in {When(hud.last):0.00} s (quickly: by 0.3 s)");
-                else Check(pag.first > 0 && pag.first <= 2, $"{name}: the spread fades from the start");
+                else
+                {
+                    // Round 8: the leaf turns back to the town's pages from the start; the camera and the board move only after it.
+                    Check(pag.first > 0 && pag.first <= 2, $"{name}: the leaf turns back from the start");
+                    Check(cam.first > pag.last && cov.first > pag.last, $"{name}: the camera ({cam.first}) and the board ({cov.first}) wait for the leaf ({pag.last})");
+                    LeafBehind(name);
+                }
                 Check(cam.first > 0 && cov.first > cam.first && cov.first < cam.last, $"{name}: the board starts while the camera is still arriving (camera {cam.first}..{cam.last}, board {cov.first})");
                 Check(touch > 0 && book > 0 && Math.Abs(book - touch) <= 1, $"{name}: the book-close sound at frame {book}, the board lands at {touch}");
                 Check(let.first > touch && let.first < let.last, $"{name}: the lettering comes in after the board lands (lettering {let.first}..{let.last}, touch {touch})");
@@ -223,12 +229,25 @@ public partial class MotionTest
                 Check(cov.first > 0 && cam.first >= cov.first && cam.first < cov.last, $"{name}: the camera moves while the board opens (board {cov.first}..{cov.last}, camera {cam.first})");
                 Check(book > 0 && Math.Abs(book - cov.first) <= 1, $"{name}: the book-open sound at frame {book}, the board starts at {cov.first}");
                 if (kind == Kind.Open) Check(hud.first > 0 && hud.first < cam.last && _buf[_n - 1].Hud == 1f, $"{name}: the interface comes back before the camera arrives ({hud.first} < {cam.last})");
-                else Check(pag.first > cov.first && pag.first < cam.last && _buf[_n - 1].Pag == 1f, $"{name}: the spread arrives on the paper as the camera settles ({pag.first} < {cam.last})");
+                else
+                {
+                    // Round 8 (was: the spread cross-fades in as the camera settles): a leaf turns the settings pages in
+                    // only once the camera and the board are at rest, the settings behind its edge on every frame.
+                    Check(pag.first > cam.last && pag.first > cov.last && _buf[_n - 1].Pag == 1f, $"{name}: the leaf starts after the camera ({cam.last}) and the board ({cov.last}) are at rest ({pag.first})");
+                    float leaf = When(pag.last) - When(pag.first - 1);
+                    Check(leaf >= 0.3f && leaf <= 0.42f, $"{name}: the leaf turns in {leaf:0.000} s (about 0.35)");
+                    LeafBehind(name);
+                }
                 break;
             case Kind.Ask:
                 Len(0.25f, 0.4f);
                 bool inward = _buf[_n - 1].Ask > 0.5f;
-                Check(let.first > 0 && ask.first > 0 && ask.first <= let.last && let.first <= ask.last, $"{name}: the lettering and the question cross ({let.first}..{let.last}, {ask.first}..{ask.last})");
+                // Round 8 (was: the two cross): never both above 15 percent; the one leaving goes first.
+                Check(let.first > 0 && ask.first > 0 && (inward ? let.first < ask.first : ask.first < let.first), $"{name}: the one leaving goes first ({let.first}..{let.last}, {ask.first}..{ask.last})");
+                float both = 0f;
+                for (int i = 0; i < _n; i++) both = Math.Max(both, Math.Min(_buf[i].Let, _buf[i].Ask));
+                Check(both <= 0.15f, $"{name}: the lettering and the question both at {both:0.000} at once (at most 0.15)");
+                GD.Print($"MOTION the question {name}: both at once at most {both:0.000}");
                 Check(inward ? _buf[_n - 1].Ask == 1f && !_buf[_n - 1].VLet : _buf[_n - 1].Let == 1f && !_buf[_n - 1].VAsk, $"{name}: the end state");
                 break;
             case Kind.Turn:
@@ -237,6 +256,7 @@ public partial class MotionTest
                 int turns = 0;
                 for (int i = 1; i < _n; i++) if (_buf[i].Book > _buf[i - 1].Book) turns++;
                 Check(turns == 1, $"{name}: the page-turn sound played {turns} times");
+                RibbonEased(name, from, to);
                 // No blank frame: the two sections between them show the whole spread on every frame.
                 for (int i = 0; i < _n; i++)
                 {

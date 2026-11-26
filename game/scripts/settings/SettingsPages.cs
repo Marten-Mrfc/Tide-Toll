@@ -70,7 +70,7 @@ public partial class SettingsPages : Control
     public float Spine => _rightPage.Position.X;
     public float SectionShown(int i)
     {
-        if (_clip[i] is not { } c || !IsInstanceValid(c) || !c.Visible) return 0f;
+        if (!Visible || _clip[i] is not { } c || !IsInstanceValid(c) || !c.Visible) return 0f;
         var area = SpreadArea;
         float x0 = Math.Max(area.Position.X, c.Region.Position.X), x1 = Math.Min(area.End.X, c.Region.End.X);
         return Math.Max(0f, x1 - x0) / Math.Max(1f, area.Size.X);
@@ -145,7 +145,7 @@ public partial class SettingsPages : Control
         CancelCapture();
         if (i == _target) { FocusName("ribbon." + name); return; }
         _target = i;
-        bool turn = _frame != null && IsVisibleInTree() && Live && !_warm;
+        bool turn = _frame != null && IsVisibleInTree() && Live && !_warm && _arrive >= 1f;
         if (!turn) { _from = -1; _queued = -1; _showing = i; SetRest(); }
         else if (_from < 0) StartTurn(_showing, i);
         else if (i == _from)

@@ -38,15 +38,38 @@ smooth, not staggered. This file records what is done, what is next and the deci
   in `tools/check.sh`. Frame strips: `game/tests/MotionStrips.cs` (`motion-strips.tscn`), `tools/motion-strips.sh`,
   `tools/motion-sheet.py`, sheets in `build/motion/`.
 
+## Second pass (round 8)
+
+- Settings from the cover: the board up (0.03-0.58) and the camera to the spread view (0.05-0.65) first; the settings
+  pages then arrive by a leaf (0.684-0.984, 0.3 s; `SettingsPages.Arrive.cs`): the tab turn's `PageLeaf` and
+  smootherstep, the settings drawn only behind its edge (right to left), the town's 3D pages ahead of it, the ribbons
+  sliding out 40 px and fading in with it. No cross-fade, so the town's map and summary never show through. The way back
+  turns the leaf back first (0-0.27; a tab page still turning lands first), then the camera (0.304-0.804), the board
+  (0.324, touch 0.884) and the lettering (0.924-1.174, 0.25 s): 1.17 s.
+- In the game the spread draws no table and no cover (`OwnTable` false): the 3D table and book stay on screen unchanged.
+  Alone (the settings tests and shots) it still draws its own and keeps round 7's proportions. In the game the 2D pages have the 3D pages' proportions (two pages of
+  `PageWidth` and the 2 m spine gap by `PageDepth`), so the spread view puts the 3D pages exactly under them (0.00 px at
+  1920 x 1080 and 1280 x 720, interface 80, 100 and 150 percent). In a window narrower than 1.82 : 1 around the pages
+  (1280 x 720) the pages are now a little shorter than before (width-limited), so a long column scrolls sooner.
+- The ribbons' colour (tint to paper) and border follow their pull on the turn's curve: each ribbon has its own style
+  boxes, the same for normal and pressed, so the click no longer changes the colour at once.
+- Achievements and age pages (`TownHud.Pages.cs`): 0.22 s smootherstep in and out (opacity and a 16 px rise), visible
+  only at no opacity (the frame that shows one draws it at 0 and its clock starts in the next), hidden only at 0; turned
+  round from where they are (a part-way return takes the matching share of 0.22 s). The pause's quiet close (the
+  interface already faded out) hides at once. The age page after the age-change leaf comes in the same way.
+- The question: the one leaving goes out in 0-0.16, the one coming in 0.13-0.3: never both above 15 percent (0.002).
+- Not done: carrying speed over when a transition takes over another mid-way (parts still restart from no speed).
+
 ## Lengths and curves
 
 | Transition | Length | Parts (seconds on its timeline) |
 | --- | --- | --- |
 | Pause (close) | 1.25 + the input frame | interface out 0-0.2; camera 0-0.8; board 0.35-1.05 (Land, touch 0.91 with the book-close sound); models sink 0.30-0.85; lettering in 0.95-1.25 with a gilt glow |
 | Resume (open) | 0.95 | lettering out 0-0.2; board up 0.08-0.63 (book-open sound at its start); models rise 0.20-0.65; camera 0.2-0.9 to the kept view; interface in 0.7-0.95 |
-| Cover to settings | 0.9 | lettering out 0-0.2; board up 0.08-0.63; camera 0.1-0.7 to the spread view (3D pages under the 2D pages); spread in 0.5-0.9 |
-| Settings to cover | 1.05 | spread out 0-0.25; camera 0.1-0.65; board 0.15-0.85 (touch 0.71, sound); lettering 0.75-1.05 |
-| Question in / out | 0.3 | lettering out 0-0.2 and question in 0.05-0.3 sliding up 28 px; out: question 0-0.2, lettering 0-0.3 |
+| Cover to settings | 0.984 | lettering out 0-0.2; board up 0.03-0.58; camera 0.05-0.65 to the spread view; leaf 0.684-0.984 (ribbons with it) |
+| Settings to cover | 1.174 | leaf back 0-0.27; camera 0.304-0.804; board 0.324-1.024 (touch 0.884, sound); lettering 0.924-1.174 |
+| Question in / out | 0.3 | lettering out 0-0.16, question in 0.13-0.3 sliding up 28 px; out: question 0-0.16, lettering 0.13-0.3 |
+| Achievements / age page | 0.22 | opacity and a 16 px rise, smootherstep, in and out |
 | Tab change | 0.36 | leaf edge, sections and ribbons on one smootherstep |
 | Age-change page | 1.1 | leaf in from the right, covering at half way, out to the left (smootherstep); shading grows and fades |
 
@@ -57,7 +80,7 @@ All windows use smootherstep unless named. Taken over mid-way, the parts start a
 - The save after the motion, not off the main thread: it needs the town's state, and a frame at rest hides the cost.
 - Tab redirect to a third section queues rather than swapping the incoming page (a swap would pop the revealed part).
 - A click on the pages mid-turn reaches the chosen section's control (masks hide drawing only); the page turns on.
-- The ribbon's colour (normal or pressed style) still changes at the click: it is the button's own press feedback.
+- (Round 7: the ribbon's colour changed at the click. Round 8: it follows the turn.)
 
 ## Existing tests changed (the behaviour they pinned was one of the jumps)
 
@@ -68,6 +91,17 @@ All windows use smootherstep unless named. Taken over mid-way, the parts start a
 - `Screenshot.cs`, `Screenshot.V3.cs`, `Tour.Book.cs`: the half-closed shot holds the menu's timeline
   (`PauseMenu.HoldAt`) instead of `BookCover.Hold` + `Close`, and the settings and question shots wait for the motion to end.
 
+## Checks changed in round 8 (the design they pinned changed)
+
+- `MotionTest.Checks.cs`, settings-open: "the spread arrives on the paper as the camera settles" (it started before the
+  camera's last move) became "the leaf starts after the camera and the board are at rest", plus the leaf's length
+  (0.3-0.42 s) and the settings shown exactly behind the leaf's edge on every frame (`LeafBehind`).
+- settings-close: "the spread fades from the start" became "the leaf turns back from the start" plus "the camera and the
+  board wait for the leaf" and `LeafBehind`.
+- question in/out: "the lettering and the question cross" became "the one leaving goes first" and "never both above
+  0.15". New: `RibbonEased` in every tab turn, `HudPages` and `PagesAlign` (`MotionTest.Round8.cs`). Bounds unchanged.
+- `SettingsPages.SectionShown` is 0 while the spread is hidden (it reported the hidden spread's section as shown).
+
 ## Also
 
 - `PauseMenu.WarmUp` ends with a GC: building the spread at start-up leaves thousands of dead wrappers in Godot's tracker of
@@ -75,4 +109,4 @@ All windows use smootherstep unless named. Taken over mid-way, the parts start a
 
 ## Next
 
-- The age page panel itself (and the achievements page) still open in one frame (out of this request's scope).
+- Carry a part's speed over when a transition takes over another mid-way (round 8's item 5, not done).

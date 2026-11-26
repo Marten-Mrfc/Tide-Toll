@@ -256,7 +256,7 @@ public partial class TownHud
                 "The age ends with the borough seal.";
         }
         _ageClose.Text = "Keep playing" + Settings.GameInput.Tag("tt_pause");
-        _agePanel.Visible = true;
+        ShowPage(_ageFade);
         _main.Audio.PageTurn();
     }
 

@@ -41,12 +41,12 @@ public partial class MotionStrips : TownTestBase
             await Strip("pause", () => TestInput.Key(Godot.Key.Escape));
             await Until(() => M.CoverShown, 3000, "the cover");
             M.SettingsButton.GrabFocus();
-            await Strip("settings-open", () => TestInput.Key(Godot.Key.Enter));
+            await Strip("settings-open", () => TestInput.Key(Godot.Key.Enter), table: true);
             await Until(() => M.Now == PauseMenu.State.Settings && !M.Motion.Running, 3000, "the settings");
             await Wait(400);
             await TurnStrip("tab-forward", "ribbon.Display");
             await TurnStrip("tab-back", "ribbon.Sound");
-            await Strip("settings-close", () => TestInput.Key(Godot.Key.Escape));
+            await Strip("settings-close", () => TestInput.Key(Godot.Key.Escape), table: true);
             await Until(() => M.CoverShown, 3000, "the cover");
             M.NewTownButton.GrabFocus();
             await Strip("question", () => TestInput.Key(Godot.Key.Enter), half: 0);
@@ -55,7 +55,10 @@ public partial class MotionStrips : TownTestBase
             await Until(() => M.CoverShown, 3000, "the cover");
             M.ResumeButton.GrabFocus();
             await Strip("resume", () => TestInput.Key(Godot.Key.Enter));
-            await Until(() => M.Now == PauseMenu.State.Playing, 3000, "the town");
+            await Until(() => M.Now == PauseMenu.State.Playing && !M.Motion.Running, 3000, "the town");
+            await Wait(400);
+            var hud = Main.Hud;
+            await PageStrip("achievements", hud.AchievementsFade, () => hud.OpenAchievements(), () => hud.CloseAchievements());
         }
         // The age-change page: a town at its charter, the next age rung in by its key.
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);
@@ -74,6 +77,11 @@ public partial class MotionStrips : TownTestBase
             await Save("age-page", k);
         }
         Main.Hud.HoldPageTurnAt = -1f;
+        // The age page then opens by itself, the same way as the achievements page.
+        var age = Main.Hud.AgePageFade;
+        age.Motion.Hold(0f);
+        await Until(() => Main.Hud.AgePageOpen, 3000, "the age page");
+        await PageStrip("age-panel", age, null, () => Main.Hud.CloseAgePage());
         Notes.Add("dir=" + _dir);
     }
 
@@ -87,12 +95,25 @@ public partial class MotionStrips : TownTestBase
     /// Starts a book transition and holds its clock at Count even moments from its start to its end (half 0 or 1: only
     /// the first or second half of the sheet's frames, for a sheet that shows two transitions).
     /// </summary>
-    private async Task Strip(string name, Action input, int half = -1)
+    private async Task Strip(string name, Action input, int half = -1, bool table = false)
     {
         M.Motion.Hold(0f);
+        Image? before = null;
+        if (table && M.Now == PauseMenu.State.Settings) before = await Grab();   // the settings at rest, before Back
         input();
         await Frames(2);
         Check(M.Motion.Running, $"{name}: no transition started");
+        if (table && before == null)
+        {
+            // The table around the book: the frame just before the leaf starts (opening) or just after it has turned
+            // back (closing), against the settings at rest; at most 3 of 255 per channel apart.
+            M.Motion.Hold(M.LeafStart);
+            await Frames(3);
+            var edge = await Grab();
+            M.Motion.Hold(0f);
+            await Frames(3);
+            TableCheck(name, edge, null, true);
+        }
         int n = half < 0 ? Count : Count / 2, off = half == 1 ? Count / 2 : 0;
         for (int k = 0; k < n; k++)
         {
@@ -100,8 +121,82 @@ public partial class MotionStrips : TownTestBase
             await Frames(3);
             await Save(name, off + k);
         }
+        if (before != null)
+        {
+            // Closing: the leaf turned back (held there after the frames: holding the clock backwards past the spread's
+            // hiding would not show it again).
+            M.Motion.Hold(M.LeafEnd);
+            await Frames(3);
+            TableCheck(name, before, await Grab(), false);
+        }
         M.Motion.Release();
         await Until(() => !M.Motion.Running, 3000, name + " to end");
+        await Frames(5);
+        if (table && name == "settings-open") TableCheck(name, _tableEdge!, await Grab(), true);
+    }
+
+    private Image? _tableEdge;
+
+    private async Task<Image> Grab()
+    {
+        await Frames(2);
+        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        return GetViewport().GetTexture().GetImage();
+    }
+
+    /// <summary>Opening: called once with the leaf's start (kept), then with the spread at rest. Closing: the spread at rest, then the leaf turned back.</summary>
+    private void TableCheck(string name, Image a, Image? b, bool opening)
+    {
+        if (b == null) { _tableEdge = a; return; }
+        var r = P.PagesRect;
+        var size = a.GetSize();
+        // Left of the book (clear of its cover's lip and the page stack), and below it (left of the 3D bookmark).
+        var left = new Rect2I(6, (int)(r.Position.Y + r.Size.Y * 0.3f), Math.Max(4, (int)r.Position.X - 50), (int)(r.Size.Y * 0.4f));
+        var below = new Rect2I((int)(r.Position.X + r.Size.X * 0.1f), (int)r.End.Y + 40, (int)(r.Size.X * 0.25f), Math.Max(4, size.Y - (int)r.End.Y - 46));
+        float worst = 0f;
+        foreach (var (patch, where) in new[] { (left, "left"), (below, "below") })
+        {
+            var ca = Mean(a, patch); var cb = Mean(b, patch);
+            float d = Math.Max(Math.Abs(ca.R - cb.R), Math.Max(Math.Abs(ca.G - cb.G), Math.Abs(ca.B - cb.B))) * 255f;
+            worst = Math.Max(worst, d);
+            GD.Print($"STRIPS table {name} {where} {patch}: {(opening ? "before the leaf" : "settings at rest")} {ca.R * 255:0.0},{ca.G * 255:0.0},{ca.B * 255:0.0}; "
+                + $"{(opening ? "settings at rest" : "after the leaf")} {cb.R * 255:0.0},{cb.G * 255:0.0},{cb.B * 255:0.0}; differ {d:0.0} of 255");
+        }
+        Check(worst <= 3f, $"{name}: the table changes by {worst:0.0} of 255 around the book");
+    }
+
+    private static Color Mean(Image img, Rect2I r)
+    {
+        double R = 0, G = 0, B = 0; int n = 0;
+        var size = img.GetSize();
+        for (int y = Math.Max(0, r.Position.Y); y < Math.Min(size.Y, r.End.Y); y += 2)
+            for (int x = Math.Max(0, r.Position.X); x < Math.Min(size.X, r.End.X); x += 2)
+            { var c = img.GetPixel(x, y); R += c.R; G += c.G; B += c.B; n++; }
+        return n == 0 ? Colors.Black : new Color((float)(R / n), (float)(G / n), (float)(B / n));
+    }
+
+    /// <summary>A page of the interface coming in (half the sheet) and going out (the other half), its clock held.</summary>
+    private async Task PageStrip(string name, TownHud.PageFade f, Action? open, Action close)
+    {
+        f.Motion.Hold(0f);
+        open?.Invoke();
+        await Frames(2);
+        for (int k = 0; k < Count / 2; k++)
+        {
+            f.Motion.Hold(f.Motion.Length * k / (Count / 2 - 1));
+            await Frames(3);
+            await Save(name, k);
+        }
+        f.Motion.Hold(0f);
+        close();
+        await Frames(2);
+        for (int k = 0; k < Count / 2; k++)
+        {
+            f.Motion.Hold(f.Motion.Length * k / (Count / 2 - 1));
+            await Frames(3);
+            await Save(name, Count / 2 + k);
+        }
+        f.Motion.Release();
         await Frames(5);
     }
 

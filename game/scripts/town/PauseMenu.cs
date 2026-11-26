@@ -92,7 +92,7 @@ public partial class PauseMenu : CanvasLayer
         Chain(_yes, _no);
         // Round 7: the settings spread is built once, here at start-up, and kept: opening it, or turning to another of
         // its sections, never builds anything (it is built again only when the window or the interface size changes).
-        _pages = new SettingsPages(_main.Settings, _main.Saver) { Visible = false, Live = false };
+        _pages = new SettingsPages(_main.Settings, _main.Saver) { Visible = false, Live = false, OwnTable = false };
         _pages.Closed += CloseSettings;
         _pages.PageTurned += () => _main.Audio.PageTurn();
         AddChild(_pages);

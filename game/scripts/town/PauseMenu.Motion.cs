@@ -48,10 +48,16 @@ public partial class PauseMenu
     public float LetteringAlpha => _letA;
     public float QuestionAlpha => _askA;
     public float PagesAlpha => _pagA;
+    /// <summary>The settings leaf's window on the timeline now (seconds): frame strips hold the clock at its ends.</summary>
+    public float LeafStart => _pag0; public float LeafEnd => _pag1;
 
     // Lengths (seconds) of each transition when it starts from rest.
     public const float CloseSeconds = 1.25f, OpenSeconds = 0.95f, ToSettingsSeconds = 0.9f, FromSettingsSeconds = 1.05f,
         AskSeconds = 0.3f;
+    /// <summary>The leaf bringing the settings pages in, and turning back to the town's pages, seconds.</summary>
+    /// <summary>The question and the lettering hand over: the one leaving is out by AskOutEnd, the one coming starts at AskInStart (never both above 15 %).</summary>
+    public const float AskOutEnd = 0.16f, AskInStart = 0.13f;
+    public const float LeafSeconds = 0.3f, LeafBackSeconds = 0.27f;
     /// <summary>The board's swing down (to its touch and settle) and up, seconds, for a full swing.</summary>
     private const float SwingDown = 0.7f, SwingUp = 0.55f, Touch = 0.8f;
 
@@ -191,29 +197,38 @@ public partial class PauseMenu
                 break;
             case Move.ToSettings:
             {
-                _cov0 = turning ? 0f : 0.08f;
+                // The board up and the camera at rest over the spread first; then a leaf turns from the town's pages to
+                // the settings pages (the 2D pages are fixed on screen: never revealed over a book still drifting).
+                _cov0 = turning ? 0f : 0.03f;
                 Board(0f, _cov0, _cov0 + up, land: false);
                 var (c, size) = SpreadView();
-                Camera(c, size, turning ? 0f : 0.1f, turning ? 0.6f : 0.7f);
-                _pagTo = 1f; _pag0 = turning ? 0.35f : 0.5f; _pag1 = _pag0 + 0.4f;
+                Camera(c, size, turning ? 0f : 0.05f, turning ? 0.6f : 0.65f);
+                _pagTo = 1f;
+                // (A hair after both, so even at 30 frames a second no frame both moves the camera and the leaf.)
+                _pag0 = Math.Max(_camMoves ? _cam1 + 0.034f : 0f, _covTo != _covFrom ? _cov1 + 0.034f : 0f);
+                _pag1 = _pag0 + Math.Max(0.12f, LeafSeconds * (1f - _pagFrom));
                 len = _pag1;
                 break;
             }
             case Move.FromSettings:
             {
-                _pag1 = turning ? 0.2f : 0.25f;
+                // The leaf turns back to the town's pages; only then do the camera and the board move.
+                // A tab's page still turning finishes first (the two leaves never move at once).
+                _pag0 = _pagFrom > 0f ? _pages.TurnLeft : 0f;
+                _pag1 = _pagFrom > 0f ? _pag0 + Math.Max(0.1f, LeafBackSeconds * _pagFrom) : 0f;
                 var (c, size) = _main.ClosedBookView();
-                Camera(c, size, turning ? 0f : 0.1f, turning ? 0.55f : 0.65f);
-                _cov0 = turning ? 0f : 0.15f;
+                Camera(c, size, _pag1 > 0f ? _pag1 + 0.034f : 0f, (_pag1 > 0f ? _pag1 + 0.034f : 0f) + (turning ? 0.55f : 0.5f));
+                _cov0 = _cam0 + 0.02f;
                 Board(1f, _cov0, _cov0 + down, land: true);
-                _let0 = _touch + 0.04f; _let1 = _let0 + 0.3f; _letTo = 1f; _focusOnLetters = _settings;
+                _let0 = _touch + 0.04f; _let1 = _let0 + 0.25f; _letTo = 1f; _focusOnLetters = _settings;
                 len = _let1;
                 break;
             }
             case Move.AskIn:
             {
-                _let1 = 0.2f;
-                _askTo = 1f; _ask0 = 0.05f; _ask1 = AskSeconds;
+                // One after the other, never both showing: the lettering goes, then the question comes.
+                _let1 = AskOutEnd;
+                _askTo = 1f; _ask0 = AskInStart; _ask1 = AskSeconds;
                 len = AskSeconds;
                 // Asked for while the board was still settling: it and the camera finish on the way.
                 var (c, size) = _main.ClosedBookView();
@@ -222,8 +237,8 @@ public partial class PauseMenu
                 break;
             }
             default: // AskOut
-                _ask1 = 0.2f;
-                _letTo = 1f; _let0 = 0f; _let1 = AskSeconds;
+                _ask1 = AskOutEnd;
+                _letTo = 1f; _let0 = AskInStart; _let1 = AskSeconds;
                 len = AskSeconds;
                 break;
         }
@@ -323,7 +338,9 @@ public partial class PauseMenu
         _ask.Modulate = new Color(1, 1, 1, _askA);
         if (_askTo > 0 && !_ask.Visible && m.Time >= _ask0) _ask.Visible = true;
         if (_askTo <= 0 && _askA <= 0f && _ask.Visible) _ask.Visible = false;
-        _pages.Modulate = new Color(1, 1, 1, _pagA);
+        // The spread is not faded: it arrives and leaves by a leaf turning (SettingsPages.SetArrival).
+        if (_pages.Modulate.A != 1f && _pages.Visible) _pages.Modulate = Colors.White;
+        if (_pages.Visible) _pages.SetArrival(_pagA);
         if (_pagTo <= 0 && _pagA <= 0f && _pages.Visible) _pages.Visible = false;
         if (_covTo != _covFrom)
         {

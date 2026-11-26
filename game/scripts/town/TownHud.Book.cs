@@ -49,8 +49,8 @@ public partial class TownHud
     private double _achClock;
     private float _agePageIn = -1;
 
-    public bool AchievementsOpen => _achPanel.Visible;
-    public bool AgePageOpen => _agePanel.Visible;
+    public bool AchievementsOpen => _achFade.On;
+    public bool AgePageOpen => _ageFade.On;
     /// <summary>Esc closes something of the interface first instead of pausing.</summary>
     public bool TakesEsc => PaveMode || ExtendMode || AchievementsOpen || AgePageOpen;
     public Button AchievementsMark => _achMark;
@@ -138,6 +138,7 @@ public partial class TownHud
         _ageClose.Pressed += () => CloseAgePage();
         ac.AddChild(_ageClose);
         _achShown = -1; _achSig = -1;
+        NewPageFades();
     }
 
     /// <summary>A page of the book over the town: paper with a double ink edge, centred.</summary>
@@ -163,7 +164,7 @@ public partial class TownHud
         if (_fullA < 0.5f) return; // the book is in view: the left page shows them
         CloseAgePage();
         SetPaveMode(false); SetExtendMode(false);
-        _achPanel.Visible = true;
+        ShowPage(_achFade);
         _achClock = 1e9;
         _main.Audio.UiTab();
     }
@@ -171,15 +172,15 @@ public partial class TownHud
     /// <summary>Closes the achievements page; <paramref name="quiet"/>: without its sound (the pause menu, once the interface has faded out).</summary>
     public void CloseAchievements(bool quiet = false)
     {
-        if (_achPanel == null || !_achPanel.Visible) return;
-        _achPanel.Visible = false;
+        if (_achPanel == null || !_achFade.On) { if (quiet) HidePage(_achFade, true); return; }
+        HidePage(_achFade, quiet);
         if (!quiet) _main.Audio.UiTab();
     }
 
     public void CloseAgePage(bool quiet = false)
     {
-        if (_agePanel == null || !_agePanel.Visible) return;
-        _agePanel.Visible = false;
+        if (_agePanel == null || !_ageFade.On) { if (quiet) HidePage(_ageFade, true); return; }
+        HidePage(_ageFade, quiet);
         if (!quiet) _main.Audio.PageTurn();
     }
 
@@ -231,7 +232,7 @@ public partial class TownHud
             "The river comes next: boats, a ford and a ferry. That age is not in the game yet. " +
             "Your town stays as it is, and you can keep playing it.";
         _ageClose.Text = "Keep playing" + Settings.GameInput.Tag("tt_pause");
-        _agePanel.Visible = true;
+        ShowPage(_ageFade);
         _main.Audio.PageTurn();
     }
 
@@ -239,6 +240,8 @@ public partial class TownHud
     {
         var t = _drv.Town;
         if (_agePageIn > 0 && HoldPageTurnAt < 0) { _agePageIn -= dt; if (_agePageIn <= 0) OpenAgePage(); }
+        StepPage(_achFade, dt);
+        StepPage(_ageFade, dt);
         // The bookmark, bottom right beside the pause control: shown while zoomed in.
         if (t.InRiverAge != _achRiver) AchAge(t);
         int got = _achRiver ? TownSummary.RiverAchieved(t) : TownSummary.Achieved(t);
@@ -263,9 +266,9 @@ public partial class TownHud
         _achMark.Modulate = new Color(1, 1, 1, _fullA);
         _achMark.ResetSize();
         _achMark.Position = new Vector2(PauseMark.Position.X - _achMark.Size.X - UiKit.Px(_s, 10), _built.Y - _achMark.Size.Y - UiKit.Px(_s, 16));
-        if (_fullA < 0.5f) { if (AchievementsOpen) CloseAchievements(); if (AgePageOpen) _agePanel.Visible = false; }
-        if (AgePageOpen) Centre(_agePanel);
-        if (!AchievementsOpen) return;
+        if (_fullA < 0.5f) { if (AchievementsOpen) CloseAchievements(); if (AgePageOpen) HidePage(_ageFade, false); }
+        if (_agePanel.Visible) Centre(_agePanel);
+        if (!_achPanel.Visible) return;
         Centre(_achPanel);
         _achClock += dt;
         if (_achClock < 0.5) return;
@@ -309,6 +312,6 @@ public partial class TownHud
     private void Centre(Control c)
     {
         c.ResetSize();
-        c.Position = ((_built - c.Size) / 2f).Floor();
+        c.Position = ((_built - c.Size) / 2f).Floor() + new Vector2(0, PageDrop(c));
     }
 }

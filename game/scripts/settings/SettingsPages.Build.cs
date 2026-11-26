@@ -33,19 +33,34 @@ public partial class SettingsPages
         float x0 = Mathf.Round((canvas.X - bookW - ribbonOut) / 2), y0 = Mathf.Round((canvas.Y - bookH) / 2);
         var cover = new Rect2(x0, y0, bookW, bookH);
         CoverRect = cover;
-        float pw = Mathf.Floor((bookW - 2 * lip) / 2);
-        var left = new Rect2(x0 + lip, y0 + lip, pw, bookH - 2 * lip);
-        var right = new Rect2(left.End.X, y0 + lip, pw, bookH - 2 * lip);
+        // The pages have the 3D pages' proportions (the camera's spread view puts them exactly under these): two pages of
+        // PageWidth with the 2 m gap at the spine, PageDepth deep. The cover shrinks to fit them, centred where it was.
+        // (Alone, with no 3D pages to lie on, it keeps its own proportions: the whole cover.)
+        float ph = bookH - 2 * lip, span = 2 * BookBuilder.PageWidth + 2f;
+        float pw = OwnTable ? Mathf.Floor((bookW - 2 * lip) / 2) : ph * span / BookBuilder.PageDepth / 2f;
+        if (2 * pw > bookW - 2 * lip) { pw = (bookW - 2 * lip) / 2f; ph = 2 * pw * BookBuilder.PageDepth / span; }
+        x0 += Mathf.Round((bookW - 2 * pw - 2 * lip) / 2); y0 += Mathf.Round((bookH - ph - 2 * lip) / 2);
+        bookW = 2 * pw + 2 * lip; bookH = ph + 2 * lip;
+        cover = new Rect2(x0, y0, bookW, bookH);
+        CoverRect = cover;
+        var left = new Rect2(x0 + lip, y0 + lip, pw, ph);
+        var right = new Rect2(left.End.X, y0 + lip, pw, ph);
         _rightPage = right;
         _leftPage = left;
 
-        var back = new SpreadArt { Name = "Table", Cover = cover, Left = left, Right = right, S = s, MouseFilter = MouseFilterEnum.Ignore };
-        back.SetAnchorsPreset(LayoutPreset.FullRect);
-        _frame.AddChild(back);
+        // In the game no table or cover of its own: the 3D book and table the camera shows are the ones around the pages
+        // (OwnTable false). Alone (the settings tests and their shots) it draws its own.
+        if (OwnTable)
+        {
+            var back = new SpreadArt { Name = "Table", Cover = cover, Left = left, Right = right, S = s, MouseFilter = MouseFilterEnum.Ignore };
+            back.SetAnchorsPreset(LayoutPreset.FullRect);
+            _frame.AddChild(back);
+        }
         BuildRibbons(right, s);
-        var pages = new SpreadArt { Name = "Pages", Cover = cover, Left = left, Right = right, S = s, PagesOnly = true, MouseFilter = MouseFilterEnum.Ignore };
-        pages.SetAnchorsPreset(LayoutPreset.FullRect);
-        _frame.AddChild(pages);
+        _pagesMask = new SectionMask { Name = "PagesMask", Size = canvas };
+        _frame.AddChild(_pagesMask);
+        var pages = new SpreadArt { Name = "Pages", Cover = cover, Left = left, Right = right, S = s, PagesOnly = true, MouseFilter = MouseFilterEnum.Ignore, Size = canvas };
+        _pagesMask.AddChild(pages);
 
         for (int i = 0; i < Sections.Length; i++)
         {
@@ -123,11 +138,11 @@ public partial class SettingsPages
                 Alignment = HorizontalAlignment.Left, TooltipText = Blurbs[i],
                 Position = new Vector2(right.End.X - tuck - 2 * s, y + i * (h + gap)), Size = new Vector2(RibbonWidth(i), h),
             };
-            SettingsLook.Ribbon(b, s, RibbonTints[i]);
             b.Pressed += () => { if (Section != name) ShowSection(name); };
             _frame!.AddChild(b);
             _shared["ribbon." + name] = b;
             _ribbons[i] = b;
+            StyleRibbon(b, i, RibbonTints[i]);
         }
     }
 

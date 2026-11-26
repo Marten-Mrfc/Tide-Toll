@@ -81,7 +81,7 @@ public partial class MotionTest : TownTestBase
     private struct S
     {
         public float Size, PX, PZ, Pitch, Cover, Town, Hud, Let, Ask, Pag, Leaf, Turn;
-        public float Sec0, Sec1, Sec2, Sec3, Rib0, Rib1, Rib2, Rib3;
+        public float Sec0, Sec1, Sec2, Sec3, Rib0, Rib1, Rib2, Rib3, Rc0, Rc1, Rc2, Rc3;
         public bool VHud, VLet, VAsk, VPag, VTown, VLeft, VS0, VS1, VS2, VS3, Running;
         public long Alloc;
         public double Cpu;
@@ -105,6 +105,7 @@ public partial class MotionTest : TownTestBase
         s.Hud = Main.Hud.Fade; s.Let = M.LetteringAlpha; s.Ask = M.QuestionAlpha; s.Pag = M.PagesAlpha;
         s.Leaf = P.LeafEdge; s.Turn = P.TurnProgress;
         s.Sec0 = P.SectionShown(0); s.Sec1 = P.SectionShown(1); s.Sec2 = P.SectionShown(2); s.Sec3 = P.SectionShown(3);
+        s.Rc0 = Lum(P.RibbonColour(0)); s.Rc1 = Lum(P.RibbonColour(1)); s.Rc2 = Lum(P.RibbonColour(2)); s.Rc3 = Lum(P.RibbonColour(3));
         s.Rib0 = P.RibbonOut(0); s.Rib1 = P.RibbonOut(1); s.Rib2 = P.RibbonOut(2); s.Rib3 = P.RibbonOut(3);
         s.VHud = Main.Hud.Visible; s.VLet = M.LetteringVisible; s.VAsk = M.QuestionVisible; s.VPag = P.Visible;
         s.VTown = Main.MapOrigin.Visible; s.VLeft = Main.Cover.LeftPageShown;
@@ -258,6 +259,8 @@ public partial class MotionTest : TownTestBase
         Check(Main.Rig.PivotLocal.DistanceTo(pivot0) < 1e-3f && MathF.Abs(Main.Rig.Camera.Size - size0) < 1e-3f, "Resume after the settings did not put the camera back");
 
         await Impatient(pivot0, size0);
+        await HudPages();
+        await PagesAlign();
         Summary();
     }
 }
