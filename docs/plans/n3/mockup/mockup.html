@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><title>Interface mock-up</title>
+<style>
+@font-face{font-family:Ui;src:url(../../../../assets/fonts/AtkinsonHyperlegible-Regular.ttf);font-weight:400}
+@font-face{font-family:Ui;src:url(../../../../assets/fonts/AtkinsonHyperlegible-Bold.ttf);font-weight:700}
+@font-face{font-family:Book;src:url(../../../../assets/fonts/Alegreya-Variable.ttf)}
+:root{
+  /* Palette.cs / UiKit.cs */
+  --ink:#2B2620; --paper:#F2EAD8; --wheat:#C9A55A; /* Palette.Thatch */ --river:#5B7F95; --moss:#44604F; /* Palette.CastIronGreen */ --brick:#A4553A;
+  --muted:rgba(43,38,32,.6); --paper96:rgba(242,234,216,.96); --paper88:rgba(242,234,216,.88); --paper85:rgba(242,234,216,.85);
+  --hover:#F8F2E4; --scrim:rgba(43,38,32,.30);
+  /* layout sheet, section 1 and 2 */
+  --grid:8px; --margin:16px; --gap:8px; --rail:320px;
+  --purse-h:104px; --goal-y:128px; --goal-h:96px; --drive-y:232px; --drive-h:40px; --note-y:280px; --note-h:40px;
+  --timer-w:156px; --timer-h:48px; --tide-x:180px; --nav-h:48px;
+  --msg-w-max:560px; --msg-side:704px; --banner-h:72px; --choice-h:168px; --line-h:40px; --line-bottom:56px;
+  --tip-w:296px; --page-w-max:720px; --page-h-max:560px;
+  /* section 3 and 4 */
+  --row-h:48px; --row-h-tight:40px; --pill-w:96px; --pill-h:32px; --fold-h:24px; --heading-h:24px; --header-h:32px;
+  --cap:14px; --body:16px; --title:20px; --large:30px;
+  --border:2px; --corner:4px; --pad:12px; --bar-h:8px; --icon:24px; --btn-small:32px; --thumb:4px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#7FA35B}
+body{background-size:cover;background-position:center;font-family:Ui;color:var(--ink);font-size:var(--body);font-variant-numeric:tabular-nums}
+#canvas{position:absolute;left:0;top:0;transform-origin:0 0}
+.z{position:absolute}
+.card{background:var(--paper96);border:var(--border) solid var(--ink);border-radius:var(--corner);padding:var(--pad);overflow:hidden}
+.quiet{background:var(--paper88);border:0;border-radius:var(--corner);padding:0 var(--pad);overflow:hidden;display:flex;align-items:center}
+.accent{background:var(--wheat)}
+.cap{font-size:var(--cap);line-height:18px}.muted{color:var(--muted)}
+.b{font-weight:700}.title{font-family:Book;font-size:var(--title);line-height:24px;font-weight:500}
+.large{font-size:var(--large);font-weight:700;line-height:34px}
+.row2{display:flex;justify-content:space-between;align-items:baseline;white-space:nowrap}
+.bar{height:var(--bar-h);border:1px solid var(--ink);border-radius:var(--corner);background:var(--paper);overflow:hidden}
+.bar>i{display:block;height:100%}
+.coin{display:inline-block;width:.9em;height:.9em;border-radius:50%;background:var(--wheat);border:1.5px solid var(--ink);vertical-align:-.08em;margin-right:.25em;position:relative}
+.coin:after{content:"";position:absolute;inset:22%;border:1px solid var(--ink);border-radius:50%}
+.key{font-size:var(--cap);line-height:16px;color:var(--muted);border:1px solid var(--muted);border-radius:3px;padding:0 4px;white-space:nowrap}
+.ico{width:var(--icon);height:var(--icon);flex:none}
+.fit{overflow:hidden;white-space:nowrap}
+/* shop */
+#shop{display:flex;flex-direction:column;padding:var(--pad) var(--pad) var(--pad) var(--pad)}
+.shead{height:var(--header-h);display:flex;justify-content:space-between;align-items:center;flex:none}
+.scroll{flex:1;overflow:hidden;position:relative}
+.gh{height:var(--heading-h);display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--muted);margin-top:4px}
+.gh .title{font-size:var(--body);line-height:20px}
+.srow{height:var(--row-h);display:flex;align-items:center;gap:4px;padding:0 4px;border-radius:var(--corner)}
+.tight .srow{height:var(--row-h-tight)}
+.tight .srow .cap{line-height:14px}
+.srow.hov{background:var(--hover);outline:3px solid var(--ink);outline-offset:-3px}
+.srow .key{width:20px;text-align:center;padding:0;flex:none}
+.srow .txt{flex:1;min-width:0}
+.srow .nm{display:flex;gap:6px;white-space:nowrap;line-height:20px}
+.srow .nm .lv{color:var(--muted);font-size:var(--cap)}
+.pill{width:var(--pill-w);height:var(--pill-h);flex:none;border:var(--border) solid var(--ink);border-radius:var(--corner);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;font-size:var(--cap);white-space:nowrap;background:var(--paper)}
+.pill.aff{background:var(--wheat);font-weight:700}
+.pill.save{color:var(--muted)}
+.pill.save>i{position:absolute;left:0;top:0;bottom:0;background:rgba(201,165,90,.55)}
+.pill.save>span{position:relative}
+.pill.no{color:var(--muted);border-width:1px;border-color:var(--muted)}
+.pill.on{background:var(--ink);color:var(--paper);font-weight:700}
+.fold{height:var(--fold-h);line-height:var(--fold-h);font-size:var(--cap);color:var(--muted);padding-left:52px}
+.thumb{position:absolute;right:0;width:var(--thumb);background:var(--ink);opacity:.5;border-radius:2px}
+/* buttons */
+.btn{background:var(--paper96);border:var(--border) solid var(--ink);border-radius:var(--corner);display:flex;align-items:center;gap:8px;padding:0 8px;overflow:hidden;white-space:nowrap}
+.btn.dis{border-width:1px;border-color:rgba(43,38,32,.45);color:rgba(43,38,32,.45)}
+.small{height:var(--btn-small)}
+.tip{background:var(--paper96);border:var(--border) solid var(--ink);border-radius:var(--corner);padding:8px var(--pad);font-size:var(--cap);line-height:18px;width:var(--tip-w)}
+.tag{background:var(--paper85);border-radius:99px;padding:1px 8px;font-size:var(--cap);line-height:18px;white-space:nowrap;position:absolute}
+.cn{position:absolute;font-weight:700;font-size:var(--body);color:var(--wheat);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill}
+.pips{display:flex;gap:4px}.pips i{width:10px;height:10px;border-radius:50%;border:1px solid var(--ink)}.pips i.f{background:var(--river)}
+</style></head><body>
+<div id="canvas"></div>
+<script>
+const P=new URLSearchParams(location.search);
+const W=+(P.get('w')||1920),H=+(P.get('h')||1080),S=P.get('s')||'m1',AGE=+(P.get('age')||1);
+const C=document.getElementById('canvas');
+C.style.width=W+'px';C.style.height=H+'px';C.style.transform=`scale(${1920/W})`;
+document.body.style.backgroundImage=`url(map-age${AGE}.png)`;
+const has=k=>(P.get('f')||'').split(',').includes(k);
+const coin='<span class="coin"></span>';
+const ico=(c='wheat')=>`<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" fill="var(--${c})" stroke="var(--ink)" stroke-width="2"/><path d="M8 15l4-6 4 6" fill="none" stroke="var(--ink)" stroke-width="2"/></svg>`;
+function z(id,x,y,w,h,cls,html){const d=document.createElement('div');d.id=id;d.className='z '+cls;Object.assign(d.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});d.innerHTML=html;C.appendChild(d);return d}
+const M=16,G=8,R=320,msgW=Math.min(560,W-704),msgX=(W-msgW)/2;
+const late=AGE===2;
+const zoomPage=S==='m9';
+// purse
+if(zoomPage){
+  z('purse',M,M,R,40,'quiet',`<div class="row2" style="width:100%"><span class="b">${coin}48</span><span>Level 6 of 16</span></div>`);
+}else{
+z('purse',M,M,R,104,'card',late?`
+ <div class="row2"><span class="large">${coin}7,270</span><span class="cap muted">+49,050 a minute</span></div>
+ <div class="row2"><span>Level 24 of 28</span><span class="cap muted">524,743 of 535,458 renown</span></div>
+ <div class="bar" style="margin:2px 0"><i style="width:98%;background:var(--wheat)"></i></div>
+ <div class="cap">Next: the footbridge</div>`:`
+ <div class="row2"><span class="large">${coin}48</span><span class="cap muted">+296 a minute</span></div>
+ <div class="row2"><span>Level 6 of 16</span><span class="cap muted">1,312 of 2,200 renown</span></div>
+ <div class="bar" style="margin:2px 0"><i style="width:60%;background:var(--wheat)"></i></div>
+ <div class="cap">Next: a cottage and its lane</div>`);
+// goal
+z('goal',M,128,R,96,'card',late?`
+ <div class="cap muted">The skipper Old Tam asks</div>
+ <div class="b fit" style="line-height:20px">180 cloth at the landing within 170 s</div>
+ <div style="display:flex;gap:8px;align-items:center;height:16px"><div class="bar" style="flex:1"><i style="width:56%;background:var(--river)"></i></div><span class="cap">100 of 180</span></div>
+ <div class="cap muted">Pays ${coin}117 a unit, more when filled</div>`:`
+ <div class="cap muted">The miller asks</div>
+ <div class="b fit" style="line-height:20px">117 grain within 78 s</div>
+ <div style="display:flex;gap:8px;align-items:center;height:16px"><div class="bar" style="flex:1"><i style="width:23%;background:var(--river)"></i></div><span class="cap">27 of 117</span></div>
+ <div class="cap muted">Reward: ${coin}160 and renown</div>`);
+if(has('drive')) z('drive',M,232,R,40,'card','').outerHTML;
+if(has('drive')){const d=document.getElementById('drive');d.style.padding='0 12px';d.style.display='flex';d.style.alignItems='center';d.style.gap='8px';
+ d.innerHTML=`<span class="cap fit" style="flex:1">The charter drive</span><span class="pips">${'<i class="f"></i>'.repeat(4)+'<i></i>'.repeat(6)}</span><span class="cap">4 of 10</span>`}
+if(!has('nonote')) z('note',M,280,R,40,'quiet',`<span class="cap fit">${late?'Achievement: Busy landing.':'Achievement: Thriving.'}</span>`);
+// timers
+const ringing=has('ringing');
+z('bell',M,H-64,156,48,'btn'+(has('rests')?' dis':''),`<div style="flex:1;min-width:0"><div class="row2" style="line-height:20px"><span class="fit">${ringing?'Ringing, 7 s':has('rests')?'Rests, 14 s':'Ring the bell'}</span>${ringing||has('rests')?'':'<span class="key">Space</span>'}</div>${ringing||has('rests')?`<div class="bar" style="margin-top:4px"><i style="width:${ringing?47:30}%;background:var(--river)"></i></div>`:''}</div>`);
+if(late) z('tide',180,H-64,156,48,'btn',`<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--paper)" stroke="var(--ink)" stroke-width="2"/><path d="M12 12L17 7" stroke="var(--river)" stroke-width="2.5"/></svg><div style="min-width:0"><div class="cap fit">High water, falling</div><div class="cap muted fit">lowest in 1:14</div></div>`);
+// shop
+buildShop();
+}
+// navigation
+z('nav',W-336,H-64,R,48,'',`<div style="display:flex;gap:8px;justify-content:flex-end;height:48px">
+ <div class="btn" style="height:48px">${ico('wheat')}<span class="cap">${late?'7 of 16':'11 of 24'}</span></div>
+ <div class="btn" style="height:48px;width:48px;justify-content:center">${ico('paper')}</div>
+ <div class="btn" style="height:48px;width:48px;justify-content:center"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="var(--ink)"/></svg></div>
+ <div class="btn" style="height:48px;width:48px;justify-content:center"><svg class="ico" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="var(--ink)"/><rect x="14" y="5" width="4" height="14" fill="var(--ink)"/></svg></div></div>`);
+// message zone
+if(has('banner')) {const b=z('msg',msgX,16,msgW,72,'card accent',`<div class="title">${late?'Level 25: the footbridge':'Level 7: a cottage and its lane'}</div><div class="cap fit">${late?'Carts can cross the river. Two new lines in the shop.':'A new cottage is staked. One more villager can move in.'}</div>`);}
+if(has('choice')) z('msg',msgX,16,msgW,168,'card',`<div class="title">The miller asks: what comes first?</div>
+ <div style="display:flex;gap:8px;margin-top:8px">${[['A second field','More grain, slower carts'],['A wider mill','Faster grinding, same grain']].map(([a,b])=>`<div style="flex:1;border:1px solid var(--muted);border-radius:4px;padding:8px"><div class="b">${a}</div><div class="cap muted">${b}</div><div class="btn small" style="margin-top:8px;justify-content:center">Choose <span class="key">${a[2]==='s'?'1':'2'}</span></div></div>`).join('')}</div>`);
+// line
+if(has('hint')) z('line',msgX,H-56,msgW,40,'quiet',`<span class="fit" style="width:100%;text-align:center">Every cottage is full. Extend one for another villager.</span>`);
+if(has('pave')) z('line',msgX,H-56,msgW,40,'quiet',`<span class="fit" style="width:100%;text-align:center">Pave: click a worn road. Esc to stop.</span>`);
+// map things (canvas coordinates relative to the 1920 map scale)
+const mx=v=>v*W/1920,my=v=>v*H/1080;
+if(has('coins')) [[830,430,'+19'],[1000,395,'+7'],[600,330,'+12'],[1150,520,'+4']].forEach(([x,y,t])=>{const e=document.createElement('div');e.className='cn';e.style.left=mx(x)+'px';e.style.top=my(y)+'px';e.textContent=t;C.appendChild(e)});
+if(has('tags')) [[1170,300,'A cottage, at level 7'],[470,700,'A field, at level 8']].forEach(([x,y,t])=>{const e=document.createElement('div');e.className='tag';e.style.left=mx(x)+'px';e.style.top=my(y)+'px';e.textContent=t;C.appendChild(e)});
+if(has('pave')){const x=mx(745),y=my(330);
+ C.insertAdjacentHTML('beforeend',`<svg style="position:absolute;left:${x}px;top:${y}px" width="20" height="24" viewBox="0 0 20 24"><path d="M1 1l0 19 5-5 4 8 3-1-4-8 7 0z" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/></svg>
+ <div class="tip" style="position:absolute;left:${x+24}px;top:${y-40}px;width:auto;white-space:nowrap">Pave this road: <b>${coin}21</b></div>`);}
+// page
+if(S==='m8'){
+ C.insertAdjacentHTML('beforeend',`<div class="z" style="inset:0;background:var(--scrim)"></div>`);
+ const pw=Math.min(720,W-64),ph=Math.min(560,H-96);
+ const items=['Thriving','Closing the loop','Village','First coin','Paved','Full cottages','The miller\'s friend','Busy bell','Twelve carts','A good harvest','Market day','Early riser'];
+ z('page',(W-pw)/2,(H-ph)/2,pw,ph,'card',`<div class="row2"><span class="title" style="font-size:20px">Achievements</span><span class="cap muted">11 of 24</span></div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">${items.map((t,i)=>`<div style="display:flex;gap:8px;align-items:center;height:48px;border-bottom:1px solid rgba(43,38,32,.2)">${ico(i<11?'wheat':'paper')}<div><div class="${i<11?'':'muted'}">${t}</div><div class="cap muted">${i<11?'Won in the first age':'Not yet'}</div></div></div>`).join('')}</div>
+ <div style="position:absolute;right:12px;bottom:12px" class="btn small">Close <span class="key">Esc</span></div>`);
+}
+function buildShop(){
+ const A1=[['People','',[['1','Villager','level 9','+27 coin a minute','no','No room'],['5','Extend a cottage','','+19 coin a minute','save','125',38]],'1 more at level 7'],
+  ['Work','1 done',[['2','Pace','level 10','+3.7 coin a minute','save','52',92],['6','Tools','level 4','+2.7 coin a minute','aff','30'],['7','Water price','level 5','+7.1 coin a minute','save','107',45],['8','Grain price','level 1','+2.9 coin a minute','aff','42']],'1 more at level 7'],
+  ['Roads','2 done',[['4','Pave a road','','+15 coin a minute','no','No worn road']],'1 more at level 9'],
+  ['Town','',[['0','Louder bell','level 1','+7.4 coin a minute','save','156',31],['9','Regulars','level 4','+1.1 coin a minute','aff','40'],['3','Market stall','level 2','+4.0 coin a minute','no','No room']],'']];
+ const A2=[['People','',[['1','Villager','level 30','+1,424 coin a minute','save','18,639',39]],'1 more at level 25'],
+  ['Work','',[['2','Pace','level 25','+438 coin a minute','save','8,099',90],['6','Tools','level 16','+276 coin a minute','aff','5,190'],['7','Water price','level 14','+359 coin a minute','aff','5,544'],['8','Grain price','level 15','+297 coin a minute','aff','6,414'],['9','Flour price','level 36','+320 coin a minute','aff','4,310']],''],
+  ['Roads','3 done',[['4','Pave a road','','+40 coin a minute','no','No worn road']],''],
+  ['Town','2 done',[],'1 more at level 25'],
+  ['The river','',[['Q','Wool price','level 3','+56 coin a minute','aff','3,238'],['W','Cloth price','level 2','+437 coin a minute','aff','4,284'],['E','A bigger raft','','+1,472 coin a minute','save','17,662',41]],'']];
+ const data=late?A2:A1;
+ if(has('pave')) data[2][2][0]=['4','Pave a road','','Click a worn road','on','On'];
+ const affN=data.flatMap(g=>g[2]).filter(r=>r[4]==='aff').length;
+ const sh=z('shop',W-336,M,R,H-96,'card','');
+ sh.innerHTML=`<div class="shead"><span class="title">Shop</span>${affN?`<span class="cap">${affN} to buy now</span>`:''}</div><div class="scroll"><div class="inner"></div></div>`;
+ const inner=sh.querySelector('.inner');
+ inner.innerHTML=data.map(([g,done,rows,fold])=>`<div class="gh"><span class="title">${g}</span><span class="cap muted">${done}</span></div>`+
+  rows.map(([k,n,lv,inc,st,pr,f])=>`<div class="srow${S==='m4'&&n==='Pace'?' hov':''}" data-n="${n}"><span class="key">${k}</span>${ico(st==='aff'?'wheat':'paper')}<div class="txt"><div class="nm fit"><span>${n}</span><span class="lv">${lv}</span></div><div class="cap muted fit">${inc}</div></div>
+  <div class="pill ${st}">${st==='save'?`<i style="width:${f}%"></i>`:''}<span>${st==='aff'||st==='save'?coin+pr:pr}</span></div></div>`).join('')+(fold?`<div class="fold">${fold}</div>`:'')).join('');
+ const sc=sh.querySelector('.scroll');
+ if(inner.scrollHeight>sc.clientHeight){sh.classList.add('tight');}
+ if(inner.scrollHeight>sc.clientHeight){const r=sc.clientHeight/inner.scrollHeight;sc.insertAdjacentHTML('beforeend',`<div class="thumb" style="top:0;height:${Math.round(sc.clientHeight*r)}px"></div>`);inner.style.paddingRight='8px';}
+ if(S==='m4'){const row=[...sh.querySelectorAll('.srow')].find(r=>r.dataset.n==='Pace');const top=Math.round(row.getBoundingClientRect().top*W/1920);
+  z('tooltip',W-336-8-296,top,296,'auto','tip',`<div class="b" style="font-size:16px">Pace, level 10</div><div>Carts walk faster, so every delivery comes sooner.</div><div>+3.7 coin a minute; pays for itself in 14 s.</div><div>Price: ${coin}52</div><div class="muted">Need ${coin}4 more, about 1 s.</div><div class="muted">Key: <span class="key">2</span></div>`).style.height='auto';
+  const t=document.getElementById('tooltip');const tr=row.getBoundingClientRect();
+  C.insertAdjacentHTML('beforeend',`<svg style="position:absolute;left:${(tr.left+160)*W/1920}px;top:${(tr.top+20)*W/1920}px" width="20" height="24" viewBox="0 0 20 24"><path d="M1 1l0 19 5-5 4 8 3-1-4-8 7 0z" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/></svg>`);}
+}
+// report: overflow and collisions, in canvas px
+window.__report=()=>{const out=[];const k=W/1920;
+ document.querySelectorAll('.fit,.z,.pill,.row2,.nm').forEach(e=>{if(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1)out.push(`overflow ${e.id||e.className} "${e.textContent.trim().slice(0,40)}": content ${e.scrollWidth}x${e.scrollHeight} in box ${e.clientWidth}x${e.clientHeight}`)});
+ const zs=[...document.querySelectorAll('.z[id]')].map(e=>{const r=e.getBoundingClientRect();return{id:e.id,x:r.left*k,y:r.top*k,r:r.right*k,b:r.bottom*k}});
+ for(let i=0;i<zs.length;i++)for(let j=i+1;j<zs.length;j++){const a=zs[i],b=zs[j];if(a.x<b.r-0.5&&b.x<a.r-0.5&&a.y<b.b-0.5&&b.y<a.b-0.5)out.push(`collision ${a.id} x${a.id==='page'?'':''} with ${b.id}`)}
+ zs.forEach(a=>{if(a.x<0||a.y<0||a.r>W+.5||a.b>H+.5)out.push(`outside ${a.id}`);
+  const mid=a.x<W-344&&a.r>344&&a.y<H-64&&a.b>96; if(mid&&!['tooltip','page'].includes(a.id))out.push(`in the middle: ${a.id} (${Math.round(a.x)},${Math.round(a.y)})-(${Math.round(a.r)},${Math.round(a.b)})`)});
+ const sh=document.querySelector('#shop .inner');if(sh)out.push(`shop: content ${sh.scrollHeight}px in ${document.querySelector('#shop .scroll').clientHeight}px, rows ${document.querySelector('#shop').classList.contains('tight')?40:48}`);
+ return out};
+</script></body></html>
