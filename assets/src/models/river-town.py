@@ -167,6 +167,13 @@ def weaver_cottage():
     m.add_hip((cx, wh, 0), L + 0.4, W + 0.4, 3.0, "Reed and thatch", ridge_frac=0.3, overhang=0.3)
     r = (L + 0.4) * 0.3 / 2
     beam(m, (cx - r - 0.25, wh + 2.98, 0), (cx + r + 0.25, wh + 2.98, 0), 0.45, 0.22, "Packed earth")
+    for f in (0.3, 0.62):                                    # thatch courses on the long faces, lying on the slope
+        hl = 2.9 + f * (r - 2.9) - 0.2
+        for sz in (-1, 1):
+            beam(m, (cx - hl, 2.02 + f * 3.33, sz * 3.0 * (1 - f)), (cx + hl, 2.02 + f * 3.33, sz * 3.0 * (1 - f)),
+                 0.2, 0.09, "Trail earth", up=(0, 3.0, sz * 3.33), ends=False)
+    m.add_box((cx + 0.5, 3.4, -0.9), (0.7, 2.9, 0.7), "Brick", bottom=False)             # a chimney: the house is lived in
+    m.add_box((cx + 0.5, 6.2, -0.9), (0.94, 0.2, 0.94), "Soot brick", bottom="Soot brick")
     for sx in (-1, 1):                                       # corner posts and sill beams
         for sz in (-1, 1):
             m.add_box((cx + sx * hx, 0, sz * hz), (0.34, wh, 0.34), WOOD)
@@ -187,14 +194,14 @@ def weaver_cottage():
     yi, yo = 2.25, 1.95
     top = [(x0, yi + t, -2.75), (x1 + 0.25, yo + t, -2.75), (x1 + 0.25, yo + t, 2.75), (x0, yi + t, 2.75)]
     bot = [(x0, yi, -2.75), (x1 + 0.25, yo, -2.75), (x1 + 0.25, yo, 2.75), (x0, yi, 2.75)]
-    m.add_poly(top, PLANK, facing=(0.1, 1, 0))
+    m.add_poly(top, "Brick", facing=(0.1, 1, 0))                                     # Brick-tiled lean-to roof
     m.add_poly(bot[::-1], "Packed earth", facing=(0, -1, 0))
     m.add_poly([bot[1], bot[2], top[2], top[1]], WOOD, facing=(1, 0, 0))
     for z0, s in ((-2.75, -1), (2.75, 1)):
         m.add_poly([(x0, yi, z0), (x1 + 0.25, yo, z0), (x1 + 0.25, yo + t, z0), (x0, yi + t, z0)], WOOD,
                    facing=(0, 0, s))
     for z in (-1.0, 1.0):                                                              # board battens on the roof
-        beam(m, (x0 + 0.1, yi + t + 0.04, z), (x1 + 0.2, yo + t + 0.04, z), 0.14, 0.08, "Packed earth", ends=False)
+        beam(m, (x0 + 0.1, yi + t + 0.04, z), (x1 + 0.2, yo + t + 0.04, z), 0.14, 0.08, "Soot brick", ends=False)
     m.add_box(((x0 + x1) / 2, 0, -2.35), (x1 - x0, 1.9, 0.14), "Packed earth")          # plank back wall (north)
     m.add_box(((x0 + x1) / 2, 0, -2.44), (0.18, 1.9, 0.06), WOOD, bottom=False)         # its batten
     m.add_box(((x0 + x1) / 2, 0, 0), (x1 - x0 + 0.1, 0.06, 4.6), "Trail earth")       # beaten earth floor
@@ -361,7 +368,7 @@ BUILDS = [
     ("pasture", pasture(), 500, "Far bank: sheep pasture (fenced, gate in the south side, trough, hay rack)"),
     ("sheep", [("Body", sheep_body()), ("Head", sheep_head(), None, NECK)], 150,
      "Far bank: sheep scattered in the pasture (nodes Body and Head, Head dips about its local X at the neck)"),
-    ("weaver-cottage", weaver_cottage(), 500, "Near bank: weaver's cottage (Wool to Cloth; loom in the open lean-to)"),
+    ("weaver-cottage", weaver_cottage(), 560, "Near bank: weaver's cottage (Wool to Cloth; loom in the open lean-to)"),
     ("crane", [("Base", crane_base()), ("Jib", crane_jib(), None, (0.0, PIVOT_Y, 0.0))], 500,
      "Landing: treadwheel crane upgrade (nodes Base and Jib, Jib turns about its local Y at the post top)"),
     ("seal-stone", seal_stone(), 600, "Town green: borough seal stone (ends the second age)"),

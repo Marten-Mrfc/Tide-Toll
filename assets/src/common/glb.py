@@ -245,7 +245,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         parts = [(Path(path).stem, parts)]
     parts = [(p[0], p[1], p[2] if len(p) > 2 and p[2] is not None else ink, p[3] if len(p) > 3 else None)
              for p in parts]
-    total = sum(p[1].tri_count() for p in parts)
+    total = sum(p[1].tri_count() for p in parts if p[1] is not None)
     if max_tris is not None and total > max_tris:
         raise ValueError(f"{path}: {total} triangles, budget {max_tris}")
     bin_chunks, views, accessors, meshes, nodes = [], [], [], [], []
@@ -274,6 +274,9 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
 
     lo, hi = np.full(3, np.inf), np.full(3, -np.inf)
     for name, m, node_ink, trans in parts:
+        if m is None:   # an empty node (a point the game uses, such as a chimney's "Smoke"): name and translation only
+            nodes.append({"name": name, "translation": [float(v) for v in (trans or (0, 0, 0))]})
+            continue
         if not m.tris:
             raise ValueError(f"part {name!r} is empty")
         pos = np.array([p for t in m.tris for p in t[:3]], np.float32)
@@ -315,7 +318,7 @@ def write_glb(path, parts, max_tris=None, generator="tide-toll assets/src/common
         f.write(struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
         f.write(struct.pack("<II", len(js), 0x4E4F534A) + js)
         f.write(struct.pack("<II", len(binb), 0x004E4942) + binb)
-    used = sorted({t[3] for p in parts for t in p[1].tris})
+    used = sorted({t[3] for p in parts if p[1] is not None for t in p[1].tris})
     return {"tris": total, "min": [round(float(x), 3) for x in lo], "max": [round(float(x), 3) for x in hi],
             "size": [round(float(x), 3) for x in hi - lo], "colours": used}
 

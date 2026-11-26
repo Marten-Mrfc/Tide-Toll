@@ -23,6 +23,9 @@ public partial class TownBuildings : Node3D
     private int[] _ext = Array.Empty<int>();
     /// <summary>The extensions the drawn cottage on a plot shows (tests).</summary>
     public int DrawnExtensions(int p) => p < _ext.Length && _built[p] != null ? _ext[p] : -1;
+    private string[] _models = Array.Empty<string>();
+    /// <summary>The model file drawn on a plot ("" when nothing is drawn; tests).</summary>
+    public string DrawnModel(int p) => p < _models.Length && _built[p] != null ? _models[p] ?? "" : "";
     private Node3D?[] _extras = Array.Empty<Node3D?>();   // offers that add to a plot already drawn (the second bucket)
     private Node3D? _sails, _bell, _charter;
     private float _sailAngle, _bellSwing;
@@ -42,8 +45,8 @@ public partial class TownBuildings : Node3D
     /// <summary>The model for a plot kind, with the stand-in used when the new file is missing.</summary>
     public static string Model(PlotKind kind, int id, int extensions = 0) => kind switch
     {
-        // Rules v2: the three cottage models stand for the three sizes (built, extended once, extended twice).
-        PlotKind.Cottage => $"cottage-0{1 + Math.Clamp(extensions, 0, 2)}",
+        // Night 3: the cottage's own variant and size (see CottageModel); without the plan, the variant from the id.
+        PlotKind.Cottage => CottageModel(id, extensions),
         PlotKind.Well => "well",
         PlotKind.Field => "field-ripe",
         PlotKind.Market => "market-stall",
@@ -71,6 +74,7 @@ public partial class TownBuildings : Node3D
         _stakes = new Node3D?[plots.Length];
         _pop = new float[plots.Length];
         _ext = new int[plots.Length];
+        _models = new string[plots.Length];
         _extras = new Node3D?[_drv.Town.Plan.Offers.Length];
         _sails = _bell = _charter = null;
         Sync(instant: true);
@@ -90,18 +94,18 @@ public partial class TownBuildings : Node3D
     {
         int ext = p.Kind == PlotKind.Cottage ? _drv.Town.Extensions(p.Id) : 0;
         _ext[p.Id] = ext;
-        string model = Model(p.Kind, p.Id, ext);
+        string model = p.Kind == PlotKind.Cottage ? CottageModel(CottageOrdinal(_drv.Town.Plan, p.Id), ext) : Model(p.Kind, p.Id, ext);
+        _models[p.Id] = model;
         var root = new Node3D { Name = $"Plot{p.Id}", Position = Centre(p) };
         float fw = p.W * Cell, fh = p.H * Cell;
         float yaw = DoorYaw(p);
         bool side = MathF.Abs(MathF.Sin(yaw)) > 0.5f;
         var aabb = ModelLib.Mesh(model).GetAabb();
-        // Round 4: an extended cottage is wider (a lean-to with its own gable) and, from the second extension, has a
-        // fenced yard behind; the footprint is fitted to the whole group.
-        float wide = p.Kind == PlotKind.Cottage && ext > 1 ? 1.8f : p.Kind == PlotKind.Cottage && ext > 0 ? 1.5f : 1f, deep = 1f;
-        float ax = Math.Max(0.1f, side ? aabb.Size.Z * deep : aabb.Size.X * wide), az = Math.Max(0.1f, side ? aabb.Size.X * wide : aabb.Size.Z * deep);
+        float ax = Math.Max(0.1f, side ? aabb.Size.Z : aabb.Size.X), az = Math.Max(0.1f, side ? aabb.Size.X : aabb.Size.Z);
         var body = new Node3D { Name = "Body", Rotation = new Vector3(0, yaw, 0) };
         root.AddChild(body);
+        // Night 3: every size is its own model (no widening, no lean-tos added here).
+        if (p.Kind == PlotKind.Cottage) return MakeCottage(p, root, body, ext, fw, fh);
         if (p.Kind == PlotKind.Field)
         {
             // Fields fill their footprint (flat, so a non-uniform scale reads fine).
@@ -110,7 +114,7 @@ public partial class TownBuildings : Node3D
             else body.Scale = new Vector3(fw / aabb.Size.X, 1f, fh / aabb.Size.Z) * 0.96f;
             return root;
         }
-        float s = Math.Min(fw / ax, fh / az) * (p.Kind == PlotKind.Cottage ? (ext > 0 ? 0.95f : 0.74f) : 0.88f);
+        float s = Math.Min(fw / ax, fh / az) * 0.88f;
         s = Math.Min(s, 1.6f);
         body.Scale = Vector3.One * s;
         if (p.Kind == PlotKind.Mill && model == "mill" && ModelLib.HasPart("mill", "Sails") && ModelLib.HasPart("mill", "Body"))
@@ -152,60 +156,7 @@ public partial class TownBuildings : Node3D
             body.AddChild(_charter);
         }
         else body.AddChild(ModelLib.Instance(model, "Model"));
-        if (p.Kind == PlotKind.Cottage && ext > 0) AddExtensions(body, aabb, ext);
         return root;
-    }
-
-    /// <summary>
-    /// Round 4: what each extension adds, readable at the normal view: the first a lean-to beside the house with its
-    /// own gable (a small cottage turned side on, lower than the main roof); the second (round 6) a second lean-to on the other side;
-    /// the third and later a woodpile by the lean-to. (No chimney model exists: see the round 4 progress notes.)
-    /// </summary>
-    private static void AddExtensions(Node3D body, Aabb main, int ext)
-    {
-        var c = main.GetCenter();
-        // Round 6 (W7): two extensions add a second lean-to on the other side (a long row of three gables), so one and
-        // two extensions differ plainly from above; the row is centred, the house in the middle.
-        float shift = ext >= 2 ? 0f : main.Size.X * 0.25f; // one extension: the house moves left, the lean-to sits right
-        body.GetNode<Node3D>("Model").Position = new Vector3(-shift, 0, 0);
-        string leanModel = ModelLib.Pick("cottage-01", "cottage-01");
-        var la = ModelLib.Mesh(leanModel).GetAabb();
-        float k = Math.Min(main.Size.Y * 0.68f / Math.Max(0.1f, la.Size.Y), main.Size.Z * 0.8f / Math.Max(0.1f, la.Size.X));
-        var lean = ModelLib.Instance(leanModel, "LeanTo");
-        lean.RotationDegrees = new Vector3(0, 90, 0);
-        lean.Scale = Vector3.One * k;
-        // Turned side on, its depth (model Z) runs along the house's X.
-        float lw = la.Size.Z * k;
-        lean.Position = new Vector3(main.End.X - shift + lw * 0.5f - main.Size.X * 0.06f, 0, c.Z) + new Vector3(-la.GetCenter().Z * k, 0, la.GetCenter().X * k);
-        body.AddChild(lean);
-        if (ext >= 2)
-        {
-            var lean2 = ModelLib.Instance(leanModel, "LeanTo2");
-            lean2.RotationDegrees = new Vector3(0, -90, 0);
-            lean2.Scale = Vector3.One * k;
-            lean2.Position = new Vector3(main.Position.X - lw * 0.5f + main.Size.X * 0.06f, 0, c.Z) + new Vector3(la.GetCenter().Z * k, 0, -la.GetCenter().X * k);
-            body.AddChild(lean2);
-        }
-        // Round 6 (W7): the wattle yard behind is gone: thin fences under the ink outline read, from above, as a dark box.
-        if (ext >= 3 && ModelLib.Has("prop-woodpile"))
-        {
-            var wa = ModelLib.Mesh("prop-woodpile").GetAabb();
-            var pile = ModelLib.Instance("prop-woodpile", "Woodpile");
-            pile.Scale = Vector3.One * (main.Size.Y * 0.3f / Math.Max(0.1f, wa.Size.Y));
-            pile.Position = new Vector3(main.End.X - shift + lw * 0.6f, 0, main.End.Z - main.Size.Z * 0.1f);
-            body.AddChild(pile);
-        }
-    }
-
-    private static void Fence(Node3D body, string name, Vector3 at, float along, float h, float yawDeg)
-    {
-        var f = ModelLib.Instance("fence-wattle", name);
-        f.Scale = new Vector3(along, h, h);
-        f.RotationDegrees = new Vector3(0, yawDeg, 0);
-        f.Position = at;
-        // Round 6 (W7): the yard fence in pale new-cut wood: dark wattle read, from above, as a dark box round the house.
-        f.MaterialOverride = PaleStakes;
-        body.AddChild(f);
     }
 
     /// <summary>The colour of staked plots' stakes and cord (pale new-cut wood).</summary>

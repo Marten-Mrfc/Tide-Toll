@@ -1,5 +1,5 @@
 # python3 assets/src/models/town.py  ->  assets/models/mill.glb, bell-post.glb, plot-stakes.glb, charter-stone.glb,
-#   villager-cargo-water.glb, villager-cargo-flour.glb
+#   (villager-cargo-water and -flour: now villager.py)
 # First-age pieces for the incremental town (docs/plans/incremental-design.md), in the Hamlet style of cottage.py,
 # well.py and market-stall.py: chunky boxes and prisms, one palette colour per face, no modelled outlines.
 # Free sources were not used: kenney.nl and the other free asset sites are blocked from the build container
@@ -250,8 +250,7 @@ BUILDS = [
      "Town green: bell post (nodes Frame and Bell, Bell swings about its local X at the hanger)"),
     ("plot-stakes", plot_parts(), 300, "Town: plot marker for the next building (stake and cord nodes)"),
     ("charter-stone", charter_stone(), 300, "Town green: charter stone (after the charter is granted)"),
-    ("villager-cargo-water", cargo_water(), 100, "Villagers: carried cargo (water, yoke and buckets)"),
-    ("villager-cargo-flour", cargo_flour(), 100, "Villagers: carried cargo (flour sack)"),
+    # villager-cargo-water and -flour moved to villager.py (night 3: loads carried in the arms, in the body's frame)
 ]
 
 if __name__ == "__main__":
@@ -262,7 +261,3 @@ if __name__ == "__main__":
         out = asset_path(f"models/{name}.glb")
         print(glb.report(out, glb.write_glb(out, parts, max_tris=budget)))
         ledger.add("models", out, kind="model", generator=__file__, note=BLOCKED, used_in=used, verified=True)
-    # preview only (not shipped): the water yoke lifted 1 m, so the contact sheet's ground does not hide the buckets
-    from common import ROOT
-    prev = ROOT / "build" / "previews" / "villager-cargo-water-lifted.glb"
-    glb.write_glb(prev, glb.Mesh().append(cargo_water(), (0, 1.0, 0)))
