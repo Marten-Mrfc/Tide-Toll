@@ -82,7 +82,7 @@ Stopping
 
 ## Scheduled check
 
-- Pending: `trig_016Go7ENemgq5Dkops3Bddqv`, fires 05:17 UTC on 26 November. (Earlier ones fired and were handled.) Cancel it with `delete_trigger` once the final report is posted.
+- None pending. The last one (`trig_016Go7ENemgq5Dkops3Bddqv`) was cancelled at the end of the build. Earlier line kept for the record: (Earlier ones fired and were handled.) Cancel it with `delete_trigger` once the final report is posted.
 
 ## Rounds
 
@@ -116,12 +116,14 @@ Stopping
 
 ## Next steps
 
-The build is finished. What is left is handing over:
+The night's build is finished and handed over (04:55 UTC on 26 November):
 
-1. Push the final round's commit alone, wait for the GitHub build, record it under "Windows builds".
-2. Rebuild the review page with the final commit (`python3 docs/review/make_closing.py --shots 49`, `make_review_json.py`, `build_review.py`) and publish `build/review/index.html` again (same link).
-3. Write the morning report (`docs/review/morning-report.md`) into the design doc's Build Plan tab under "Morning report".
-4. Post the final report in the chat with the list from `build/review/list.md`, and cancel the scheduled check.
+- Final commit `9864b79`, Windows build https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45757608394 .
+- Review page: https://claude.ai/artifact/EhiZ8zXKSgpu1umUkZ2dd3 (49 pictures with yes-or-no questions).
+- Morning report: in the design doc's Build Plan tab under "Morning report", and in `docs/review/morning-report.md`.
+- The scheduled check is cancelled.
+
+Next, when the owner has answered the questions and said continue: read the answers against `docs/review/review.json` (picture numbers) and `docs/review/shots-plan.json` (shot ids), and plan the next round from the "no" answers, the "What still looks wrong" list on the review page (`build/tour/still-wrong.json`), and what could not be done tonight: a whole second age played by real input; villagers living by the river; the cause of the two Godot crashes during tour runs; the Pave highlight's colour and the page wipe; anything the owner finds on Windows. The local branches `wt/*` and the folders under `build/` (worktrees, clean copies, tour pictures) are not needed any more and are not pushed.
 
 ## Decisions made for you
 

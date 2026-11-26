@@ -1,6 +1,6 @@
-Written by the lead at about {TIME} Amsterdam time on 26 November 2026.
+Written by the lead at about 05:55 Amsterdam time on 26 November 2026.
 
-**Start here:** the review page with {SHOTS} numbered screenshots, each with a yes-or-no question: {REVIEW}. The newest Windows build: {RUN} (commit `{COMMIT}`). The night's log, round by round: `docs/incremental-log.md` in the repository.
+**Start here:** the review page with 49 numbered screenshots, each with a yes-or-no question: [Tide & Toll Night Review](https://claude.ai/artifact/EhiZ8zXKSgpu1umUkZ2dd3). The newest Windows build: [GitHub run 45757608394](https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45757608394), artifact `TideToll-windows-x64` (commit `9864b79`). The night's log, round by round: `docs/incremental-log.md` in the repository.
 
 #### What exists now
 
