@@ -115,6 +115,7 @@ public partial class TownHud
         _home.Visible = show;
         if (!show) return;
         _home.ResetSize();
-        _home.Position = new Vector2((_built.X - _home.Size.X) / 2f, _built.Y - _home.Size.Y - UiKit.Px(_s, 16));
+        // Last pass: on whole pixels (a half-pixel x lost the 1 px left border, a01).
+        _home.Position = new Vector2(MathF.Round((_built.X - _home.Size.X) / 2f), MathF.Round(_built.Y - _home.Size.Y - UiKit.Px(_s, 16)));
     }
 }

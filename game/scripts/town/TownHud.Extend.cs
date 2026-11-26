@@ -179,7 +179,30 @@ public partial class TownHud
         float x = Math.Max(_pointer.X + UiKit.Px(_s, 24), target.End.X + gap);
         if (x + sz.X > _built.X - UiKit.Px(_s, 8)) x = Math.Min(_pointer.X - UiKit.Px(_s, 24), target.Position.X - gap) - sz.X;
         float y = Math.Clamp(_pointer.Y - sz.Y / 2f, UiKit.Px(_s, 8), _built.Y - sz.Y - UiKit.Px(_s, 8));
+        // Last pass: the tip still sat on villagers (b04, d03). Level with the pointer when clear of them, else just
+        // above or below the target, whichever covers nobody (allocation-free: a few rects tested against the walkers).
+        float lo = UiKit.Px(_s, 8), hi = _built.Y - sz.Y - UiKit.Px(_s, 8);
+        float up = Math.Clamp(target.Position.Y - gap - sz.Y, lo, hi), down = Math.Clamp(target.End.Y + gap, lo, hi);
+        if (CoversVillager(new Rect2(x, y, sz)))
+        {
+            if (!CoversVillager(new Rect2(x, up, sz))) y = up;
+            else if (!CoversVillager(new Rect2(x, down, sz))) y = down;
+        }
         return new Vector2(x, y);
+    }
+
+    /// <summary>Whether a screen rect lies over any villager (with a small margin for the figure's height).</summary>
+    private bool CoversVillager(Rect2 r)
+    {
+        var t = _drv.Town;
+        float C = TownGround.Cell, m = UiKit.Px(_s, 10);
+        r = r.Grow(m);
+        for (int i = 0; i < t.VillagerCount; i++)
+        {
+            var v = t.Villager(i);
+            if (r.HasPoint(_main.Rig.LocalToScreen(new Vector3((float)v.X * C, 1f, (float)v.Y * C)))) return true;
+        }
+        return false;
     }
 
     /// <summary>The price tip's screen rect (tests: clear of the hovered cottage).</summary>

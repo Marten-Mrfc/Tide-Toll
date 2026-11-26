@@ -65,7 +65,7 @@ uniform vec4 cobble_stone : source_color = vec4(0.537, 0.522, 0.494, 1.0); // #8
 uniform vec4 cobble_joint : source_color = vec4(0.302, 0.278, 0.247, 1.0); // #4D473F
 uniform float crowd_on = 0.0;        // any crowded road (the town game)
 uniform sampler2D crowd_tex : filter_linear, repeat_disable;               // R8 128x128: how far over its comfort a road is, 0..1
-uniform vec4 crowd_col : source_color = vec4(0.800, 0.243, 0.133, 1.0);    // round 6 (W8): a strong brick red, never the pave mode's blue
+uniform vec4 crowd_col : source_color = vec4(0.690, 0.400, 0.290, 1.0);    // last pass: a muted warm brick, never the pave mode's blue
 uniform vec3 shadow_tint = vec3(0.70, 0.74, 0.86);
 uniform float bank_px = 1.6;         // ink bank line width in screen pixels
 
@@ -232,7 +232,8 @@ void fragment() {
 	// Crowding: a road over its comfort takes a warm wash, stronger the more crowded, only on the road itself.
 	if (crowd_on > 0.0) {
 		float cr = texture(crowd_tex, m / map_size).r * smoothstep(0.15, 0.35, core);
-		c = mix(c, crowd_col.rgb, clamp(cr * 1.8, 0.0, 1.0) * 0.8);
+		// Last pass: a soft wash (about a third of round 6's 0.8) that leaves trail, earth, gravel and cobbles readable.
+		c = mix(c, c * crowd_col.rgb * 1.6, clamp(cr * 1.8, 0.0, 1.0) * 0.28);
 	}
 
 	// river: signed distance to the bank from the per-row centre line

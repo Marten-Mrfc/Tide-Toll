@@ -84,6 +84,9 @@ public partial class Tour
         if (v >= 0) { var vv = T.Villager(v); await Look(vv.X, vv.Y, 16f); }
         await Settle(1200);
         await Calm();
+        // Last pass: b02 showed the level 4 choice card. Only once both are bought, with no choice card or banner up.
+        await ClearCards();
+        if (T.PaceLevel < 1 || T.LoadLevel < 1) Wrong("b02-pace-and-load", $"Pace {T.PaceLevel}, Load {T.LoadLevel}: not both bought.");
         await Shot("b02-pace-and-load");
 
         int field = -1;
@@ -94,6 +97,9 @@ public partial class Tour
             await LookPlot(field, 46f);
             await Settle(2500);
             await Calm();
+            // Last pass: c03 showed an empty field under the choice card: no card or banner, and someone carrying Grain.
+            await ClearCards();
+            await WaitFor(() => Carrier(T, Good.Grain) >= 0, 20000);
             await Shot("c03-field");
         }
         else NotMade("c03-field", "no field or nobody carrying Grain within three minutes of level 3");
@@ -134,6 +140,14 @@ public partial class Tour
         await Settle(800);
         await Calm();
         await Shot("c02-staked-plots");
+    }
+
+    /// <summary>Last pass: no choice card and no banner over the picture (a boon is picked first when a choice is open).</summary>
+    private async Task ClearCards(int maxMs = 15000)
+    {
+        if (T.ChoiceOpen) T.ChooseSide(0);
+        await WaitFor(() => !T.ChoiceOpen && !Main.Hud.ChoiceCardVisible && Main.Hud.BannerText == "", maxMs);
+        await Calm(maxMs);
     }
 
     private async Task BuyByMark(ShopItemKind kind, double maxMinutes)
