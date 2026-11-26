@@ -22,14 +22,17 @@ public partial class TownVillagers : Node3D
     public float WalkerScale = 1f;
 
     private TownDriver _drv = null!;
-    private MultiMeshInstance3D _bodies = null!, _heads = null!, _shadows = null!;
-    /// <summary>Light clothes colours, chosen by villager id.</summary>
-    public static readonly Color[] Clothes =
-    {
-        // Round 3: stronger, so six villagers read as six people (still soft enough for the paper look).
-        Color.FromHtml("#B8433A"), Color.FromHtml("#3F78B5"), Color.FromHtml("#D9A21E"),
-        Color.FromHtml("#4E8F4A"), Color.FromHtml("#8A5AA8"), Color.FromHtml("#E8E0CC"),
-    };
+    private MultiMeshInstance3D _bodies = null!, _heads = null!, _shadows = null!, _frames = null!, _carts = null!;
+    private readonly MultiMeshInstance3D?[] _headKinds = new MultiMeshInstance3D?[3];
+    private readonly int[] _headCount = new int[3];
+    /// <summary>Night 3: the five tunic colours of the style sheet (section 2), chosen per villager by <see cref="TunicOf"/>.</summary>
+    public static readonly Color[] Clothes = { Palette.Brick, Palette.River, Palette.CastIronGreen, Palette.Thatch, Palette.SootBrick };
+    /// <summary>The three heads: hair, a pale hood, a straw hat (villager.glb's head, then the two head files).</summary>
+    public static readonly string[] HeadModels = { "villager", "villager-head-hood", "villager-head-hat" };
+    /// <summary>A villager's head (0 hair, 1 hood, 2 hat) and tunic colour, from its index: the same town always looks the same.</summary>
+    public static int HeadOf(int i) => i % 3;
+    public static Color TunicOf(int i) => Clothes[(i + i / 3) % Clothes.Length];
+    private readonly float[] _lean = new float[Capacity];
     /// <summary>The model's height in metres (before <see cref="WalkerScale"/>), for tests.</summary>
     public float ModelHeight { get; private set; } = 2.6f;
     private readonly MultiMeshInstance3D[] _loads = new MultiMeshInstance3D[6];
@@ -68,22 +71,23 @@ public partial class TownVillagers : Node3D
         _bodies = ModelLib.Multi("villager", "Bodies", Capacity);
         if (parts)
         {
-            var body = ModelLib.Part("villager", "body");
-            var src = ModelLib.Mesh("villager").SurfaceGetMaterial(0) as StandardMaterial3D;
-            var dyed = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/villager.gdshader") };
-            if (src?.AlbedoTexture is { } palette) dyed.SetShaderParameter("palette", palette);
-            body.SurfaceSetMaterial(0, dyed);
+            var body = DyedBody();
             _bodies.Multimesh.InstanceCount = 0;
             _bodies.Multimesh.UseColors = true;
             _bodies.Multimesh.Mesh = body;
             _bodies.Multimesh.InstanceCount = Capacity;
-            for (int i = 0; i < Capacity; i++) _bodies.Multimesh.SetInstanceColor(i, Clothes[i % Clothes.Length]);
-            _heads = new MultiMeshInstance3D
+            for (int i = 0; i < Capacity; i++) _bodies.Multimesh.SetInstanceColor(i, TunicOf(i));
+            for (int h = 0; h < 3; h++)
             {
-                Name = "Heads",
-                Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = SoftInk(ModelLib.Part("villager", "head")) },
-            };
-            AddChild(_heads);
+                string hm = ModelLib.Has(HeadModels[h]) && ModelLib.HasPart(HeadModels[h], "head") ? HeadModels[h] : "villager";
+                _headKinds[h] = new MultiMeshInstance3D
+                {
+                    Name = h == 0 ? "Heads" : "Heads" + h,
+                    Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = SoftInk(ModelLib.Part(hm, "head")) },
+                };
+                AddChild(_headKinds[h]);
+            }
+            _heads = _headKinds[0]!;
         }
         ModelHeight = Math.Max(0.5f, ModelLib.Mesh("villager").GetAabb().End.Y);
         AddChild(_bodies);
@@ -99,10 +103,52 @@ public partial class TownVillagers : Node3D
             _loads[g] = ModelLib.Multi(LoadModel((Good)g), "Load" + (Good)g, Capacity * 2);
             AddChild(_loads[g]);
         }
+        _frames = ModelLib.Multi(ModelLib.Pick("villager-packframe", "villager-cargo-timber"), "PackFrames", Capacity);
+        _carts = ModelLib.Multi(ModelLib.Pick("villager-handcart", "villager-cargo-timber"), "Handcarts", Capacity);
+        AddChild(_frames);
+        AddChild(_carts);
         drv.Replaced += Reset;
     }
 
     public override void _ExitTree() { if (_drv != null) _drv.Replaced -= Reset; }
+
+    private static ArrayMesh? _dyedBody;
+    /// <summary>The body with the tunic shader (the tunic faces take the instance colour).</summary>
+    public static ArrayMesh DyedBody()
+    {
+        if (_dyedBody != null) return _dyedBody;
+        var body = (ArrayMesh)ModelLib.Part("villager", "body").Duplicate();
+        var src = ModelLib.Mesh("villager").SurfaceGetMaterial(0) as StandardMaterial3D;
+        var dyed = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/villager.gdshader") };
+        if (src?.AlbedoTexture is { } palette) dyed.SetShaderParameter("palette", palette);
+        body.SurfaceSetMaterial(0, dyed);
+        return _dyedBody = body;
+    }
+
+    /// <summary>
+    /// One villager as the game draws villager <paramref name="index"/> (tunic, head), carrying good g at a Load level,
+    /// leaning as a walker (lean 1) or standing (0): for the asset audit's pictures.
+    /// </summary>
+    public static Node3D Figure(int index, float scale, Good g = Good.None, int level = 0, float lean = 0f, string? load = null)
+    {
+        var n = new Node3D { Name = "Figure" };
+        var xf = new Transform3D((new Basis(Vector3.Right, 0.13f * lean)).Scaled(Vector3.One * scale), Vector3.Zero);
+        var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseColors = true, Mesh = DyedBody(), InstanceCount = 1 };
+        mm.SetInstanceTransform(0, xf);
+        mm.SetInstanceColor(0, TunicOf(index));
+        n.AddChild(new MultiMeshInstance3D { Name = "Body", Multimesh = mm });
+        string hm = HeadModels[HeadOf(index)];
+        if (!ModelLib.Has(hm)) hm = "villager";
+        n.AddChild(new MeshInstance3D { Name = "Head", Mesh = ModelLib.Part(hm, "head"), Transform = xf });
+        if (g == Good.None && load == null) return n;
+        string lm = load ?? LoadModel(g);
+        for (int k = 0; k < BundlesAt(level); k++)
+            if (!(level >= 3 && g == Good.Water && k > 0))
+                n.AddChild(new MeshInstance3D { Name = "Load" + k, Mesh = ModelLib.Mesh(lm), Transform = xf * LoadPlace(g, level, k) });
+        if (FrameAt(level)) n.AddChild(new MeshInstance3D { Name = "Frame", Mesh = ModelLib.Mesh(ModelLib.Pick("villager-packframe", "villager-cargo-grain")), Transform = xf });
+        if (CartAt(level)) n.AddChild(new MeshInstance3D { Name = "Cart", Mesh = ModelLib.Mesh(ModelLib.Pick("villager-handcart", "villager-cargo-grain")), Transform = xf });
+        return n;
+    }
 
     public void Reset() { Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); }
 
@@ -116,6 +162,9 @@ public partial class TownVillagers : Node3D
         float limit = (float)(TownRules.BaseSpeed * 4.0 * Math.Max(1, _drv.Speed)) * dt;
         float turn = 10f * dt * (float)Math.Max(1, Math.Min(_drv.Speed, 8));
         Array.Clear(_loadCount);
+        Array.Clear(_headCount);
+        int frames = 0, carts = 0, lv = t.LoadLevel;
+        int bundles = BundlesAt(lv);
         var bodies = _bodies.Multimesh;
         for (int i = 0; i < n; i++)
         {
@@ -135,39 +184,40 @@ public partial class TownVillagers : Node3D
             if (moving) _phase[i] += dt * 9f;
             float bob = moving ? MathF.Abs(MathF.Sin(_phase[i])) * 0.12f * WalkerScale : 0f;
             _px[i] = bob;
+            // Night 3: a walker leans into its step; standing, it straightens up (eased, so nothing snaps).
+            _lean[i] += ((moving ? 1f : 0f) - _lean[i]) * Math.Min(1f, dt * 6f);
         }
         Spread(t, n, dt);
         for (int i = 0; i < n; i++)
         {
             var v = t.Villager(i);
             float bob = _px[i];
-            var basis = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale);
+            // Lean forward and a small sway from side to side with the step, about the feet.
+            float sway = MathF.Sin(_phase[i]) * 0.07f * _lean[i];
+            var basis = new Basis(Vector3.Up, _yaw[i]) * new Basis(Vector3.Right, 0.13f * _lean[i]) * new Basis(Vector3.Back, sway);
+            basis = basis.Scaled(Vector3.One * WalkerScale);
             var pos = new Vector3((_x[i] + _ox[i]) * Cell, bob, (_y[i] + _oy[i]) * Cell);
             var xf = new Transform3D(basis, pos);
             bodies.SetInstanceTransform(i, xf);
-            _heads?.Multimesh.SetInstanceTransform(i, xf);
+            int hk = HeadOf(i);
+            if (_headKinds[hk] != null) _headKinds[hk]!.Multimesh.SetInstanceTransform(_headCount[hk]++, xf);
             _shadows.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * WalkerScale * (1f - bob * 0.6f)), new Vector3(pos.X, 0.04f, pos.Z)));
             if (v.Carry != Good.None && (int)v.Carry < 6)
             {
+                // Night 3: loads are modelled in the body's frame (held in the arms, on the shoulder, a yoke on the
+                // shoulders); each Load step shows: a second load on the back, a pack frame, a handcart.
                 int g = (int)v.Carry;
-                // Round 3: loads bigger, so Water, Grain and Flour read at the normal view.
-                float lift = v.Carry == Good.Water ? 2.05f : 2.7f;
-                // Round 6 (W6): each Load step shows: a fuller load, then a second bundle, then a handcart-sized pack.
-                int lv = t.LoadLevel;
-                float ls = LoadScale(lv);
-                var lb = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale * ls * (v.Carry == Good.Water ? 1.45f : 1.7f));
-                var top = pos + new Vector3(0, (lift + (ls - 1f) * 0.6f) * WalkerScale, 0);
-                _loads[g].Multimesh.SetInstanceTransform(_loadCount[g]++, new Transform3D(lb, top));
-                if (lv >= 2)
-                {
-                    // The second bundle rides behind and lower, on the back.
-                    float bx = -MathF.Sin(_yaw[i]) * 0.75f * WalkerScale, bz = -MathF.Cos(_yaw[i]) * 0.75f * WalkerScale;
-                    _loads[g].Multimesh.SetInstanceTransform(_loadCount[g]++, new Transform3D(lb.Scaled(Vector3.One * 0.85f), pos + new Vector3(bx, (lift - 0.7f) * WalkerScale, bz)));
-                }
+                for (int k = 0; k < bundles; k++)
+                    if (!(lv >= 3 && v.Carry == Good.Water && k > 0))   // one set of pails fills the cart
+                        _loads[g].Multimesh.SetInstanceTransform(_loadCount[g]++, xf * LoadPlace(v.Carry, lv, k));
+                if (lv == 2) _frames.Multimesh.SetInstanceTransform(frames++, xf);
+                if (lv >= 3) _carts.Multimesh.SetInstanceTransform(carts++, xf);
             }
         }
         bodies.VisibleInstanceCount = n;
-        if (_heads != null) _heads.Multimesh.VisibleInstanceCount = n;
+        for (int h = 0; h < 3; h++) if (_headKinds[h] != null) _headKinds[h]!.Multimesh.VisibleInstanceCount = _headCount[h];
+        _frames.Multimesh.VisibleInstanceCount = frames;
+        _carts.Multimesh.VisibleInstanceCount = carts;
         _shadows.Multimesh.VisibleInstanceCount = n;
         int loads = 0;
         for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
@@ -177,10 +227,34 @@ public partial class TownVillagers : Node3D
         MaxSideways = maxSide;
     }
 
-    /// <summary>Round 6 (W6): the drawn size of a carried load at a Load level (0 none bought, 1 basket, 2 yoke, 3 handcart).</summary>
+    /// <summary>Round 6 (W6): how much a carried load holds at a Load level (0 none bought, 1 two loads, 2 pack frame, 3 handcart).</summary>
     public static float LoadScale(int level) => level <= 0 ? 1f : level == 1 ? 1.25f : level == 2 ? 1.4f : 1.75f;
-    /// <summary>Loads drawn per carrying villager at a Load level (a second bundle from level 2).</summary>
-    public static int BundlesAt(int level) => level >= 2 ? 2 : 1;
+    /// <summary>Loads drawn per carrying villager at a Load level: one in the arms, then two (on the back, on the frame, in the cart).</summary>
+    public static int BundlesAt(int level) => level >= 1 ? 2 : 1;
+    /// <summary>Whether a Load level shows the pack frame (step 3) or the handcart (step 4).</summary>
+    public static bool FrameAt(int level) => level == 2;
+    public static bool CartAt(int level) => level >= 3;
+
+    private static readonly Basis Turned = new(Vector3.Up, MathF.PI);
+    /// <summary>
+    /// Night 3: where load k of a carrying villager sits, in the body's frame (the load models are built in it: a load
+    /// in the arms, the log on the right shoulder, the yoke on the shoulders). Level 0: one load. Level 1: a second one
+    /// turned onto the back. Level 2: the second one up on the pack frame's shelf. Level 3: both in the handcart.
+    /// </summary>
+    public static Transform3D LoadPlace(Good g, int level, int k)
+    {
+        if (level >= 3)
+        {
+            if (g == Good.Water)   // the pails stood in the cart along its length, the yoke laid over them
+                return new Transform3D(new Basis(Vector3.Up, MathF.PI / 2f).Scaled(Vector3.One * 0.62f), new Vector3(0, 0.3f, 1.62f));
+            return new Transform3D(Basis.Identity, new Vector3(k == 0 ? -0.25f : 0.25f, -0.14f, k == 0 ? 0.95f : 1.35f));
+        }
+        if (k == 0) return Transform3D.Identity;
+        if (level == 2) return new Transform3D(Turned, new Vector3(0, 0.42f, -0.18f));
+        if (g == Good.Water) return new Transform3D(new Basis(Vector3.Up, MathF.PI / 2f).Scaled(Vector3.One * 0.7f), new Vector3(0, 0.55f, -0.2f));
+        // The second load on the back, low and a little to the side so the hat brim does not hide it.
+        return new Transform3D(Turned, new Vector3(0.12f, -0.03f, -0.05f));
+    }
 
     /// <summary>
     /// Round 6 (W3): people never drawn through each other. Pairs of villagers closer than the personal spacing are

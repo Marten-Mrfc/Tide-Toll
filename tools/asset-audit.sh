@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # The asset audit: a picture of every asset as the player sees it and close up, an index, and contact sheets.
-#   tools/asset-audit.sh [--only=name,name] [--out=DIR] [--no-build] [--skip=models,flat,sounds,sheets]
+#   tools/asset-audit.sh [--only=name,name] [--out=DIR] [--jpeg=DIR2] [--no-build] [--skip=models,flat,sounds,sheets]
 #     DIR defaults to build/n3/assets-audit/before (in the main checkout when run from a worktree under build/wt).
+#     --jpeg=DIR2 also copies every -normal and -close picture there as JPEG quality 85 (the review page's copies,
+#     for the first run docs/review/n3/before/assets in the main checkout).
 # Models (every assets/models/*.glb, plus villagers with each cargo and Load step) are pictured inside the running
-# game (game/tests/asset-audit.tscn, AssetAudit.cs) under xvfb with the Mobile renderer, as tools/tour.sh does:
+# game (game/tests/asset-audit.tscn, AssetAudit.cs) under xvfb with the Mobile renderer, as tools/tour.sh does;
+# then what the game builds in code, where it stands in a town played by the bot (AssetAudit.Town.cs: roads, plots,
+# river at high and low water, landing, crossings, the book). About 8 minutes in all.
 #   <name>-normal.png  640 x 480, play zoom and tilt, on the game's ground, sun and ink, one villager beside it
 #   <name>-close.png   640 x 480, filling the picture, three-quarter view at the game's tilt
 # Textures and icons (tools/asset-audit/flat.py): <name>.png on Paper at real size and enlarged.
@@ -17,14 +21,15 @@ cd "$ROOT"
 GODOT=${GODOT:-godot}
 MAIN=$ROOT; case "$ROOT" in */build/wt/*) MAIN=${ROOT%%/build/wt/*} ;; esac
 OUT="$MAIN/build/n3/assets-audit/before"
-ONLY=""; BUILD=1; SKIP=""
+ONLY=""; BUILD=1; SKIP=""; JPEG=""
 for a in "$@"; do
   case "$a" in
     --only=*) ONLY="$a" ;;
     --out=*) OUT=$(realpath -m "${a#--out=}") ;;
     --no-build) BUILD=0 ;;
+    --jpeg=*) JPEG=$(realpath -m "${a#--jpeg=}") ;;
     --skip=*) SKIP="${a#--skip=}" ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) echo "unknown option $a"; exit 2 ;;
   esac
 done
@@ -61,6 +66,6 @@ EOF
 fi
 skip flat || python3 tools/asset-audit/flat.py "$OUT" || echo "audit: flat pictures failed"
 skip sounds || python3 tools/asset-audit/sounds.py "$OUT" || echo "audit: sound pictures failed"
-skip sheets || python3 tools/asset-audit/index.py "$OUT" || { echo "AUDIT FAIL: index"; exit 1; }
+skip sheets || python3 tools/asset-audit/index.py "$OUT" ${JPEG:+--jpeg="$JPEG"} || { echo "AUDIT FAIL: index"; exit 1; }
 echo "audit: $OUT"
 }

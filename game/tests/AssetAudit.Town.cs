@@ -54,13 +54,20 @@ public partial class AssetAudit
         var bot = new TownBot(BotKind.Payback, 1);
         // Three stops in the first age (early, middle, the charter), so each road surface and cottage size is seen
         // somewhere; what one stop has pictured is not taken again.
-        foreach (int level in new[] { 5, 9, 99 })
+        foreach (int level in new[] { 5, 8, 9, 99 })
         {
             Main.Driver.RunBot(bot, t => t.Level >= level || t.CanRingNextAge, 300 * 60 * TownRules.TickHz);
             await Frames(60); // roads drawn in, buildings popped in
             await Unblock();
             Notes.Add($"stop level={T.Level}");
             await FirstAgeShots();
+            // Night 3: the town as played at this stop (level 8, the charter), centred on the first cottage.
+            string view = T.CanRingNextAge || T.HasCharter ? "town-view-charter" : $"town-view-level-{T.Level}";
+            if (_taken.Add(view))
+            {
+                var c1 = T.Plan.Plots[0];
+                await ShootAt(view, "game/scripts/town (the whole first-age town)", Cells(c1.X + 6, c1.Y + 6), 26f, 1f, _play * 1.4f);
+            }
         }
         bot.PlayOn = true; // the bot rings in the second age itself
         Main.Driver.RunBot(bot, t => t.HasSeal, 600 * 60 * TownRules.TickHz);

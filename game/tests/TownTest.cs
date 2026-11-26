@@ -317,9 +317,11 @@ public partial class TownTest : TownTestBase
         Check(T.Purchases == purchases + 1, "extending is a purchase");
         Check(!Main.Hud.ExtendMode, "Extend mode ends after an extension");
         await Until(() => Main.Buildings.DrawnExtensions(p) == 1, 30, "the extended cottage drawn bigger");
-        // Round 4 (A17): the extension shows as a lean-to with its own gable beside the house.
-        var lean = Main.Buildings.FindChild($"Plot{p}", true, false)?.FindChild("LeanTo", true, false) as Node3D;
-        Check(lean != null && lean.IsVisibleInTree(), "the extended cottage has no lean-to");
+        // Night 3 (replaces round 4's lean-to check): every size is its own model; the extended cottage is drawn with
+        // the once-extended model of its variant, whose footprint is larger than the plain one's.
+        string drawn = Main.Buildings.DrawnModel(p), plain = drawn.Length > 0 ? drawn[..^1] + "0" : "";
+        var da = ModelLib.Mesh(drawn).GetAabb(); var pa = ModelLib.Has(plain) ? ModelLib.Mesh(plain).GetAabb() : da;
+        Check(drawn.EndsWith("1") && da.Size.X * da.Size.Z > 1.2f * pa.Size.X * pa.Size.Z, $"the extended cottage is drawn with its own larger model ({drawn})");
         _kinds[ShopItemKind.Extend] = Got(ShopItemKind.Extend) + 1;
         _bought++;
         Main.Rig.UserMoved = false;

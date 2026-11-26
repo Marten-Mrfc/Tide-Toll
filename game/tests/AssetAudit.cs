@@ -96,14 +96,40 @@ public partial class AssetAudit : TownTestBase
         for (int e = 1; e <= 2; e++)
         {
             int ext = e;
-            float wide = ext > 1 ? 1.8f : 1.5f;
-            list.Add(new Subject($"cottage-extension-{ext}", "code: game/scripts/town/TownBuildings.cs (cottage-0" + (1 + ext) + ".glb widened)", () =>
+            list.Add(new Subject($"cottage-extension-{ext}", "code: game/scripts/town/TownBuildings.Cottages.cs (cottage-a" + ext + ".glb as the game places it)", () =>
             {
-                var n = Model($"cottage-0{1 + ext}", 1f);
-                ((Node3D)n.GetChild(0)).Scale = new Vector3(wide, 1, 1);
+                var n = new Node3D { Name = "Subject" };
+                n.AddChild(TownBuildings.CottageNode(0, ext, 6f, 6f));
                 return n;
             }, true));
         }
+        // Night 3: the nine cottages as the game places them (rows: plain, once, twice; columns: variants a, b, c).
+        list.Add(new Subject("cottages-all", "code: game/scripts/town/TownBuildings.Cottages.cs (cottage-{a,b,c}{0,1,2}.glb)", () =>
+        {
+            var n = new Node3D { Name = "Subject" };
+            for (int e = 0; e < 3; e++)
+                for (int v = 0; v < 3; v++)
+                {
+                    var c = TownBuildings.CottageNode(v, e, 6f, 6f);
+                    c.Position = new Vector3((v - 1) * 7f, 0, (e - 1) * 7f);
+                    n.AddChild(c);
+                }
+            return n;
+        }, true));
+        // Night 3: a street: five cottages of mixed variants and sizes in a row, a villager carrying each good walking past.
+        list.Add(new Subject("street", "code: TownBuildings.Cottages.cs + TownVillagers.cs", () => Street(walker), false));
+        list.Add(new Subject("villagers-group", "code: game/scripts/town/TownVillagers.cs (heads and tunics by index)", () =>
+        {
+            var n = new Node3D { Name = "Subject" };
+            for (int i = 0; i < 6; i++)
+            {
+                var f = TownVillagers.Figure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, i % 2);
+                f.Position = new Vector3((i % 3 - 1) * 1.6f * walker, 0, (i / 3) * 1.8f * walker);
+                f.Rotation = new Vector3(0, 0.4f * (i - 2), 0);
+                n.AddChild(f);
+            }
+            return n;
+        }, false));
         list.Add(new Subject("trees-group", "code: game/scripts/town/TownTrees.cs (tree-oak, tree-poplar, tree-willow)", TreeGroup, true));
         return list;
     }
@@ -129,17 +155,33 @@ public partial class AssetAudit : TownTestBase
         return n;
     }
 
-    /// <summary>A walker with a load, placed as TownVillagers places it (yaw 0: facing +Z).</summary>
+    /// <summary>A walker with a load, built as TownVillagers draws it (yaw 0: facing +Z).</summary>
     private static Node3D Carrier(Good g, int lv, float w)
     {
-        var n = Model("villager", w);
-        float lift = g == Good.Water ? 2.05f : 2.7f;
-        float ls = TownVillagers.LoadScale(lv);
-        var lb = Basis.Identity.Scaled(Vector3.One * w * ls * (g == Good.Water ? 1.45f : 1.7f));
-        string model = TownVillagers.LoadModel(g);
-        n.AddChild(new MeshInstance3D { Mesh = ModelLib.Mesh(model), Transform = new Transform3D(lb, new Vector3(0, (lift + (ls - 1f) * 0.6f) * w, 0)) });
-        if (lv >= 2)
-            n.AddChild(new MeshInstance3D { Mesh = ModelLib.Mesh(model), Transform = new Transform3D(lb.Scaled(Vector3.One * 0.85f), new Vector3(0, (lift - 0.7f) * w, -0.75f * w)) });
+        var n = new Node3D { Name = "Subject" };
+        n.AddChild(TownVillagers.Figure((int)g, w, g, lv, 1f));
+        return n;
+    }
+
+    /// <summary>Five cottages of mixed variants and sizes side by side, doors to the lane (+Z), carriers walking past.</summary>
+    private static Node3D Street(float w)
+    {
+        var n = new Node3D { Name = "Subject" };
+        int[] ext = { 0, 2, 1, 0, 2 };
+        for (int k = 0; k < 5; k++)
+        {
+            var c = TownBuildings.CottageNode(k, ext[k], 6f, 6f);
+            c.Position = new Vector3((k - 2) * 6.2f, 0, 0);
+            n.AddChild(c);
+        }
+        Good[] goods = { Good.Water, Good.Grain, Good.Flour, Good.Wool, Good.Cloth, Good.Grain };
+        for (int i = 0; i < goods.Length; i++)
+        {
+            var f = TownVillagers.Figure(i, w, goods[i], 0, 1f, i == 5 ? ModelLib.Pick("villager-cargo-timber", "villager-cargo-grain") : null);
+            f.Position = new Vector3((i - 2.5f) * 4.6f, 0, 4.6f);
+            f.Rotation = new Vector3(0, MathF.PI / 2f, 0);
+            n.AddChild(f);
+        }
         return n;
     }
 
@@ -148,7 +190,10 @@ public partial class AssetAudit : TownTestBase
         Aabb? box = null;
         foreach (var mi in All(root))
         {
-            var b = mi.Transform * mi.Mesh.GetAabb();
+            // Night 3: the mesh's transform relative to the subject (nested nodes, such as a cottage's scale and shift).
+            var xf = mi.Transform;
+            for (var q = mi.GetParent() as Node3D; q != null && q != root; q = q.GetParent() as Node3D) xf = q.Transform * xf;
+            var b = xf * mi.Mesh.GetAabb();
             box = box == null ? b : box.Value.Merge(b);
         }
         return box ?? new Aabb(Vector3.Zero, Vector3.One);
@@ -199,7 +244,9 @@ public partial class AssetAudit : TownTestBase
         // Normal: yaw 0, the play zoom.
         Main.Rig.Yaw.Rotation = Vector3.Zero;
         var c = box.GetCenter();
-        Main.Rig.Place(Centre(at + new Vector3(c.X, 0, c.Z), c.Y, playSize, 0f), playSize);
+        // The street is wider than the play view: drawn 20 percent further out so its five cottages show whole.
+        float normal = s.Name == "street" ? playSize * 1.2f : playSize;
+        Main.Rig.Place(Centre(at + new Vector3(c.X, 0, c.Z), c.Y, normal, 0f), normal);
         await Snap(s.Name + "-normal");
 
         // Close: three-quarter view filling the picture.
