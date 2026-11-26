@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The asset audit: a picture of every asset as the player sees it and close up, an index, and contact sheets.
 #   tools/asset-audit.sh [--only=name,name] [--out=DIR] [--no-build] [--skip=models,flat,sounds,sheets]
+#     --no-town skips the town pass (the bot's run to the seal): model pictures only, about a minute.
 #     DIR defaults to build/n3/assets-audit/before (in the main checkout when run from a worktree under build/wt).
 # Models (every assets/models/*.glb, plus villagers with each cargo and Load step) are pictured inside the running
 # game (game/tests/asset-audit.tscn, AssetAudit.cs) under xvfb with the Mobile renderer, as tools/tour.sh does:
@@ -17,12 +18,13 @@ cd "$ROOT"
 GODOT=${GODOT:-godot}
 MAIN=$ROOT; case "$ROOT" in */build/wt/*) MAIN=${ROOT%%/build/wt/*} ;; esac
 OUT="$MAIN/build/n3/assets-audit/before"
-ONLY=""; BUILD=1; SKIP=""
+ONLY=""; BUILD=1; SKIP=""; NOTOWN=0
 for a in "$@"; do
   case "$a" in
     --only=*) ONLY="$a" ;;
     --out=*) OUT=$(realpath -m "${a#--out=}") ;;
     --no-build) BUILD=0 ;;
+    --no-town) NOTOWN=1 ;;
     --skip=*) SKIP="${a#--skip=}" ;;
     -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
     *) echo "unknown option $a"; exit 2 ;;
@@ -33,10 +35,11 @@ skip() { [[ ",$SKIP," == *",$1,"* ]]; }
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 if ! skip models; then
   tools/sync-assets.sh >/dev/null 2>&1 || true
+  "$GODOT" --headless --path game --import >/dev/null 2>&1 || true   # changed .glb files are re-imported before the pictures
   if [ "$BUILD" = 1 ]; then
     dotnet build game/TideToll.csproj -c Debug >"$OUT/build.log" 2>&1 || { tail -n 30 "$OUT/build.log"; echo "AUDIT FAIL: build"; exit 1; }
   fi
-  args=(--out-dir="$OUT"); [ -n "$ONLY" ] && args+=("$ONLY")
+  args=(--out-dir="$OUT"); [ -n "$ONLY" ] && args+=("$ONLY"); [ "$NOTOWN" = 1 ] && args+=(--no-town)
   for try in 1 2; do
     timeout 2400 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game \
       --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 \

@@ -61,6 +61,10 @@ public partial class AssetAudit
             await Unblock();
             Notes.Add($"stop level={T.Level}");
             await FirstAgeShots();
+            // Night 3: the town at this stop as a whole (the play zoom and a close-in view over the town's middle).
+            var pl = T.Plan;
+            await ShootAt(level == 99 ? "town-view-charter" : $"town-view-level-{level}", "the whole first-age town",
+                Cells(pl.WindowX + pl.WindowW / 2.0, pl.WindowY + pl.WindowH / 2.0), 45f);
         }
         bot.PlayOn = true; // the bot rings in the second age itself
         Main.Driver.RunBot(bot, t => t.HasSeal, 600 * 60 * TownRules.TickHz);

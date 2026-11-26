@@ -5,9 +5,9 @@ using TideToll.Sim.Town;
 namespace TideToll.Game;
 
 /// <summary>
-/// Trees on the meadow round the town, so the page is not bare: oaks and poplars on dry ground, willows near the
+/// Trees on the meadow round the town, so the page is not bare: oaks, poplars, birches and hawthorn bushes on dry ground, willows near the
 /// river, never inside the first age's town window (with a margin) or on water. Placed from the seed by a fixed hash,
-/// so the same town always has the same trees. Three MultiMeshes, built once.
+/// so the same town always has the same trees. Five MultiMeshes, built once.
 /// </summary>
 public static class TownTrees
 {
@@ -16,9 +16,11 @@ public static class TownTrees
         var root = new Node3D { Name = "Trees" };
         var map = plan.Map;
         int n = TownGround.N;
-        string[] models = { "tree-oak", "tree-poplar", "tree-willow" };
-        var xf = new System.Collections.Generic.List<Transform3D>[3];
-        for (int k = 0; k < 3; k++) xf[k] = new();
+        // Night 3: five kinds, so a wood does not repeat; a missing new file falls back to the oak (ModelLib.Pick).
+        string[] models = { "tree-oak", "tree-poplar", "tree-willow", ModelLib.Pick("tree-birch", "tree-oak"), ModelLib.Pick("tree-hawthorn", "tree-oak") };
+        const int K = 5;
+        var xf = new System.Collections.Generic.List<Transform3D>[K];
+        for (int k = 0; k < K; k++) xf[k] = new();
         uint h = (uint)(plan.Seed * 2654435761u + 12345u);
         for (int tries = 0; tries < 2600; tries++)
         {
@@ -32,16 +34,19 @@ public static class TownTrees
             // Clumps: keep a tree only where low-frequency noise says "wood", and keep the river bank open-ish.
             float clump = map.Noise.Length == n * n ? map.Noise[y * n + x] : 0.5f;
             if (clump < 0.45f && fr > 0.12f) continue;
-            int kind = dRiver < 7f ? 2 : fr < 0.35f ? 1 : 0;
+            int kind = dRiver < 7f ? 2 : fr < 0.22f ? 1 : fr < 0.4f ? 3 : fr < 0.56f ? 4 : 0;
             float s = 0.85f + 0.35f * fr;
             var basis = new Basis(Vector3.Up, fr * 6.283f).Scaled(Vector3.One * s);
             xf[kind].Add(new Transform3D(basis, new Vector3((x + fx * 7 % 1) * TownGround.Cell, 0, (y + fy * 5 % 1) * TownGround.Cell)));
-            if (xf[0].Count + xf[1].Count + xf[2].Count >= 260) break;
+            int total = 0;
+            for (int k = 0; k < K; k++) total += xf[k].Count;
+            if (total >= 260) break;
         }
-        for (int k = 0; k < 3; k++)
+        for (int k = 0; k < K; k++)
         {
             if (xf[k].Count == 0) continue;
             var mmi = ModelLib.Multi(models[k], models[k], xf[k].Count);
+            mmi.MaterialOverride = TreeSway.For(mmi.Multimesh.Mesh);
             for (int i = 0; i < xf[k].Count; i++) mmi.Multimesh.SetInstanceTransform(i, xf[k][i]);
             mmi.Multimesh.VisibleInstanceCount = xf[k].Count;
             root.AddChild(mmi);
