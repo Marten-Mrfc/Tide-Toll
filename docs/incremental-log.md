@@ -91,7 +91,7 @@ Stopping
 
 ## Scheduled check
 
-One pending at a time, about every 50 minutes, held outside the container (the one pending now: `trig_01LUN82iq2a8kiW1MQW3tY8t`, due 21:42 UTC; the id changes each time, find it with the scheduled-task list). It says: read this log, resume the round in progress, keep to the clock rules. Cancelled when the night stops.
+One pending at a time, about every 50 minutes, held outside the container (the one pending now: `trig_0124D1azX9vHg9NXxfJu8S7e`, due 22:33 UTC; the id changes each time, find it with the scheduled-task list). It says: read this log, resume the round in progress, keep to the clock rules. Cancelled when the night stops.
 
 ## Plan of the night (clock times in UTC)
 

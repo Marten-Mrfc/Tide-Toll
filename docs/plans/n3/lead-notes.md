@@ -2,6 +2,19 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 21:44 UTC, for asset track P's fixer (you own `TownBuildings.cs`): two changes the other track needs there
+
+Track W reworked the charter stone and the mill but may not edit `game/scripts/town/TownBuildings.cs`. Please make these two changes in it (they are in W's progress file under "For the lead"):
+
+1. **The charter stone:** the code sets `MaterialOverride = PaleStone` on it (and on every surface), so the new model's Brick seal shows pale like the stone. Drop the override: delete the block `if (_charter is GeometryInstance3D cg) { ... }` except its `CastShadow` line. The model's own stone colour is right.
+2. **The mill's sails** turn only while `t.PlotWorking(mill)`. They should always turn slowly and faster while the mill works: in the `if (_sails != null && millWorks)` block use `if (_sails != null) { float rate = millWorks ? 1.2f : 0.25f; _sailAngle = (_sailAngle + dt * rate * (float)Math.Min(_drv.Speed, 4)) % (MathF.PI * 2f); _sails.Rotation = new Vector3(0, 0, _sailAngle); }` (keep whatever test reads the sails working; if a test asserts that the sails stand still when the mill is idle, replace it by the equal test: slower when idle, faster when working, and say so).
+
+Track W's models are not in your checkout: you cannot picture these two; say in your final answer that the lead must look at them after the merge.
+
+## 21:44 UTC, for asset track W's fixer
+
+Your two requests for `TownBuildings.cs` went to track P's fixer (above). Your reviewer's item 5 ("the lead drops the PaleStone override") is therefore handled there; do the rest of item 5 (the stone at 3.4 m).
+
 ## 21:40 UTC, for the L1 picture runner and the L1 fixer: the tour's staging is repaired elsewhere
 
 The seven states the tour missed or staged wrongly (u21 to u24, u32, u34, u35; u37 retired) were repaired and retaken on the unchanged game in another checkout: `/home/user/tide-toll/build/wt/n3-before` (local branch `wt/n3-before`, commit `0828955`). What each wait is now is written at the end of `ui-audit-progress.md` ("Staging repairs (before pictures)"). The changed files there are `game/tests/UiAudit.Book.cs`, `UiAudit.Age2.cs`, `UiAudit.Age1.cs`, `UiAudit.cs` and `tools/ui-audit.sh` (`git -C /home/user/tide-toll/build/wt/n3-before show 0828955` shows the exact change). **Fixer: take these repairs over into the tour in your checkout** (by hand: your copies differ because of the new layout), so that the after pictures show the same states as the before pictures. Also note from that run: by the second age the towns at 1920 x 1080 and at 1280 x 720 differ (the game runs in real time between states), so before and after are compared at the same window size only.
