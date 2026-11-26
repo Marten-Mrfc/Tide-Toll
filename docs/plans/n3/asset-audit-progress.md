@@ -55,4 +55,13 @@ tools/sync-assets.sh                                              # copy into ga
 
 ## State
 
-- 20:06 UTC: tools written; models pass (64 subjects) and flat and sound passes ran and were read; full run with the town pass under way.
+- 20:06 UTC: tools written; models pass (64 subjects) and flat and sound passes ran and were read.
+- 20:20 UTC: town pass added (bot stops at levels 5, 9, the charter, then the seal). Found and fixed: Main's follow view took the camera back whenever UserMoved was reset (all town and book pictures showed the whole map); the close framing cut fields (now uses the turned box); the scale villager hid small things in close-ups (now only in -normal).
+- Findings from the index so far: 15 sounds not named by any cue table or game script (place-01..06, erase-01..06, boat-turn-away-01..03); models over the 500-triangle guide: drawbridge-lift 1188 (landmark limit 1,500), mill 638, barge 594; files not named in game/scripts: fence-gate, field-sprouting, reeds, villager-cargo-timber and 22 icons (tool-*, several ui-*).
+
+## Not pictured (and why)
+
+- "+ hand" markers: an interface label (`TownHud.Choice.cs:252`), not a 3D thing; belongs to the interface audit.
+- Icons drawn in code: the tide dial (`TownHud.River.cs:105`) is drawn with DrawCircle/DrawArc in the interface; not pictured here.
+- Boats loaded and empty as separate pictures: only the landing with whatever boats are moored at that moment (`landing-with-boats`, `landing-low-water`).
+- Plot stakes and touches in place: pictured as model files (`plot-stakes`, `prop-*`) on plain ground, not where the town puts them.

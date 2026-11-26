@@ -26,16 +26,19 @@ ancestor under the CanvasLayer smaller than the window. 3D labels (plot, boat la
 
 ## The states (order of play)
 
-First age: u01 opening, u02 villager affordable (town idles), u04 level 2 banner, u03 shop at rest with an affordable
+First age (each state's "how" in shots.json says exactly what was done and what was on screen): u01 opening, u02 villager affordable (town idles), u04 level 2 banner, u03 shop at rest with an affordable
 and a locked line, u09 bell by Space, u05 request with deliveries + hint, u06 choice open (bot), u07 Extend bookmark +
 pointer on a cottage, u08 Pave bookmark + pointer on a road, u12 an open building offer framed at size 70, u10 level 8
 at rest, u11 a level-up (9..13) with a request running, 1.2 s after, nothing cleared, u13 level 15 at rest, u14 drive
 with deliveries, u15 Tab, u16 charter (+ page if it opens), u17/u18 page and book stage, u19 cover, u20 New town
 question, u21..u24 settings sections, u25 Pave's key -> Space (clash; cancelled).
-Second age (N rings it): u31 page, u30 first minute, u33 shop level 18, u36 Pave mode, u32 ferry + request (skipper
-if one comes), u35 level-up with request, u34 drawbridge + toll, u37 (no seal drive exists: nearest, see shots.json),
+Second age (N rings it; the bot does not pave until u36): u31 page, u30 first minute, u33 shop level 18, u36 Pave
+mode, u32 ferry (or level 22) + request (skipper's if one comes), u35 level-up with request, u34 drawbridge + toll, u37 (no seal drive exists: nearest, see shots.json),
 u38 seal + page, u39 Tab, u40/u41 stages.
 
 ## Status
 
-(updated as I go)
+- 20:04 first whole runs. Fixed: settings pages could not reopen from the cover under load (waits, three tries);
+  second age reordered (u32, u34 were lost to the seal because u36 waited for a pavable road to level 27).
+- 20:22 both runs restarted on the fixed code (1920x1080 on xvfb :91, 1280x720 on :92, at once: own profile per run
+  via --tag).

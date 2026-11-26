@@ -65,9 +65,12 @@ Stopping
 
 - Branch `claude/prototype-1` of `Marten-Mrfc/Tide-Toll`. The night starts from commit `7b1e6b7` (game code as in `b797857`, the build the owner played).
 - The night's documents: `docs/plans/n3/` (`brief.md` is what every agent reads first; `lead-notes.md` is how the lead reaches agents at work; the sheets, the audits, the progress files).
-- Two tracks, two checkouts:
-  - **Interface track** (layout, messages, hints, the book's motion) in the main checkout `/home/user/tide-toll`.
-  - **Asset track** (models, icons, ambient life, small rewards) in the git worktree `build/wt/assets` on the local branch `wt/assets` (never pushed; merged into `claude/prototype-1` after each of its rounds). If the worktree is lost: `git worktree add -b wt/assets build/wt/assets <last merged commit>`, then in it `tools/sync-assets.sh` and `godot --headless --path game --import`.
+- Builders never work in the main checkout (the lead commits documents there). Checkouts are git worktrees on local branches that are never pushed; the lead merges each into `claude/prototype-1` when its round is finished:
+  - **Interface track** (layout, messages, hints, the book's motion): `build/wt/n3-ui`, branch `wt/n3-ui`.
+  - **Asset track P** (people and dwellings): `build/wt/n3-art1`, branch `wt/n3-art1`. **Asset track W** (work buildings, nature, fields, stones): `build/wt/n3-art2`, branch `wt/n3-art2`. Track P owns `TownBuildings.cs` and `TownVillagers.cs`; track W owns `TownTrees.cs`, `TownTouches.cs`, `TownGround*.cs`.
+  - The asset audit tool was built in `build/wt/assets` (branch `wt/assets`); the two asset checkouts were branched from it.
+  - If a worktree is lost: `git worktree add -b <branch> build/wt/<name> <last merged commit>`, then in it `tools/sync-assets.sh` and `godot --headless --path game --import`.
+- The sheets everything is built to: `docs/plans/n3/layout-sheet.md` (version 2), `message-system.md` (version 2), `style-sheet.md`. They are also in the design doc (UX tab: layout and messages; Art tab: style sheet; Build Plan tab: the night's plan).
 - Before pictures (in git, for the review page): `docs/review/n3/before/ui/` and `docs/review/n3/before/assets/`. Working pictures (not in git): `build/n3/`.
 - Picture tools made tonight: `tools/ui-audit.sh` (every screen state, any window size and interface size, with the rectangles of everything on screen) and `tools/asset-audit.sh` (every asset at the normal view and close up).
 - Workflow scripts, copied for resuming: `build/wf/n3-*.js` (not in git). Workflows run two agents at a time each; two workflows may run side by side.
@@ -108,7 +111,9 @@ One pending at a time, about every 50 minutes, held outside the container (the o
 | --- | --- | --- | --- | --- | --- |
 | A1 | Interface audit: `tools/ui-audit.sh` and its pictures (Opus), inventories from the code (Sonnet), three reviewers (Sonnet) | `wf_4b7400e5-34c`, script `build/wf/n3-ui-audit.js` | 19:57 | | |
 | A2 | Asset audit in `build/wt/assets`: `tools/asset-audit.sh` and its sheets (Opus), two rankers (Sonnet) | `wf_1cf986ba-a96`, script `build/wf/n3-asset-audit.js` | 19:58 | | |
-| A3 | The layout sheet version 1 (`docs/plans/n3/layout-sheet.md`, the lead), drawn as a mock-up in pictures (Opus, `docs/plans/n3/mockup/`), then criticised by two reviewers (Sonnet, `layout-critique-1.md`, `-2.md`) | `wf_d2d6f9d2-42b`, script `build/wf/n3-layout-mockup.js` | 20:03 | | |
+| A3 | The layout sheet version 1 (`docs/plans/n3/layout-sheet.md`, the lead), drawn as a mock-up in pictures (Opus, `docs/plans/n3/mockup/`), then criticised by two reviewers (Sonnet, `layout-critique-1.md`, `-2.md`) | `wf_d2d6f9d2-42b`, script `build/wf/n3-layout-mockup.js` | 20:03 | 20:15 | DONE. The mock-up found 12 places where the sheet did not fit when drawn; the critics gave 9 and 11 must-change points (the canvas rule was wrong below 1280 x 720; the mock-up invented keys; the price pill hid prices; no lasting place for "Ring in the next age"; tooltips too far from their owners; notes too small; the shop a full-height slab). All taken into version 2 of the sheet (its last section lists them) |
+| L1 | **The layout**, in `build/wt/n3-ui`: builder (Opus) builds to layout sheet version 2 (styles, zones, ledger, shop, timers, navigation, tooltip, the new check step `game-layout`); then a picture tour (Sonnet), two reviewers (Sonnet, `l1-review-1.md`, `-2.md`), a fixer (Opus). Progress: `docs/plans/n3/layout-progress.md` | `wf_c5d9e9da-7c8`, script `build/wf/n3-layout-build.js` | 20:22 | | Deadlines: builder 22:00, pictures 22:45, reviewers 23:05, fixer 23:58 |
+| R1 | **Asset round 1**, two tracks side by side: P in `build/wt/n3-art1` (villagers and loads, cottages in three variants and three real sizes), W in `build/wt/n3-art2` (mill, market stall, trees, fields, charter and seal stones); each: builder (Opus), reviewer (Sonnet, `assets-r1-<p or w>-review.md`), fixer (Opus). Progress: `docs/plans/n3/assets-r1-<p or w>-progress.md` | `wf_abcf23c5-436`, script `build/wf/n3-assets-r1.js` | 20:24 | | Deadlines: builders 21:38, reviewers 21:58, fixers 22:42 |
 
 ## Decisions made for you
 
@@ -117,6 +122,15 @@ One pending at a time, about every 50 minutes, held outside the container (the o
 | 1 | The interface and the assets are worked on at the same time, in two checkouts, and merged after each round | The night is ten hours; the brief asks for a third of it on the layout and a quarter on assets. Their files do not overlap |
 | 2 | Last night's log moved to `docs/incremental-log-night2.md`; this file starts fresh | One file to resume from, short enough to read after a restart |
 | 3 | The before pictures are kept in git as JPEG (`docs/review/n3/before/`) | The review page must show before and after even if the cloud machine is replaced in the night |
+| 4 | The left side of the screen becomes one "ledger" sheet that never changes size, with four ruled sections (purse, goal, a strip, a note); an empty section shows blank ruled paper | Four separate cards that came and went were a main cause of the chaos; a fixed sheet means nothing can move or pop in |
+| 5 | The shop becomes rows in one sheet: name and what it is worth on the left, a price pill on the right; locked purchases are named on the group's heading ("Yoke at level 7") instead of having rows | Calmer than twelve three-line cards, and nothing a player could read before is lost |
+| 6 | About two thirds of the small notes are no longer shown ("A cottage is extended", "A road is cobbled", "A new villager moves in", "New to buy", "A road has worn in", a request asked, met or missed) | They said what the player had just done or what another part of the screen already shows. A first age had about 200 notes, six a minute |
+| 7 | "Ring in the next age" lives in the ledger's strip, as a gold button that stays until used | It had no fixed place; it is the most important button of the age |
+| 8 | Coin numbers on the map are smaller (20 instead of 34) and stay 1.4 s instead of 1.8 s | They covered villagers and labels. The setting that turns them off stays |
+| 9 | A purchase's step is shown as a plain number after its name ("Villager 9") instead of "level 9" | "Level" also means the town's level, a few centimetres away |
+| 10 | The 150 percent interface size is honoured on a 1280 x 720 window too (the shop then uses one-line rows and may scroll) | The brief asks for it; a critic proposed capping it instead |
+| 11 | Fields are reworked although they are not on your list | In the audit they read as pallets of planks, and they are the largest things on the map |
+| 12 | No new keys are added (river purchases stay without keys; the choice of two keeps Z and X) | Adding keys would change how the game is played |
 
 ## Needs you
 
