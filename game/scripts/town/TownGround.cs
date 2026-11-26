@@ -105,7 +105,13 @@ public partial class TownGround : MeshInstance3D
         Rebuild();
     }
 
-    public override void _ExitTree() { if (_drv != null) _drv.Replaced -= Rebuild; }
+    public override void _ExitTree()
+    {
+        if (_drv != null) _drv.Replaced -= Rebuild;
+        // Round 6: release the C# wrappers of the ford mask now (the material keeps the texture while it lives), so no
+        // wrapper outlives the scene at exit.
+        _maskTex?.Dispose(); _maskImg?.Dispose(); _maskTex = null; _maskImg = null;
+    }
 
     /// <summary>Fixed layers of a new town (river, ford) and each road's cells with their distance along the road.</summary>
     public void Rebuild()
@@ -117,9 +123,13 @@ public partial class TownGround : MeshInstance3D
         for (int y = 0; y < N; y++) rf[y] = map.RiverX[y] * Cell;
         Material.SetShaderParameter("river_tex", ImageTexture.CreateFromImage(Image.CreateFromData(1, N, false, Image.Format.Rf, river)));
         Material.SetShaderParameter("half_w", (float)(map.RiverHalfW * Cell));
-        var mask = new byte[N * N * 2];
-        for (int i = 0; i < N * N; i++) mask[2 * i] = (byte)(map.Ford[i] != 0 ? 255 : 0);
-        Material.SetShaderParameter("mask_tex", ImageTexture.CreateFromImage(Image.CreateFromData(N, N, false, Image.Format.Rg8, mask)));
+        // Round 6 (W2): the first age's map ford (map.Ford) was drawn as a grey shallow band across the river from the
+        // start. The ford is drawn only once the second age's ford link is open, on its own row (UpdateFord).
+        _mask = new byte[N * N * 2];
+        _maskImg = Image.CreateFromData(N, N, false, Image.Format.Rg8, _mask);
+        _maskTex = ImageTexture.CreateFromImage(_maskImg);
+        Material.SetShaderParameter("mask_tex", _maskTex);
+        _fordShown = false;
         var roads = town.Plan.Roads;
         _cells = new int[roads.Length][];
         _cellDist = new float[roads.Length][];
@@ -197,6 +207,7 @@ public partial class TownGround : MeshInstance3D
     {
         Material.SetShaderParameter(TimeS, (float)_drv.AnimTime);
         var town = _drv.Town;
+        UpdateFord(town);
         bool revealing = false;
         for (int r = 0; r < _reveal.Length; r++)
         {
@@ -215,6 +226,40 @@ public partial class TownGround : MeshInstance3D
     }
 
     /// <summary>Recomputes every cell's drawn wear, the crowding and (when the paving changed) the paved strips.</summary>
+    private byte[] _mask = Array.Empty<byte>();
+    private Image? _maskImg;
+    private ImageTexture? _maskTex;
+    private bool _fordShown;
+    /// <summary>True while the ground draws the ford's shallows (the second age's ford link is open).</summary>
+    public bool FordShown => _fordShown;
+
+    /// <summary>Round 6 (W2): the ford's shallows (mask R) only once the ford link is open, on the ford's row, water cells only.</summary>
+    private void UpdateFord(Town town)
+    {
+        var rp = town.RiverPlan;
+        int link = -1;
+        if (rp != null)
+            for (int i = 0; i < rp.Links.Length; i++)
+                if (rp.Links[i].Kind == RiverLinkKind.Ford) { link = i; break; }
+        bool want = link >= 0 && town.RiverLinkOpen(link);
+        if (want == _fordShown || _maskImg == null) return;
+        _fordShown = want;
+        var map = town.Plan.Map;
+        for (int i = 0; i < N * N; i++) _mask[2 * i] = 0;
+        if (want)
+        {
+            int row = rp!.FordRow;
+            for (int y = Math.Max(0, row - 1); y <= Math.Min(N - 1, row + 1); y++)
+                for (int x = 0; x < N; x++)
+                {
+                    int c = y * N + x;
+                    if (map.Water[c] != 0) _mask[2 * c] = 255;
+                }
+        }
+        _maskImg.SetData(N, N, false, Image.Format.Rg8, _mask);
+        _maskTex!.Update(_maskImg);
+    }
+
     public void Upload()
     {
         var town = _drv.Town;

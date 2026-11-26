@@ -80,7 +80,7 @@ public sealed partial class Town
         StepRequests();
         StepHands();
         if (S.River != null) StepRiver();
-        if (S.Tick % TownRules.TickHz == 0) { CheckAchievements(); StepTouches(); }
+        if (S.Tick % TownRules.TickHz == 0) { CheckAchievements(); StepTouches(); StepCrowding(); }
     }
 
     /// <summary>Copies the events since the last drain into <paramref name="into"/> (cleared first) and forgets them.</summary>

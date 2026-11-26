@@ -32,6 +32,8 @@ public partial class TownTest : TownTestBase
         await Frames(30);
         float faint = Main.Ground.RoadShown(r0);
         Check(faint > 0.15f && faint < TownGround.TrailWear + 0.2f, $"a new road is a faint trail (drawn wear {faint:0.00})");
+        // Round 6 (W2): no ford is drawn across the river in the first age.
+        Check(!Main.Ground.FordShown, "no ford drawn across the river in the first age");
         Notes.Add($"faint={faint:0.00}");
 
         // Purposeful villagers at 1x: no jumps, no sideways sliding.
