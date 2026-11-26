@@ -5,87 +5,150 @@ using Godot;
 namespace TideToll.Game;
 
 /// <summary>
-/// Round 6: the map's words (stake labels "What" on plots of both ages, boat labels "Wants") keep clear of the
-/// interface. Once a frame each label's rectangle on screen is found; a label that touches a card (ledger, request,
-/// drive, notes, shop, bell, banner, achievements, pause, choice, tide, slim strip) or a label already kept is hidden,
-/// and every label is hidden while a page (achievements, age page) is open, so none shows through it. Labels are only
-/// hidden (their own Visible, which no owner sets: the owners show and hide the parent), never moved, so the code that owns them is untouched.
+/// The map's tags (layout sheet sections 4 and 5; night 3, L1 fix). The plots' "What" and the boats' "Wants" words are
+/// still kept by their owners as Label3Ds (text and place), but those are never drawn: each one is drawn as a tag on
+/// screen instead, one style for all (a quiet paper pill, caption size at every zoom), at the label's place. A tag that
+/// would touch a visible card or a tag already kept fades out and stays out for at least half a second; every tag
+/// fades with the full interface and is out while a page is open. Boats' tags come first (what a boat wants now).
+/// The words are read twice a second (no strings per frame); boats say "Grain 21 of 656", not "... loads".
 /// </summary>
 public partial class TownHud
 {
-    private readonly List<(Label3D label, bool boat)> _mapLabels = new();
+    private sealed class MapTag
+    {
+        public Label3D Source = null!;
+        public Label Pill = null!;
+        public bool Boat;
+        public string Text = "";
+        public float A, Out; // opacity now; seconds it must stay out still
+    }
+
+    private readonly List<MapTag> _tags = new();
+    private readonly List<Label> _tagPool = new();
+    private Control? _tagLayer;
     private Control?[] _labelCards = Array.Empty<Control?>();
     private Node?[] _labelOwners = Array.Empty<Node?>();
     private readonly List<Rect2> _keptRects = new();
     private readonly List<Rect2> _cardRects = new();
     private int _labelScan;
-    /// <summary>Map labels faded out this frame because a card or another label is there (tests).</summary>
+    /// <summary>Map tags faded out this frame because a card or another tag is there (tests).</summary>
     public int LabelsHidden { get; private set; }
-    /// <summary>Map labels shown this frame, and their rectangles on screen (tests: none overlap a card or each other).</summary>
+    /// <summary>Map tags shown this frame, and their rectangles on screen (tests: none overlap a card or each other).</summary>
     public IReadOnlyList<Rect2> LabelsShownRects => _keptRects;
+    /// <summary>The words of the tags shown now (tests and the audit).</summary>
+    public int TagCount => _tags.Count;
+
+    public const float TagFade = 0.2f, TagStayOut = 0.5f;
 
     private void LabelsFrame(float dt)
     {
-        if (--_labelScan <= 0)
+        if (_tagLayer == null || !IsInstanceValid(_tagLayer))
         {
-            // Labels come and go with plots and boats: look again twice a second (no search per frame).
-            _labelScan = 30;
-            _mapLabels.Clear();
-            // Taken again until all three exist (the river's layer comes later; a cached null hid none of its labels).
-            if (_labelOwners.Length == 0 || Array.IndexOf(_labelOwners, null) >= 0) _labelOwners = new Node?[] { _main.Boats, _main.Buildings, _main.River };
-            foreach (Node? n in _labelOwners)
-                if (n != null && IsInstanceValid(n))
-                    foreach (var c in n.FindChildren("W*", "Label3D", true, false))
-                        if (c is Label3D l) { string nm = l.Name; if (nm == "What" || nm == "Wants") _mapLabels.Add((l, nm == "Wants")); }
+            _tagLayer = new Control { Name = "Tags", MouseFilter = Control.MouseFilterEnum.Ignore };
+            _root.AddChild(_tagLayer);
+            _tagLayer.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            _root.MoveChild(_tagLayer, 0); // under every card
+            _tags.Clear(); _tagPool.Clear();
+            _labelCards = Array.Empty<Control?>(); _labelScan = 0; // the interface was built anew
         }
+        if (--_labelScan <= 0) { _labelScan = 30; ScanTags(); }
         _cardRects.Clear();
-        if (_labelCards.Length == 0) _labelCards = new Control?[] { _ledger, _req, _drive, _shop, _bell, _nextAge, _banner, _achMark, PauseMark, _choice, _tide, _slim, _paveBanner, _home, _hoverTip, _suggest };
+        if (_labelCards.Length == 0) _labelCards = new Control?[] { _ledger, _shop, _bell, _banner, _achMark, _agePageMark, PauseMark, _choice, _tide, _slim, _lineCard, _home, _hoverTip, _suggest };
         foreach (var c in _labelCards)
             if (c != null && IsInstanceValid(c) && c.IsVisibleInTree() && c.Modulate.A > 0.05f) _cardRects.Add(c.GetGlobalRect().Grow(UiKit.Px(_s, 6)));
-        for (int i = 0; i < _noteList.Count; i++)
-            if (IsInstanceValid(_noteList[i].label) && _noteList[i].label.GetParent() is Control slip && slip.IsVisibleInTree()) _cardRects.Add(slip.GetGlobalRect().Grow(UiKit.Px(_s, 6)));
         bool page = AchievementsOpen || AgePageOpen;
         _keptRects.Clear();
         LabelsHidden = 0;
         var cam = _main.Rig.Camera;
-        // Boats' labels first (they say what a boat wants now), then the stakes.
+        float gap = UiKit.Px(_s, 4);
         for (int pass = 0; pass < 2; pass++)
-            for (int i = 0; i < _mapLabels.Count; i++)
+            foreach (var g in _tags)
             {
-                var (l, boat) = _mapLabels[i];
-                if (!IsInstanceValid(l) || !l.IsInsideTree()) continue;
-                if (boat != (pass == 0)) continue;
-                bool hide = page;
+                if (g.Boat != (pass == 0)) continue;
+                var l = g.Source;
+                bool live = IsInstanceValid(l) && l.IsInsideTree() && l.GetParent() is Node3D owner && owner.IsVisibleInTree()
+                            && g.Text.Length > 0 && !cam.IsPositionBehind(l.GlobalPosition);
+                bool want = live && !page && _fullA > 0.01f;
                 Rect2 r = default;
-                if (!hide && l.GetParent() is Node3D owner && owner.IsVisibleInTree())
+                if (want)
                 {
-                    r = ScreenRect(l, cam);
-                    if (r.Size.X <= 0) continue;
-                    foreach (var c in _cardRects) if (c.Intersects(r)) { hide = true; break; }
-                    if (!hide) foreach (var k in _keptRects) if (k.Intersects(r)) { hide = true; break; }
+                    var at = cam.UnprojectPosition(l.GlobalPosition);
+                    var sz = g.Pill.Size;
+                    // Plots' words hang under their place; a boat's sits above its hull.
+                    r = new Rect2(new Vector2(at.X - sz.X / 2f, g.Boat ? at.Y - sz.Y : at.Y), sz);
+                    g.Pill.Position = r.Position.Round();
+                    bool touch = !_tagLayer.GetGlobalRect().Encloses(r); // never cut by the window's edge
+                    foreach (var c in _cardRects) if (c.Intersects(r)) { touch = true; break; }
+                    if (!touch) foreach (var k in _keptRects) if (k.Intersects(r.Grow(gap))) { touch = true; break; }
+                    if (touch) { g.Out = TagStayOut; LabelsHidden++; }
+                    else if (g.Out > 0) { g.Out = Math.Max(0, g.Out - dt); LabelsHidden++; }
+                    want = !touch && g.Out <= 0;
                 }
-                else if (!hide) continue;
-                // Shown or hidden outright (GeometryInstance3D.Transparency does not reach a Label3D's own material).
-                if (l.Visible == hide) l.Visible = !hide;
-                if (hide) LabelsHidden++;
-                else _keptRects.Add(r);
+                g.A = want ? Math.Min(1f, g.A + dt / TagFade) : Math.Max(0f, g.A - dt / TagFade);
+                float a = g.A * _fullA;
+                if (g.Pill.Modulate.A != a) g.Pill.Modulate = new Color(1, 1, 1, a);
+                bool vis = a > 0.01f;
+                if (g.Pill.Visible != vis) g.Pill.Visible = vis;
+                if (want) _keptRects.Add(r);
+                if (IsInstanceValid(l) && l.Visible) l.Visible = false; // the 3D words are never drawn
             }
     }
 
-    /// <summary>A Label3D's rectangle on screen (canvas units), from its text box at its place, facing the camera.</summary>
-    private static Rect2 ScreenRect(Label3D l, Camera3D cam)
+    /// <summary>Finds the map's words (they come and go with plots and boats) and reads their text.</summary>
+    private void ScanTags()
     {
-        if (cam.IsPositionBehind(l.GlobalPosition)) return default;
-        var box = l.GetAabb();
-        var sc = l.GlobalTransform.Basis.Scale;
-        var centre = l.GlobalTransform * box.GetCenter();
-        var right = cam.GlobalBasis.X * box.Size.X * sc.X * 0.5f;
-        var up = cam.GlobalBasis.Y * box.Size.Y * sc.Y * 0.5f;
-        var r = new Rect2(cam.UnprojectPosition(centre), Vector2.Zero);
-        r = r.Expand(cam.UnprojectPosition(centre - right - up));
-        r = r.Expand(cam.UnprojectPosition(centre + right + up));
-        r = r.Expand(cam.UnprojectPosition(centre + right - up));
-        r = r.Expand(cam.UnprojectPosition(centre - right + up));
-        return r;
+        if (_labelOwners.Length == 0 || Array.IndexOf(_labelOwners, null) >= 0) _labelOwners = new Node?[] { _main.Boats, _main.Buildings, _main.River };
+        int used = 0;
+        foreach (Node? n in _labelOwners)
+        {
+            if (n == null || !IsInstanceValid(n)) continue;
+            foreach (var c in n.FindChildren("W*", "Label3D", true, false))
+            {
+                if (c is not Label3D l) continue;
+                string nm = l.Name;
+                if (nm != "What" && nm != "Wants") continue;
+                l.Visible = false;
+                MapTag g;
+                if (used < _tags.Count) g = _tags[used];
+                else { g = new MapTag { Pill = NewTagPill() }; _tags.Add(g); }
+                used++;
+                if (g.Source != l) { g.Source = l; g.A = 0; g.Out = 0; }
+                g.Boat = nm == "Wants";
+                string text = TagText(l.Text);
+                if (text != g.Text) { g.Text = text; g.Pill.Text = text; g.Pill.ResetSize(); }
+            }
+        }
+        // Tags without a source any more go quiet (kept in the list for reuse).
+        while (_tags.Count > used)
+        {
+            var g = _tags[^1];
+            g.Pill.Visible = false;
+            _tagPool.Add(g.Pill);
+            _tags.RemoveAt(_tags.Count - 1);
+        }
+    }
+
+    private Label NewTagPill()
+    {
+        if (_tagPool.Count > 0) { var p = _tagPool[^1]; _tagPool.RemoveAt(_tagPool.Count - 1); p.Text = ""; return p; }
+        var l = UiKit.Text("", _s, UiKit.Caption, UiKit.UiFont);
+        l.AddThemeFontSizeOverride(FontSizeName, UiKit.Type(_s, UiKit.Caption));
+        l.Name = "Tag";
+        var box = UiKit.CardBox(_s, UiKit.CardKind.Quiet, 4);
+        box.SetCornerRadiusAll(UiKit.U(_s, 10));
+        box.ContentMarginLeft = box.ContentMarginRight = UiKit.U(_s, 8);
+        box.ContentMarginTop = box.ContentMarginBottom = UiKit.U(_s, 1);
+        l.AddThemeStyleboxOverride(NormalName, box);
+        l.Visible = false;
+        _tagLayer!.AddChild(l);
+        return l;
+    }
+
+    /// <summary>A tag's words: one line, no "loads" after a count ("Grain 21 of 656").</summary>
+    public static string TagText(string s)
+    {
+        int nl = s.IndexOf('\n');
+        if (nl >= 0) s = s[..nl];
+        return s.Replace(" loads", "").Trim();
     }
 }

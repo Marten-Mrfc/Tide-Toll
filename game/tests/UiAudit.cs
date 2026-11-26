@@ -19,6 +19,11 @@ public partial class UiAudit : TownTestBase
     // Own profile folder per run tag (--tag=, given by tools/ui-audit.sh): two runs at once never share a save.
     protected override string Marker
     {
+        get => AuditMarker;
+    }
+
+    protected virtual string AuditMarker
+    {
         get
         {
             foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--tag=")) return "UIAUDIT PASS " + a[6..];
@@ -30,6 +35,8 @@ public partial class UiAudit : TownTestBase
     private string _dir = "";
     private int _scale = 100;
     private HashSet<string>? _only;
+    /// <summary>States taken out of the tour (u37: the second age has no drive); dropped from an existing shots.json.</summary>
+    private static readonly string[] Retired = { "u37" };
     private readonly JsonArray _shots = new();
     private readonly List<string> _notMade = new();
     private TownBot _bot = null!;
@@ -62,6 +69,7 @@ public partial class UiAudit : TownTestBase
             await SecondAgeLate();
         }
         catch (StopTour) { Notes.Add("only: stopped after the last asked state"); }
+        await AfterTour();
         WriteShots();
         Notes.Add($"made={_shots.Count} notmade={_notMade.Count} level={T.Level} dir={_dir}");
     }
@@ -160,9 +168,25 @@ public partial class UiAudit : TownTestBase
 
     private bool Wanted(string id) => _only == null || _only.Contains(id);
 
+    /// <summary>game-layout (LayoutTest): each state is checked against the layout sheet instead of pictured.</summary>
+    protected virtual Task? StateHook(string id) => null;
+    protected virtual Task AfterTour() => Task.CompletedTask;
+
     private async Task Shot(string id, string title, string how)
     {
         if (!Wanted(id)) return;
+        if (StateHook(id) is { } hook)
+        {
+            await hook;
+            _shots.Add(new JsonObject { ["id"] = id, ["title"] = title, ["how"] = how, ["level"] = T.Level, ["made"] = true });
+            Done(id);
+            return;
+        }
+        // Night 3 L1 fix: a page is pictured at rest (its fade at 1), never mid-fade (at about 1 frame a second a
+        // 900 ms wait could leave the page half drawn: u15, u31, u38, u39 of the first L1 pictures).
+        await WaitFor(() => (!Main.Hud.AchievementsOpen || Main.Hud.AchievementsFade.A >= 1f)
+                         && (!Main.Hud.AgePageOpen || Main.Hud.AgePageFade.A >= 1f), 10000);
+        await Frames(2);
         await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         var img = GetViewport().GetTexture().GetImage();
         var dump = UiAuditDump.Collect(Main, GetViewport(), id, _scale, T.InRiverAge ? 2 : 1, T.Level);
@@ -197,6 +221,7 @@ public partial class UiAudit : TownTestBase
         if (_only != null && System.IO.File.Exists(outPath))
             foreach (var s in JsonNode.Parse(System.IO.File.ReadAllText(outPath))!["shots"]!.AsArray()) byId[(string)s!["id"]!] = s.DeepClone();
         foreach (var s in _shots) byId[(string)s!["id"]!] = s.DeepClone();
+        foreach (var r in Retired) byId.Remove(r);
         var arr = new JsonArray();
         foreach (var v in byId.Values) arr.Add(v);
         var doc = new JsonObject

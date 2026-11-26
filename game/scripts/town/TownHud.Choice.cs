@@ -19,11 +19,11 @@ public partial class TownHud
     private readonly Label[] _boonName = new Label[2], _boonText = new Label[2], _boonWorth = new Label[2];
     private readonly TextureRect[] _boonIcon = new TextureRect[2];
     private int _choiceSig = int.MinValue;
-    private PanelContainer _drive = null!;
+    private Control _drive = null!;
     private Label _driveName = null!, _driveAsk = null!, _driveDone = null!;
-    private Control _driveBarBack = null!;
-    private ColorRect _driveBar = null!;
-    private readonly ColorRect[] _driveTicks = new ColorRect[DriveParts - 1];
+    private readonly ColorRect[] _drivePips = new ColorRect[DriveParts];
+    private readonly Label[] _boonKey = new Label[2];
+    private int _drivePipsLit;
     private int _driveSig = int.MinValue;
     private Control _handLayer = null!;
     private readonly List<Label> _handMarks = new();
@@ -38,7 +38,7 @@ public partial class TownHud
     public string ChoiceCardText => _choice.Visible ? $"{_choiceHead.Text} | {_boonName[0].Text}: {_boonText[0].Text} | {_boonName[1].Text}: {_boonText[1].Text}" : "";
     public bool DriveCardVisible => _drive.Visible;
     public string DriveCardText => _drive.Visible ? $"{_driveName.Text} | {_driveAsk.Text} | {_driveDone.Text}" : "";
-    public float DriveBar => _driveBar.Size.X / Math.Max(1f, _driveBarBack.Size.X - 2f);
+    public float DriveBar => _drivePipsLit / (float)DriveParts;
     public int HandMarkersShown { get { int n = 0; foreach (var l in _handMarks) if (l.Visible) n++; return n; } }
     public int Milestones { get; private set; }
     public int BoonMoments { get; private set; }
@@ -53,88 +53,85 @@ public partial class TownHud
 
     private void BuildChoiceParts()
     {
-        _choice = new PanelContainer { Name = "Choice", MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        var box = UiKit.Card(_s, new Color(UiKit.Paper, 0.97f), 2f);
-        box.SetContentMarginAll(UiKit.Px(_s, 10));
-        _choice.AddThemeStyleboxOverride("panel", box);
+        // Night 3: the choice of two in the Message zone (card style, at most 200 high): per option the icon, the name
+        // and its key (Z or X), what it does, "+n a minute now".
+        var z = Zones;
+        var rect = z.Message(HudZones.ChoiceMaxH);
+        int pad = UiKit.U(_s, 12), gap = UiKit.U(_s, 8);
+        _choice = new PanelContainer { Name = "Choice", MouseFilter = Control.MouseFilterEnum.Stop, Visible = false, Position = rect.Position, Size = rect.Size };
+        _choice.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Card, 0));
         _root.AddChild(_choice);
-        var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        col.AddThemeConstantOverride("separation", UiKit.Px(_s, 6));
-        _choice.AddChild(col);
-        _choiceHead = UiKit.Text("", _s, 20, UiKit.Serif);
-        _choiceHead.HorizontalAlignment = HorizontalAlignment.Center;
-        col.AddChild(_choiceHead);
-        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", UiKit.Px(_s, 10));
-        col.AddChild(row);
+        var holder = new Control { Name = "Box", MouseFilter = Control.MouseFilterEnum.Ignore };
+        _choice.AddChild(holder);
+        _choiceHead = UiKit.Fixed(_s, UiKit.Body, UiKit.Serif, UiKit.Ink, HorizontalAlignment.Center);
+        _choiceHead.Name = "Head";
+        _choiceHead.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _choiceHead.MaxLinesVisible = 2;
+        _choiceHead.Position = new Vector2(pad, UiKit.U(_s, 6));
+        _choiceHead.Size = new Vector2(rect.Size.X - 2 * pad, UiKit.U(_s, 46));
+        holder.AddChild(_choiceHead);
+        float hw = (rect.Size.X - 2 * pad - gap) / 2f, top = UiKit.U(_s, 56), hh = rect.Size.Y - top - pad;
         for (int side = 0; side < 2; side++)
         {
             int k = side;
-            var b = new Button { Name = side == 0 ? "BoonA" : "BoonB", FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(UiKit.Px(_s, 270), UiKit.Px(_s, 112)) };
-            foreach (var (state, bg, w) in new[] { ("normal", UiKit.Paper, 1.5f), ("hover", UiKit.PaperHover, 2.5f), ("pressed", UiKit.Pressed, 2.5f), ("hover_pressed", UiKit.Pressed, 2.5f) })
-            {
-                var sb = UiKit.Card(_s, bg, w);
-                sb.SetContentMarginAll(UiKit.Px(_s, 8));
-                b.AddThemeStyleboxOverride(state, sb);
-            }
+            var b = new Button { Name = side == 0 ? "BoonA" : "BoonB", Text = "", ClipContents = true, Position = new Vector2(pad + side * (hw + gap), top), Size = new Vector2(hw, hh) };
+            UiKit.StyleButton(b, _s, 0);
             _boonBtn[side] = b;
             b.Pressed += () => PickBoon(k);
             b.MouseEntered += () => _main.Audio.UiHover();
-            row.AddChild(b);
-            var inner = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-            inner.AddThemeConstantOverride("separation", UiKit.Px(_s, 8));
-            inner.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.Minsize, UiKit.Px(_s, 8));
-            b.AddChild(inner);
-            _boonIcon[side] = new TextureRect
-            {
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                CustomMinimumSize = Vector2.One * UiKit.Px(_s, 44), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
-                MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            };
-            inner.AddChild(_boonIcon[side]);
-            var words = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            words.AddThemeConstantOverride("separation", UiKit.Px(_s, 2));
-            inner.AddChild(words);
-            _boonName[side] = UiKit.Text("", _s, 18, UiKit.UiBold);
-            _boonText[side] = UiKit.Text("", _s, 15, UiKit.UiFont);
+            holder.AddChild(b);
+            _boonIcon[side] = UiKit.IconRect(_s, null);
+            _boonIcon[side].Position = new Vector2(UiKit.U(_s, 8), UiKit.U(_s, 6));
+            b.AddChild(_boonIcon[side]);
+            _boonName[side] = UiKit.Fixed(_s, UiKit.Body, UiKit.UiBold);
+            _boonName[side].Name = "Name";
+            _boonName[side].Position = new Vector2(UiKit.U(_s, 38), UiKit.U(_s, 4));
+            _boonName[side].Size = new Vector2(hw - UiKit.U(_s, 72), UiKit.U(_s, 26));
+            b.AddChild(_boonName[side]);
+            _boonKey[side] = UiKit.KeyCap(_s);
+            _boonKey[side].Position = new Vector2(hw - UiKit.U(_s, 30), UiKit.U(_s, 7));
+            _boonKey[side].Size = new Vector2(UiKit.U(_s, 22), UiKit.U(_s, 20));
+            b.AddChild(_boonKey[side]);
+            _boonText[side] = UiKit.Fixed(_s, UiKit.Caption);
+            _boonText[side].Name = "Text";
             _boonText[side].AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            _boonText[side].CustomMinimumSize = new Vector2(UiKit.Px(_s, 196), 0);
-            _boonWorth[side] = UiKit.Text("", _s, 14, UiKit.UiFont, UiKit.FadedInk);
-            words.AddChild(_boonName[side]);
-            words.AddChild(_boonText[side]);
-            words.AddChild(_boonWorth[side]);
+            _boonText[side].MaxLinesVisible = 3;
+            _boonText[side].VerticalAlignment = VerticalAlignment.Top;
+            _boonText[side].Position = new Vector2(UiKit.U(_s, 8), UiKit.U(_s, 32));
+            _boonText[side].Size = new Vector2(hw - UiKit.U(_s, 16), hh - UiKit.U(_s, 56));
+            b.AddChild(_boonText[side]);
+            _boonWorth[side] = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont, UiKit.MutedNumber);
+            _boonWorth[side].Name = "Worth";
+            _boonWorth[side].Position = new Vector2(UiKit.U(_s, 8), hh - UiKit.U(_s, 24));
+            _boonWorth[side].Size = new Vector2(hw - UiKit.U(_s, 16), UiKit.U(_s, 20));
+            b.AddChild(_boonWorth[side]);
         }
         _choiceSig = int.MinValue;
 
-        _drive = new PanelContainer { Name = "Drive", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-        var dbox = UiKit.Card(_s, new Color(UiKit.Pressed.Lerp(UiKit.Paper, 0.5f), 0.97f), 2f);
-        dbox.SetContentMarginAll(UiKit.Px(_s, 9));
-        _drive.AddThemeStyleboxOverride("panel", dbox);
-        _drive.CustomMinimumSize = new Vector2(UiKit.Px(_s, 330), 0);
-        _root.AddChild(_drive);
-        var dcol = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        dcol.AddThemeConstantOverride("separation", UiKit.Px(_s, 3));
-        _drive.AddChild(dcol);
-        _driveName = UiKit.Text("", _s, 19, UiKit.Serif);
-        _driveAsk = UiKit.Text("", _s, 17, UiKit.UiBold);
-        _driveAsk.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _driveAsk.CustomMinimumSize = new Vector2(UiKit.Px(_s, 310), 0);
-        _driveDone = UiKit.Text("", _s, 15, UiKit.UiFont);
-        dcol.AddChild(_driveName);
-        dcol.AddChild(_driveAsk);
-        _driveBarBack = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(0, UiKit.Px(_s, 12)) };
-        var back = UiKit.Card(_s, UiKit.PaperDark, 1f);
-        back.SetContentMarginAll(0);
-        _driveBarBack.AddThemeStyleboxOverride("panel", back);
-        dcol.AddChild(_driveBarBack);
-        _driveBar = new ColorRect { Color = Palette.Thatch, MouseFilter = Control.MouseFilterEnum.Ignore };
-        _driveBarBack.AddChild(_driveBar);
-        for (int i = 0; i < _driveTicks.Length; i++)
+        // The charter drive: one line in the ledger's strip ("Charter", ten pips, "40 of 100").
+        int sp = UiKit.U(_s, 12), sw = (int)_stripBox.Size.X - 2 * sp;
+        _drive = new Control { Name = "Drive", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false, Size = _stripBox.Size };
+        _stripBox.AddChild(_drive);
+        _driveName = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiBold);
+        _driveName.Name = "Name";
+        _driveName.Position = new Vector2(sp, 0);
+        _driveName.Size = new Vector2(UiKit.U(_s, 70), _stripBox.Size.Y);
+        _drive.AddChild(_driveName);
+        float pip = UiKit.U(_s, 8), pg = UiKit.U(_s, 3), px0 = sp + UiKit.U(_s, 74);
+        for (int i = 0; i < DriveParts; i++)
         {
-            _driveTicks[i] = new ColorRect { Color = new Color(UiKit.Ink, 0.55f), MouseFilter = Control.MouseFilterEnum.Ignore };
-            _driveBarBack.AddChild(_driveTicks[i]);
+            _drivePips[i] = new ColorRect { Name = "Pip" + i, Color = UiKit.PaperDarker, MouseFilter = Control.MouseFilterEnum.Ignore,
+                Position = new Vector2(px0 + i * (pip + pg), (_stripBox.Size.Y - pip) / 2f), Size = new Vector2(pip, pip) };
+            _drive.AddChild(_drivePips[i]);
         }
-        dcol.AddChild(_driveDone);
+        _driveDone = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont, UiKit.MutedNumber, HorizontalAlignment.Right);
+        _driveDone.Name = "Count";
+        float dx = px0 + DriveParts * (pip + pg) + UiKit.U(_s, 4);
+        _driveDone.Position = new Vector2(dx, 0);
+        _driveDone.Size = new Vector2(sp + sw - dx, _stripBox.Size.Y);
+        _drive.AddChild(_driveDone);
+        _driveAsk = new Label { Name = "Ask", Visible = false };
+        _drive.AddChild(_driveAsk);
         _driveSig = int.MinValue;
 
         _handLayer = new Control { Name = "HandMarks", MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -180,23 +177,16 @@ public partial class TownHud
                 for (int side = 0; side < 2; side++)
                 {
                     var b = side == 0 ? c.A : c.B;
-                    _boonName[side].Text = (side == 0 ? c.AName : c.BName) + Settings.GameInput.Tag(side == 0 ? "tt_choose_a" : "tt_choose_b", "   ");
+                    _boonName[side].Text = side == 0 ? c.AName : c.BName;
+                    _boonKey[side].Text = Settings.GameInput.Bound(side == 0 ? "tt_choose_a" : "tt_choose_b");
                     _boonText[side].Text = side == 0 ? c.AText : c.BText;
                     int w = WorthTenths(side == 0 ? c.AWorth : c.BWorth);
-                    _boonWorth[side].Text = w > 0 ? WorthText(w) + " now" : "";
+                    _boonWorth[side].Text = w > 0 ? WorthLine(w) + " now" : "";
                     _boonIcon[side].Texture = IconOr(BoonIcon(b), "ui-achievement");
                     _boonBtn[side].TooltipText = Town.BoonText(b);
                 }
             }
-            // Top centre, between the ledger and the bookmarks; a gentle pulse of the frame so it is not missed.
-            var vp = _built;
-            var size = _choice.GetCombinedMinimumSize();
-            _choice.Size = size;
-            // Round 6: under the Pave or Extend banner while one shows (the card lay over it).
-            float top = _paveBanner.Visible ? _paveBanner.Position.Y + _paveBanner.Size.Y + UiKit.Px(_s, 8) : UiKit.Px(_s, 14);
-            _choice.Position = new Vector2((vp.X - size.X) / 2f, top);
-            float pulse = 0.5f + 0.5f * MathF.Sin((float)_drv.AnimTime * 3f);
-            _choice.Modulate = new Color(1, 1, 1, 0.94f + 0.06f * pulse);
+            // Night 3: in the Message zone (TownHud.Zones.cs); no pulse of its own (the next round's motion).
         }
         DriveFrame();
         HandFrame();
@@ -207,31 +197,22 @@ public partial class TownHud
     {
         var t = _drv.Town;
         var d = t.Drive;
-        bool show = d.Active && _fullA > 0.01f;
+        // The strip: the Ring in the next age button comes first; the drive takes the line otherwise.
+        bool show = d.Active && !_nextAge.Visible;
         _drive.Visible = show;
         if (!show) return;
-        float y = (_ledger != null ? _ledger.GetRect().End.Y : 180) + UiKit.Px(_s, 8);
-        if (_req.Visible) y = _req.GetRect().End.Y + UiKit.Px(_s, 8);
-        _drive.Position = new Vector2(UiKit.Px(_s, 16), y);
-        _drive.Modulate = new Color(1, 1, 1, _fullA);
         int sig = HashCode.Combine(d.Good, d.Amount, d.Delivered, (long)d.RenownGiven);
         if (sig != _driveSig)
         {
             _driveSig = sig;
-            _driveName.Text = d.Name;
-            _driveAsk.Text = $"Send {Money(d.Amount)} {GoodName(d.Good)} for the charter";
-            _driveDone.Text = $"Sent {Money(Math.Min(d.Delivered, d.Amount))} of {Money(d.Amount)}. Every load counts.";
-        }
-        float k = d.Amount > 0 ? Math.Clamp((float)d.Delivered / d.Amount, 0f, 1f) : 0f;
-        var sz = _driveBarBack.Size;
-        // Fills in parts: whole tenths, so each part lands as a small step.
-        float parts = MathF.Floor(k * DriveParts) / DriveParts;
-        _driveBar.Position = new Vector2(1, 1);
-        _driveBar.Size = new Vector2(Math.Max(0, (sz.X - 2) * parts), Math.Max(0, sz.Y - 2));
-        for (int i = 0; i < _driveTicks.Length; i++)
-        {
-            _driveTicks[i].Position = new Vector2(1 + (sz.X - 2) * (i + 1) / DriveParts, 1);
-            _driveTicks[i].Size = new Vector2(Math.Max(1, UiKit.Px(_s, 1.5f)), Math.Max(0, sz.Y - 2));
+            // Sheet 3: the strip says the short name "Charter"; the whole name is in the ask (tooltip, tests).
+            _driveName.Text = "Charter";
+            _driveAsk.Text = $"{d.Name}: send {Money(d.Amount)} {GoodName(d.Good)} for the charter";
+            float k = d.Amount > 0 ? Math.Clamp((float)d.Delivered / d.Amount, 0f, 1f) : 0f;
+            // Fills in parts: whole tenths, so each part lands as a small step ("4 of 10"; the amounts are in the tooltip).
+            _drivePipsLit = (int)MathF.Floor(k * DriveParts);
+            _driveDone.Text = $"{_drivePipsLit} of {DriveParts}";
+            for (int i = 0; i < DriveParts; i++) _drivePips[i].Color = i < _drivePipsLit ? UiKit.RiverBlue : UiKit.PaperDarker;
         }
     }
 
@@ -249,9 +230,9 @@ public partial class TownHud
             var at = _main.Rig.LocalToScreen(new Vector3((pl.X + pl.W / 2f) * TownGround.Cell, 6f, (pl.Y + pl.H / 2f) * TownGround.Cell));
             if (used == _handMarks.Count)
             {
-                var l = UiKit.Text("+ hand", _s, 15, UiKit.UiBold, Color.FromHtml("#3A2A10"));
-                var sb = UiKit.Card(_s, new Color(UiKit.Pressed, 0.95f), 1.5f);
-                sb.SetContentMarginAll(UiKit.Px(_s, 4));
+                var l = UiKit.Text("+ hand", _s, UiKit.Caption, UiKit.UiBold, UiKit.Ink);
+                l.AddThemeFontSizeOverride("font_size", UiKit.Type(_s, UiKit.Caption));
+                var sb = UiKit.CardBox(_s, UiKit.CardKind.Quiet, 4);
                 l.AddThemeStyleboxOverride("normal", sb);
                 l.MouseFilter = Control.MouseFilterEnum.Ignore;
                 _handLayer.AddChild(l);

@@ -48,8 +48,8 @@ public partial class TownHud
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
             _main.MapOrigin.AddChild(_paveMesh);
         }
-        _hoverTip = Tag("HoverTip", 16);
-        _suggest = Tag("Suggest", 15);
+        _hoverTip = Tag("HoverTip", UiKit.Caption);
+        _suggest = Tag("Suggest", UiKit.Caption);
         _paveBanner = UiKit.Text("", _s, 18, UiKit.UiBold);
         var bannerBox = UiKit.Card(_s, new Color(UiKit.Paper, 0.95f), 2f);
         bannerBox.SetContentMarginAll(UiKit.Px(_s, 8));
@@ -62,10 +62,11 @@ public partial class TownHud
 
     private Label Tag(string name, float px)
     {
-        var l = UiKit.Text("", _s, px, UiKit.UiBold);
+        // Night 3: tags and the pointer's tip in the quiet card style (sheet sections 4 and 5).
+        var l = UiKit.Text("", _s, px, UiKit.UiFont);
+        l.AddThemeFontSizeOverride("font_size", UiKit.Type(_s, px));
         l.Name = name;
-        var box = UiKit.Card(_s, UiKit.Paper, 1.5f);
-        box.SetContentMarginAll(UiKit.Px(_s, 5));
+        var box = UiKit.CardBox(_s, UiKit.CardKind.Quiet, 6); // L1 fix: the tip is a quiet card like the tags
         l.AddThemeStyleboxOverride("normal", box);
         l.Visible = false;
         _root.AddChild(l);
@@ -218,15 +219,8 @@ public partial class TownHud
     private void PaveFrame()
     {
         var t = _drv.Town;
-        bool banner = PaveMode || ExtendMode;
-        _paveBanner.Visible = banner;
-        if (banner)
-        {
-            string want = ModeHelp(PaveMode);
-            if (_paveBanner.Text != want) _paveBanner.Text = want;
-            _paveBanner.ResetSize();
-            _paveBanner.Position = new Vector2((_built.X - _paveBanner.Size.X) / 2f, UiKit.Px(_s, 14));
-        }
+        // Night 3: what the mode expects is said in the Line zone (TownHud.Zones.cs).
+        _paveBanner.Visible = false;
         if (PaveMode && !AnyPavable()) SetPaveMode(false);
         if (PaveMode && _pointer.X >= 0) HoverRoad = PaveTarget(_pointer); // the view may have moved under the pointer
         _paveMesh.Visible = PaveMode || ExtendMode;
@@ -235,8 +229,7 @@ public partial class TownHud
         if (!PaveMode) { ExtendFrame(); return; }
         if (HoverRoad >= 0)
         {
-            string tip = $"{(t.NextSurface(HoverRoad) == Surface.Cobbles ? "Cobbles" : "Gravel")} for this road: {Money(t.PavePrice(HoverRoad))} coin. Click to pave.";
-            if (_hoverTip.Text != tip) { _hoverTip.Text = tip; _hoverTip.ResetSize(); }
+            SetCoinText(_hoverTip, t.NextSurface(HoverRoad) == Surface.Cobbles ? "Cobbles for this road: " : "Gravel for this road: ", t.PavePrice(HoverRoad), ". Click to pave.");
             // Round 6: beside the pointer and above it, clear of the road line and the people on it.
             _hoverTip.Position = TipBeside(new Rect2(_pointer - Vector2.One * UiKit.Px(_s, 18), Vector2.One * UiKit.Px(_s, 36)))
                 - new Vector2(0, _hoverTip.Size.Y / 2f + UiKit.Px(_s, 22));
@@ -246,8 +239,7 @@ public partial class TownHud
         _suggest.Visible = sug >= 0 && Pavable(sug);
         if (_suggest.Visible)
         {
-            string s = $"Suggested: {Money(t.PavePrice(sug))} coin";
-            if (_suggest.Text != s) { _suggest.Text = s; _suggest.ResetSize(); }
+            SetCoinText(_suggest, "Suggested: ", t.PavePrice(sug), "");
             _suggest.Position = RoadScreen(sug) - new Vector2(_suggest.Size.X / 2f, _suggest.Size.Y + UiKit.Px(_s, 10));
             // Round 6: the price tip and the suggestion never lie on each other: the tip goes under the pointer then.
             if (HoverRoad >= 0 && new Rect2(_tipPlaced, _hoverTip.Size).Intersects(new Rect2(_suggest.Position, _suggest.Size).Grow(UiKit.Px(_s, 4))))

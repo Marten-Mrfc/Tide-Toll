@@ -50,12 +50,12 @@ public partial class SettingsTest : Node
             await KeyboardOnly();
             await Fits();
             GD.Print("SETTINGS PASS " + string.Join(" ", _notes));
-            GetTree().Quit(0);
+            TestInput.QuitClean(this, 0);
         }
         catch (Exception e)
         {
             GD.PrintErr("SETTINGS FAIL: " + e.Message);
-            GetTree().Quit(1);
+            TestInput.QuitClean(this, 1);
         }
     }
 
@@ -122,9 +122,9 @@ public partial class SettingsTest : Node
 
     private async Task Key(Key key, bool shift = false, bool release = true)
     {
-        Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true, ShiftPressed = shift });
+        using (var down = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true, ShiftPressed = shift }) Input.ParseInputEvent(down);
         await Frames(1);
-        if (release) Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false, ShiftPressed = shift });
+        if (release) using (var up = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false, ShiftPressed = shift }) Input.ParseInputEvent(up);
         await Frames(2);
     }
 

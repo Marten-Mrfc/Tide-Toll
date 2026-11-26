@@ -138,6 +138,13 @@ if have_godot; then
   # the ford at high water, the ferry's raft, the drawbridge's lift, the seal and its page; a save reloaded runs on exactly.
   step game-river tools/godot-test.sh 'RIVER PASS' timeout 900 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/river.tscn --quit-after 400000
   note "$(grep -o 'RIVER PASS.*' "$LOGS/game-river.log" | head -1 | sed 's/RIVER PASS //' | cut -c1-90)"
+  # Night 3, the layout sheet (docs/plans/n3/layout-sheet.md, section 8): the interface audit tour's states (u01..u41)
+  # each built on the sheet's eight canvases and held to the sheet: zone rectangles, no overlaps, nothing cut (also
+  # with the longest texts), the middle free, only the sheet's styles, rows and key caps, TipRect; the attention budget
+  # is counted and printed (it fails from the next round).
+  step game-layout tools/godot-test.sh 'LAYOUT PASS' timeout 2400 "$GODOT" --headless --path game --audio-driver Dummy res://tests/layout.tscn --quit-after 1000000 -- --out-dir="$ROOT/build/layout"
+  note "$(grep -o 'LAYOUT PASS.*' "$LOGS/game-layout.log" | head -1 | sed 's/LAYOUT PASS //' | cut -c1-90)"
+  grep '^LAYOUT budget' "$LOGS/game-layout.log" | sed 's/^/   /'
   # The zoom from the tilted town out to the whole book by wheel notches (pitch, interface stages, the summary page
   # against the simulation, Home), a Pave click while tilted and a villager's height on screen, at 1920 x 1080.
   step game-book tools/godot-test.sh 'BOOK PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy --fixed-fps 60 res://tests/book.tscn --quit-after 100000
@@ -176,7 +183,7 @@ if have_godot; then
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-save screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

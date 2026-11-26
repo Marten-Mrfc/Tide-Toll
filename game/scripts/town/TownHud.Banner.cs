@@ -4,9 +4,8 @@ using Godot;
 namespace TideToll.Game;
 
 /// <summary>
-/// Round 3: a level reached is a banner of its own (top middle, bigger and longer than a note, the gift named; the
-/// camera follows the town to show it), and the "Back to the town [Home]" control that shows whenever the view is
-/// not following the town.
+/// Round 3: a level reached is a banner of its own (night 3: in the Message zone at the top centre, one at a time; the
+/// camera follows the town to show it). The "centre the view" control is in navigation (TownHud.Timers.cs).
 /// </summary>
 public partial class TownHud
 {
@@ -47,75 +46,61 @@ public partial class TownHud
 
     private void BuildBanner()
     {
+        // Night 3: the Message zone, 96 high, accent card; a title and up to two caption lines.
+        var z = Zones;
         _banner = new PanelContainer { Name = "Banner", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-        var box = UiKit.Card(_s, new Color(UiKit.Pressed, 0.97f), 2.5f);
-        box.SetContentMarginAll(UiKit.Px(_s, 8));
-        box.ContentMarginLeft = box.ContentMarginRight = UiKit.Px(_s, 22);
-        _banner.AddThemeStyleboxOverride("panel", box);
-        var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        _banner.AddChild(col);
-        _bannerHead = UiKit.Text("", _s, 28, UiKit.Serif); // round 6: smaller (was 34)
-        _bannerHead.HorizontalAlignment = HorizontalAlignment.Center;
-        _bannerText = UiKit.Text("", _s, 18, UiKit.UiBold);
-        _bannerText.HorizontalAlignment = HorizontalAlignment.Center;
-        col.AddChild(_bannerHead);
-        col.AddChild(_bannerText);
+        _banner.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Accent, 0));
+        _banner.Position = z.Banner.Position;
+        _banner.Size = z.Banner.Size;
+        var holder = new Control { Name = "Box", MouseFilter = Control.MouseFilterEnum.Ignore };
+        _banner.AddChild(holder);
+        int pad = UiKit.U(_s, 12);
+        _bannerHead = UiKit.Fixed(_s, UiKit.Title, UiKit.Serif, UiKit.Ink, HorizontalAlignment.Center);
+        _bannerHead.Name = "Title";
+        _bannerHead.Position = new Vector2(pad, UiKit.U(_s, 8));
+        _bannerHead.Size = new Vector2(z.Banner.Size.X - 2 * pad, UiKit.U(_s, 30));
+        _bannerText = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont, UiKit.Ink, HorizontalAlignment.Center);
+        _bannerText.Name = "Text";
+        _bannerText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _bannerText.MaxLinesVisible = 2;
+        _bannerText.VerticalAlignment = VerticalAlignment.Top;
+        _bannerText.Position = new Vector2(pad, UiKit.U(_s, 40));
+        _bannerText.Size = new Vector2(z.Banner.Size.X - 2 * pad, UiKit.U(_s, 46));
+        holder.AddChild(_bannerHead);
+        holder.AddChild(_bannerText);
         _root.AddChild(_banner);
         _bannerAge = -1;
     }
 
     public void Banner(string head, string text)
     {
-        _bannerHead.Text = head;
-        _bannerText.Text = text;
-        _bannerAge = 0;
-        _bannerAt = null;
-        _banner.Visible = _fullA > 0.01f;
         string line = head + ": " + text;
         Log(BannerLog, line);
         Log(NoteLog, line);
         LastNote = line;
+        _bannerAt = null;
+        if (BannerWaits(head, text)) return;
+        _pendingHead = ""; _pendingText = ""; // the newest banner wins
+        ShowBanner(head, text);
+    }
+
+    /// <summary>One banner at a time: a new one takes the zone at once (its text swapped, its time from the start).</summary>
+    private void ShowBanner(string head, string text)
+    {
+        _bannerHead.Text = head;
+        _bannerText.Text = text;
+        _bannerAge = 0;
+        _banner.Visible = _fullA > 0.01f;
     }
 
     private void BannerFrame(float dt)
     {
+        PendingBannerFrame();
         if (_bannerAge < 0) { _banner.Visible = false; return; }
         _bannerAge += dt;
         if (_bannerAge > BannerSeconds) { _bannerAge = -1; _banner.Visible = false; return; }
-        _banner.Visible = _fullA > 0.01f;
+        _banner.Visible = _fullA > 0.01f && !_drv.Town.ChoiceOpen;
         float a = Math.Clamp(Math.Min(_bannerAge / 0.3f, (BannerSeconds - _bannerAge) / 1f), 0f, 1f) * _fullA;
         _banner.Modulate = new Color(1, 1, 1, a);
-        _banner.ResetSize();
-        // Below the Pave or Extend banner when one shows.
-        float y = UiKit.Px(_s, PaveMode || ExtendMode ? 70 : 18);
-        // Round 6: never over the gift it announces and never in the middle of the view: at the top edge, or, when the
-        // gift lies under that place, at the bottom edge (above the Home control), never just below the gift.
-        if (_bannerAt is { } at)
-        {
-            var g = _main.Rig.LocalToScreen(at);
-            float pad = UiKit.Px(_s, 60);
-            if (g.Y < y + _banner.Size.Y + pad && MathF.Abs(g.X - _built.X / 2f) < _banner.Size.X / 2f + pad)
-                y = _built.Y - _banner.Size.Y - UiKit.Px(_s, 70);
-        }
-        _banner.Position = new Vector2((_built.X - _banner.Size.X) / 2f, y);
-    }
-
-    private void BuildHomeMark()
-    {
-        _home = new Button { Name = "HomeMark", Text = "Back to the town  [Home]", FocusMode = Control.FocusModeEnum.None, Visible = false,
-            TooltipText = "The view follows the town again" };
-        _home.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, 16));
-        _root.AddChild(_home);
-        _home.Pressed += () => _main.Rig.HomePressed?.Invoke();
-    }
-
-    private void HomeFrame()
-    {
-        bool show = _main.Rig.UserMoved && _main.Stage == Main.ZoomStage.Town && _main.Menu != null && !_main.Menu.IsPaused && !PaveMode && !ExtendMode;
-        _home.Visible = show;
-        if (!show) return;
-        _home.ResetSize();
-        // Last pass: on whole pixels (a half-pixel x lost the 1 px left border, a01).
-        _home.Position = new Vector2(MathF.Round((_built.X - _home.Size.X) / 2f), MathF.Round(_built.Y - _home.Size.Y - UiKit.Px(_s, 16)));
     }
 }
