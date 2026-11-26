@@ -3,7 +3,11 @@ using System.Collections.Generic;
 
 namespace TideToll.Sim.Town;
 
-public enum ShopItemKind : byte { Villager = 0, Pace = 1, Load = 2, Pave = 3, Building = 4, Bell = 5, NextAge = 6, Tools = 7, Value = 8, Extend = 9, BellTrack = 10 }
+public enum ShopItemKind : byte { Villager = 0, Pace = 1, Load = 2, Pave = 3, Building = 4, Bell = 5, NextAge = 6, Tools = 7, Value = 8, Extend = 9, BellTrack = 10, Hand = 11,
+    // The second age
+    Ferry = 12, Berth = 13, Crane = 14, BoatPrices = 15, RiverValue = 16, Raft = 17, Rope = 18, Toll = 19, Winch = 20,
+    // Green pass 2: the first age's ladder of small steps (sim/Town/TownRegulars.cs)
+    Regulars = 21 }
 
 /// <summary>One thing the player can buy (or press). Index: offer id for Building, road id for Pave (the suggested road),
 /// (int)Good for Value, cottage plot id for Extend (the suggested cottage), Load step for Load, else -1.</summary>
@@ -19,6 +23,12 @@ public struct ShopItem
     /// <summary>Empty when it can be bought now, else why not, in words for the player.</summary>
     public string Reason;
     public double Renown;
+    /// <summary>Rules v3: estimated extra coin per minute this purchase would add now (0 when it has no direct worth).</summary>
+    public double Worth;
+    /// <summary>Green pass: not on sale yet (a later level or something still to come; Reason says what).</summary>
+    public bool Locked;
+    /// <summary>Green pass: this track or thing is done; nothing more of it will come (Reason says so).</summary>
+    public bool Finished;
 }
 
 /// <summary>The shop: prices, purchases, renown, perks, the bell and the next age.</summary>
@@ -27,13 +37,13 @@ public sealed partial class Town
     private static readonly string[] PerkNames = { "Good neighbours", "Light feet", "", "Mason's eye" };
 
     public double VillagerPrice => TownRules.VillagerBase * Math.Pow(TownRules.VillagerGrowth, S.VillagersBought);
-    public double PacePrice => TownRules.PaceBase * Math.Pow(TownRules.PaceGrowth, S.PaceLevel);
+    public double PacePrice => TrackPrice(TownRules.PaceBase, TownRules.PaceGrowth, S.PaceLevel, TownRules.PaceMax);
     public double LoadPrice => S.LoadLevel < TownRules.LoadPrices.Length ? TownRules.LoadPrices[S.LoadLevel] : double.PositiveInfinity;
     public int HousingRoom => Housing - S.Villagers.Length;
 
     /// <summary>Rules v2: why the next Load step cannot be bought yet ("" when it can, ignoring coin).</summary>
     public string LoadLockReason => S.LoadLevel >= TownRules.LoadPrices.Length ? "All Load steps bought"
-        : S.Level < TownRules.LoadLevels[S.LoadLevel] ? "Unlocks at level " + TownRules.LoadLevels[S.LoadLevel] : "";
+        : S.Level < TownRules.LoadLevels[S.LoadLevel] ? LevelText(TownRules.LoadLevels[S.LoadLevel]) : "";
 
     /// <summary>Surface the road would get if paved now (Track when it cannot be paved further).</summary>
     public Surface NextSurface(int road) => S.RoadSurface[road] switch
@@ -76,7 +86,7 @@ public sealed partial class Town
         into.Clear();
         string room = HousingRoom > 0 ? "" : "No room: wait for a cottage";
         into.Add(Item(ShopItemKind.Villager, -1, "Villager", S.VillagersBought, VillagerPrice, room));
-        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= TownRules.PaceMax ? 0 : PacePrice, PaceLockReason));
+        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= PaceCap ? 0 : PacePrice, PaceLockReason));
         if (S.LoadLevel < TownRules.LoadPrices.Length)
             into.Add(Item(ShopItemKind.Load, -1, TownRules.LoadNames[S.LoadLevel], S.LoadLevel, LoadPrice, LoadLockReason));
         int pr = SuggestedPave();
@@ -85,6 +95,8 @@ public sealed partial class Town
         foreach (var o in Plan.Offers)
             if (S.OfferAvailable[o.Id] && !S.OfferBought[o.Id]) into.Add(Item(ShopItemKind.Building, o.Id, o.Name, 0, o.Price, ""));
         AddTrackItems(into);
+        AddRegularsItem(into);
+        if (S.River != null) AddRiverItems(into);
     }
 
     internal ShopItem Item(ShopItemKind k, int index, string name, int level, double price, string reason)
@@ -93,7 +105,8 @@ public sealed partial class Town
         return new ShopItem
         {
             Kind = k, Index = index, Name = name, Level = level, Price = price, Reason = reason,
-            Affordable = reason.Length == 0, Renown = RenownFor(price),
+            Affordable = reason.Length == 0, Renown = RenownFor(price), Worth = EstimateWorth(k, index),
+            Locked = IsLockedReason(reason), Finished = IsFinishedReason(reason),
         };
     }
 
@@ -114,7 +127,9 @@ public sealed partial class Town
         ShopItemKind.Value => BuyValue((Good)item.Index),
         ShopItemKind.Extend => Extend(item.Index),
         ShopItemKind.BellTrack => BuyBellTrack(),
-        _ => false,
+        ShopItemKind.Hand => BuyHand(item.Index),
+        ShopItemKind.Regulars => BuyRegulars(),
+        _ => BuyRiver(item.Kind, item.Index),
     };
 
     public bool BuyVillager()
@@ -189,6 +204,8 @@ public sealed partial class Town
         Emit(new TownEvent { Kind = TownEventKind.Purchase, Item = k, Index = index, Coin = price, Value = renown, Level = level });
         if ((k == ShopItemKind.Villager || k == ShopItemKind.Pace || k == ShopItemKind.Pave) && level % TownRules.PerkEvery == 0)
             Emit(new TownEvent { Kind = TownEventKind.PerkEarned, Item = k, Level = level, Text = PerkNames[(int)k] });
+        if ((k == ShopItemKind.Pace || k == ShopItemKind.Tools || k == ShopItemKind.Value) && level % TownRules.MilestoneEvery == 0)
+            Emit(new TownEvent { Kind = TownEventKind.Milestone, Item = k, Index = k == ShopItemKind.Value ? index : -1, Level = level, Text = MilestoneName(k, index, level) });
         CheckLevels();
     }
 
@@ -222,6 +239,7 @@ public sealed partial class Town
         if (!CanRingNextAge) return false;
         S.NextAgeRung = true;
         Emit(new TownEvent { Kind = TownEventKind.NextAge, Level = S.Level, Text = "The next age" });
+        StartRiver(); // the second age, The River
         return true;
     }
 }

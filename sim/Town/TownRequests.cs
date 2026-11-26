@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 
 namespace TideToll.Sim.Town;
@@ -38,7 +39,7 @@ public sealed partial class Town
     }
 
     /// <summary>Coin one unit of a good brings now without the request bonus (Grain at the market when it works).</summary>
-    private double UnitValue(Good g)
+    internal double UnitValue(Good g)
     {
         double b = g == Good.Water ? TownRules.WaterValue : g == Good.Flour ? TownRules.FlourValue
             : _marketPlot >= 0 && PlotWorks(_marketPlot) ? TownRules.GrainMarketValue : TownRules.GrainHomeValue;
@@ -46,16 +47,16 @@ public sealed partial class Town
     }
 
     /// <summary>Units per second the workplaces of a good could turn out if every place were busy.</summary>
-    private double Capacity(Good g)
+    internal double Capacity(Good g)
     {
         double c = 0;
         foreach (var w in S.Workplaces)
         {
             if (!w.Open) continue;
             var k = Plan.Plots[w.Plot].Kind;
-            if (g == Good.Water && k == PlotKind.Well) c += w.Places * LoadUnits * ToolsFactor / TownRules.WellWork;
-            if (g == Good.Grain && k == PlotKind.Field) c += w.Places * LoadUnits * ToolsFactor / TownRules.FieldWork;
-            if (g == Good.Flour && k == PlotKind.Mill) c += w.Places * LoadUnits * ToolsFactor / TownRules.MillWork;
+            if (g == Good.Water && k == PlotKind.Well) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Well);
+            if (g == Good.Grain && k == PlotKind.Field) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Field);
+            if (g == Good.Flour && k == PlotKind.Mill) c += w.Places * LoadUnits * ToolsFactor / WorkTime(PlotKind.Mill);
         }
         return c;
     }
@@ -74,7 +75,7 @@ public sealed partial class Town
             }
             return;
         }
-        if (S.ReqNextAt < 0 || Time < S.ReqNextAt || S.Charter) return;
+        if (S.ReqNextAt < 0 || Time < S.ReqNextAt || S.Charter || S.DriveActive) return; // rules v3: no new request during the charter drive
         // Which goods can be made now: Water always, Grain with a field, Flour with the mill and the market.
         int n = 1; bool grain = Capacity(Good.Grain) > 0, flour = Capacity(Good.Flour) > 0 && _marketPlot >= 0 && PlotWorks(_marketPlot);
         if (grain) n++;
@@ -123,6 +124,26 @@ public sealed partial class Town
     /// <summary>Plot the hint is about (-1 none). Read after <see cref="Hint"/>.</summary>
     public int HintPlot { get; private set; } = -1;
 
+    // Green pass (the game's wish): the hint builds no string per read; texts with a name in them are built once and kept.
+    private static readonly string[] LoadHints = BuildLoadHints();
+    private static string[] BuildLoadHints()
+    {
+        var a = new string[TownRules.LoadNames.Length];
+        for (int i = 0; i < a.Length; i++) a[i] = "The " + TownRules.LoadNames[i] + " is ready. Every trip carries one more.";
+        return a;
+    }
+    private readonly Dictionary<string, string>[] _handHints = { new(), new(), new() };
+    private string HandHint(PlotKind kind, string hand)
+    {
+        int k = kind == PlotKind.Well ? 0 : kind == PlotKind.Field ? 1 : 2;
+        if (!_handHints[k].TryGetValue(hand, out var s))
+        {
+            s = "A queue at the " + (k == 0 ? "well" : k == 1 ? "field" : "mill") + ". " + hand + " would help.";
+            _handHints[k][hand] = s;
+        }
+        return s;
+    }
+
     /// <summary>One line of advice from the state of the town, or "" when there is nothing to say. Once a frame is fine.</summary>
     public string Hint
     {
@@ -131,7 +152,7 @@ public sealed partial class Town
             HintRoad = -1; HintPlot = -1;
             // A Load step that has just unlocked (shown for a minute and a half).
             if (S.LoadLevel < TownRules.LoadPrices.Length && LoadLockReason.Length == 0 && S.LoadUnlockedAt[S.LoadLevel] >= 0 && Time - S.LoadUnlockedAt[S.LoadLevel] < 90)
-                return $"The {TownRules.LoadNames[S.LoadLevel]} is ready. Every trip carries one more.";
+                return LoadHints[S.LoadLevel];
             // Housing full and a cottage could be extended.
             if (HousingRoom <= 0)
             {
@@ -145,6 +166,7 @@ public sealed partial class Town
                 if (w.QueueLen < 2) continue;
                 var kind = Plan.Plots[w.Plot].Kind;
                 HintPlot = w.Plot;
+                if (w.HandOffered) return HandHint(kind, HandName(i)); // rules v3; green pass: built once per text, not per read
                 int bucket = OfferOf(OfferKind.SecondBucket), field2 = OfferOf(OfferKind.SecondField);
                 if (kind == PlotKind.Well && bucket >= 0 && S.OfferAvailable[bucket] && !S.OfferBought[bucket]) return "A queue at the well. A second bucket would help.";
                 if (kind == PlotKind.Field && field2 >= 0 && S.OfferAvailable[field2] && !S.OfferBought[field2]) return "A queue at the field. A second field would help.";

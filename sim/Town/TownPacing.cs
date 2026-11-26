@@ -28,7 +28,7 @@ public sealed class PacingResult
     public int WorstEarlyMinute = -1, WorstLateMinute = -1;
     // ---- Rules v2 ----
     /// <summary>Purchases by ShopItemKind (index = (int)kind) before the charter.</summary>
-    public int[] ByKind = new int[11];
+    public int[] ByKind = new int[22]; // rules v3: Hand = 11; green pass 2: Regulars = 21
     /// <summary>Load steps and building offers bought before the charter.</summary>
     public int LoadSteps, Buildings;
     /// <summary>Longest gap in seconds between new things on the map (level gift, building opened, road paved, cottage extended) after minute 2 and before the charter.</summary>
@@ -38,6 +38,25 @@ public sealed class PacingResult
     // ---- Rules v2.2 ----
     /// <summary>Longest time in seconds without a purchase after minute 2 and before the charter (the saver's own check).</summary>
     public double LongestPurchaseGap, LongestPurchaseGapAt;
+    // Rules v3
+    /// <summary>Boon taken at each choice ((int)Boon, -1 none).</summary>
+    public int[] Boons = { -1, -1, -1, -1 };
+    public double DriveAsked = -1, DriveMet = -1;
+    public int Milestones;
+    /// <summary>Estimated worth of both boons of each choice when it was offered (A, B per choice).</summary>
+    public double[] ChoiceWorth = new double[8];
+    /// <summary>Minutes from level MaxLevel-1 to the charter (LastGap), and the longest of the three level gaps before it.</summary>
+    public double LastGap => Charter < 0 || LevelTimes.Length < 2 || LevelTimes[^2] < 0 ? -1 : (Charter - LevelTimes[^2]) / 60;
+    public double LongestEarlierGap
+    {
+        get
+        {
+            double g = 0;
+            for (int i = Math.Max(1, LevelTimes.Length - 4); i < LevelTimes.Length - 1; i++)
+                if (LevelTimes[i] >= 0 && LevelTimes[i - 1] >= 0) g = Math.Max(g, (LevelTimes[i] - LevelTimes[i - 1]) / 60);
+            return g;
+        }
+    }
 }
 
 /// <summary>Plays a bot on a seed and measures the pacing (used by the 'town' tool and the pacing tests).</summary>
@@ -64,13 +83,18 @@ public static class TownPacing
             foreach (var e in events)
             {
                 if (e.Kind == TownEventKind.LevelReached) res.LevelTimes[e.Level - 1] = e.Time;
+                if (e.Kind == TownEventKind.BoonChosen) res.Boons[e.Level] = e.Index;
+                if (e.Kind == TownEventKind.ChoiceOffered) { var cv = t.Choice; res.ChoiceWorth[2 * e.Index] = cv.AWorth; res.ChoiceWorth[2 * e.Index + 1] = cv.BWorth; }
+                if (e.Kind == TownEventKind.DriveAsked) res.DriveAsked = e.Time;
+                if (e.Kind == TownEventKind.DriveMet) res.DriveMet = e.Time;
+                if (e.Kind == TownEventKind.Milestone && res.Charter < 0) res.Milestones++;
                 if (res.Charter < 0 && e.Kind == TownEventKind.Purchase)
                 {
                     res.ByKind[(int)e.Item]++;
                     if (e.Item == ShopItemKind.Load) res.LoadSteps++;
                     if (e.Item == ShopItemKind.Building) res.Buildings++;
                 }
-                if (res.Charter < 0 && e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended)
+                if (res.Charter < 0 && e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended or TownEventKind.TouchAdded)
                 {
                     if (e.Time > 120 && e.Time - lastNew > res.LongestMapGap) { res.LongestMapGap = e.Time - lastNew; res.LongestMapGapAt = lastNew; }
                     if (e.Time > 120) lastNew = e.Time;

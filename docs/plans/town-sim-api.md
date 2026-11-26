@@ -179,3 +179,194 @@ Still compatible: nothing renamed or removed, save version still 2 (a v2 save wi
 ### Rules v2.2 (2026-11-25, `docs/plans/town-rules22-progress.md`)
 
 No API change for the game. Numbers: bell hurry 1.4 for 8 s (was 1.17 for 6 s), bell track +0.4 s hurry and -1 s rest per step (was 0.6 and 2), Pace +3 % per step (was 4 %), Basket 250 (was 300), extensions from 40 (was 60), request reward 0.4 (was 0.6), levels 15 and 16 need 62000 and 102000 renown (were 59000 and 84000). Requests start easy: the first three are scaled by `TownRules.RequestEaseIn` (0.4, 0.6, 0.8), then the adaptation alone. For tuning: `TownPacing.BellWorth(seed)` now returns one value per minute in `TownTargets.BellAtMinutes` (frozen payback towns), `PacingResult.LongestPurchaseGap`, tool option `town --seed N --bot B --buys A-B`.
+
+## Added in rules v3
+
+2026-11-25, `docs/plans/town-rules3-progress.md`. Everything above still works as written: nothing renamed or removed, no enum value changed. Save version is still **2**: a v2 save without the new fields loads with no boons, no choice offered yet, no drive and no extra hands.
+
+### Numbers that changed
+
+Goods pay Water 1.8, Grain 2.4 at home or 3.2 at the market, Flour 6.5 (were 2, 3, 4, 10). Villager from 4.5 (was 5), growth 1.32 (was 1.3); Pace from 1.8 (was 2), growth 1.4 (was 1.36); Tools growth 1.38 (was 1.33); Basket 200 (was 250); Water and Grain price steps on sale at levels 7 to 13 one more (`ValueAt`); levels 9 to 16 need 5700, 9500, 15000, 22500, 33000, 48000, 74000, 140000 renown (were 5500 ... 66000, 102000). Pace, Tools and value factors now include milestones (below), so `PaceFactorAt(level)` is no longer a straight line.
+
+### 1. Choices of two (boons)
+
+At levels 4, 7, 10 and 13 (`TownRules.ChoiceLevels`, choice 0 to 3) the town is offered two boons and keeps the one it picks, for good. The town runs on while a choice is open; nothing is lost by waiting. If two are open, the oldest is shown first.
+
+| Choice (level) | Side A (`Boon`) | Side B (`Boon`) |
+| --- | --- | --- |
+| 0 (4) | `WiderLanes = 0` "Wider lanes": every road carries 50 % more people before it crowds (`BoonLanes`) | `StrongerBacks = 1` "Stronger backs": everyone walks 4.5 % faster (`BoonWalk`) |
+| 1 (7) | `DeeperWell = 2` "A deeper well": water is drawn 20 % faster (`BoonWellWork`) | `LongerRows = 3` "Longer field rows": grain is cut 60 % faster (`BoonFieldWork`) |
+| 2 (10) | `ThirdRoom = 4` "A third room": every cottage houses one more villager (`BoonRoom`) | `FasterHands = 5` "Faster hands": all work 40 % faster (`BoonHands`) |
+| 3 (13) | `MarketRight = 6` "A market right": Grain pays 12 % more (`BoonGrain`) | `MillersGuild = 7` "A miller's guild": Flour pays 20 % more (`BoonFlour`) |
+
+- `town.ChoiceOpen` (bool); `town.Choice` gives a `ChoiceView`: `Open, Choice` (0..3, -1 when none), `Level, A, B` (the two `Boon`s), `AName, AText, BName, BText` (name and one plain line, e.g. "Wider lanes" / "Every road carries 50 % more people before it crowds."), `AWorth, BWorth` (estimated extra coin per minute now, see `BoonWorth`).
+- `town.ChooseSide(0 or 1)` or `town.Choose(Boon b)`: true when it was taken; false when no choice is open, the boon is not on the open choice, or it was decided already.
+- `town.HasBoon(b)`, `town.BoonsHeld(List<Boon>)` (cleared, then filled in Boon order), `town.ChoicePicked(choice)` (the `(int)Boon` taken, -1 none), static `Town.BoonName(b)`, `Town.BoonText(b)`, `town.BoonWorth(b)`.
+- Events: `ChoiceOffered = 17` (`Index` = choice, `Level` = town level); `BoonChosen = 18` (`Index` = `(int)Boon`, `Level` = choice, `Text` = name).
+- Bots: payback and saver take the side with the higher `BoonWorth`, cheapest first takes side A, random affordable takes a random side.
+
+### 2. The charter drive
+
+When level 15 (`MaxLevel - 1`) is reached the town is asked for one last great effort. It is not a `Request` (the request card, `Request`, `RequestText` and the request counts are unchanged); no new ordinary request starts while it runs.
+
+- `town.Drive` gives a `DriveView`: `Active, Done, Name` ("The charter drive", also `Town.DriveName`), `Good` (Flour when the mill and market work, else Grain, else Water), `Amount, Delivered, RewardRenown` (renown in all: 65 % of the renown still needed for the charter when it was asked, `TownRules.DriveShare`), `RenownGiven` (so far).
+- `town.DriveText`: "The charter drive: send 300 Flour for the charter (120 sent)", or "" when none runs.
+- It cannot be missed (no time limit) and is met in parts: every delivery of the good counts and pays its share of the renown at once, so the level bar moves as goods arrive. While it runs the good pays `TownRules.DriveBonus` (1.25x) more, so villagers turn to it by themselves. Amount = the town's coin rate for `DriveMinutes` (1) in units of the good, at most 80 % of what its workplaces could make in that time, at least 10.
+- Events: `DriveAsked = 20` (`Good, Amount, Value` = renown in all); `DriveProgress = 21` (`Good, Amount` = delivered so far, `Value` = renown added by this delivery); `DriveMet = 22` (`Good, Amount, Value`).
+
+### 3. Steps that show
+
+- `ShopItem.Worth` (new field): estimated extra coin per minute the item would add now (rounded to 0.1; 0 where it has no direct worth: the Pave item without a road, Extend while there is room, Pace at its end, the bell). Same estimate the payback bot uses, without the bot's own pull towards cheap tracks.
+- Milestones: every fifth step (`TownRules.MilestoneEvery`) of Pace, Tools and each value track adds extra on top of the step: Pace +2 % walking speed (`PaceMilestone`), Tools +4 % work speed (`ToolsMilestone`), a value track +4 % price (`ValueMilestone`). New static `Town.ToolsFactorAt(level)`, `Town.ValueFactorAt(level)` (no boons), and `PaceFactorAt` includes them.
+- Event `Milestone = 19`: `Item` (Pace, Tools or Value), `Index` (`(int)Good` for Value, else -1), `Level` (the track level), `Text`: Pace "Long strides", "Sure feet", "Quick march", "Light step", "Fleet feet" (5 to 25); Tools "Sharp tools", "Fine tools", "Master tools" (5, 10, 15); a value track "Water: a fair name", "Water: a good name" (5, 10; Grain and Flour likewise). `Town.MilestoneName(kind, index, level)` gives the same text ("" when that level is no milestone). `PerkEarned` is still sent as before.
+
+### 4. Extra hands at queued workplaces
+
+When 2 or more people (`HandQueueLength`) stay queued at an open workplace for 30 s (`HandQueueSeconds`), an offer appears there to add a place: at most 2 per workplace (`HandMax`).
+
+- New shop kind `ShopItemKind.Hand = 11`, listed after the bell track, one item per workplace with an offer: `Index` = workplace index (as in `Workplace(i)`), `Name` e.g. "A third hand at the mill" (the ordinal is the place it would add), `Level` = hands bought there, `Price` = 150 (well), 600 (field), 4000 (mill) x 2.5 per hand bought there. `Buy(item)` or `town.BuyHand(workplace)` (false when none is on offer there).
+- `town.HandOffered(w)`, `town.HandsBought(w)`, `town.HandName(w)`, `town.HandPrice(w)`. `WorkplaceView.Places` includes the hands.
+- The offer stays until bought. Events: `OfferAvailable` with `Item = Hand`, `Index` = workplace, `Plot` = its plot, `Text` = the name; `Purchase` with `Item = Hand`, `Index` = workplace, `Level` = hands there now.
+- `Hint`: a queue of 2 or more at a workplace with a hand on offer now says "A queue at the mill. A third hand at the mill would help." (`HintPlot` = the workplace's plot), before the bucket, field and Tools advice.
+
+### Tools and tuning
+
+`PacingResult.Boons` (boon per choice), `ChoiceWorth`, `DriveAsked`, `DriveMet`, `Milestones`, `LastGap` (minutes from level 15 to the charter), `LongestEarlierGap` (longest of the three level gaps before it). Tool: `town --seeds 1-10 --misses --v3 [--worth]` adds boons picked (A/B per choice), last gap / longest earlier gap and hands bought to each bot's column, and with `--worth` the payback bot's boon estimates when each choice was offered.
+
+## The second age
+
+2026-11-25, `docs/plans/town-age2-progress.md`, design brief `docs/plans/age2-design.md`. Everything above still works as written: nothing renamed or removed, no enum value changed. A town that never calls `RingNextAge()` behaves exactly as before, tick for tick, and still saves as version 2. Numbers live in `sim/Town/TownRulesRiver.cs`.
+
+### Ringing it in
+
+- `town.RingNextAge()` (after the charter, as before) still emits `NextAge`, and now starts the second age in the same town: villagers, coin, renown, upgrades, paving, boons and achievements stay. It at once reaches level 17 (the landing and its road: `LevelReached`, Level 17). `MaxLevel` becomes 28; `Level`, `LevelBar`, `NextLevelRenown` and `NextGift` ("Next: Two cottages by the river", at the end "The borough seal is yours") carry on through levels 17 to 28.
+- `town.InRiverAge` (bool), `town.HasSeal` (level 28 reached; event `Seal = 30`, Text "The borough seal"). The bots stop at the seal.
+- `town.RiverLevelRenown(n)`: renown needed for level n (1 to 28). Second-age levels need `RenownBase + round(RenownScale x LevelRenown[i])`, where RenownBase is the renown at the ring and RenownScale the town's best coin per minute by then (at least 2000), so towns of any size take about as long.
+- Levels: 17 the landing and its road; 18 two cottages by the river; 19 the ford and a lane on the far bank; 20 the pasture (Wool); 21 the weaver (Cloth); 22 the ferry (offer); 23 a second berth (offer); 24 two cottages on the far bank; 25 the footbridge; 26 the crane (offer); 27 the drawbridge; 28 the borough seal. `RiverPlan.Levels[i]` (i = level - 17) lists the river `Plots` and `Links` each level gives.
+
+### Coordinates
+
+Same map and units as the first age (map cells, 128 x 128, y grows south, headings `atan2(dy, dx)`), with one difference: **every river position is already at cell centres** (draw `(x, y)` as given; do not add 0.5). The town's bank is the west (near) bank; the far bank is east of the water. Boats come up the river from the **south edge** (row 127), moor at the landing, and go back down to the south edge. Nothing of the river is north of the footbridge for boats.
+
+### The plan (`town.RiverPlan`, null before the ring; built from the seed, never changes)
+
+- `RiverPlot[] Plots`: `Id, Kind (Landing, Weaver, Pasture, Cottage), X, Y, W, H` (footprint cells), `Point` (door point id), `Level`, `FarBank`. Ids: 0 landing, 1 weaver, 2 and 3 near cottages, 4 pasture, 5 and 6 far cottages.
+- Points: `Px[i], Py[i]`, `PointFar[i]`, ids in `RiverPoint`: `Bank` (the first-age door node `BankNode` where the bank road starts), `Landing, Weaver, Pasture, FordNear, FordFar, FerryNear, FerryFar, FootNear, FootFar, DrawNear, DrawFar, FarHub, CottageNear0, CottageNear1, CottageFar0, CottageFar1`.
+- `RiverLink[] Links`: `Id, Kind (Lane, Ford, Ferry, Footbridge, Drawbridge), A, B` (point ids; for a crossing A is on the near bank), `Px, Py` (polyline), `Cum`, `Length`, `Level`; `link.At(dist, out x, out y, out heading)`. Lanes are 4-connected paths over free land (never through water or a plot of either age). Crossings are straight lines over the water on their row. `LinkOf(kind)`, `PlotOf(kind)`.
+- Rows: `LandingRow, FordRow` (the map's own `FordY` unless it is too close to the others; then the nearest clear row), `FerryRow` (landing - 8), `FootRow` (landing - 14, north of every berth, so boats never meet it), `DrawRow` (landing + 11, between the south edge and the landing: every boat passes it twice).
+- Boats' course: `CourseX[row]` (river centre for every row), berths `BerthX[k], BerthY[k]` (k = 0, 1), waiting places on the river `WaitY[0..2]` (x = `CourseX`).
+- `town.RiverPlotGiven(plot)`, `town.RiverLinkOpen(link)` (the ferry: given and bought).
+- Valid on seeds 1 to 100 (`TownRiverPlanTests`).
+
+### The tide
+
+`TideLevel` (0 lowest .. 1 highest; 0 before the age), `TideRising`, `TideSecondsToTurn` (to the next high or low water), `HighWater` (level >= 0.6: boats may arrive), `FordOpen` (level < 0.4). One cycle is `TownRulesRiver.TidePeriod` = 240 game seconds; the age starts at high water.
+
+### Boats
+
+`BoatCount` (3 slots), `Boat(i)` gives a `BoatView`: `Id` (boat number, -1 unused), `Kind` (`BoatKind.Rowboat` / `Barge`, every third), `Phase` (`BoatPhase.Gone` (draw nothing), `Arriving`, `Waiting` (on the river for a berth), `Moored`, `Leaving`), `Good` (wanted: Grain, Flour, Wool or Cloth), `Want`, `Loaded`, `Patience` (seconds left, moored or waiting), `PatienceMax`, `Berth` (-1 none), `Request`, `Skipper` (name), `X, Y, PrevX, PrevY, Heading` (interpolate like villagers). `BoatRequestText(i)`: "The barge Marit wants 30 Flour before the tide turns" or "" (every second boat carries a skipper's request: 25 % more cargo, fill bonus doubled).
+- A boat arrives only at high water, at most one every 15 s, at most 3 on the river; it goes to a free berth (1, or 2 with the second berth) or waits on the river (up to 120 s). Cargo = the town's coin rate for 0.6 (rowboat) or 1.4 (barge) minutes in units (balance round 3; was 0.8 and 1.8), times the crane. Every unit is paid on delivery at `BoatUnitPrice(g)` (1.6 x the market price, times better boat prices); filled: a bonus of 30 % of the cargo's price and it leaves; patience over (150 s rowboat, 210 s barge): it leaves with what it has.
+- Events: `BoatArrived = 23` (Index boat id, Good, Amount wanted, Level = kind, Value 1 for a request, X, Y), `BoatFilled = 24` (Coin = bonus), `BoatLeft = 25` (Amount loaded, Level wanted), `LandingDelivery = 31` (Villager, Good, Amount, Coin, X, Y = the landing, Index = boat id or -1 when sold to the landing store at market price).
+- Models: `rowboat.glb`, `barge.glb`, at the landing `landing.glb`; the cargo carried by villagers `villager-cargo-wool.glb`, `villager-cargo-cloth.glb` (Grain and Flour as before); sounds `boat-call` on `BoatArrived`, `oar-splash` while moving.
+
+### Wool and Cloth
+
+`Good.Wool = 4`, `Good.Cloth = 5`; jobs `JobKind.GrainBoat = 5, FlourBoat = 6, WoolBoat = 7, WoolMarket = 8, ClothBoat = 9, ClothMarket = 10`. Villagers choose them by the same coin-per-second rule (boat jobs only while boats still want that good). Wool: shear at the pasture (far bank, 3 places, 3 s); Cloth: Wool woven at the weaver (near bank, 2 places, 4 s). Market price Wool = 2 x Grain at the market, Cloth = 1.8 x Flour (each with its value factors and the new Wool / Cloth price tracks). `StorePrice(g)`, `RiverDelivered(g)`, `RiverEarnedBy(g)`. A villager on a river job: `VillagerView.Road` is -1 and `X, Y, Heading` follow the river plan (walking a lane, waiting at a crossing, on the raft, working at the pasture or weaver); `Phase` Walking, Queued (at a crossing or for a place) or Working. Pasture, sheep and the weaver's cottage are new code-made models (no asset yet).
+
+### Crossings
+
+`CrossingExists(RiverLinkKind k)`, `Crossings(k)` (people carried), `CrossingsPerMinute(k)`, `CrossingWaiting(k, bank)` (0 near, 1 far), `LongestCrossingWait`, `CrossingCapacity(k)` (people a minute it can carry with a full queue now: width or raft load over the time of one crossing, times the share of time it is open). At most 3 people on the ford at once, 6 on the footbridge, 8 on the drawbridge. Villagers pick their crossing by time, counting the queue already waiting there and the wait for low water.
+- Ford (`ford-stones.glb`, sound `water-ford`): walking speed x 0.35, steps on only while `FordOpen`; people queue on the bank (0.8 cells apart, away from the water) at high water.
+- Ferry (offer at level 22, `BuyFerry()`; `ferry-raft.glb`, `ferry-post.glb`, `ferry-rope.glb`, sound `ferry-rope`): `Ferry` gives a `FerryView`: `Built, Pos` (0 near .. 1 far), `Dir` (+1 to far, -1 to near, 0 docked), `Aboard, Capacity, WaitingNear, WaitingFar, Trips, X, Y, Heading`; `FerryRider(k)` = villager id aboard. It docks 2 s, leaves when someone is aboard or waits on the other side. Event `FerryDocked = 27` (Index bank, X, Y).
+- Footbridge (level 25; `footbridge-end.glb`, `footbridge-span.glb`): always open, normal speed.
+- Drawbridge (level 27; `drawbridge-end.glb`, `drawbridge-lift.glb`, `drawbridge-span.glb`, `keeper-hut.glb`; sounds `drawbridge-raise`, `drawbridge-lower`): `DrawbridgeAngle` (radians, 0 down .. 1.2 up). It lifts when a boat comes within 6 rows (once no walker is on it); boats wait below it until it is up; walkers wait at its ends while it is up or a boat is near. Every boat pays `Toll` on its way in (event `TollPaid = 26`, Coin, X, Y). `LiftSeconds`. Events `DrawbridgeRaised = 28`, `DrawbridgeLowered = 29`.
+
+### Purchases (new `ShopItemKind` values, listed in `ShopItems` after the first age's)
+
+| Kind | Index | Name | Steps | Effect | Method, view |
+| --- | --- | --- | --- | --- | --- |
+| `Ferry = 12` | -1 | "The ferry" | 1 (from level 22) | the ferry works | `BuyFerry()`, `FerryPrice` |
+| `Berth = 13` | -1 | "A second berth" | 1 (from level 23) | two boats moor at once | `BuyBerth()`, `BerthPrice` |
+| `Crane = 14` | -1 | "Crane" | 6 (from level 26) | boats ask 25 % more cargo per step | `BuyCrane()`, `CraneFactor`, `CranePrice` |
+| `BoatPrices = 15` | -1 | "Better boat prices" | 20 | +4 % per unit from boats | `BuyBoatPrices()`, `BoatPriceFactor` |
+| `RiverValue = 16` | 4 or 5 | "Wool price", "Cloth price" | 20 each (from 20 / 21) | +4 % per step | `BuyRiverValue(g)`, `RiverValueFactor(g)`, `RiverValuePrice(g)` |
+| `Raft = 17` | -1 | "A bigger raft" | 5 | +1 person per crossing (3 at first) | `BuyRaft()`, `FerryCapacity` |
+| `Rope = 18` | -1 | "A faster rope" | 5 | raft +35 % speed per step | `BuyRope()`, `FerrySpeed` |
+| `Toll = 19` | -1 | "A higher toll" | 8 | +25 % toll per step | `BuyToll()`, `Toll` |
+| `Winch = 20` | -1 | "A faster winch" | 6 | lift 12 % quicker per step | `BuyWinch()`, `LiftSeconds` |
+
+`Buy(item)` buys any of them; `BuyRiver(kind, index)`; `RiverLockReason(kind, index)` ("" or e.g. "Comes with the ferry", "Unlocks at level 22", "Best prices reached"); `RiverTrackLevel(kind, index)`. Each purchase emits `Purchase` and adds renown = price, as before; the ferry and the berth also emit `BuildingOpened` (Index -1, Plot -1, `Item` = Ferry / Berth). `OfferAvailable` is sent with `Item` Ferry, Berth or Crane when its level comes. `ShopItem.Worth` is filled for them too. The first age's items (Villager with room in the river cottages, Pace, Tools, value tracks, paving, extensions, the bell) stay on sale as before.
+
+### Hints, achievements, money views
+
+- `town.RiverHint`: "A boat waits for a berth. A second berth would help.", "People wait at the ford for low water. The ferry would carry them now.", "A queue at the ferry. A bigger raft would help.", "A boat will leave soon. Send it Flour." or "". (Not merged into `Hint`, so the first age's hint is unchanged; show it first when not empty.)
+- 16 achievements: `RiverAchievementCount`, `RiverAchievement(i)` (an `AchievementView` with `Index` 100 + i, `Id` "river0".."river15"); unlock events are `AchievementUnlocked` with `Index` 100 + i. The first age's `AchievementCount` / `Achievement(i)` are unchanged.
+- `LandingCoin` (coin earned at the landing), `TollCoin`, `RiverMarketCoin` (Wool and Cloth sold at the market), `BoatsCome`, `BoatsFilled`, `BoatsLeftShort`, `Tolls`, `RiverStartTime`.
+
+### Saving
+
+`TownSave.CurrentVersion` is now **3**; `TownSave.FirstAgeVersion` = 2. A town saves as 3 once the second age is rung in (`TownState.River` holds it), else as 2 exactly as before. `Load` accepts 2 and 3; a version 2 first-age save loads and can ring in the second age.
+
+### Bots and tool
+
+`TownBot.PlayOn = true` rings in the next age at the charter and plays on to the seal (off by default). `TownRiverPacing.Run(seed, bot)` gives a `RiverPacingResult`; targets in `TownRiverTargets`. Tool: `town --river --seeds 1-10 [--bot cheapest|payback|random|saver] [--trace]`, `town --river --plan --seed N`.
+
+### Cost
+
+One game minute at the seal (about 30 villagers) stays under 10 ms of CPU and `Step()` allocates nothing (`OneGameMinuteAtTheEndOfTheSecondAgeIsCheap`).
+
+## Added in balance round 3 (numbers only)
+
+No API change. `TownRulesRiver` numbers changed: `BoatMinutes` {0.8, 1.8} to {0.6, 1.4}; `FerryPrice` 3000 to 2000; `BerthPrice` 8000 to 5000; `CraneBase` 6000 to 4000; `TollBase` 300 to 3000; `TollTrackBase` 5000 to 2500. Prices in the shop views follow. Tool: `town --set` now also takes `TownRulesRiver` fields (a name that exists in both classes means the first age's; write `River.LevelRenown=...` for the river's), used with `town --river`. Details in docs/plans/town-balance-r3.md.
+
+## Added in the green pass
+
+Nothing renamed or removed. Saves: new fields default when missing, so version 2 and version 3 saves from before this pass load and play on; a fresh first-age town still saves as version 2 and a rung-in town as version 3 (decided: the existing version tests pin these numbers and every new field has a safe default, so the version did not have to move).
+
+### Touches (sim/Town/TownTouches.cs)
+
+Small things the town dresses itself with. They cost nothing and do nothing.
+
+- `enum TouchKind`: `Woodpile, WashingLine, FlowerBed, HenCoop, Bench, Beehives, Haystack, AppleTree, Handcart, Signpost` (names match the art).
+- `Town.TouchSpots` (`TouchSpot[]`): every reserved spot of the seed, the same in both ages: `Kind`, `X`, `Y` (cell centre), `CellX`, `CellY`, `Heading` (radians, faces its plot), `Plot` (first-age plot id or -1), `RiverPlot` (river plot id or -1). Up to 3 per plot of either age, at most `TownRules.TouchSpotMax` (64). Clear of roads, lanes, crossings, plots, doors, water (and one cell of bank) and of each other (no two in touching cells); tested on seeds 1 to 100.
+- `Town.TouchCount`, `Town.Touch(i)` (`TouchView`: Kind, X, Y, Heading, Plot, RiverPlot), `Town.NextTouchAtCoin`.
+- Event `TouchAdded` (32): Index = touch number, Level = (int)TouchKind, Plot, Amount = river plot, X, Y, Value = heading, Text = kind name.
+- The beat: a touch appears when the coin earned in all passes `TouchNextCoin`; the next beat is `TouchMinutes` (3.5, first age) or `TouchMinutesRiver` (1.5, second age) of the town's income, taken as the lowest of the last beat's average, the beat before and the last minute (a boat's lump of coin would otherwise stretch the next beat). A backstop: `TouchMaxGap` (170 s) after the last touch the next one comes anyway. The next free spot (dressing order: first spot of each plot by level, then the second, then the third) beside a plot the town has gets it. At most `TouchMax` (44). Seeds 1 to 10, all four bots: 16 to 17 at the ring, 33 to 43 at the seal. Saved (`TouchCount`, `TouchOrder`, `TouchNextCoin`, `TouchLastCoin`, `TouchLastTime`, `TouchPrevRate`).
+- Both ages' pacing count a touch as something new on the map.
+
+### Tracks that go on
+
+- In the second age Pace, Tools, the value of Water, Grain and Flour, the bell and extending cottages go on past their first-age last step: `TownRulesRiver.PaceMore`, `ToolsMore`, `ValueMore` (3 more steps on sale per river level, 36 by level 28), `BellTrackMore` (1 per level), `ExtendMore` (a third extension of each first-age cottage, `ExtendMaxRiver` = 3). Further steps start at `TrackStart` (0.3) of the first age's last price and grow by `TrackGrowth` (1.08) a step, so cheap, middling and dear steps are on sale at every river level. `Town.PaceCap`, `ToolsCap`, `ValueCap`, `BellTrackCap`, `ExtendCap` give the last step now. In the first age everything is as before.
+- First age, levels 13 to 16: `PaceMax` 27 (was 25), `ToolsMax` 20 (was 18), `ValueMax` 16 (was 14), tables changed at levels 13 to 16 only.
+- `Town.TrackPrice(base, growth, level, firstAgeMax)`.
+
+### Age lengths
+
+- First age: `LevelRenown` for levels 14 to 16 is 52000, 84000, 160000 (were 48000, 74000, 140000), and the charter needs at least `TownRules.CharterMinutes` (10) of the town's best coin rate above the renown held at level 15, fixed when level 15 is reached (`TownState.CharterRenown`, `Town.LevelRenownOf(n)`). A town that is slow to level 15 meets the table's number as before.
+- Second age: each river level's renown is fixed when the level before it is reached, in minutes of the best coin rate then (`RiverState.LevelAt`); `LevelRenown` minutes are 0.64 of rules v3's. A version 3 save from before keeps the old ring-time scale.
+- The landing's opening: the first boat 5 s after the ring (`FirstBoatAfter`), and until the first `OpeningBoats` (8) boats are served, boats pay `OpeningPremium` (1.6) times more (`Town.OpeningTrade`). Boats still come only at high water.
+
+### The game builders' wishes
+
+- `ShopItem.Locked` (not on sale yet) and `ShopItem.Finished` (nothing more will come), set from the reason inside the simulation (`Town.IsLockedReason`, `Town.IsFinishedReason`).
+- `Town.CanPaveNow(road)`, `Town.CanExtendNow(plot)`: include the coin.
+- `Hint` builds no string per read (Load and hand texts built once and kept; level texts cached); every branch checks that what it points at can be bought (ignoring coin).
+- `Town.OfferBoughtOf(OfferKind)`.
+- Achievement texts print large numbers with thousands separators ("Earn 20,000 coin in all.").
+- After the borough seal: `Town.SecondAgeComplete`, `Town.SecondAgeCompleteText`, `Town.StillOnSale(list)` and `Town.StillOnSaleCount` (what can still be bought, now or later). Saved through the seal itself.
+
+### Regulars: the first age's ladder of small steps (green pass 2; sim/Town/TownRegulars.cs)
+
+Something cheap is always on sale in the first age, so a player who buys whenever they can always finds a purchase, early and late, and no track is bought out for it.
+
+- `ShopItemKind.Regulars` (21, appended). Listed in the first age only, after the other tracks and the hands (the order of every other item is unchanged), name "Regulars", `Level` = regulars won in all, `Worth` = the coin a minute it adds now. Not listed in the second age (its own tracks go on there); what was won stays.
+- Effect: each regular makes every delivery (and request, boat and store payment, everything that goes through the coin bonus) pay `TownRules.RegularsStep` (0.004, so 0.4 %) more, for good. `Town.RegularsFactor` = 1 + step x regulars.
+- Price: `TownRules.RegularsMinutes` (0.15) of the town's best coin rate when the current level was reached (at least `RegularsRateMin`, 20, a minute), times `RegularsGrowth` (1.35) per regular already won at this level, rounded up. The ladder starts again at every level-up. `Town.RegularsPrice`.
+- `Town.Regulars`, `Town.RegularsThisLevel`, `Town.RegularsLockReason` ("" in the first age), `Town.BuyRegulars()`; `Town.Buy(item)` handles it.
+- Saved: `TownState.Regulars`, `RegularsAtLevel`, `RegularsRate` (0 when missing, so older saves load with no regulars).
+- Game: the HUD shows unknown kinds with its default icon and the item's own name; a short line for it could read "A regular customer: every delivery pays 0.4 % more."
+- Pacing: `PacingResult.ByKind` and `RiverPacingResult.ByKind` now have 22 entries (were 12 and 21).
+
+### Not done
+
+- Villagers housed in the riverside and far-bank cottages still keep a first-age cottage as their errand home (decision 6 of the green pass is not built; green pass 2 left it out too: not safe to build and test in its time box).

@@ -2,9 +2,11 @@ using System;
 
 namespace TideToll.Sim.Town;
 
-public enum Good : byte { None = 0, Water = 1, Grain = 2, Flour = 3 }
+public enum Good : byte { None = 0, Water = 1, Grain = 2, Flour = 3, Wool = 4, Cloth = 5 }
 
-public enum JobKind : byte { None = 0, Water = 1, GrainHome = 2, GrainMarket = 3, Flour = 4 }
+public enum JobKind : byte { None = 0, Water = 1, GrainHome = 2, GrainMarket = 3, Flour = 4,
+    // The second age (river jobs; the destination is the landing or the market)
+    GrainBoat = 5, FlourBoat = 6, WoolBoat = 7, WoolMarket = 8, ClothBoat = 9, ClothMarket = 10 }
 
 /// <summary>What a villager is doing. Walking: on a road. Queued: waiting for a place. Working: in a place.</summary>
 public enum VillagerPhase : byte { Idle = 0, Walking = 1, Queued = 2, Working = 3 }
@@ -33,6 +35,14 @@ public sealed class VillagerState
     public double WorkLeft;
     public int Slot = -1;          // rules v2: work spot taken at the workplace (-1 none)
     public double X, Y, PrevX, PrevY, Heading;
+    // The second age: river mode (1 = walking the river plan, not a first-age road), its itinerary and where on the river.
+    public int RMode;
+    public int[] RSteps = new int[12];
+    public int RLen, RPos;
+    public int RPoint = -1, RTarget = -1, RLink = -1, RDir = 1, RWait = -1, RSite = -1;
+    public double RDist;
+    public int RHome = -1;         // river cottage plot (RiverPlan.Plots) when the villager lives by the river
+    public double RStuckSince = -1; // time it began waiting at a crossing (-1 not waiting)
 }
 
 /// <summary>A place where villagers work: the well, a field, the mill. Places limit how many work at once; the rest queue.</summary>
@@ -45,12 +55,16 @@ public sealed class WorkplaceState
     public int[] Queue = new int[64];
     public int QueueLen;
     public int SlotMask;           // rules v2: work spots in use (bit i = spot i)
+    // Rules v3: extra hands bought here, and the queue watch that offers them.
+    public int Hands;              // extra places bought ("A second hand at the mill")
+    public double QueueSince = -1; // time the queue reached TownRules.HandQueueLength (-1: shorter now)
+    public bool HandOffered;       // a hand is on offer here now
 }
 
 /// <summary>The whole mutable state of a town (the plan is rebuilt from the seed). Saved to JSON as is.</summary>
 public sealed class TownState
 {
-    public int Version = TownSave.CurrentVersion;
+    public int Version = TownSave.FirstAgeVersion; // set to TownSave.CurrentVersion when the second age is rung in
     public int Seed;
     public long Tick;
     public double Coin;
@@ -90,6 +104,9 @@ public sealed class TownState
     public bool[] PerkTaken = new bool[64];
     public bool[] Achieved = Array.Empty<bool>();
     public double MaxCoinPerMinute;
+    // Green pass 2: Regulars (missing in an older save: 0)
+    public int Regulars, RegularsAtLevel;
+    public double RegularsRate;
 
     // ---- Rules v2 ----
     public int ToolsLevel, BellTrackLevel;
@@ -107,4 +124,24 @@ public sealed class TownState
     public int ReqCount, ReqMet, ReqMissed;
     public double ReqScale = 1;                          // rules v2.1: adapts to the player (met: bigger; missed: smaller)
     public double RequestCoin;                           // coin paid as request rewards (not in CoinEarned)
+
+    // ---- Rules v3 (missing in an older v2 save: these defaults) ----
+    public bool[] Boons = new bool[8];                   // by Boon
+    public int ChoicesOffered, ChoicesMade;              // bit i = choice i (TownRules.ChoiceLevels[i])
+    public int[] ChoicePicked = { -1, -1, -1, -1 };      // boon taken at each choice (-1 not yet)
+    public bool DriveActive, DriveDone;
+    public Good DriveGood;
+    public int DriveAmount, DriveDelivered;
+    public double DriveRenown, DriveRenownGiven, DriveStart = -1, DriveEnd = -1;
+
+    // ---- Green pass (missing in an older save: these defaults; the touches then start from the coin earned at load) ----
+    public int TouchCount;
+    public int[] TouchOrder = new int[TownRules.TouchMax]; // spot index (Town.TouchSpots) of each touch, in order
+    public double TouchNextCoin;                          // coin earned at which the next touch appears (0: not set yet)
+    public double TouchLastCoin, TouchLastTime;           // coin earned and game time at the last touch (or when the beat was set)
+    public double CharterRenown;                          // renown the charter needs, fixed at level MaxLevel - 1 (0: the table's)
+    public double TouchPrevRate;                          // income a minute over the beat before the last (0: none yet)
+
+    // ---- The second age (save version 3; null before it is rung in) ----
+    public RiverState? River;
 }

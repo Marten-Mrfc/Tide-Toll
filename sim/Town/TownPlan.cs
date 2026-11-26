@@ -117,6 +117,9 @@ public sealed class TownPlan
     /// <summary>Roads that had to cross another road's cells (0 on a good plan).</summary>
     public int RoadCrossings;
 
+    /// <summary>Green pass: the touch spots of this seed, built once on first use (TownTouchPlanner).</summary>
+    internal TouchSpot[]? TouchSpots;
+
     public int MaxLevel => Levels.Length;
     public LevelDef Level(int n) => Levels[n - 1];
 }

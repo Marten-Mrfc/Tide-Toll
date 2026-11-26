@@ -20,6 +20,25 @@ public enum TownEventKind : byte
     RequestMet = 14,       // Good, Amount, Coin (reward paid), Value (renown added), Text
     RequestMissed = 15,    // Good, Amount (asked), Level (delivered by the end), Text
     CottageExtended = 16,  // Plot (cottage), Level (its extensions now, 1 or 2), X, Y (door)
+    // Added in rules v3
+    ChoiceOffered = 17,    // Index = choice (0..3), Level = town level; the two boons: Town.Choice
+    BoonChosen = 18,       // Index = (int)Boon taken, Level = choice (0..3), Text = boon name
+    Milestone = 19,        // Item (Pace, Tools or Value), Index ((int)Good for Value, else -1), Level (track level), Text = milestone name
+    DriveAsked = 20,       // Good, Amount, Value (renown reward in all); Town.Drive for the rest
+    DriveProgress = 21,    // Good, Amount (delivered so far), Value (renown added by this delivery)
+    DriveMet = 22,         // Good, Amount, Value (renown paid in all)
+    // Added in the second age (docs/plans/town-sim-api.md "The second age")
+    BoatArrived = 23,      // Index = boat id, Good (wanted), Amount (wanted), Level = (int)BoatKind, Value = 1 for a skipper's request, X, Y
+    BoatFilled = 24,       // Index = boat id, Good, Amount (loaded), Coin (bonus paid), Value = 1 for a request, X, Y
+    BoatLeft = 25,         // Index = boat id, Good, Amount (loaded), Level (wanted): its patience ran out, X, Y
+    TollPaid = 26,         // Coin, X, Y (the drawbridge)
+    FerryDocked = 27,      // Index = bank (0 near, 1 far), X, Y
+    DrawbridgeRaised = 28, // X, Y
+    DrawbridgeLowered = 29,// X, Y
+    Seal = 30,             // the borough seal: the second age is complete
+    LandingDelivery = 31,  // Villager, Good, Amount, Coin, X, Y (the landing), Index = boat id (-1: sold to the landing store)
+    // Added in the green pass
+    TouchAdded = 32,       // Index = touch number (Town.Touch(Index)), Level = (int)TouchKind, Plot (first-age plot, -1 if a river plot), Amount = river plot (-1 if first age), X, Y, Value = heading (radians), Text = kind name
 }
 
 /// <summary>One thing that happened during a step. Drain them with Town.DrainEvents each frame.</summary>

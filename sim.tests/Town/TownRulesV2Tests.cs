@@ -35,7 +35,8 @@ public class TownRulesV2Tests
         {
             Assert.True(t.BuyPace());
             double f = T.PaceFactorAt(t.PaceLevel);
-            Assert.Equal(TownRules.PaceStep, f - prev, 9);
+            // Rules v3 (the lead's decision 3): every fifth step is a milestone that adds TownRules.PaceMilestone on top.
+            Assert.Equal(TownRules.PaceStep + (t.PaceLevel % TownRules.MilestoneEvery == 0 ? TownRules.PaceMilestone : 0), f - prev, 9);
             prev = f;
         }
         Assert.Equal(TownRules.PaceMax, t.PaceLevel); // rules v2.1: 25 steps (was the literal 20)
