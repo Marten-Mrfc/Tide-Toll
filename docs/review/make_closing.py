@@ -121,5 +121,18 @@ closing["closing"] += [
         ],
     },
 ]
+earlier = ROOT / "build/tour-c7973d5"
+closing["extra_sections"] = [{
+    "id": "earlier", "title": "Two pictures from the build one step earlier",
+    "note": "The tour could not retake these two on the final build: its second click on the cottage missed, and the ford was not in use at the moment of the picture. They come from the tree just before the last small pass, which changed only the crowded-road tint, the charter stone and the tour's timing.",
+    "shots": [
+        {"file": "build/tour-c7973d5/b05-extended.png",
+         "shows": "A cottage after its extensions, beside a field. Known fault: the extended cottage looks thin, and one and two extensions are hard to tell apart.",
+         "question": "Can you tell an extended cottage from a plain one?"},
+        {"file": "build/tour-c7973d5/f04-ford.png",
+         "shows": "The ford at low water: stones show in the river, villagers queue to cross, and the tide dial reads low water. Known fault: a boat's tag is cut off by a tree, and crowded roads still have the strong red tint that the final build softened.",
+         "question": "Does the tide read as something you can see and use?"},
+    ],
+}]
 (ROOT / "docs/review/closing.json").write_text(json.dumps(closing, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 print(f"closing.json: {len(decisions)} decisions, {len(needs)} needs, {len(builds)} builds, {len(wrong)} still-wrong notes; newest build round {newest[0]} {newest[1]}")

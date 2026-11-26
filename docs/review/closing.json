@@ -7,7 +7,7 @@
   "Under each picture is one line saying what it shows and one question. Press Yes or No, then <strong>Copy my answers</strong>, paste them into the chat and say continue. Where a picture shows a fault I already know of, its line says so."
  ],
  "facts": [
-  "pictures in play order",
+  "49 pictures",
   "final commit d54ebaf",
   "first age about 33 minutes (played by real input)",
   "second age 22 to 34 minutes (bots only)",
@@ -271,6 +271,25 @@
      "file": "assets/audio/music/music-still-pages.ogg",
      "title": "Still Pages",
      "note": "new, for the paused book: quieter and sparser, 60 seconds, loops"
+    }
+   ]
+  }
+ ],
+ "extra_sections": [
+  {
+   "id": "earlier",
+   "title": "Two pictures from the build one step earlier",
+   "note": "The tour could not retake these two on the final build: its second click on the cottage missed, and the ford was not in use at the moment of the picture. They come from the tree just before the last small pass, which changed only the crowded-road tint, the charter stone and the tour's timing.",
+   "shots": [
+    {
+     "file": "build/tour-c7973d5/b05-extended.png",
+     "shows": "A cottage after its extensions, beside a field. Known fault: the extended cottage looks thin, and one and two extensions are hard to tell apart.",
+     "question": "Can you tell an extended cottage from a plain one?"
+    },
+    {
+     "file": "build/tour-c7973d5/f04-ford.png",
+     "shows": "The ford at low water: stones show in the river, villagers queue to cross, and the tide dial reads low water. Known fault: a boat's tag is cut off by a tree, and crowded roads still have the strong red tint that the final build softened.",
+     "question": "Does the tide read as something you can see and use?"
     }
    ]
   }
