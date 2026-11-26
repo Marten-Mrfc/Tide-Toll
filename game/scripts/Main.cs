@@ -103,7 +103,9 @@ public partial class Main : Node3D
         AddChild(Rig);
         // One continuous zoom (round 2): from close on the town (tilted) out to the whole open book (straight down).
         Rig.TiltFlatSize = Rig.PlaySize * 0.97f;
-        Rig.TiltFullSize = 80f;
+        // Round 4: about 50 degrees at the closest view, and the tilt changes from the first wheel notch.
+        Rig.TiltDegrees = 50f;
+        Rig.TiltFullSize = Rig.MinSize;
         SetZoomLimits();
         Rig.HomePressed = () => { Rig.UserMoved = false; Follow(instant: false); };
         Ink = new InkOutline();
@@ -113,6 +115,7 @@ public partial class Main : Node3D
         Audio.SetView(() => (Rig.PivotLocal, Rig.Camera.Size, Rig.PlaySize));
         Summary = new TownSummary(); Summary.Init(GetNode<Node3D>("Book/LeftPage"), Driver);
         Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
+        Rig.PressBlocked = Hud.OverInterface;
         Saver = new TownSaver(); AddChild(Saver); Saver.Init(this);
         Menu = new PauseMenu(); AddChild(Menu); Menu.Init(this);
         Follow(instant: true);

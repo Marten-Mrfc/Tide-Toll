@@ -118,10 +118,11 @@ public partial class TownHud
         if (local == null) return;
         var rig = _main.Rig;
         var at = rig.LocalToScreen(local.Value);
-        // Only when it is off screen (or at the very edge): a view that moves under a pointer is worse than a road under a card.
+        // Only when it is off screen (or at the very edge) or under a card of the interface (round 4: the target must end
+        // up clear of the interface; the view's centre is).
         float m = UiKit.Px(_s, 40);
         var safe = new Rect2(m, m, _built.X - 2 * m, _built.Y - 2 * m);
-        if (safe.HasPoint(at)) return;
+        if (safe.HasPoint(at) && !OverInterface(at)) return;
         _modeTookView = !rig.UserMoved;
         rig.UserMoved = true;
         rig.LookAt(local.Value, rig.TargetSize, instant: false);
@@ -138,7 +139,7 @@ public partial class TownHud
     /// </summary>
     public int PaveTarget(Vector2 screen)
     {
-        if (!_main.Rig.PickLocal(screen, out var local)) return -1;
+        if (OverInterface(screen) || !_main.Rig.PickLocal(screen, out var local)) return -1;
         var t = _drv.Town;
         double px = local.X / TownGround.Cell - 0.5, py = local.Z / TownGround.Cell - 0.5;
         int best = -1;

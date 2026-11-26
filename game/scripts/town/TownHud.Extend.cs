@@ -66,6 +66,7 @@ public partial class TownHud
     /// <summary>The one picking for hover and click: the cottage that can be extended now under the screen point, or -1.</summary>
     public int ExtendTarget(Vector2 screen)
     {
+        if (OverInterface(screen)) return -1;
         var t = _drv.Town;
         var plots = t.Plan.Plots;
         bool ground = _main.Rig.PickLocal(screen, out var local);

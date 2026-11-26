@@ -62,6 +62,7 @@ public partial class BookTest : TownTestBase
         int notches = 0;
         while (notches < 40 && !(Main.Stage == Main.ZoomStage.Book && Main.Rig.TargetSize >= Main.Rig.MaxSize - 0.01f && Math.Abs(Main.Rig.Camera.Size - Main.Rig.TargetSize) < 0.05f))
         {
+            float pitchBefore = Main.Rig.PitchNow;
             await Wheel(centre, MouseButton.WheelDown);
             notches++;
             for (int f = 0; f < 40; f++)
@@ -73,7 +74,10 @@ public partial class BookTest : TownTestBase
                 if (Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f) { sawSlim = true; if (!sawBook) slimBeforeBook = true; }
                 if (Main.Stage == Main.ZoomStage.Book) sawBook = true;
             }
+            // Round 4: the first scroll is not flat: each of the first four notches tilts the view too.
+            if (notches <= 4) Check(Main.Rig.PitchNow - pitchBefore > 0.8f, $"notch {notches} out changed the tilt only {Main.Rig.PitchNow - pitchBefore:0.00} degrees");
         }
+        Check(MathF.Abs(Main.Rig.PitchFor(Main.Rig.MinSize) - 50f) < 1.5f, $"the closest view looks down at {Main.Rig.PitchFor(Main.Rig.MinSize):0.0} degrees, not about 50");
         Check(sawBook, $"the wheel reaches the book ({notches} notches, size {Main.Rig.Camera.Size:0})");
         Check(sawPage && sawSlim && slimBeforeBook, "the interface thins to the slim strip on the way out");
         Check(firstPitch < 75f && Main.Rig.PitchNow > 89.99f, $"tilted on the town ({firstPitch:0.0}), straight down at the book ({Main.Rig.PitchNow:0.00})");

@@ -20,6 +20,12 @@ public partial class TownSaver : Node, ISaveActions
 
     private Main _main = null!;
     private double _clock;
+    private ulong _lastMs;
+    private bool _readFailed, _failNoted;
+    /// <summary>Real seconds counted toward the next autosave (tests).</summary>
+    public double Clock => _clock;
+    /// <summary>Tests: reads the save's bytes instead of the disk (null: the read failed).</summary>
+    public static Func<string, byte[]?>? ReadSeam;
     public int Saves { get; private set; }
     /// <summary>Path of the file the last damaged save was moved to ("" when none).</summary>
     public string SetAside { get; private set; } = "";
@@ -49,9 +55,13 @@ public partial class TownSaver : Node, ISaveActions
 
     public override void _Process(double delta)
     {
+        // Round 4: real time, not the frame's delta (the engine clamps and scales that on slow frames).
+        ulong now = Time.GetTicksMsec();
+        double dt = _lastMs == 0 ? 0 : (now - _lastMs) / 1000.0;
+        _lastMs = now;
         int minutes = GameSettings.Current?.AutosaveMinutes ?? 2;
         if (minutes <= 0 || _main.Driver.Paused) return;
-        _clock += delta;
+        _clock += dt;
         if (_clock >= minutes * 60.0) { _clock = 0; SaveNow(); }
     }
 
@@ -71,6 +81,7 @@ public partial class TownSaver : Node, ISaveActions
 
     public bool SaveNow()
     {
+        if (_readFailed) return Failed("The save on disk could not be read, so it is not written over. Restart the game to try it again.");
         try
         {
             var (pivot, size, moved) = _main.ViewToKeep();
@@ -83,19 +94,46 @@ public partial class TownSaver : Node, ISaveActions
             string tmp = SavePath + ".tmp";
             using (var fa = FileAccess.Open(tmp, FileAccess.ModeFlags.Write))
             {
-                if (fa == null) return false;
+                if (fa == null) return Failed("The town could not be saved: the file could not be written.");
                 fa.StoreString(JsonSerializer.Serialize(f));
             }
-            if (DirAccess.RenameAbsolute(tmp, SavePath) != Error.Ok) return false;
+            if (DirAccess.RenameAbsolute(tmp, SavePath) != Error.Ok)
+            {
+                DirAccess.RemoveAbsolute(tmp);
+                return Failed("The town could not be saved: the file could not be written.");
+            }
             Saves++;
             _clock = 0;
+            _failNoted = false;
             return true;
         }
         catch (Exception e)
         {
             GD.Print("Could not save the town: " + e.Message);
-            return false;
+            return Failed("The town could not be saved.");
         }
+    }
+
+    /// <summary>Saves that failed (round 4: a failed save says so in a note, once until a save works again).</summary>
+    public int Failures { get; private set; }
+
+    private bool Failed(string note)
+    {
+        Failures++;
+        _clock = 0;
+        if (!_failNoted && _main.Hud != null) { _failNoted = true; _main.Hud.Note(note, strong: true); }
+        return false;
+    }
+
+    /// <summary>The save's bytes, read completely, or null when the read itself failed.</summary>
+    private byte[]? ReadAll()
+    {
+        if (ReadSeam != null) return ReadSeam(SavePath);
+        using var fa = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
+        if (fa == null) return null;
+        ulong len = fa.GetLength();
+        var bytes = fa.GetBuffer((long)len);
+        return (ulong)bytes.Length == len ? bytes : null;
     }
 
     /// <summary>
@@ -106,18 +144,23 @@ public partial class TownSaver : Node, ISaveActions
     {
         note = "";
         if (!HasSave) return false;
+        // Round 4: a read that fails (the file could not be read in full) never sets a good save aside: it stays where
+        // it is, the new town is not saved over it, and a note says so.
+        var bytes = ReadAll();
+        if (bytes == null)
+        {
+            _readFailed = true;
+            note = "The saved town could not be read from the disk, so a new town begins. The save is left as it was.";
+            return false;
+        }
+        SaveFile f;
+        Town town;
         try
         {
-            string text = FileAccess.GetFileAsString(SavePath);
-            var f = JsonSerializer.Deserialize<SaveFile>(text) ?? throw new InvalidOperationException("empty save");
+            string text = System.Text.Encoding.UTF8.GetString(bytes);
+            f = JsonSerializer.Deserialize<SaveFile>(text) ?? throw new InvalidOperationException("empty save");
             if (f.Game != GameVersion) throw new InvalidOperationException("another version");
-            var town = TownSave.Load(f.Town);
-            // A loaded town is not news: drop what the load queued (level and arrival events), so no gift note plays
-            // again and the camera stays where it was saved.
-            town.DrainEvents(new System.Collections.Generic.List<TownEvent>());
-            _main.Driver.Adopt(town);
-            _main.RestoreView(new Vector3(f.CamX, 0, f.CamZ), f.CamSize, f.UserMoved);
-            return true;
+            town = TownSave.Load(f.Town);
         }
         catch (Exception)
         {
@@ -126,6 +169,13 @@ public partial class TownSaver : Node, ISaveActions
             note = "The saved town could not be read, so a new town begins. The old file is kept beside the save.";
             return false;
         }
+        // A loaded town is not news: drop what the load queued (level and arrival events), so no gift note plays
+        // again and the camera stays where it was saved.
+        town.DrainEvents(new System.Collections.Generic.List<TownEvent>());
+        _main.Driver.Adopt(town);
+        _main.RestoreView(new Vector3(f.CamX, 0, f.CamZ), f.CamSize, f.UserMoved);
+        _readFailed = false;
+        return true;
     }
 
     public bool LoadLast()
@@ -136,9 +186,15 @@ public partial class TownSaver : Node, ISaveActions
         return ok;
     }
 
+    /// <summary>
+    /// Removes the save and starts a new town. Round 4: the new town is not written at once, so the page says there is
+    /// no save (and offers no Load) until the next autosave, pause or quit.
+    /// </summary>
     public void DeleteSave()
     {
-        if (HasSave) DirAccess.RemoveAbsolute(SavePath);
+        _readFailed = false;
         _main.NewTown();
+        if (HasSave) DirAccess.RemoveAbsolute(SavePath);
+        _clock = 0;
     }
 }

@@ -46,8 +46,8 @@ public partial class TownHud
         _bannerAge = 0;
         _banner.Visible = _fullA > 0.01f;
         string line = head + ": " + text;
-        BannerLog.Add(line);
-        NoteLog.Add(line);
+        Log(BannerLog, line);
+        Log(NoteLog, line);
         LastNote = line;
     }
 

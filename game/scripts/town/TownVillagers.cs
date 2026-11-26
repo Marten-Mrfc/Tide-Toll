@@ -63,7 +63,7 @@ public partial class TownVillagers : Node3D
             var body = ModelLib.Part("villager", "body");
             var src = ModelLib.Mesh("villager").SurfaceGetMaterial(0) as StandardMaterial3D;
             var dyed = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/villager.gdshader") };
-            dyed.SetShaderParameter("palette", src?.AlbedoTexture);
+            if (src?.AlbedoTexture is { } palette) dyed.SetShaderParameter("palette", palette);
             body.SurfaceSetMaterial(0, dyed);
             _bodies.Multimesh.InstanceCount = 0;
             _bodies.Multimesh.UseColors = true;

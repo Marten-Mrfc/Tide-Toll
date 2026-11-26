@@ -31,7 +31,8 @@ public partial class CameraRig : Node3D
     public float PitchFor(float size)
     {
         float t = Mathf.Clamp((size - TiltFullSize) / Math.Max(1f, TiltFlatSize - TiltFullSize), 0f, 1f);
-        t = t * t * (3f - 2f * t);
+        // Round 4: eased out only, so the tilt changes from the first notch and settles gently at the flat view.
+        t = 1f - (1f - t) * (1f - t);
         return Mathf.Lerp(TiltDegrees, 90f, t);
     }
     /// <summary>The pitch in use now, degrees below the horizon (90 = straight down).</summary>
@@ -337,6 +338,9 @@ public partial class CameraRig : Node3D
         PanLocal(d.Normalized() * Camera.Size * 0.8f * dt);
     }
 
+    /// <summary>When set and true for a press's screen point (an interface card), no drag starts there.</summary>
+    public System.Func<Vector2, bool>? PressBlocked;
+
     /// <summary>When set, Home calls this instead of switching between the book and the page (the town game: back to the town).</summary>
     public System.Action? HomePressed;
 
@@ -353,12 +357,15 @@ public partial class CameraRig : Node3D
                     GetViewport().SetInputAsHandled();
                 }
                 break;
+            case InputEventMouseButton mb when mb.ButtonIndex is MouseButton.Middle or MouseButton.Right && mb.Pressed && (PressBlocked?.Invoke(mb.Position) ?? false):
+                break; // round 4: no drag starts on an interface card
             case InputEventMouseButton mb when mb.ButtonIndex is MouseButton.Middle or MouseButton.Right:
                 _dragging = mb.Pressed;
                 _dragLast = mb.Position;
                 break;
             case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.Left && LeftDragPans:
-                if (mb.Pressed) { _leftDown = true; _leftFrom = mb.Position; _dragLast = mb.Position; LeftDragged = false; }
+                if (mb.Pressed && (PressBlocked?.Invoke(mb.Position) ?? false)) { _leftDown = false; LeftDragged = false; }
+                else if (mb.Pressed) { _leftDown = true; _leftFrom = mb.Position; _dragLast = mb.Position; LeftDragged = false; }
                 else { _leftDown = false; if (_dragging && !Input.IsMouseButtonPressed(MouseButton.Right) && !Input.IsMouseButtonPressed(MouseButton.Middle)) _dragging = false; }
                 break;
             case InputEventMouseMotion mm when _leftDown && !_dragging && mm.Position.DistanceTo(_leftFrom) > DragThresholdPx:

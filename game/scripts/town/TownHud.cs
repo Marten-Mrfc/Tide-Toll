@@ -53,6 +53,7 @@ public partial class TownHud : CanvasLayer
     {
         _main = main;
         _drv = main.Driver;
+        _drv.Replaced += OnTownReplaced;
         Name = "Hud";
         Layer = 5;
         Build();
@@ -283,6 +284,26 @@ public partial class TownHud : CanvasLayer
     private Control?[] _fullParts = Array.Empty<Control?>();
     private Main.ZoomStage _lastStage = (Main.ZoomStage)(-1);
 
+    /// <summary>
+    /// Round 4: true when a screen point (canvas units) is on a card of the interface: the ledger, the request card, the
+    /// hint line, the margin notes, the level banner, the shop column, the bell, the slim strip, the mode banner and the
+    /// small controls. Pave and Extend find nothing there and the camera starts no drag there, so nothing behind a card
+    /// is paved, extended or dragged through it.
+    /// </summary>
+    public bool OverInterface(Vector2 p)
+    {
+        if (!Visible) return false;
+        if (Over(_ledger, p) || Over(_req, p) || Over(_hint, p) || Over(_banner, p) || Over(_shop, p) || Over(_bell, p)
+            || Over(_nextAge, p) || Over(_slim, p) || Over(_paveBanner, p) || Over(_achMark, p) || Over(PauseMark, p) || Over(_home, p))
+            return true;
+        for (int i = 0; i < _noteList.Count; i++)
+            if (IsInstanceValid(_noteList[i].label) && Over(_noteList[i].label.GetParent() as Control, p)) return true;
+        return false;
+    }
+
+    private static bool Over(Control? c, Vector2 p)
+        => c != null && IsInstanceValid(c) && c.IsVisibleInTree() && c.Modulate.A > 0.05f && c.GetGlobalRect().HasPoint(p);
+
     // ------------------------------------------------------------------ notes
 
     /// <summary>A margin note: a slip of paper on the left that fades after a few seconds.</summary>
@@ -290,7 +311,7 @@ public partial class TownHud : CanvasLayer
     {
         // The same note again while it is still on the page: keep the one slip and give it its full time again.
         for (int i = 0; i < _noteList.Count; i++)
-            if (IsInstanceValid(_noteList[i].label) && _noteList[i].label.Text == text) { _noteList[i] = (_noteList[i].label, 0f); NotesShown++; LastNote = text; NoteLog.Add(text); return; }
+            if (IsInstanceValid(_noteList[i].label) && _noteList[i].label.Text == text) { _noteList[i] = (_noteList[i].label, 0f); NotesShown++; LastNote = text; Log(NoteLog, text); return; }
         var l = UiKit.Text(text, _s, strong ? 18 : 16, strong ? UiKit.UiBold : UiKit.UiFont);
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(UiKit.Px(_s, 320), 0);
@@ -310,8 +331,7 @@ public partial class TownHud : CanvasLayer
         }
         NotesShown++;
         LastNote = text;
-        NoteLog.Add(text);
-        if (NoteLog.Count > 200) NoteLog.RemoveAt(0);
+        Log(NoteLog, text);
     }
 
     private void StepNotes(float dt)
@@ -359,6 +379,28 @@ public partial class TownHud : CanvasLayer
     }
 
     private readonly HashSet<string> _perksSeen = new();
+
+    /// <summary>The note and banner logs keep the last <see cref="LogCap"/> lines (round 4: they grew without limit).</summary>
+    public const int LogCap = 200;
+    private static void Log(List<string> log, string line)
+    {
+        log.Add(line);
+        if (log.Count > LogCap) log.RemoveAt(0);
+    }
+
+    /// <summary>
+    /// Round 4: a new town (New town, Delete, a load) starts clean: perk notes may show again, and the old town's hint
+    /// marker and request flash are dropped at once.
+    /// </summary>
+    private void OnTownReplaced()
+    {
+        _perksSeen.Clear();
+        _hintShown = ""; _hintAge = 0; _hintRoad = -1; _hintPlot = -1; _reqFlash = 0;
+        if (_marker != null && IsInstanceValid(_marker)) _marker.Visible = false;
+        if (_hint != null && IsInstanceValid(_hint)) _hint.Text = "";
+    }
+
+    public override void _ExitTree() { if (_drv != null) _drv.Replaced -= OnTownReplaced; }
 
     private static string Upper(string? s)
     {

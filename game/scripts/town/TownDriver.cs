@@ -33,6 +33,11 @@ public partial class TownDriver : Node
     public long StepsRun { get; private set; }
 
     private double _acc;
+    /// <summary>Longest frame counted in full (seconds), and the most steps carried over to later frames.</summary>
+    public const double MaxFrameSeconds = 1.0;
+    public int MaxBacklogSteps = 2000;
+    /// <summary>Steps owed and not yet run (tests).</summary>
+    public double Backlog => _acc / TownRules.Dt;
 
     public void Reset(int seed)
     {
@@ -81,7 +86,10 @@ public partial class TownDriver : Node
         if (Town == null) return;
         if (!Paused)
         {
-            _acc += Math.Min(delta, 0.25) * Speed;
+            // Round 4: real time counts up to a second a frame (a longer stall, such as a dragged window, is not
+            // replayed), and steps a frame cannot run are carried to the next frames instead of being thrown away;
+            // the backlog is bounded so a machine that can never keep up does not snowball.
+            _acc += Math.Min(delta, MaxFrameSeconds) * Speed;
             int steps = 0;
             while (_acc >= TownRules.Dt && steps < MaxStepsPerFrame)
             {
@@ -89,7 +97,7 @@ public partial class TownDriver : Node
                 _acc -= TownRules.Dt;
                 steps++;
             }
-            if (steps == MaxStepsPerFrame) _acc = 0;
+            _acc = Math.Min(_acc, MaxBacklogSteps * TownRules.Dt);
             StepsRun += steps;
             Alpha = (float)Math.Clamp(_acc / TownRules.Dt, 0, 1);
         }

@@ -156,6 +156,7 @@ public partial class PauseMenu : CanvasLayer
     {
         if (Now != State.Playing) return;
         if (_main.Hud.PaveMode) _main.Hud.SetPaveMode(false);
+        if (_main.Hud.ExtendMode) _main.Hud.SetExtendMode(false);
         _main.Hud.CloseAchievements(); _main.Hud.CloseAgePage();
         var rig = _main.Rig;
         _keptPivot = rig.PivotLocal; _keptSize = rig.Camera.Size; _keptMoved = rig.UserMoved;
@@ -169,8 +170,9 @@ public partial class PauseMenu : CanvasLayer
         _main.Cover.Close();
         _main.Audio.BookClose();
         _main.Audio.SetPauseMusic(true);
-        _main.Saver.SaveNow();
+        // Round 4: Closing first, so the save takes the view kept from before the pause (Kept), not the closed-book zoom.
         Now = State.Closing;
+        _main.Saver.SaveNow();
     }
 
     public void Resume()

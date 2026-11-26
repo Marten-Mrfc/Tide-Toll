@@ -350,6 +350,9 @@ public partial class TownHud
 
     public override void _UnhandledInput(InputEvent e)
     {
+        // Round 4: while the book is closing, closed, on the settings pages or opening, the town's interface takes no
+        // keys and no clicks at all (a hidden CanvasLayer still gets unhandled input).
+        if (_main.Menu == null || _main.Menu.IsPaused) return;
         if (e is InputEventKey { Pressed: true, Echo: false } k)
         {
             bool handled = true;
