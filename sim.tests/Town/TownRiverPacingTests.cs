@@ -99,4 +99,38 @@ public class TownRiverPacingTests
         for (int k = 0; k < 60 * TownRules.TickHz; k++) { t.Step(); if (k % 10 == 0) { ev.Clear(); t.DrainEvents(ev); } }
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - b0);
     }
+
+    // ---- River polish ----
+
+    [Fact]
+    public void TheFordIsTheOnlyWayOverForARealStretch() =>
+        Check(r => r.FordOnlySeconds / 60 >= TownRiverTargets.FordOnlyMinutesMin, r => $"{r.FordOnlySeconds / 60:0.0} minutes", All);
+
+    [Fact]
+    public void VillagersCrossTheFordAndWaitAtHighWaterBeforeTheFerry()
+    {
+        long crossings = 0; double wait = 0; var used = new HashSet<int>();
+        foreach (var r in Runs.Value)
+        {
+            crossings += r.FordCrossingsBeforeFerry; wait += r.FordHighWaterWaitBeforeFerry;
+            if (r.FordCrossingsBeforeFerry > 0) used.Add(r.Seed);
+        }
+        Assert.True(crossings >= TownRiverTargets.FordCrossingsAllMin, $"{crossings} ford crossings before the ferry in all runs");
+        Assert.True(wait >= TownRiverTargets.FordHighWaterWaitAllMin, $"{wait:0} villager-seconds waiting at high water");
+        Assert.True(used.Count >= TownRiverTargets.FordSeedsUsedMin, $"the ford used on {used.Count} seeds");
+    }
+
+    [Fact]
+    public void BoatsPayTollsBeforeTheSeal() =>
+        Check(r => r.TollsBeforeSeal >= TownRiverTargets.TollsMin && r.DrawbridgeMinutes >= TownRiverTargets.DrawbridgeMinutesMin,
+            r => $"{r.TollsBeforeSeal} tolls in {r.DrawbridgeMinutes:0.0} minutes", All);
+
+    [Fact]
+    public void TollStepsPayBackBeforeTheSeal()
+    {
+        double spent = 0, earned = 0;
+        foreach (var r in Runs.Value) { spent += r.TollStepSpent; earned += r.TollStepEarned; }
+        Assert.True(spent > 0 && earned >= spent * TownRiverTargets.TollStepsBackAllMin, $"toll steps: spent {spent:0}, earned {earned:0}");
+        Check(r => r.TollStepSpent <= 0 || r.TollStepEarned >= r.TollStepSpent * TownRiverTargets.TollStepsBackMin, r => $"spent {r.TollStepSpent:0}, earned {r.TollStepEarned:0}", All);
+    }
 }

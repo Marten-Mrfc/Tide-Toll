@@ -56,6 +56,8 @@ public static class TownRiverCommand
             foreach (var lt in r.LevelTimes) sb.Append(Inv, $" {(lt < 0 ? "-" : (lt / 60).ToString("0.0", Inv))}");
             sb.Append(Inv, $" | capacity at the seal (ford/ferry/foot/draw a minute): {r.CapAtSeal[1]:0}/{r.CapAtSeal[2]:0}/{r.CapAtSeal[3]:0}/{r.CapAtSeal[4]:0}");
             sb.Append(Inv, $" | touches at ring/seal/spots {r.TouchesAtRing}/{r.TouchesAtSeal}/{r.TouchSpots}");
+            sb.Append(Inv, $" | ford only {r.FordOnlySeconds / 60:0.0} min, ford crossings {r.FordCrossingsBeforeFerry}, high-water wait {r.FordHighWaterWaitBeforeFerry:0} s");
+            sb.Append(Inv, $" | tolls {r.TollsBeforeSeal} in {r.DrawbridgeMinutes:0.0} min, toll steps spent {r.TollStepSpent:0} earned {r.TollStepEarned:0}");
             sb.Append(" | bought:");
             for (int k = (int)ShopItemKind.Ferry; k <= (int)ShopItemKind.Winch; k++) sb.Append(Inv, $" {(ShopItemKind)k} {r.ByKind[k]}");
             sb.AppendLine();

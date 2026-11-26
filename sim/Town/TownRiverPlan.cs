@@ -33,16 +33,25 @@ public sealed class RiverLink
     public int A, B;             // river point ids (A on the near bank for crossings)
     public double[] Px = Array.Empty<double>(), Py = Array.Empty<double>(); // polyline, map cells (already at cell centres: draw as is)
     public double[] Cum = Array.Empty<double>();
+    /// <summary>River polish: the same array as <see cref="Cum"/> under the first age's name (distance at each curve point;
+    /// PCum[0] = 0, PCum[^1] = the curve's length).</summary>
+    public double[] PCum => Cum;
+    /// <summary>River polish: a lane's grid route (cell x, y of the start, each bend and the end), as the first age's Road.Xs/Ys.
+    /// Px/Py is the smoothed curve through it. For a crossing, the two head cells.</summary>
+    public int[] Xs = Array.Empty<int>(), Ys = Array.Empty<int>();
     public double Length;
     public int Level;
 
-    /// <summary>Point at a distance from A along the polyline, with the heading towards B.</summary>
+    /// <summary>Point at a distance from A along the polyline (the smooth curve for a lane), with the heading towards B.
+    /// Binary search, no allocation.</summary>
     public void At(double d, out double x, out double y, out double heading)
     {
         int n = Px.Length;
         if (d <= 0) { x = Px[0]; y = Py[0]; heading = Math.Atan2(Py[1] - Py[0], Px[1] - Px[0]); return; }
-        int i = 1;
-        while (i < n - 1 && Cum[i] < d) i++;
+        // Smallest i >= 1 with Cum[i] >= d, at most n - 1 (the same segment the linear scan picked).
+        int lo = 1, hi = n - 1;
+        while (lo < hi) { int mid = (lo + hi) >> 1; if (Cum[mid] < d) lo = mid + 1; else hi = mid; }
+        int i = lo;
         double seg = Cum[i] - Cum[i - 1];
         double f = seg > 1e-9 ? Math.Clamp((d - Cum[i - 1]) / seg, 0, 1) : 1;
         x = Px[i - 1] + (Px[i] - Px[i - 1]) * f; y = Py[i - 1] + (Py[i] - Py[i - 1]) * f;
@@ -161,19 +170,24 @@ public static class TownRiverPlanner
         {
             var l = new RiverLink { Id = links.Count, Kind = kind, A = a, B = b, Level = level };
             var xs = new List<double> { rp.Px[a] }; var ys = new List<double> { rp.Py[a] };
+            int ax = (int)Math.Floor(rp.Px[a]), ay = (int)Math.Floor(rp.Py[a]), bx = (int)Math.Floor(rp.Px[b]), by = (int)Math.Floor(rp.Py[b]);
+            var gx = new List<int> { ax }; var gy = new List<int> { ay };
             if (kind == RiverLinkKind.Lane)
             {
-                var r = Bfs(n, blocked, (int)Math.Floor(rp.Px[a]), (int)Math.Floor(rp.Py[a]), (int)Math.Floor(rp.Px[b]), (int)Math.Floor(rp.Py[b]));
+                var r = Bfs(n, blocked, ax, ay, bx, by);
                 // Cell centres, 4-connected, keeping only the bends.
                 if (r != null)
                     for (int i = 1; i < r.Count - 1; i++)
                     {
                         bool bend = (r[i].X - r[i - 1].X) != (r[i + 1].X - r[i].X) || (r[i].Y - r[i - 1].Y) != (r[i + 1].Y - r[i].Y);
-                        if (bend) { xs.Add(r[i].X + 0.5); ys.Add(r[i].Y + 0.5); }
+                        if (bend) { xs.Add(r[i].X + 0.5); ys.Add(r[i].Y + 0.5); gx.Add(r[i].X); gy.Add(r[i].Y); }
                     }
             }
-            xs.Add(rp.Px[b]); ys.Add(rp.Py[b]);
-            l.Px = xs.ToArray(); l.Py = ys.ToArray(); l.Cum = new double[l.Px.Length];
+            xs.Add(rp.Px[b]); ys.Add(rp.Py[b]); gx.Add(bx); gy.Add(by);
+            l.Xs = gx.ToArray(); l.Ys = gy.ToArray();
+            if (kind == RiverLinkKind.Lane) SmoothLane(n, blocked, xs, ys, ax, ay, bx, by, out l.Px, out l.Py);
+            else { l.Px = xs.ToArray(); l.Py = ys.ToArray(); }
+            l.Cum = new double[l.Px.Length];
             for (int i = 1; i < l.Px.Length; i++) l.Cum[i] = l.Cum[i - 1] + Math.Sqrt((l.Px[i] - l.Px[i - 1]) * (l.Px[i] - l.Px[i - 1]) + (l.Py[i] - l.Py[i - 1]) * (l.Py[i] - l.Py[i - 1]));
             l.Length = Math.Max(0.5, l.Cum[^1]);
             links.Add(l);
@@ -210,6 +224,50 @@ public static class TownRiverPlanner
         }
         rp.Levels = levels;
         return rp;
+    }
+
+    /// <summary>
+    /// River polish: the same smoothing as the first age's roads (Router.Smooth): the grid line is cut into steps of about
+    /// half a cell, then each inner point moves halfway to the middle of its neighbours, Router.SmoothPasses times. The ends
+    /// stay at their points. A move is kept only if both segments next to it stay on free cells (no water, no plot of either
+    /// age; the two end cells are always allowed), checked every tenth of a cell and at every diagonal step, so a lane never
+    /// cuts a corner of water or of a plot. River positions are at cell centres: the cell of (x, y) is (floor x, floor y).
+    /// </summary>
+    private static void SmoothLane(int n, byte[] blocked, List<double> xs0, List<double> ys0, int ax, int ay, int bx, int by, out double[] px, out double[] py)
+    {
+        var xs = new List<double> { xs0[0] }; var ys = new List<double> { ys0[0] };
+        for (int i = 1; i < xs0.Count; i++)
+        {
+            double x0 = xs0[i - 1], y0 = ys0[i - 1], x1 = xs0[i], y1 = ys0[i];
+            int k = Math.Max(1, (int)Math.Ceiling(Math.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0)) * 2));
+            for (int j = 1; j <= k; j++) { xs.Add(x0 + (x1 - x0) * j / k); ys.Add(y0 + (y1 - y0) * j / k); }
+        }
+        px = xs.ToArray(); py = ys.ToArray();
+        int m = px.Length;
+        bool Free(int cx, int cy) => (cx == ax && cy == ay) || (cx == bx && cy == by) || (cx >= 0 && cy >= 0 && cx < n && cy < n && blocked[cy * n + cx] == 0);
+        bool SegOk(double x0, double y0, double x1, double y1)
+        {
+            double len = Math.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+            int k = Math.Max(1, (int)Math.Ceiling(len * 10));
+            int ox = (int)Math.Floor(x0), oy = (int)Math.Floor(y0);
+            if (!Free(ox, oy)) return false;
+            for (int j = 1; j <= k; j++)
+            {
+                int cx = (int)Math.Floor(x0 + (x1 - x0) * j / k), cy = (int)Math.Floor(y0 + (y1 - y0) * j / k);
+                if (cx == ox && cy == oy) continue;
+                if (!Free(cx, cy)) return false;
+                if (cx != ox && cy != oy && (!Free(cx, oy) || !Free(ox, cy))) return false;
+                ox = cx; oy = cy;
+            }
+            return true;
+        }
+        for (int pass = 0; pass < Router.SmoothPasses; pass++)
+            for (int i = 1; i < m - 1; i++)
+            {
+                double qx = 0.5 * px[i] + 0.25 * (px[i - 1] + px[i + 1]);
+                double qy = 0.5 * py[i] + 0.25 * (py[i - 1] + py[i + 1]);
+                if (SegOk(px[i - 1], py[i - 1], qx, qy) && SegOk(qx, qy, px[i + 1], py[i + 1])) { px[i] = qx; py[i] = qy; }
+            }
     }
 
     /// <summary>Shortest 4-connected path of free cells (start and end cells may be anything); null when none.</summary>
