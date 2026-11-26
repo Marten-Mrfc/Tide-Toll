@@ -31,6 +31,12 @@ def inter(a, b):
     return (x1 - x0) * (y1 - y0) if x1 > x0 and y1 > y0 else 0.0
 
 
+def full(i, W, H):
+    """A backdrop or dimmer over (nearly) the whole window: not counted in overlaps."""
+    r = i["rect"]
+    return r[2] * r[3] >= 0.9 * W * H
+
+
 def is3d(i):
     return i["group"].startswith("3d:")
 
@@ -117,7 +123,9 @@ def main():
     # (a) overlaps
     out.append("## (a) Overlaps between different cards or groups\n")
     out.append("Pairs of visible things from different groups whose rectangles intersect (largest first, at most 25 per state). "
-               "A thing inside a full-window backdrop is listed once per backdrop at most.\n")
+               "Things covering 90 %% or more of the window (dimmers, backdrops) are left out. 3D labels (book print, plot "
+               "labels) are taken from the 3D scene: under the closed cover (u19, u20) they are hidden by the board, which "
+               "this tool cannot see.\n")
     worst = []
     for s in states:
         it = s["items"]
@@ -125,7 +133,7 @@ def main():
         for a in range(len(it)):
             for b in range(a + 1, len(it)):
                 A, B = it[a], it[b]
-                if card_of(A) == card_of(B):
+                if card_of(A) == card_of(B) or full(A, W, H) or full(B, W, H):
                     continue
                 # a group nested inside the other (e.g. a card inside a page group) is not an overlap of different cards
                 if A["name"].startswith(B["group"] + "/") or B["name"].startswith(A["group"] + "/"):

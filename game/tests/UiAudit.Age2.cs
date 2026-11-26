@@ -75,8 +75,8 @@ public partial class UiAudit
     private async Task SecondAgeLate()
     {
         // u32: the middle: ferry, tide dial, a skipper's request.
-        bool skipper = await Early(t => t.Ferry.Built && t.Request.Active && IsSkipper(t), 60);
-        if (!skipper) await Early(t => (t.Ferry.Built || t.Level >= 22) && t.Request.Active, 60);
+        await Early(t => (t.Ferry.Built && t.Request.Active && IsSkipper(t)) || t.Level >= 22, 60);
+        if (!(T.Ferry.Built && IsSkipper(T))) await Early(t => (t.Ferry.Built || t.Level >= 22) && t.Request.Active, 60);
         if (!T.HasSeal)
         {
             await ClosePage(); await ClearChoice();
@@ -88,22 +88,23 @@ public partial class UiAudit
         else NotMade("u32", "Second age middle", "the seal came first");
 
         // u35: the busiest moment of the second age.
-        await Busiest("u35", "Busiest moment (second age)", T.Level + 1, T.Level + 4);
+        await Busiest("u35", "Busiest moment (second age)", T.Level + 1, Math.Min(T.Level + 4, T.MaxLevel - 3));
 
         // u34: late, drawbridge and toll, at rest.
-        if (await Early(t => t.CrossingExists(RiverLinkKind.Drawbridge) && t.Tolls > 0, 240) || await Early(t => t.CrossingExists(RiverLinkKind.Drawbridge), 60))
+        if (await Early(t => (t.CrossingExists(RiverLinkKind.Drawbridge) && t.Tolls > 0) || t.Level >= t.MaxLevel - 2, 240))
         {
             await ClosePage(); await ClearChoice();
             await FollowView();
             await Settle(500);
             await Calm();
-            await Shot("u34", "Second age late at rest (drawbridge, toll)", $"bot until the drawbridge stood and a toll was paid (tolls={T.Tolls}), level {T.Level}");
+            await Shot("u34", "Second age late at rest (drawbridge, toll)", $"bot until the drawbridge stood and a toll was paid, or level MaxLevel-2: drawbridge={T.CrossingExists(RiverLinkKind.Drawbridge)} tolls={T.Tolls}, level {T.Level}");
         }
         else NotMade("u34", "Second age late at rest", "no drawbridge before the seal");
 
         // u37: the seal drive card: the second age has no drive of its own in this build (only the charter drive);
         // the nearest: the last level before the seal, at rest, with whatever card shows.
-        if (await Early(t => t.Drive.Active, 60))
+        if (T.HasSeal) NotMade("u37", "Seal drive card", "no drive runs in the second age (Drive is the charter drive only) and the seal had come");
+        else if (await Early(t => t.Drive.Active || t.Level >= t.MaxLevel - 1, 240) && T.Drive.Active)
         {
             await ClosePage(); await FollowView(); await Settle(400); await Calm(8000);
             await Shot("u37", "Seal drive card", $"a drive ran in the second age ({T.DriveText}); card={Main.Hud.DriveCardVisible}");
@@ -112,12 +113,14 @@ public partial class UiAudit
         {
             int last = T.Level;
             await Early(t => t.Level >= t.MaxLevel - 1, 240);
+            if (T.HasSeal) { NotMade("u37", "Seal drive card", "no drive in the second age; the seal came before the last level could be shown at rest"); goto seal; }
             await ClosePage(); await ClearChoice();
             await FollowView(); await Settle(400); await Calm(8000);
             await Shot("u37", "Seal drive card (nearest: last level before the seal)",
                 $"NOT the drive: the simulation runs no drive in the second age (Drive is the charter drive only). Nearest: level {T.Level} (from {last}), just before the seal, at rest; drive card={Main.Hud.DriveCardVisible}");
         }
 
+        seal:
         // u39 before the seal would show the river achievements in play; taken after the seal below.
         // u38: the borough seal moment and its page.
         if (await Fast(t => t.HasSeal, 600))
