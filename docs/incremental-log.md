@@ -50,6 +50,7 @@ Stopping
 
 ## Where things are
 
+- **The review page for the owner (Artifact): https://claude.ai/artifact/EhiZ8zXKSgpu1umUkZ2dd3** . Built by `docs/review/make_closing.py`, `docs/review/make_review_json.py` and `docs/review/build_review.py` into `build/review/`; to update it, rebuild and publish `build/review/index.html` again from this session (same path keeps the link), or from another session pass the link as `url`.
 - Design brief for builders: `docs/plans/incremental-design.md` (the lead's; change it only on purpose).
 - Design doc for the owner: Claude Docs id `9ee52479-fb74-49e2-9063-a1585cdc1e40`. Tab body nodes: Build Plan `aa88b9bc-2a93`, Overview `654f3c1a-1b75`, Gameplay `7e2d7651-21ec`, UX `ba135eb2-f67b`, Sound `6ddff1a9-fd33`, Art `d64ee9a3-3b89`, Engine `b2ac323d-e193`.
 - New simulation: `sim/Town/` (tests in `sim.tests/Town/`), interface note `docs/plans/town-sim-api.md`, pacing tables `docs/plans/town-pacing.md`.
@@ -80,7 +81,7 @@ Stopping
 
 ## Scheduled check
 
-- Pending: `trig_015BhNwiP85coBqMC31GHPoz`, fires 04:45 UTC on 26 November. (Earlier ones fired and were handled.) Cancel it with `delete_trigger` once the final report is posted.
+- Pending: `trig_016Go7ENemgq5Dkops3Bddqv`, fires 05:17 UTC on 26 November. (Earlier ones fired and were handled.) Cancel it with `delete_trigger` once the final report is posted.
 
 ## Rounds
 

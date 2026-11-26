@@ -3,7 +3,7 @@
  "eyebrow": "Tide & Toll, the overnight rebuild, 26 November 2026",
  "heading": "A town that grows one path at a time",
  "intro": [
-  "This is the incremental rebuild you asked for, in play order: one town (the default one, Dunstead) from its first minute to the borough seal at the end of the second age. Every picture was taken from the final build by one command, on a cloud machine with a software renderer, at 1920 x 1080.",
+  "This is the incremental rebuild you asked for, in play order: one town (the default one, Dunstead) from its first minute to the borough seal at the end of the second age. Every picture was taken by one command (tools/tour.sh) at 1920 x 1080 on a cloud machine with a software renderer: 47 from the final build and two, marked as such, from the build one step earlier.",
   "Under each picture is one line saying what it shows and one question. Press Yes or No, then <strong>Copy my answers</strong>, paste them into the chat and say continue. Where a picture shows a fault I already know of, its line says so."
  ],
  "facts": [
