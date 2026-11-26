@@ -1,8 +1,102 @@
 # Town pacing
 
-## Green pass (current rules; 26 November 2026)
+## Green pass 2 (current rules; 26 November 2026)
 
-These tables are the current numbers. Every section further down is from older rules (v2 to v3 and the first second-age build) and is kept as history only; read none of its numbers as current.
+These tables are the current numbers. The "Green pass" section below and every older section are history.
+
+What changed: Regulars (sim/Town/TownRegulars.cs), the first age's ladder of small steps. Each regular makes every delivery pay 0.4 % more, for good. The ladder starts again at every level at 0.15 minutes of the town's best coin rate when the level was reached (at least 20 a minute), 1.35 times dearer for each one won at that level. So a buy-when-you-can player always finds something cheap within the minute, and no other track is bought out for it. Not sold in the second age (whatever was won stays).
+
+Tried and dropped: Regulars on sale in the second age too (at 0.15, 0.04 and 0.02 of the best rate): boats pay in lumps that swell the best rate, and the cheapest bot drained its coin into the ladder; spells with nothing affordable got longer (62 to 82 s), not shorter. Lowering the second age's TrackStart (0.2, 0.15) did not help either.
+
+### First age, seeds 1 to 10 (tool: town --seeds 1-10 --misses --v3)
+
+Columns per bot (cheapest first, best payback first, random affordable, saver): charter minute; longest spell with nothing affordable (s); requests met/asked; boons; last gap / longest of the three before (minutes); hands bought; regulars won.
+
+```
+   1 | 37.3 ; 24 ; req 11/16 ; AAAA ; gap 3.6/4.7 ; hands 2 ; regs 52 | 31.7 ; 21 ; req 7/14 ; AAAB ; gap 3.0/4.2 ; hands 3 ; regs 32 | 35.1 ; 22 ; req 9/15 ; ABAB ; gap 2.5/4.3 ; hands 3 ; regs 49 | 27.6 ; 16 ; req 8/12 ; BAAB ; gap 3.0/4.1 ; hands 3 ; regs 15
+   2 | 38.5 ; 27 ; req 9/16 ; AAAA ; gap 3.0/5.1 ; hands 2 ; regs 55 | 30.3 ; 18 ; req 7/13 ; BBAA ; gap 2.7/3.1 ; hands 1 ; regs 30 | 37.8 ; 24 ; req 9/16 ; AAAA ; gap 2.5/5.0 ; hands 2 ; regs 54 | 28.7 ; 17 ; req 8/12 ; BAAA ; gap 3.2/2.9 ; hands 2 ; regs 16
+   3 | 37.5 ; 26 ; req 9/15 ; AAAA ; gap 3.2/4.6 ; hands 2 ; regs 51 | 31.3 ; 18 ; req 7/13 ; BAAA ; gap 3.5/4.4 ; hands 2 ; regs 30 | 37.1 ; 24 ; req 7/15 ; AABA ; gap 2.7/4.0 ; hands 2 ; regs 51 | 27.6 ; 16 ; req 5/11 ; BABA ; gap 3.7/3.3 ; hands 2 ; regs 13
+   4 | 36.2 ; 26 ; req 12/14 ; AAAA ; gap 3.8/4.5 ; hands 2 ; regs 51 | 30.7 ; 17 ; req 4/13 ; AABB ; gap 3.5/3.9 ; hands 1 ; regs 28 | 35.2 ; 24 ; req 8/14 ; BABB ; gap 4.0/3.8 ; hands 1 ; regs 51 | 27.5 ; 17 ; req 9/11 ; BAAB ; gap 3.0/3.3 ; hands 2 ; regs 12
+   5 | 36.3 ; 26 ; req 12/14 ; AAAA ; gap 2.9/4.6 ; hands 2 ; regs 54 | 27.5 ; 17 ; req 7/11 ; BABB ; gap 3.3/3.4 ; hands 1 ; regs 26 | 34.0 ; 21 ; req 6/14 ; BBBA ; gap 3.2/3.5 ; hands 0 ; regs 49 | 26.6 ; 17 ; req 6/10 ; BABA ; gap 3.6/3.2 ; hands 1 ; regs 12
+   6 | 36.5 ; 26 ; req 11/15 ; AAAA ; gap 2.8/4.6 ; hands 2 ; regs 52 | 29.5 ; 16 ; req 8/12 ; BBAA ; gap 2.9/3.3 ; hands 1 ; regs 29 | 35.0 ; 22 ; req 9/15 ; BBAB ; gap 3.2/4.0 ; hands 2 ; regs 50 | 27.5 ; 16 ; req 7/11 ; BBAA ; gap 2.2/3.1 ; hands 2 ; regs 18
+   7 | 34.5 ; 24 ; req 12/14 ; AAAA ; gap 2.6/4.3 ; hands 3 ; regs 50 | 29.4 ; 19 ; req 8/13 ; BAAB ; gap 2.4/4.4 ; hands 3 ; regs 29 | 32.6 ; 22 ; req 8/13 ; AABA ; gap 2.0/3.6 ; hands 2 ; regs 47 | 26.2 ; 16 ; req 6/12 ; BBAA ; gap 3.4/2.9 ; hands 2 ; regs 12
+   8 | 37.4 ; 26 ; req 12/15 ; AAAA ; gap 3.2/4.8 ; hands 2 ; regs 53 | 28.3 ; 18 ; req 7/12 ; BABB ; gap 2.0/3.3 ; hands 2 ; regs 28 | 34.9 ; 22 ; req 7/15 ; BBBB ; gap 3.1/4.3 ; hands 0 ; regs 49 | 27.5 ; 16 ; req 9/11 ; BAAB ; gap 2.5/3.4 ; hands 4 ; regs 14
+   9 | 37.0 ; 24 ; req 11/15 ; AAAA ; gap 3.0/4.2 ; hands 2 ; regs 53 | 28.6 ; 16 ; req 7/12 ; BBAA ; gap 3.0/2.9 ; hands 1 ; regs 30 | 36.7 ; 24 ; req 11/15 ; BAAA ; gap 3.4/4.1 ; hands 2 ; regs 50 | 26.4 ; 16 ; req 6/11 ; BBBA ; gap 2.8/3.2 ; hands 1 ; regs 13
+  10 | 36.4 ; 25 ; req 11/16 ; AAAA ; gap 2.9/4.8 ; hands 2 ; regs 52 | 29.6 ; 19 ; req 8/13 ; AAAB ; gap 3.4/3.3 ; hands 2 ; regs 28 | 35.3 ; 26 ; req 12/15 ; BAAB ; gap 2.7/4.5 ; hands 2 ; regs 52 | 27.1 ; 16 ; req 6/12 ; BABB ; gap 3.7/2.5 ; hands 2 ; regs 13
+misses: 0 (purchases 0, nothing affordable 0, age 0, map 0)
+```
+
+No miss: TownPacingTests.PurchasesKeepComing is green (was 3 misses). Charter 26.2 to 38.5 minutes (target 25 to 40; was 25.0 to 35.3). Longest spell with nothing affordable 27 s (limit 60; was 40 to 60). Regulars won: 47 to 55 (cheapest, random), 26 to 32 (payback), 12 to 18 (saver).
+
+Seeds 11 to 20 (not tests): MISSED seed 16 best payback first: 3 purchases in minute 9 < 4; misses: 1 (purchases 1, nothing affordable 0, age 0, map 0). Charter 25.4 to 37.5 minutes, nothing affordable at most 28 s.
+
+### Second age, seeds 1 to 10 (tool: town --river --seeds 1-10)
+
+No miss. Age 22.5 to 33.8 minutes, longest spell with nothing affordable 58 s (limit 60: still thin; it moved between 56 and 69 s with small changes to the Regulars numbers, so it is luck of the boats' lumps, not structure), longest map gap 170 s (limit 210), landing share at the middle at least 0.34 (target 0.333).
+
+| seed | bot | rung (min) | age (min) | buys/min | longest nothing affordable (s) | longest map gap (s) | landing share at mid | ford/ferry/foot/draw per min | longest crossing wait (s) | boats come/filled/short | coin landing / toll / river market / town |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | cheapest first | 37.3 | 29.6 | 5.81 | 53 | 105 | 0.80 | 0.0/23.9/53.8/63.2 | 106 | 26/14/10 | 590687 / 28500 / 32672 / 95825 |
+| 1 | best payback first | 31.7 | 28.6 | 8.96 | 17 | 79 | 0.90 | 0.0/27.2/62.1/150.5 | 33 | 26/14/9 | 1605382 / 53250 / 164805 / 204269 |
+| 1 | random affordable | 35.1 | 28.2 | 6.85 | 39 | 127 | 0.71 | 0.0/26.9/62.9/76.9 | 110 | 24/11/12 | 655856 / 37500 / 55671 / 158225 |
+| 1 | saver | 27.6 | 24.6 | 8.80 | 17 | 105 | 0.68 | 0.0/31.4/79.2/81.6 | 41 | 22/11/8 | 1121111 / 44250 / 125043 / 147828 |
+| 2 | cheapest first | 38.5 | 25.6 | 6.40 | 58 | 101 | 0.82 | 10.1/24.6/77.7/96.7 | 62 | 24/10/12 | 540791 / 20250 / 6694 / 63076 |
+| 2 | best payback first | 30.3 | 26.0 | 8.04 | 25 | 137 | 0.80 | 0.0/41.4/84.8/131.9 | 72 | 25/16/8 | 989189 / 27000 / 38709 / 95300 |
+| 2 | random affordable | 37.8 | 27.5 | 6.50 | 52 | 170 | 0.86 | 0.0/32.4/83.1/103.4 | 118 | 26/11/12 | 632988 / 19500 / 6572 / 47513 |
+| 2 | saver | 28.7 | 27.9 | 7.50 | 19 | 100 | 0.81 | 0.0/58.7/98.7/96.4 | 62 | 29/17/9 | 1107083 / 49500 / 48849 / 41676 |
+| 3 | cheapest first | 37.5 | 24.0 | 4.78 | 39 | 102 | 0.95 | 0.0/25.6/49.6/45.5 | 52 | 23/9/11 | 226016 / 17250 / 9830 / 75319 |
+| 3 | best payback first | 31.3 | 25.8 | 5.65 | 33 | 90 | 0.87 | 0.0/49.3/54.2/94.9 | 30 | 24/14/8 | 544007 / 24750 / 3183 / 40205 |
+| 3 | random affordable | 37.1 | 25.4 | 6.02 | 39 | 101 | 0.90 | 0.0/19.0/50.1/34.4 | 49 | 21/11/8 | 419421 / 21000 / 0 / 116898 |
+| 3 | saver | 27.6 | 24.9 | 5.79 | 17 | 118 | 0.94 | 0.0/38.0/50.9/50.2 | 42 | 23/15/5 | 568096 / 27000 / 1224 / 78821 |
+| 4 | cheapest first | 36.2 | 27.5 | 5.78 | 44 | 113 | 0.78 | 0.0/22.6/33.0/97.7 | 99 | 25/13/9 | 457016 / 33750 / 14459 / 99249 |
+| 4 | best payback first | 30.7 | 24.5 | 9.61 | 21 | 106 | 0.86 | 0.0/54.9/73.9/151.2 | 91 | 23/15/5 | 1237066 / 27000 / 102895 / 175488 |
+| 4 | random affordable | 35.2 | 25.1 | 9.15 | 30 | 126 | 0.67 | 0.0/36.5/49.6/141.2 | 154 | 25/14/8 | 1087439 / 42000 / 15582 / 127401 |
+| 4 | saver | 27.5 | 26.4 | 8.14 | 15 | 116 | 0.57 | 0.0/51.3/56.9/169.2 | 124 | 23/12/9 | 1063901 / 27000 / 66055 / 147526 |
+| 5 | cheapest first | 36.3 | 24.2 | 6.69 | 28 | 102 | 0.95 | 0.0/29.5/73.6/54.4 | 119 | 23/16/5 | 517067 / 22500 / 43176 / 54538 |
+| 5 | best payback first | 27.5 | 26.2 | 9.76 | 27 | 124 | 0.81 | 0.0/29.0/108.3/165.7 | 30 | 22/13/7 | 1711328 / 27000 / 94637 / 222408 |
+| 5 | random affordable | 34.0 | 29.2 | 7.06 | 29 | 107 | 0.92 | 0.0/38.1/75.7/92.0 | 83 | 27/14/10 | 836957 / 53250 / 42862 / 78309 |
+| 5 | saver | 26.6 | 27.4 | 7.81 | 22 | 95 | 0.80 | 0.0/55.5/111.3/142.6 | 29 | 26/16/7 | 1127767 / 36000 / 81583 / 69565 |
+| 6 | cheapest first | 36.5 | 23.9 | 5.37 | 38 | 125 | 0.82 | 5.9/21.4/74.1/60.0 | 47 | 20/12/5 | 283141 / 12000 / 20655 / 82763 |
+| 6 | best payback first | 29.5 | 24.4 | 7.67 | 16 | 107 | 0.81 | 0.0/33.7/118.0/58.8 | 45 | 20/10/8 | 894735 / 33750 / 1633 / 24111 |
+| 6 | random affordable | 35.0 | 24.2 | 7.33 | 42 | 118 | 0.62 | 0.0/34.1/68.9/73.1 | 104 | 20/12/5 | 521529 / 27000 / 36510 / 141983 |
+| 6 | saver | 27.5 | 28.6 | 5.46 | 22 | 113 | 0.75 | 2.5/42.4/50.3/88.8 | 37 | 25/14/9 | 544042 / 44250 / 47208 / 109967 |
+| 7 | cheapest first | 34.6 | 31.3 | 5.85 | 42 | 136 | 0.77 | 0.0/33.8/40.6/62.7 | 73 | 26/13/12 | 576887 / 30750 / 49964 / 121743 |
+| 7 | best payback first | 29.4 | 26.3 | 7.00 | 19 | 98 | 0.87 | 0.0/44.1/58.1/100.1 | 66 | 22/10/12 | 749369 / 27000 / 53012 / 181401 |
+| 7 | random affordable | 32.6 | 31.3 | 5.56 | 41 | 165 | 0.67 | 0.0/23.3/39.7/64.8 | 52 | 26/8/17 | 473789 / 27750 / 30649 / 189483 |
+| 7 | saver | 26.2 | 25.4 | 6.05 | 17 | 104 | 0.65 | 0.0/33.7/18.9/67.7 | 51 | 23/15/5 | 640980 / 27000 / 6368 / 78976 |
+| 8 | cheapest first | 37.4 | 30.7 | 5.12 | 50 | 112 | 0.89 | 0.0/18.9/57.0/66.7 | 117 | 23/14/9 | 469976 / 20250 / 27567 / 78589 |
+| 8 | best payback first | 28.3 | 31.1 | 7.64 | 20 | 99 | 0.42 | 0.0/35.3/97.3/99.4 | 32 | 24/10/13 | 1265896 / 38250 / 94303 / 264249 |
+| 8 | random affordable | 34.9 | 27.9 | 6.34 | 33 | 99 | 0.58 | 0.0/25.4/73.2/64.5 | 59 | 23/7/13 | 464812 / 40500 / 29931 / 195096 |
+| 8 | saver | 27.5 | 27.2 | 7.08 | 17 | 120 | 0.34 | 0.0/33.9/67.2/73.4 | 67 | 21/8/12 | 548027 / 41250 / 184762 / 255804 |
+| 9 | cheapest first | 37.0 | 31.5 | 3.30 | 48 | 98 | 0.60 | 1.2/5.7/51.5/52.8 | 101 | 27/4/21 | 168808 / 15000 / 6618 / 66134 |
+| 9 | best payback first | 28.6 | 29.3 | 4.82 | 32 | 141 | 0.63 | 0.6/10.5/44.5/43.6 | 33 | 23/8/13 | 447968 / 49500 / 13720 / 70507 |
+| 9 | random affordable | 36.7 | 27.0 | 3.63 | 45 | 120 | 0.65 | 3.9/0.9/19.6/20.2 | 9 | 20/3/16 | 134866 / 9000 / 4788 / 95573 |
+| 9 | saver | 26.4 | 29.5 | 3.90 | 31 | 133 | 0.55 | 0.2/11.5/26.6/38.1 | 82 | 23/5/15 | 311628 / 27000 / 1638 / 81509 |
+| 10 | cheapest first | 36.4 | 23.8 | 6.63 | 29 | 95 | 0.93 | 0.0/23.2/55.3/87.1 | 57 | 23/14/6 | 455942 / 45000 / 40775 / 44570 |
+| 10 | best payback first | 29.7 | 33.0 | 7.55 | 24 | 122 | 0.83 | 0.0/34.7/91.2/128.6 | 90 | 29/13/14 | 1313761 / 69750 / 288412 / 123860 |
+| 10 | random affordable | 35.3 | 22.5 | 7.37 | 35 | 122 | 0.85 | 0.0/16.9/36.5/73.6 | 60 | 19/13/4 | 504536 / 18750 / 17449 / 89901 |
+| 10 | saver | 27.1 | 33.8 | 7.04 | 22 | 130 | 0.95 | 8.5/27.7/88.4/124.8 | 7 | 29/10/18 | 1325082 / 27000 / 228243 / 214513 |
+
+Seeds 11 to 20 (not tests), 7 misses of 40 runs:
+
+```
+| 11 | cheapest first | 36.5 | 29.7 | 5.97 | 65 | 170 | 0.75 | 8.9/19.0/71.7/88.0 | 30 | 27/16/9 | 573583 / 48750 / 35621 / 75508 | MISS: nothing affordable
+| 14 | cheapest first | 37.5 | 22.0 | 4.85 | 38 | 88 | 0.33 | 0.0/11.3/39.7/39.9 | 71 | 20/8/11 | 183525 / 19500 / 6533 / 82485 | MISS: landing share
+| 16 | cheapest first | 36.2 | 25.2 | 4.45 | 90 | 145 | 0.92 | 0.0/14.5/47.2/59.6 | 65 | 21/12/8 | 221281 / 15750 / 6198 / 68913 | MISS: nothing affordable
+| 17 | cheapest first | 37.2 | 25.5 | 5.33 | 67 | 169 | 0.91 | 0.0/16.0/47.2/45.0 | 44 | 23/11/9 | 365770 / 18750 / 10218 / 46337 | MISS: nothing affordable
+| 18 | cheapest first | 35.1 | 25.3 | 6.20 | 65 | 153 | 0.94 | 0.0/13.6/59.2/37.3 | 111 | 26/13/10 | 437514 / 27000 / 20660 / 66385 | MISS: nothing affordable
+| 19 | random affordable | 33.1 | 27.5 | 5.92 | 77 | 119 | 0.86 | 11.6/24.5/56.3/64.9 | 35 | 23/11/9 | 554258 / 31500 / 366 / 41820 | MISS: nothing affordable
+| 20 | random affordable | 35.0 | 22.3 | 6.51 | 38 | 170 | 0.31 | 4.2/23.9/33.9/76.4 | 97 | 20/7/12 | 349366 / 11250 / 0 / 187545 | MISS: landing share
+misses: 7
+```
+
+So the second age's "nothing affordable" (60 s) and landing share (1/3) targets hold on seeds 1 to 10 by a small margin and miss on 7 of 40 runs of seeds 11 to 20: these two are not yet structural.
+
+Not built: villagers living in the riverside and far-bank cottages (decision 6). It needs new river itineraries home, resting by the river and crossing safety in every state of the tide and the crossings, tested through the whole age; left out entirely rather than half done.
+
+## Green pass (history: before Regulars; 26 November 2026)
+
+History: these were the numbers before green pass 2. Every section further down is from older rules (v2 to v3 and the first second-age build) and is kept as history only; read none of its numbers as current.
 
 ### First age, seeds 1 to 10 (tool: town --seeds 1-10 --misses --v3)
 

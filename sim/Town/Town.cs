@@ -106,6 +106,7 @@ public sealed partial class Town
     {
         var lv = Plan.Level(n);
         S.Level = n;
+        RegularsNewLevel();
         foreach (int p in lv.Plots) S.PlotGiven[p] = true;
         foreach (int r in lv.Roads) { S.RoadOpen[r] = true; S.RoadWear[r] = 0; }
         foreach (int o in lv.Offers)
@@ -224,7 +225,7 @@ public sealed partial class Town
 
     // ---- Coin ----
 
-    internal double CoinBonus => 1 + TownRules.VillagerPerkCoin * (S.VillagersBought / TownRules.PerkEvery);
+    internal double CoinBonus => 1 + TownRules.VillagerPerkCoin * (S.VillagersBought / TownRules.PerkEvery) + TownRules.RegularsStep * S.Regulars;
     internal int LoadUnits => TownRules.BaseLoad + S.LoadLevel;
 
     internal void Earn(double coin, Good g)

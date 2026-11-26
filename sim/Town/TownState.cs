@@ -104,6 +104,9 @@ public sealed class TownState
     public bool[] PerkTaken = new bool[64];
     public bool[] Achieved = Array.Empty<bool>();
     public double MaxCoinPerMinute;
+    // Green pass 2: Regulars (missing in an older save: 0)
+    public int Regulars, RegularsAtLevel;
+    public double RegularsRate;
 
     // ---- Rules v2 ----
     public int ToolsLevel, BellTrackLevel;

@@ -204,6 +204,7 @@ public sealed partial class Town
                 return rate / n * 0.9 * ep / (ep + VillagerPrice);
             }
             case ShopItemKind.BellTrack: return rate * 0.025;
+            case ShopItemKind.Regulars: return S.River != null ? 0 : rate * TownRules.RegularsStep / CoinBonus;
             case ShopItemKind.Hand:
             {
                 if (index < 0 || index >= S.Workplaces.Length) return 0;

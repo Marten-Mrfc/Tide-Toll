@@ -162,6 +162,10 @@ public static class TownRules
     // moment (at least TouchRateMin a minute) further on, so touches come about every TouchMinutes and follow the town.
     public static double TouchMinutes = 3.5, TouchMinutesRiver = 1.5, TouchRateMin = 30, TouchFirstCoin = 40, TouchMaxGap = 170;
     public const int TouchMax = 44, TouchSpotMax = 64, TouchesPerPlot = 3;   // at most TouchMax touches, on up to TouchSpotMax reserved spots
+    // ---- Green pass 2: Regulars, the first age's ladder of small steps (sim/Town/TownRegulars.cs) ----
+    // Each regular: every delivery pays RegularsStep more. Price: RegularsMinutes of the best coin rate when the level was
+    // reached (at least RegularsRateMin a minute), times RegularsGrowth ^ regulars won at this level; starts again each level.
+    public static double RegularsStep = 0.004, RegularsMinutes = 0.15, RegularsGrowth = 1.35, RegularsRateMin = 20;
     public static double HandWellBase = 150, HandFieldBase = 600, HandMillBase = 4000, HandGrowth = 2.5;
 }
 

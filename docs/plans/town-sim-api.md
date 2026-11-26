@@ -355,6 +355,18 @@ Small things the town dresses itself with. They cost nothing and do nothing.
 - Achievement texts print large numbers with thousands separators ("Earn 20,000 coin in all.").
 - After the borough seal: `Town.SecondAgeComplete`, `Town.SecondAgeCompleteText`, `Town.StillOnSale(list)` and `Town.StillOnSaleCount` (what can still be bought, now or later). Saved through the seal itself.
 
+### Regulars: the first age's ladder of small steps (green pass 2; sim/Town/TownRegulars.cs)
+
+Something cheap is always on sale in the first age, so a player who buys whenever they can always finds a purchase, early and late, and no track is bought out for it.
+
+- `ShopItemKind.Regulars` (21, appended). Listed in the first age only, after the other tracks and the hands (the order of every other item is unchanged), name "Regulars", `Level` = regulars won in all, `Worth` = the coin a minute it adds now. Not listed in the second age (its own tracks go on there); what was won stays.
+- Effect: each regular makes every delivery (and request, boat and store payment, everything that goes through the coin bonus) pay `TownRules.RegularsStep` (0.004, so 0.4 %) more, for good. `Town.RegularsFactor` = 1 + step x regulars.
+- Price: `TownRules.RegularsMinutes` (0.15) of the town's best coin rate when the current level was reached (at least `RegularsRateMin`, 20, a minute), times `RegularsGrowth` (1.35) per regular already won at this level, rounded up. The ladder starts again at every level-up. `Town.RegularsPrice`.
+- `Town.Regulars`, `Town.RegularsThisLevel`, `Town.RegularsLockReason` ("" in the first age), `Town.BuyRegulars()`; `Town.Buy(item)` handles it.
+- Saved: `TownState.Regulars`, `RegularsAtLevel`, `RegularsRate` (0 when missing, so older saves load with no regulars).
+- Game: the HUD shows unknown kinds with its default icon and the item's own name; a short line for it could read "A regular customer: every delivery pays 0.4 % more."
+- Pacing: `PacingResult.ByKind` and `RiverPacingResult.ByKind` now have 22 entries (were 12 and 21).
+
 ### Not done
 
-- Villagers housed in the riverside and far-bank cottages still keep a first-age cottage as their errand home (decision 6 of the green pass is not built).
+- Villagers housed in the riverside and far-bank cottages still keep a first-age cottage as their errand home (decision 6 of the green pass is not built; green pass 2 left it out too: not safe to build and test in its time box).

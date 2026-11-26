@@ -57,7 +57,7 @@ public static class TownCommand
                 var plan = TownPlanner.Build(sd);
                 var res = new List<PacingResult>();
                 var row = new StringBuilder($"{sd,4}");
-                foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}" + (o.ContainsKey("v3") ? $" ; {string.Concat(r.Boons.Select(x => x < 0 ? "-" : (x % 2 == 0 ? "A" : "B")))} ; gap {r.LastGap:F1}/{r.LongestEarlierGap:F1} ; hands {r.ByKind[(int)ShopItemKind.Hand]}" + (o.ContainsKey("worth") && k == BotKind.Payback ? " ; " + string.Join(" ", r.ChoiceWorth.Select(x => x.ToString("F0", Inv))) : "") : "")); }
+                foreach (var k in bots) { var r = TownPacing.Run(sd, k, minutes, plan: plan); res.Add(r); row.Append($" | {Min(r.Charter)} ; {r.LongestNothingAffordable:F0} ; req {r.RequestsMet}/{r.RequestsAsked}" + (o.ContainsKey("v3") ? $" ; {string.Concat(r.Boons.Select(x => x < 0 ? "-" : (x % 2 == 0 ? "A" : "B")))} ; gap {r.LastGap:F1}/{r.LongestEarlierGap:F1} ; hands {r.ByKind[(int)ShopItemKind.Hand]} ; regs {r.ByKind[(int)ShopItemKind.Regulars]}" + (o.ContainsKey("worth") && k == BotKind.Payback ? " ; " + string.Join(" ", r.ChoiceWorth.Select(x => x.ToString("F0", Inv))) : "") : "")); }
                 seedRuns[sd - a] = res;
                 all[sd - a] = TownPacing.Misses(res); rows[sd - a] = row.ToString();
             });

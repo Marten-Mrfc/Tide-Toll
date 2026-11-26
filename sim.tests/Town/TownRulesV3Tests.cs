@@ -215,8 +215,19 @@ public class TownRulesV3Tests
             var items = new List<ShopItem>();
             for (int i = 0; i < 30 * 60 * TownRules.TickHz && !t.HasCharter; i++)
             {
-                t.Step(); bot.Act(t);
+                // Green pass 2: the offer is checked before the bot acts (a bot may buy an offered hand in the same tick;
+                // the checks below are about the offer as it is announced). Purchases are counted after the bot acts.
+                t.Step();
                 t.DrainEvents(ev);
+                CheckHands(ev);
+                bot.Act(t);
+                t.DrainEvents(ev);
+                CheckHands(ev);
+            }
+            for (int w = 0; w < t.WorkplaceCount; w++) Assert.True(t.HandsBought(w) <= TownRules.HandMax);
+
+            void CheckHands(List<TownEvent> ev)
+            {
                 foreach (var e in ev)
                 {
                     if (e.Kind == TownEventKind.OfferAvailable && e.Item == ShopItemKind.Hand)
@@ -230,7 +241,6 @@ public class TownRulesV3Tests
                     if (e.Kind == TownEventKind.Purchase && e.Item == ShopItemKind.Hand) bought++;
                 }
             }
-            for (int w = 0; w < t.WorkplaceCount; w++) Assert.True(t.HandsBought(w) <= TownRules.HandMax);
         }
         Assert.True(offered > 0 && bought > 0, $"offered {offered}, bought {bought}");
     }

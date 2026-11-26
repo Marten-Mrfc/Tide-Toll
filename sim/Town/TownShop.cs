@@ -5,7 +5,9 @@ namespace TideToll.Sim.Town;
 
 public enum ShopItemKind : byte { Villager = 0, Pace = 1, Load = 2, Pave = 3, Building = 4, Bell = 5, NextAge = 6, Tools = 7, Value = 8, Extend = 9, BellTrack = 10, Hand = 11,
     // The second age
-    Ferry = 12, Berth = 13, Crane = 14, BoatPrices = 15, RiverValue = 16, Raft = 17, Rope = 18, Toll = 19, Winch = 20 }
+    Ferry = 12, Berth = 13, Crane = 14, BoatPrices = 15, RiverValue = 16, Raft = 17, Rope = 18, Toll = 19, Winch = 20,
+    // Green pass 2: the first age's ladder of small steps (sim/Town/TownRegulars.cs)
+    Regulars = 21 }
 
 /// <summary>One thing the player can buy (or press). Index: offer id for Building, road id for Pave (the suggested road),
 /// (int)Good for Value, cottage plot id for Extend (the suggested cottage), Load step for Load, else -1.</summary>
@@ -93,6 +95,7 @@ public sealed partial class Town
         foreach (var o in Plan.Offers)
             if (S.OfferAvailable[o.Id] && !S.OfferBought[o.Id]) into.Add(Item(ShopItemKind.Building, o.Id, o.Name, 0, o.Price, ""));
         AddTrackItems(into);
+        AddRegularsItem(into);
         if (S.River != null) AddRiverItems(into);
     }
 
@@ -125,6 +128,7 @@ public sealed partial class Town
         ShopItemKind.Extend => Extend(item.Index),
         ShopItemKind.BellTrack => BuyBellTrack(),
         ShopItemKind.Hand => BuyHand(item.Index),
+        ShopItemKind.Regulars => BuyRegulars(),
         _ => BuyRiver(item.Kind, item.Index),
     };
 
