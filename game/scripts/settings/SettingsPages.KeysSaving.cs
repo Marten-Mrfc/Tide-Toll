@@ -17,9 +17,14 @@ public partial class SettingsPages
 
     private void BuildKeys(VBoxContainer left, VBoxContainer right, float s)
     {
-        // Round 3: 25 actions; the right column also holds the note and Restore defaults, so it takes two rows fewer.
-        int half = (GameInput.Actions.Length + 3) / 2;
-        float rowPx = GameInput.Actions.Length > 18 ? 32 : 40;
+        // Round 4: rows closer together and the left column one row longer than the right (which also holds the note
+        // and Restore defaults), so the 25 actions fit at 100 percent without scrolling; where a column must still
+        // scroll, its window shows whole rows only (FitWholeRows).
+        int half = (GameInput.Actions.Length + 1) / 2;
+        float rowPx = 40;
+        int sep = UiKit.Px(s, 6);
+        left.AddThemeConstantOverride("separation", sep);
+        right.AddThemeConstantOverride("separation", sep);
         for (int i = 0; i < GameInput.Actions.Length; i++)
         {
             var a = GameInput.Actions[i];
@@ -54,6 +59,41 @@ public partial class SettingsPages
             "Put every key back as it was at first");
         restore.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         right.AddChild(restore);
+        FitWholeRows(left, Mathf.Max(rowPx * s, 40 * s) + sep, sep);
+        FitWholeRows(right, Mathf.Max(rowPx * s, 40 * s) + sep, sep);
+    }
+
+    /// <summary>
+    /// Once the column's scroll window has its size: if the rows do not all fit, the window is cut to a whole number
+    /// of rows (the space under it stays empty), so no row is cut in half at the bottom.
+    /// </summary>
+    private static void FitWholeRows(VBoxContainer col, float pitch, int sep)
+    {
+        if (col.GetParent()?.GetParent() is not ScrollContainer scroll || scroll.GetParent() is not VBoxContainer box) return;
+        bool done = false;
+        scroll.Resized += () =>
+        {
+            if (done || scroll.Size.Y < 1) return;
+            float pad = scroll.GetChild<MarginContainer>(0).GetThemeConstant("margin_top") * 2f;
+            if (col.GetCombinedMinimumSize().Y + pad <= scroll.Size.Y + 0.5f) return; // everything fits: no scrolling
+            done = true;
+            // Whole rows by their own heights (a row stacks its name over its keys in a narrow column).
+            float h = 0, y = 0;
+            foreach (var n in col.GetChildren())
+            {
+                if (n is not Control c || !c.Visible) continue;
+                float end = y + c.GetCombinedMinimumSize().Y;
+                if (end + pad > scroll.Size.Y) break;
+                h = end; y = end + sep;
+            }
+            h = Math.Max(h, Math.Min(pitch, scroll.Size.Y - pad)) + pad;
+            int at = scroll.GetIndex();
+            scroll.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            scroll.CustomMinimumSize = new Vector2(0, h);
+            var spacer = new Control { Name = "UnderRows", SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+            box.AddChild(spacer);
+            box.MoveChild(spacer, at + 1);
+        };
     }
 
     public void StartCapture(string action, int slot)

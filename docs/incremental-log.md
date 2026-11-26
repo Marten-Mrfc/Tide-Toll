@@ -101,7 +101,7 @@ Stopping
 ## Next steps
 
 0. The lead's plan is `docs/plans/lead-plan.md`; the fix list for round 3 is `docs/plans/r3-review.md`; the second age's design is `docs/plans/age2-design.md`.
-1. Round 3 (`3e7906f`) is pushed and GitHub built its exe at 00:09. The lead's own re-run of `./check --export` on a clean copy of that commit (`build/ck/r3`, log `build/ck-r3.log`, last line `exit 0` when it has passed) was still running then: its first attempt failed on every game step only because that copy's assets had not been imported. If the re-run shows a real failure, say so in this log and fix it in round 4.
+1. Round 3 (`3e7906f`) is pushed, GitHub built its exe at 00:09, and the lead's own `./check --export` on a clean copy of that commit passed at 00:16 (17 steps; log `build/ck-r3.log`). Note for clean copies: after `tools/sync-assets.sh`, run `godot --headless --path game --import` once; a copied `.godot` folder is not enough.
 1b. Round 4 is running (see the table).
 2. Round 4's work order is `docs/plans/r4-review.md`: part A (fixes from the play-test of round 2 and the bug hunt) can start as soon as round 3 is committed; part B (choices of two, the charter drive, touches, the second age in the game) needs the merge of `wt/age2`, which waits for the green pass 3g. When 3g is green: commit in `build/wt/age2`, `git merge --no-ff wt/age2`, run `./check`.
 3. Then: the screenshot tour scene (`docs/plans/lead-plan.md` has the list), play-test and fix rounds until 05:00 UTC.

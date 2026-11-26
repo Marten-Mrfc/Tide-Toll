@@ -118,6 +118,30 @@ public partial class SettingsTest
         _notes.Add($"keyboard({_keySteps} keys)");
     }
 
+    /// <summary>
+    /// Round 4 (A14): at 100 percent no Keys column scrolls; at any size a key row is either wholly in its column's
+    /// window or wholly out of it (no row cut at the bottom).
+    /// </summary>
+    private void KeysFit(int ui, string where)
+    {
+        foreach (var name in new[] { "LeftScroll", "RightScroll" })
+        {
+            var scroll = (ScrollContainer)_pages.FindChild(name, true, false)!;
+            var window = scroll.GetGlobalRect();
+            if (ui == 100) Check(!scroll.GetVScrollBar().Visible, $"the Keys page scrolls ({name}) at {where}");
+            foreach (var kv in _pages.Controls)
+            {
+                if (!kv.Key.StartsWith("keys.tt_") || !kv.Value.IsVisibleInTree()) continue;
+                var p = kv.Value.GetParent();
+                while (p != null && p != scroll) p = p.GetParent();
+                if (p == null) continue;
+                var r = kv.Value.GetGlobalRect();
+                bool inside = window.Grow(1).Encloses(r), outside = !window.Intersects(r);
+                Check(inside || outside, $"{kv.Key} is cut by the bottom of its column at {where}: {r} in {window}");
+            }
+        }
+    }
+
     private async Task Fits()
     {
         var sizes = new[] { new Vector2I(1280, 720), new Vector2I(1920, 1080) };
@@ -151,6 +175,7 @@ public partial class SettingsTest
                     }
                     // Text is never smaller than 12 px in canvas units (scaled by the interface size on screen).
                     MinFont(_pages, where);
+                    if (section == "Keys") KeysFit(ui, where);
                 }
             }
         _rt.Store.SetInterfaceSize(100);
