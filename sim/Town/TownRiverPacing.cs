@@ -15,6 +15,15 @@ public static class TownRiverTargets
     public static double CrossingWaitMax = 240;                     // seconds any villager waits at one crossing (one tide cycle)
     public static double MinuteMsMax = 10;                          // CPU per game minute at the end of the age
     public static int PlayMinutesMax = 120;                         // first age plus second age, a cap for the runs
+    // River polish: the ford's own stretch (from the ford's level to the ferry's purchase) and the drawbridge's tolls, seeds 1 to 10, four bots.
+    public static double FordOnlyMinutesMin = 2;                    // every run: at least this long with the ford as the only way over
+    public static int FordSeedsUsedMin = 4;                         // seeds (of 10) where some bot's villagers cross by the ford in that stretch
+    public static long FordCrossingsAllMin = 300;                   // people over the ford in that stretch, all 40 runs together
+    public static double FordHighWaterWaitAllMin = 1000;            // villager-seconds queued at the ford at high water in that stretch, all runs together
+    public static int TollsMin = 2;                                 // every run: boats that pay the toll before the seal
+    public static double DrawbridgeMinutesMin = 3.5;                // every run: minutes from the drawbridge to the seal
+    public static double TollStepsBackAllMin = 1.0;                 // all runs together: extra toll coin from toll steps over coin spent on them
+    public static double TollStepsBackMin = 0.35;                   // every run that bought toll steps: the same share
 }
 
 /// <summary>What one bot measured in the second age (times in seconds since it was rung in; -1 never).</summary>
@@ -38,6 +47,16 @@ public sealed class RiverPacingResult
     public double CoinLanding, CoinToll, CoinMarket, CoinTown;  // earned in the second age by source
     public int BoatsCome, BoatsFilled, BoatsShort;
     public double MinuteMsAtEnd = -1;
+    /// <summary>River polish: the ford's own stretch, from the ford's level to the ferry's purchase (or the seal): its length in
+    /// seconds, people who crossed by the ford in it, and villager-seconds spent queued at the ford while the water was high.</summary>
+    public double FordOnlySeconds;
+    public long FordCrossingsBeforeFerry;
+    public double FordHighWaterWaitBeforeFerry;
+    /// <summary>River polish: boats that paid the toll before the seal, minutes from the drawbridge to the seal, coin spent on
+    /// toll steps and the extra toll coin those steps brought before the seal.</summary>
+    public int TollsBeforeSeal;
+    public double DrawbridgeMinutes = -1;
+    public double TollStepSpent, TollStepEarned;
     /// <summary>Green pass: touches when the age was rung in and at the seal; spots of the seed.</summary>
     public int TouchesAtRing, TouchesAtSeal, TouchSpots;
     /// <summary>Per minute of the second age: coin per minute, coin held, cheapest price on sale, villagers walking/queued/working/idle, river mode.</summary>
@@ -73,7 +92,8 @@ public static class TownRiverPacing
                 if (!river || res.Seal >= 0) continue;
                 double rt = e.Time - res.RungAt;
                 if (e.Kind == TownEventKind.LevelReached && e.Level >= firstRiverLevel) res.LevelTimes[e.Level - firstRiverLevel] = rt;
-                if (e.Kind == TownEventKind.Purchase) { res.Purchases++; res.ByKind[(int)e.Item]++; }
+                if (e.Kind == TownEventKind.Purchase) { res.Purchases++; res.ByKind[(int)e.Item]++; if (e.Item == ShopItemKind.Toll) res.TollStepSpent += e.Coin; }
+                if (e.Kind == TownEventKind.TollPaid) res.TollStepEarned += e.Coin - TownRulesRiver.TollBase;
                 // New on the map: level gifts, buildings, paving, extensions, a new villager, and the river upgrades that change a model
                 // (ferry, berth, crane, raft, rope, winch).
                 if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended or TownEventKind.TouchAdded or TownEventKind.VillagerArrived
@@ -90,6 +110,8 @@ public static class TownRiverPacing
                     res.CoinLanding = t.LandingCoin - t.TollCoin * 0; res.CoinToll = t.TollCoin; res.CoinMarket = t.RiverMarketCoin;
                     res.CoinTown = t.CoinEarned - earnedAtRing - t.LandingCoin - t.TollCoin - t.RiverMarketCoin;
                     res.BoatsCome = t.BoatsCome; res.BoatsFilled = t.BoatsFilled; res.BoatsShort = t.BoatsLeftShort;
+                    res.TollsBeforeSeal = (int)t.Tolls;
+                    if (res.LevelTimes[10] >= 0) res.DrawbridgeMinutes = (rt - res.LevelTimes[10]) / 60;
                 }
             }
             if (res.Seal >= 0) break;
@@ -100,11 +122,23 @@ public static class TownRiverPacing
             for (int c = newest + 1; c < 5; c++)
                 if (t.CrossingExists((RiverLinkKind)c))
                 {
-                    if (newest > 0) res.CrossPerMinute[newest] = (crossedAll - epochCount[newest]) * 60 / Math.Max(1, now - epochStart[newest]);
+                    if (t.CrossingExists(RiverLinkKind.Ford) && !t.CrossingExists(RiverLinkKind.Ferry))
+            {
+                res.FordOnlySeconds += 1.0 / TownRules.TickHz;
+                res.FordCrossingsBeforeFerry = t.Crossings(RiverLinkKind.Ford);
+                if (!t.FordOpen) res.FordHighWaterWaitBeforeFerry += (t.CrossingWaiting(RiverLinkKind.Ford, 0) + t.CrossingWaiting(RiverLinkKind.Ford, 1)) / (double)TownRules.TickHz;
+            }
+            if (newest > 0) res.CrossPerMinute[newest] = (crossedAll - epochCount[newest]) * 60 / Math.Max(1, now - epochStart[newest]);
                     res.CapAtOpen[c] = t.CrossingCapacity((RiverLinkKind)c);
                     res.PrevCapAtOpen[c] = c > 1 ? t.CrossingCapacity((RiverLinkKind)(c - 1)) : 0;
                     newest = c; epochStart[c] = now; epochCount[c] = crossedAll;
                 }
+            if (t.CrossingExists(RiverLinkKind.Ford) && !t.CrossingExists(RiverLinkKind.Ferry))
+            {
+                res.FordOnlySeconds += 1.0 / TownRules.TickHz;
+                res.FordCrossingsBeforeFerry = t.Crossings(RiverLinkKind.Ford);
+                if (!t.FordOpen) res.FordHighWaterWaitBeforeFerry += (t.CrossingWaiting(RiverLinkKind.Ford, 0) + t.CrossingWaiting(RiverLinkKind.Ford, 1)) / (double)TownRules.TickHz;
+            }
             if (newest > 0) res.CrossPerMinute[newest] = (crossedAll - epochCount[newest]) * 60 / Math.Max(1, now - epochStart[newest]);
             res.LongestCrossingWait = Math.Max(res.LongestCrossingWait, t.LongestCrossingWait);
             // The landing's share of the age's coin by the middle of the age (the 6th river level stands for the middle).

@@ -9,7 +9,7 @@ public static class TownRulesRiver
     // ---- Levels ----
     // Renown above the renown held at the ring, in minutes of the town's best coin rate by then (TownState.MaxCoinPerMinute,
     // at least LevelRateMin), so a big town and a small one both take about the same time over the age.
-    public static double[] LevelRenown = { 0, 0.39, 0.89, 1.53, 2.44, 3.65, 5.12, 6.98, 9.22, 12.17, 15.82, 20.24 };   // green pass: x0.64 of rules v3's (each level now fixed at the level before, at the best rate then)
+    public static double[] LevelRenown = { 0, 0.39, 0.89, 1.53, 2.44, 3.90, 5.12, 6.98, 9.22, 12.17, 14.00, 20.24 };   // river polish: level 22 (the ferry) 3.65 to 3.90 (a real stretch of the ford alone), level 27 (the drawbridge) 15.82 to 14.00 (boats pay tolls before the seal); green pass: x0.64 of rules v3's (each level now fixed at the level before, at the best rate then)
     public static double LevelRateMin = 2000;
     public static string[] LevelGift =
     {
@@ -81,7 +81,7 @@ public static class TownRulesRiver
     public static double WoolValueBase = 1500, ClothValueBase = 2500, RiverValueGrowth = 1.08; public static int RiverValueMax = 20; public static double RiverValueStep = 0.04;
     public static double RaftBase = 4000, RaftGrowth = 1.45; public static int RaftMax = 5;
     public static double RopeBase = 3000, RopeGrowth = 1.4; public static int RopeMax = 5;
-    public static double TollTrackBase = 2500, TollGrowth = 1.25; public static int TollMax = 8;
+    public static double TollTrackBase = 2000, TollGrowth = 1.12; public static int TollMax = 8;   // river polish: were 2500 and 1.25 (the last steps never paid back before the seal)
     public static double WinchBase = 3000, WinchGrowth = 1.3; public static int WinchMax = 6;
 
     // ---- Green pass: the first age's tracks go on (index 0 = level 17 .. 11 = level 28): steps on sale beyond the first

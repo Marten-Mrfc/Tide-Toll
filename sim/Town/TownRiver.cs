@@ -255,6 +255,9 @@ public sealed partial class Town
         // The newest good is asked for twice as often as each older one, so new trades show at once.
         int pick = (int)(h % (uint)(ng + 1));
         b.Good = goods[Math.Min(pick, ng - 1)];
+        // River polish: while the ford is the only way over and the pasture works, one more boat in three wants Wool, so the far
+        // bank is worth reaching by the slow, low-water ford (and people wait on the bank at high water).
+        if (FordOnlyStretch && RiverPlotWorks(RiverPlotKind.Pasture) && h % 3 == 1) b.Good = Good.Wool;
         b.Want = Math.Max(TownRulesRiver.BoatMinUnits, (int)Math.Round(CoinPerMinute * TownRulesRiver.BoatMinutes[(int)b.Kind] / Math.Max(0.1, BoatUnitPrice(b.Good) * CoinBonus) * CraneFactor));
         b.Request = id % 2 == 1;
         b.Skipper = (int)(Hash(Seed, id, 11) % (uint)TownRulesRiver.SkipperNames.Length);
