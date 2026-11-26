@@ -67,3 +67,47 @@ game-motion: 60 and 30 fps pass; 120 fps failed one CPU gate (tab-saving-keys fr
 screenshot and ledger: still running at 21:53.
 
 Next: the tour's staging repairs from n3-before (lead's note 21:40) into this tour; tags as screen text (sheet 5); message queues and motion (next round); page pictures taken mid-fade at 1 fps (UiAudit waits 900 ms real time; the fade is real time with a per-frame step cap).
+
+## After the review (L1 fixer, 22:43 to 23:35 UTC)
+
+Read: brief, AGENTS.md, layout-sheet v2, l1-pictures, l1-review-1, l1-review-2, lead-notes (22:40, 22:50 and the older notes). Pictures of the fixes: `build/n3/ui-audit/l1-fix/<res>-<scale>[b]/`.
+
+### Fixed (code, then the picture of a state that showed the fault)
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Lead 1, R1 must 6, R2 must 6: pages see-through | The page card was opaque at rest; the tour pictured it mid-fade (1 frame a second). `Shot` now waits until an open page's fade is at 1. Picture: 1920 u15 opaque, map dimmed behind | `tests/UiAudit.cs` |
+| Lead 2, R1 must 2, R2 must 5: "The cha..." | The strip says "Charter", ten pips, "1 of 10"; the whole name stays in the drive's ask (tests read `DriveCardText`) | `TownHud.Choice.cs` |
+| Lead 3: hint ring a filled disc | A flat thin wheat ring (own mesh, 5 percent of its radius), just outside the plot, fading in and out over 0.4 s with its hint; gentle 3 percent breathing | `TownHud.Request.cs`, `TownHud.cs` |
+| Lead 4, R1 must 3 and 4: tags are 3D labels | The plots' "What" and boats' "Wants" Label3Ds are kept as data but never drawn; each is drawn as a screen tag (quiet paper pill, caption, every zoom with the full interface); boats say "Grain 21 of 656" (no "loads"); a tag touching a visible card (now including the line) or another tag, or leaving the window, fades out and stays out at least 0.5 s | `TownHud.Labels.cs` |
+| Lead 5: a finished group disappears | Group headings read the simulation's whole list (`_raw`), so "The river" keeps its heading with "N done" when all its steps are finished or locked | `TownHud.ShopRows.cs` |
+| R1 must 1: goal bar shows time | The bar is the count (delivered or loaded of the amount), river; time only tints the "within" text (skipper: the "Loaded" line) brick in its last quarter. `RequestTimeBar` still reports the time share (layout budget) | `TownHud.Request.cs`, `TownHud.River.cs` |
+| R1 must 3, R2 must 7: tips say "coin", bold card | Pointer tip and "Suggested" tag: quiet pill, regular caption, the coin icon before the amount ("Extend this cottage: (c) 40. Rooms 2 to 3.") | `TownHud.CoinTip.cs` (new), `TownHud.Pave.cs`, `TownHud.Extend.cs` |
+| R2 must 8, R1 should: Pave pill a dashed "–" | A blocked Pave pill says "no road" (line 2 keeps the reason) | `TownHud.Shop.cs` |
+| R2 must 1: slim purse over the book | The slim strip fades out as the map's left edge (the spine side) moves right of it, so it never lies on the summary page | `TownHud.cs` |
+| R2 must 4: half row at 1280/150 | When the shop scrolls, the scroll stops at a heading or row top, the card ends under the last whole row, rows and headings not wholly inside are not drawn; the wheel steps one row (42) | `TownHud.ShopRows.cs` |
+| R1 must 8 (and lead 21:40): tour staging | The n3-before repairs (0828955) taken over: Age1, Book, UiAudit.cs and ui-audit.sh by patch; Age2 by hand (u32 skipper card, u35 mid-age 20..24 with a request, u34 drawbridge, u37 retired) | `tests/UiAudit*.cs`, `tools/ui-audit.sh` |
+| R1 must 5 (part): Home not disabled-looking | A disabled navigation button dims its icon and key cap to 45 percent (only on change) | `TownHud.Timers.cs` |
+| Lead 22:50: settings leak at exit | See below | `tests/TestInput.cs`, `TownTestBase.cs`, `SettingsTest*.cs`, `SettingsShot.cs` |
+| R2 should: heading grammar "1 later" | the narrow fallback is "+N more" (the sheet's words) | `TownHud.ShopRows.cs` |
+| R2 should: renown bar touches "Level" | purse lines moved up 2 to 3 units: 5 of air over the bar | `TownHud.Ledger.cs` |
+
+### The settings test's exit (lead 22:50)
+
+All test scenes now leave through `TestInput.QuitClean(node, code)`: GC.Collect, WaitForPendingFinalizers, GC.Collect, one frame, twice; then Quit. Key events the tests make are disposed after use (`using`). This only releases wrappers that nothing holds; an object still referenced by managed code (a true leak) survives the collection and is still reported as "Leaked unsafe reference", which godot-test.sh still fails on. game-settings alone at 22:48 (load about 5): SETTINGS PASS, exit 0.
+
+### Tests changed
+
+| Test | Old | New | Why |
+| --- | --- | --- | --- |
+| TownTest.cs CheckRequestCard | `RequestTimeBar` equals time left share | `RequestCountBar` equals delivered/amount, and `RequestTimeBar` (now the time share itself) equals time left | sheet 3: the bar is the count; the time check is kept |
+| TownTest.cs Pave hover | tip contains "coin" | tip contains `Money(PavePrice(road))` | the tip carries the coin sign, never the word |
+| Should (sheet 4): not-yet prices and line 2 too faint | price in a not-yet or blocked pill and row line 2 are ink 70 percent (`MutedNumber`: muted text that carries a number) | `ShopRow.cs` |
+
+### Not fixed, disagreed, or for the next round
+
+- **Settings pictures u21 to u23 (R1 must 8):** the n3-before staging is in, but in an `--only` run at 1280 x 720 the cover was not open when the settings loop began ("state Playing": the u20 question's Esc had resumed the game). Proposed fix, not made (the whole check had started): before the settings loop, if `Main.Menu.Now == Playing`, `Main.Menu.Pause()` and wait for the cover. u24 and the "Keep this?" / "Delete the save?" cards are therefore still not judged.
+- **Tags, one gap:** at 1280 x 720 u35 two river stakes ("A cottage, at level 24", staked at the level-up 1.2 s before) still showed as the old 3D words. Cause: the tags are scanned every 30 frames, so at the tour's 1 frame a second a fresh Label3D draws for up to 30 s (0.5 s in play). Fix for the next agent: scan by real time (0.5 s), or the owners (`RiverLayer.StakeLabel`, `RiverBoats`, `TownBuildings` stake label: track P owns that file) create their labels with `Visible = false`.
+- **Hint ring size:** a thin ring now, but at radius 0.75 of the plot's longer side it is larger than needed at 1920 (u13 passes under the line card); 0.5 times the plot's diagonal would hug it.
+- **Disagreed:** R2 must 7 "the Suggested tag goes": the sheet (section 5) lists "Suggested: 24" as a tag and it tells the player which road the town suggests; kept, with the coin sign and the existing no-overlap rule against the tip. R1 should "cards 98 percent": the sheet says paper 96 percent. R1 should "slashed zero": Atkinson Hyperlegible's zero is slashed by design and has no plain alternate; changing the font is the lead's call.
+- **Next rounds (the lead's note 21:05 item 7):** the pause cover's question and the settings' clash card as modal cards (R1 must 7, R2 must 3 and 3b), the book's placement, compass and folio and navigation over the book (R2 must 2), tooltips in the tour (R1 must 5, rest), notes and their stay times, the line always on, "coin" in notes and pages, tide wording, the age page text.
