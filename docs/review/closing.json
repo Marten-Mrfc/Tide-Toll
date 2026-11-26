@@ -60,6 +60,39 @@
    ]
   },
   {
+   "id": "wrong",
+   "title": "What still looks wrong",
+   "kind": "text",
+   "paras": [
+    "Found by looking at the final pictures. Most serious first."
+   ],
+   "items": [
+    "The charter stone is small: in e03-charter it is a pale stone beside the bell frame that is easy to miss, and a reviewer did not find it in e02-town.",
+    "d06-crowded: the crowded road shows no warm wash and the hint says to extend a cottage instead of pave, so the question cannot be judged.",
+    "b06-building: old faded notes sit over the well and villagers, unreadable; similar fading notes have trees drawn through them in c05-request.",
+    "b02-pace-and-load: the bigger load cannot be seen on the villagers, so the two upgrades show no clear change.",
+    "c07-mill and b03-shop-lines: large coin numbers are drawn over plot labels and are cut off at the screen edge.",
+    "b08-hand, d02-trail-worn, d05-cobbles, e01-charter-drive: villagers are drawn on top of each other in queues and at the well and mill.",
+    "c03-field and b08-hand: the shop cards cut off the bell, the market stall and plot labels at the right edge.",
+    "d03-pave-mode: the lit roads are a pale tint hard to see, and the price tip is drawn over villagers.",
+    "a02-first-coin: the +3 floats in empty grass away from the cottage and the villager and is small.",
+    "b04-extend-mode and c04-choice: the boon choice card stays open at the top, crowding the Extend banner and covering a cottage.",
+    "The landing and boat labels are tiny, cut off or overprinted in the river pictures (f05, f07, f08, f09, g02), so the owner cannot read what a boat wants.",
+    "The tour does not show what several questions ask about: no ferry in f06, no ford at all (f04 was not made), no thinned interface strip in g03, no tilt in g01.",
+    "The book in g03 is too big and cut off at both screen edges, and g05 shows squashed, unreadable text on its left sliver.",
+    "The landing and the far bank are piles of people, carts and floating numbers drawn through each other (f09, g01).",
+    "The key box in h03 never names the action being rebound and no key slot shows it is waiting.",
+    "The settings tabs in h01 and h02 start under the page edge, so their left sides are cut off.",
+    "The baker's card in f03 says 'Waiting for a berth' while a boat is already loading.",
+    "Plot labels in f01 run through the staked plots and the dock.",
+    "The cream strip along the left edge in h05 looks like a leftover of the book.",
+    "The save path in h04 shows a test folder, and the shop headings People and Town are clipped in f08, f09 and g01.",
+    "Not in any picture: a close-up of a small touch (the tour's own check did not recognise how the game draws them; they are the small props beside cottages in the town pictures).",
+    "The Pave highlight's colour and the page wipe at the age change were not improved in the last round.",
+    "Godot crashed twice in eight earlier tour runs on this machine's software renderer (after the book closed for a pause, and at the age-change page); the two final runs did not crash."
+   ]
+  },
+  {
    "id": "decisions",
    "title": "Decisions made for you",
    "kind": "table",

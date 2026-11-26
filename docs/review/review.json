@@ -1,0 +1,613 @@
+{
+ "title": "Tide & Toll Night Review",
+ "eyebrow": "Tide & Toll, the overnight rebuild, 26 November 2026",
+ "heading": "A town that grows one path at a time",
+ "intro": [
+  "This is the incremental rebuild you asked for, in play order: one town (the default one, Dunstead) from its first minute to the borough seal at the end of the second age. Every picture was taken from the final build by one command, on a cloud machine with a software renderer, at 1920 x 1080.",
+  "Under each picture is one line saying what it shows and one question. Press Yes or No, then <strong>Copy my answers</strong>, paste them into the chat and say continue. Where a picture shows a fault I already know of, its line says so."
+ ],
+ "facts": [
+  "49 pictures",
+  "final commit d54ebaf",
+  "first age about 33 minutes (played by real input)",
+  "second age 22 to 34 minutes (bots only)",
+  "everything made in code, 0 euro"
+ ],
+ "sections": [
+  {
+   "id": "first-minute",
+   "title": "The first minute",
+   "shots": [
+    {
+     "file": "build/tour/a01-first-minute.png",
+     "shows": "The start, close in: one cottage, the well, a short reddish trail and one villager with a yoke; two staked plots are labelled level 2.",
+     "question": "Is this the right way to start?"
+    },
+    {
+     "file": "build/tour/a02-first-coin.png",
+     "shows": "The first delivery: coin reads 7 and a small +3 floats in the grass, left of the trail, with the villager below it. Known fault: The +3 floats in empty grass beside the trail, not at the cottage door or over the villager, and is small.",
+     "question": "Is the moment of earning clear enough?"
+    },
+    {
+     "file": "build/tour/a03-interface.png",
+     "shows": "The whole interface at level 1, zoomed out a little: coin and level card top left, shop on the right, bell, achievements and pause along the bottom.",
+     "question": "Is the interface the right size and in the right places?"
+    }
+   ]
+  },
+  {
+   "id": "upgrades",
+   "title": "Upgrades, one at a time",
+   "shots": [
+    {
+     "file": "build/tour/b01-villager.png",
+     "shows": "Two villagers near the well at 2 coin; the second one is only just in, and the shop says it now has no room. Known fault: The second villager stands half behind the well roof, so it is hard to pick out; the note about it is on the card at the left.",
+     "question": "Does buying a villager show clearly on the map?"
+    },
+    {
+     "file": "build/tour/b02-pace-and-load.png",
+     "shows": "Level 4 town with a request card; the shop shows Pace level 7 and a locked Yoke line, villagers carry yoke poles on the roads. Known fault: The bigger load cannot be seen on the villagers; a +9 sits jammed against the edge of the level card and a staked plot runs under the shop cards.",
+     "question": "Can you see what these two upgrades did?"
+    },
+    {
+     "file": "build/tour/b03-shop-lines.png",
+     "shows": "Level 13 town with the shop close: buyable lines show price and coin a minute, a locked Flour price, a finished Extend a cottage. Known fault: The big +11,558 is drawn through the plot label so it reads 'A cottage' cut off, and the shop cards cover the river.",
+     "question": "Does each shop line tell you enough to choose?"
+    },
+    {
+     "file": "build/tour/b04-extend-mode.png",
+     "shows": "Extend mode: two cottages lit blue, the top left tagged Suggested 166 coin, the pointed one tagged 'Extend this cottage: 166 coin. Rooms 2 to 3.' Known fault: The level 7 boon choice card is still open under the Extend banner, crowding the top of the screen.",
+     "question": "Is extending a cottage by clicking it clear?"
+    },
+    {
+     "file": "build/tour/b06-building.png",
+     "shows": "The market stall (red and white awning) stands in the grass near the bell and the river, with the boon choice card open at the top. Known fault: Faded old notes at the top left are drawn over the well and villagers and are unreadable; nothing marks the stall as your purchase.",
+     "question": "Is it clear that the stall was your purchase and where it went?"
+    },
+    {
+     "file": "build/tour/b07-bell.png",
+     "shows": "Level 2 town with the bell card reading 'Ringing: 8 s left, then rests 32 s'; two villagers carry water on the trail.",
+     "question": "Is the bell worth having as something to do with your hands?"
+    },
+    {
+     "file": "build/tour/b08-hand.png",
+     "shows": "Level 12: a queue of villagers along a cobbled road at a field with a '+ hand' tag on it; the shop offers 'A third hand at the field'. Known fault: Villagers are drawn on top of each other in the queue, the market stall is cut off behind the shop card, and notes cover the left field.",
+     "question": "Is it clear why this offer appeared?"
+    }
+   ]
+  },
+  {
+   "id": "levels",
+   "title": "Levels and what they bring",
+   "shots": [
+    {
+     "file": "build/tour/c01-level-banner.png",
+     "shows": "Level 2: the banner 'A cottage, a lane and the bell green.' with the new cottage, trail, bell and a staked field plot. Known fault: The hint already says a road is crowded with only two villagers, and an orange ring sits on the trail with no label.",
+     "question": "Is a new level enough of a moment?"
+    },
+    {
+     "file": "build/tour/c02-staked-plots.png",
+     "shows": "The staked plot of the first field labelled 'A field, at level 3', with the town small at the top right.",
+     "question": "Do the staked plots look right (not like an editor's boxes)?"
+    },
+    {
+     "file": "build/tour/c03-field.png",
+     "shows": "The first field (rows of grain) with one carrier on the track above it; the well and bell are at the top right. Known fault: The bell and well are cut off at the top right and the bell sits behind the shop card; only one carrier is seen.",
+     "question": "Does the town now read as doing two kinds of work?"
+    },
+    {
+     "file": "build/tour/c04-choice.png",
+     "shows": "Level 7: the card 'choose one boon, for good' offers A deeper well or Longer field rows, over a busy town. Known fault: The choice card covers a cottage at the top and the +189 number is jammed under it.",
+     "question": "Is this kind of choice what you want more of?"
+    },
+    {
+     "file": "build/tour/c05-request.png",
+     "shows": "A request from the miller: 117 Grain within 78 s, 27 delivered with a bar, reward 160 coin and renown. Known fault: The faded achievement notes have a tree drawn through them, and the Villager line text runs to the card edge.",
+     "question": "Do requests give you something to aim for?"
+    },
+    {
+     "file": "build/tour/c07-mill.png",
+     "shows": "The mill with sails stands alone on grass beside the river; the queue is at the field and market above it, not at the mill. Known fault: The coin number +20,861 runs into the plot label at the top edge and both are cut off; nobody queues at the mill door.",
+     "question": "Does the mill look and read right?"
+    }
+   ]
+  },
+  {
+   "id": "roads",
+   "title": "A road wearing in, then paved",
+   "shots": [
+    {
+     "file": "build/tour/d01-trail-new.png",
+     "shows": "Level 2 town: a faint trail from the top left cottage to the well, an orange ring on the road, and the bell at the bottom right. Known fault: A villager is half hidden behind the well roof, and the orange ring has no label.",
+     "question": "Is a new road faint enough to look unworn but clear enough to see?"
+    },
+    {
+     "file": "build/tour/d02-trail-worn.png",
+     "shows": "Level 8 town: lanes from every cottage to the well are firm earth tracks, with many villagers walking them. Known fault: Villagers at the well are drawn on top of each other and through the poles.",
+     "question": "Can you see that it has worn in?"
+    },
+    {
+     "file": "build/tour/d03-pave-mode.png",
+     "shows": "Pave mode: banner at top, worn roads tinted blue, a Suggested 21 coin tag and 'Gravel for this road: 21 coin. Click to pave.' Known fault: The price tip is drawn over villagers' heads and the pale blue tint is hard to see on the earth roads.",
+     "question": "Is paving by clicking a road clear?"
+    },
+    {
+     "file": "build/tour/d04-gravel.png",
+     "shows": "The left lane is now pale gravel, thin and light grey, running from a cottage to the well; the other roads are still earth.",
+     "question": "Does gravel look right?"
+    },
+    {
+     "file": "build/tour/d05-cobbles.png",
+     "shows": "A cobbled lane at the top left, a gravel lane below it to the well, earth tracks around them (level 9). Known fault: A staked plot at the bottom is hidden behind the Back to the town button, and villagers pile on top of each other on the lanes.",
+     "question": "Can you tell the three surfaces apart at a glance?"
+    },
+    {
+     "file": "build/tour/d06-crowded.png",
+     "shows": "Villagers bunched below a cottage on the left, a gravel lane at the top, and an earth road to the well. Known fault: No crowded road wash is visible, the hint says to extend a cottage not to pave, and the bunched villagers overlap.",
+     "question": "Is it clear that this road is crowded and that paving would help?"
+    }
+   ]
+  },
+  {
+   "id": "end-of-first-age",
+   "title": "The end of the first age",
+   "shots": [
+    {
+     "file": "build/tour/e01-charter-drive.png",
+     "shows": "The charter drive card: 'Send 235 Flour for the charter', 30 sent, with a long queue to the mill at the bottom right. Known fault: Villagers pile up in a heap at the mill, the shop heading 'Work' is cut by the card, and ghost shapes show faintly in the left card.",
+     "question": "Is this a good last push instead of a wait?"
+    },
+    {
+     "file": "build/tour/e02-town.png",
+     "shows": "The whole hamlet at level 16 with cottages, two fields, mill, market, bell and cobbled lanes; the Ring in the next age card is at the bottom left. Known fault: No charter stone on the green, several roads are still earth, extended cottages look like thin dark boxes, and villagers heap at the mill.",
+     "question": "Does the finished hamlet look like a place you built?"
+    },
+    {
+     "file": "build/tour/e03-charter.png",
+     "shows": "The charter banner 'The town is granted its charter. Ring in the next age when you are ready.' over the town; the Ring bookmark is bottom left. Known fault: The charter stone is a small pale stone beside the bell frame and is easy to miss; queued sack carriers overlap on the road to the mill.",
+     "question": "Is the charter enough of a moment?"
+    },
+    {
+     "file": "build/tour/e04-achievements.png",
+     "shows": "The achievements page: 24 goals in two columns, 23 done, 'Every road paved' at 64 %, with a Close button.",
+     "question": "Are the achievements the right kind of goals?"
+    }
+   ]
+  },
+  {
+   "id": "river",
+   "title": "The age change and the river",
+   "shots": [
+    {
+     "file": "build/tour/f01-ring.png",
+     "shows": "The town at level 17 with a gold ring on the mill and a banner naming the landing; no page is turning here. Known fault: Plot labels 'A cottage, at level 18' run through the staked plots and the dock beside the river.",
+     "question": "Is the age change enough of a moment?"
+    },
+    {
+     "file": "build/tour/f02-age-page.png",
+     "shows": "The page 'The second age: The River' lists boats, tide, wool, cloth and crossings over the dimmed town, with Keep playing below.",
+     "question": "Does this page tell you what you need?"
+    },
+    {
+     "file": "build/tour/f03-landing.png",
+     "shows": "A boat is moored at the landing with 'Flour 10 of 36 loads' above it; the tide dial reads high water falling. Known fault: The baker's request card says 'Waiting for a berth' while a boat is already loading at the landing.",
+     "question": "Is it clear what the boat wants and how full it is?"
+    },
+    {
+     "file": "build/tour/f05-pasture.png",
+     "shows": "The pasture with sheep sits on the far bank, a barge is loading Cloth at the landing, and the weaver stands on the near bank. Known fault: The boat label 'Cloth 11 of 36 loa' is cut off by a tree.",
+     "question": "Do wool and cloth fit the town?"
+    },
+    {
+     "file": "build/tour/f06-ferry.png",
+     "shows": "No ferry is in view: a boat loads Cloth at the landing and a faint label marks the footbridge as coming at level 25. Known fault: The ferry, its riders and the bank queues the question asks about are not on screen; the footbridge label floats on bare ground.",
+     "question": "Does the ferry read as a bottleneck you would want to improve?"
+    },
+    {
+     "file": "build/tour/f07-drawbridge.png",
+     "shows": "A bridge span with lift lines stands in the river while a boat leaves with Grain; walkers wait on the banks. Known fault: The boat label 'Leaving, Grain 108 of 131 loads' is overprinted by the cargo piles and hard to read.",
+     "question": "Is the drawbridge with its toll worth being the last gift?"
+    },
+    {
+     "file": "build/tour/f08-river-shop.png",
+     "shows": "The whole town beside the river with the shop panel on the right, now including a Wool price and Cloth price group under The river. Known fault: Tiny boat labels beside the river are unreadable and the Town heading is covered by a tree.",
+     "question": "Is the shop still readable with this many lines?"
+    },
+    {
+     "file": "build/tour/f09-seal.png",
+     "shows": "The town on both banks after the borough seal: banner, two bridges, a busy landing and the shop on the right. Known fault: The landing is a pile of carts, people and floating numbers drawn over each other, boat labels are tiny, and the People heading is cut.",
+     "question": "Does the town on the river look like a step up from the hamlet?"
+    },
+    {
+     "file": "build/tour/f10-seal-page.png",
+     "shows": "The page 'The second age is complete' summarises the town, the age and the coin earned, with Keep playing, over the dimmed town.",
+     "question": "Is this an acceptable ending for now?"
+    }
+   ]
+  },
+  {
+   "id": "book",
+   "title": "Zooming out to the book, and pausing",
+   "shots": [
+    {
+     "file": "build/tour/g01-close.png",
+     "shows": "The closest view: the town seen from above, with villagers drawn from the front; it does not look tilted. Known fault: A floating coin number is cut by the shop panel, fading toasts overlap the map, and carts and people at the right are piled through each other.",
+     "question": "Do you want the tilted view when zoomed in?"
+    },
+    {
+     "file": "build/tour/g02-zoom-1.png",
+     "shows": "The whole town with the river, both bridges, fields and the shop panel; this is the normal playing view. Known fault: A toast is fading over a tree, and the boat labels by the river are tiny and cut.",
+     "question": "Is this a good normal view to play in?"
+    },
+    {
+     "file": "build/tour/g03-zoom-2.png",
+     "shows": "The open book, cut off at both sides, with the town summary on the left and the map on the right. Known fault: The book is too big for the screen: the left page is cut off at the screen edge and the achievements list touches it. This is not a thinned strip.",
+     "question": "Is the change of the interface at this point right?"
+    },
+    {
+     "file": "build/tour/g04-book.png",
+     "shows": "The open book on the table: summary and 36 of 40 achievements on the left, the map on the right. Known fault: The Done column and the grey notes are pale and hard to read, and the achievement lists are very small.",
+     "question": "Is this how the book should appear?"
+    },
+    {
+     "file": "build/tour/g05-closing.png",
+     "shows": "The book is half closed: only the map page stands, with a thin sliver of the other page on its left. Known fault: The sliver on the left shows squashed, illegible lines of text, which looks unfinished.",
+     "question": "Does pausing by closing the book feel right?"
+    },
+    {
+     "file": "build/tour/g06-cover.png",
+     "shows": "The closed cover reads Tide & Toll, Dunstead, with Resume, Settings, New town and Quit on dark red leather.",
+     "question": "Is the cover menu what you asked for?"
+    },
+    {
+     "file": "build/tour/g07-new-town.png",
+     "shows": "The cover asks 'Start a new town? This town will be lost.' with two buttons, Start a new town and Keep this town.",
+     "question": "Is this question worded and placed well?"
+    }
+   ]
+  },
+  {
+   "id": "settings",
+   "title": "Settings, as pages of the book",
+   "shots": [
+    {
+     "file": "build/tour/h01-sound.png",
+     "shows": "Settings on the Sound page: five volume sliders and a mute switch across two pages, with four tabs at the right. Known fault: The tab labels start under the page edge, so their left sides are cut off, and much of both pages is empty.",
+     "question": "Are these the volume controls you want?"
+    },
+    {
+     "file": "build/tour/h02-display.png",
+     "shows": "Settings on the Display page: window mode, resolution, VSync, frame limit, interface size and two switches. Known fault: The tab labels start under the page edge, so their left sides are cut off.",
+     "question": "Are these the display options you want?"
+    },
+    {
+     "file": "build/tour/h03-keys.png",
+     "shows": "The Keys page with every action and two key slots, dimmed behind a box saying Space is taken and offering Swap keys or Cancel. Known fault: No slot shows the key being rebound, and the box never names the action being changed.",
+     "question": "Is rebinding clear?"
+    },
+    {
+     "file": "build/tour/h04-saving.png",
+     "shows": "Settings on the Saving page: autosave interval, Save now, Load the last save, Delete the save and the save folder path. Known fault: The save path shows a test folder 'tests/tour-pass', and most of both pages is empty.",
+     "question": "Is the saving page complete enough?"
+    },
+    {
+     "file": "build/tour/h05-big.png",
+     "shows": "The town at interface size 150 percent: the status card, shop rows and buttons are all large and the town is small in the middle. Known fault: A cream strip of leftover book page runs down the left edge behind the status card, and the shop panel crowds the right side.",
+     "question": "Is the largest interface size usable?"
+    }
+   ]
+  },
+  {
+   "id": "earlier",
+   "title": "Two pictures from the build one step earlier",
+   "note": "The tour could not retake these two on the final build: its second click on the cottage missed, and the ford was not in use at the moment of the picture. They come from the tree just before the last small pass, which changed only the crowded-road tint, the charter stone and the tour's timing.",
+   "shots": [
+    {
+     "file": "build/tour-c7973d5/b05-extended.png",
+     "shows": "A cottage after its extensions, beside a field. Known fault: the extended cottage looks thin, and one and two extensions are hard to tell apart.",
+     "question": "Can you tell an extended cottage from a plain one?"
+    },
+    {
+     "file": "build/tour-c7973d5/f04-ford.png",
+     "shows": "The ford at low water: stones show in the river, villagers queue to cross, and the tide dial reads low water. Known fault: a boat's tag is cut off by a tree, and crowded roads still have the strong red tint that the final build softened.",
+     "question": "Does the tide read as something you can see and use?"
+    }
+   ]
+  }
+ ],
+ "closing": [
+  {
+   "id": "build",
+   "title": "The newest Windows build",
+   "kind": "text",
+   "paras": [
+    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">The build of round 5, commit d54ebaf</a>: open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
+    "Nobody has run this exe on Windows. Everything tonight ran on Linux in a cloud machine without a graphics card."
+   ],
+   "items": [
+    "Round 1, commit <code>55543fc</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45705589636\">run page</a>",
+    "Round 2, commit <code>9298da5</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45716021068\">run page</a>",
+    "Round 3, commit <code>3e7906f</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45726474639\">run page</a>",
+    "Round 5, commit <code>d54ebaf</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45751507941\">run page</a>"
+   ]
+  },
+  {
+   "id": "honest",
+   "title": "What is fun and what is not, in my honest view",
+   "kind": "two",
+   "columns": [
+    {
+     "title": "Fun",
+     "items": [
+      "The first twenty minutes of the first age. Something new arrives every minute or two, several kinds of thing are within reach at once, and a whole age played by real input counted 3 to 4 decisions a minute.",
+      "Decisions made on the map itself: paving a road and extending a cottage by clicking it.",
+      "The choice of two boons, four times an age. It is the one place where two players end with different towns.",
+      "Requests and the charter drive: a goal a minute or two away, and a last push for the charter instead of a wait.",
+      "Zooming out until the town is a page in a book, and closing the book to pause.",
+      "Watching the river: boats mooring and loading, the queue at the ferry, the drawbridge lifting."
+     ]
+    },
+    {
+     "title": "Not fun yet",
+     "items": [
+      "Minutes 20 to 30 of the first age: under 2 decisions a minute.",
+      "Apart from the four boons, every player ends up buying the same things. Only the order differs.",
+      "Most upgrade steps are 3 to 4 percent and are felt only in the coin figure. The cheap ladder called Regulars may read as filler.",
+      "The second age has not been played through with real input by anyone. Its numbers come from bots, and its margins are thin: on ten further towns, 7 of 40 runs missed a pacing target a little.",
+      "In the second age the landing earns three quarters or more of all coin, so the first age's market matters little.",
+      "The ford matters on only about half of the towns.",
+      "Nothing has been heard. The music and the sounds were checked by measurement only."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wrong",
+   "title": "What still looks wrong",
+   "kind": "text",
+   "paras": [
+    "Found by looking at the final pictures. Most serious first."
+   ],
+   "items": [
+    "The charter stone is small: in e03-charter it is a pale stone beside the bell frame that is easy to miss, and a reviewer did not find it in e02-town.",
+    "d06-crowded: the crowded road shows no warm wash and the hint says to extend a cottage instead of pave, so the question cannot be judged.",
+    "b06-building: old faded notes sit over the well and villagers, unreadable; similar fading notes have trees drawn through them in c05-request.",
+    "b02-pace-and-load: the bigger load cannot be seen on the villagers, so the two upgrades show no clear change.",
+    "c07-mill and b03-shop-lines: large coin numbers are drawn over plot labels and are cut off at the screen edge.",
+    "b08-hand, d02-trail-worn, d05-cobbles, e01-charter-drive: villagers are drawn on top of each other in queues and at the well and mill.",
+    "c03-field and b08-hand: the shop cards cut off the bell, the market stall and plot labels at the right edge.",
+    "d03-pave-mode: the lit roads are a pale tint hard to see, and the price tip is drawn over villagers.",
+    "a02-first-coin: the +3 floats in empty grass away from the cottage and the villager and is small.",
+    "b04-extend-mode and c04-choice: the boon choice card stays open at the top, crowding the Extend banner and covering a cottage.",
+    "The landing and boat labels are tiny, cut off or overprinted in the river pictures (f05, f07, f08, f09, g02), so the owner cannot read what a boat wants.",
+    "The tour does not show what several questions ask about: no ferry in f06, no ford at all (f04 was not made), no thinned interface strip in g03, no tilt in g01.",
+    "The book in g03 is too big and cut off at both screen edges, and g05 shows squashed, unreadable text on its left sliver.",
+    "The landing and the far bank are piles of people, carts and floating numbers drawn through each other (f09, g01).",
+    "The key box in h03 never names the action being rebound and no key slot shows it is waiting.",
+    "The settings tabs in h01 and h02 start under the page edge, so their left sides are cut off.",
+    "The baker's card in f03 says 'Waiting for a berth' while a boat is already loading.",
+    "Plot labels in f01 run through the staked plots and the dock.",
+    "The cream strip along the left edge in h05 looks like a leftover of the book.",
+    "The save path in h04 shows a test folder, and the shop headings People and Town are clipped in f08, f09 and g01.",
+    "Not in any picture: a close-up of a small touch (the tour's own check did not recognise how the game draws them; they are the small props beside cottages in the town pictures).",
+    "The Pave highlight's colour and the page wipe at the age change were not improved in the last round.",
+    "Godot crashed twice in eight earlier tour runs on this machine's software renderer (after the book closed for a pause, and at the age-change page); the two final runs did not crash."
+   ]
+  },
+  {
+   "id": "decisions",
+   "title": "Decisions made for you",
+   "kind": "table",
+   "numbered": true,
+   "head": [
+    "#",
+    "Decision",
+    "Why"
+   ],
+   "rows": [
+    [
+     "1",
+     "The design doc is rewritten at the very start of round 1, beside the first builder, from the same brief",
+     "The doc is updated first, without the build waiting for it"
+    ],
+    [
+     "2",
+     "New text goes at the top of the Gameplay, UX and Build Plan tabs; everything older stays below a heading \"Earlier direction\". Nothing is deleted. A short note at the top of the Overview tab says the direction changed",
+     "You asked to keep the old design; a note on the Overview stops the tabs contradicting each other"
+    ],
+    [
+     "3",
+     "Levels are reached by buying upgrades: every purchase adds renown to the level bar",
+     "Your wording: coin buys upgrades, upgrades reach milestones"
+    ],
+    [
+     "4",
+     "Roads have a comfortable number of walkers; above it they slow down. Workplaces have a few places and villagers queue",
+     "Without some pushback \"more villagers\" is always the right answer and there is nothing to decide"
+    ],
+    [
+     "5",
+     "Paving is bought per road by clicking a worn-in road on the map",
+     "It keeps one decision on the map itself now that roads are no longer drawn"
+    ],
+    [
+     "6",
+     "A town bell the player can ring for a short hurry, with a rest time",
+     "Something to do with your hands while saving up"
+    ],
+    [
+     "7",
+     "The town is laid out from a seed; seed 1 is the default town, \"New town\" takes a new seed",
+     "Replay value for free, and tests can check 100 towns"
+    ],
+    [
+     "8",
+     "The old simulation and its fast tests stay and keep running. The old game scenes move to <code>game/legacy/</code> and leave the build; their game tests are retired and listed in <code>docs/plans/retired-tests.md</code>",
+     "The second age may reuse the river code; the old scenes cannot run beside the new game"
+    ],
+    [
+     "9",
+     "No earnings while the game is closed; it continues where it stopped",
+     "Simplest honest behaviour for a first version"
+    ],
+    [
+     "10",
+     "A few new models and icons are made in code tonight (mill, bell, flour sack, interface icons), with ledger rows",
+     "The mill and the new buttons have no art yet"
+    ],
+    [
+     "11",
+     "The settings screen is built at the same time as the core loop, in a separate checkout, and joined in round 2",
+     "It does not depend on the new simulation, so it need not wait"
+    ],
+    [
+     "12",
+     "Rules v2 after the first balance report: walking speed and the other upgrade tracks are finite (about 20 clear steps, not 170 taps); new tracks for working speed, the value of each good, and the bell; cottages can be extended by clicking them; unpaved roads clog sooner; about 16 levels instead of 12; timed requests (\"12 Grain within 90 seconds\") as goals a minute or two away; one line of advice at a time",
+     "The first numbers made 80 percent of all purchases the same cheap speed upgrade: a tap-fest with one right answer"
+    ],
+    [
+     "13",
+     "New sound effects are made in code for buying, levels, gifts, paving, requests, the book and the interface, with ledger rows",
+     "The new loop had no sounds of its own, and feedback at the moment of earning is most of what makes such a game pleasant"
+    ],
+    [
+     "14",
+     "The pause piece \"Still Pages\" stays 2 dB quieter than the other music, as its composer chose",
+     "A paused book should be quieter"
+    ],
+    [
+     "15",
+     "Zoomed in, the camera tilts so buildings and villagers show their sides, and flattens to straight down as you zoom out to the page and the book",
+     "From straight above, villagers are dark dots and every cottage is the same square roof; the first screenshots showed it plainly. You can say no to this in the review"
+    ],
+    [
+     "16",
+     "Roads are smoothed into curves in the town plan, and paved roads are drawn narrower",
+     "The first plan's lanes had sharp zigzags and the cobbles looked as wide as the cottages"
+    ],
+    [
+     "17",
+     "Requests adapt: each one met makes the next a little harder, each one missed a little easier",
+     "A fixed difficulty was too easy on some towns and too hard on others"
+    ],
+    [
+     "18",
+     "Upgrade steps unlock with town levels (a few steps of each track per level) instead of all being for sale from the start",
+     "Otherwise the tracks are bought out by minute 15 and the last ten minutes have little to buy"
+    ],
+    [
+     "19",
+     "The worth of the bell and the share of requests met are measured as averages over ten towns, with wide limits for any single town",
+     "A single run has only about a dozen requests, so one run is too noisy to hold to a narrow band"
+    ],
+    [
+     "20",
+     "The purchase-rate target (4 a minute early, 2 a minute later) is checked on the three players the design brief names (cheapest, best payback, random). The saving bot, added later, waits on purpose, so it gets its own checks instead: it buys every kind of thing, finishes in 25 to 40 minutes, and never goes 90 seconds without buying",
+     "A floor on purchases per minute measures nothing for a player whose plan is to wait; the three original players must still meet it on every town with no exceptions"
+    ],
+    [
+     "21",
+     "The bell's worth is measured on frozen towns (same town, five minutes, no purchases, with and without ringing)",
+     "Two whole games with and without the bell buy different things, and that noise was larger than the bell"
+    ],
+    [
+     "22",
+     "The second age is designed (<code>docs/plans/age2-design.md</code>): a landing where boats buy goods, a tide that decides when boats come and when the ford can be walked, wool and cloth from the far bank, and crossings that arrive in order (ford, ferry, footbridge, drawbridge with a toll), ending with the borough seal",
+     "You asked for the river, boats and crossings to come back as the second age; this is how they fit a game where things are given by levels"
+    ],
+    [
+     "23",
+     "Rules v3 for the first age: at about four levels the town chooses one of two boons and keeps it for good; the last stretch before the charter is a \"charter drive\" request instead of a wait; every shop item says how much coin a minute it would add; a workplace where people keep queueing offers an extra place",
+     "The second balance report: every player ends up buying the same 158 things, so the only choice is the order. Choices of two make each town the player's own"
+    ],
+    [
+     "24",
+     "Small touches: as the town prospers, woodpiles, washing lines, flower beds, hen coops, benches, beehives, haystacks, apple trees, handcarts and signposts appear by themselves beside cottages and lanes. They cost nothing and do nothing",
+     "The late levels left up to five minutes with nothing new on the map; numbers alone could not fix that, and a town that dresses itself is pleasant to watch"
+    ],
+    [
+     "25",
+     "The upgrade tracks of the first age go on through the second age, a few steps per level",
+     "Otherwise players run out of cheap things to buy and wait"
+    ],
+    [
+     "26",
+     "Touches also arrive on a timer: if nothing new has appeared for about three minutes, one comes anyway",
+     "The builder found that tying them to coin alone still left gaps of four to five minutes on some towns"
+    ],
+    [
+     "27",
+     "\"Regulars\": a cheap purchase that is always on sale in the first age; each regular customer makes every delivery pay 0.4 percent more",
+     "The last red pacing test needed something small to buy in every minute; numbers alone only moved the gaps around. If it feels like filler when you play, say so in the review"
+    ],
+    [
+     "28",
+     "Villagers housed in the cottages by the river and on the far bank still walk home to a first-age cottage",
+     "Making them live by the river safely in every state of the tide could not be built and tested tonight; the builder left it out rather than half done"
+    ],
+    [
+     "29",
+     "Round 4 and round 5 have no Windows build of their own: three lines of work were merged in round 4 and made whole in round 5 and 6, and only a tree that passed the whole check is pushed as a finished round",
+     "You asked for an exe only for finished rounds"
+    ],
+    [
+     "30",
+     "The ford is used on about half of the towns, including the default one; on the others villagers find other work until the ferry comes",
+     "Making it certain on every town broke another target (the landing's share of income); the builder kept the tested state"
+    ]
+   ]
+  },
+  {
+   "id": "needs",
+   "title": "Needs you",
+   "kind": "text",
+   "items": [
+    "<strong>Play it on a real Windows machine.</strong> Nothing was run on Windows or on a real graphics card tonight: every picture and timing comes from a software renderer in a cloud machine. Frame rate, sound, window modes and resolutions are untested on real hardware.",
+    "<strong>Listen to the music and the sounds.</strong> Six music pieces and about 70 new sound effects were made and checked by measurement only. Nobody has heard them.",
+    "<strong>Watch for a crash.</strong> Godot crashed with a segfault in 2 of 8 runs of the screenshot tour on this machine's software renderer (once just after the book closed for a pause, once at the age-change page). It never happened in a check run. If the exe crashes on your machine at those moments, that is this.",
+    "<strong>Free asset sites are blocked from this machine</strong> (kenney.nl, quaternius.com, polyhaven.com, ambientcg.com, opengameart.org, freesound.org), so every asset was made in code instead of first looking for a free one, as you asked. If you want that search, those hosts have to be allowed in the environment's network settings.",
+    "<strong>The exe is not signed</strong>, so Windows SmartScreen will warn on first start (\"More info\", then \"Run anyway\")."
+   ]
+  },
+  {
+   "id": "music",
+   "title": "Music to listen to",
+   "kind": "music",
+   "paras": [
+    "You called the first theme perfect. The other five were made in code with the same instruments, mix and loudness, and nobody has heard them. In the game the first four rotate, Still Pages plays while the book is closed, and Rising plays once when the next age is rung in."
+   ],
+   "tunes": [
+    {
+     "file": "assets/audio/music/theme-hamlet-draft.ogg",
+     "title": "Tide & Toll theme",
+     "note": "the one you know: D Dorian, 64 beats a minute, 45 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-ferry-morning.ogg",
+     "title": "Ferry Morning",
+     "note": "new: D Mixolydian, 68 beats a minute, 74 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-long-field.ogg",
+     "title": "The Long Field",
+     "note": "new: A Aeolian, 64 beats a minute, 79 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-low-meadow.ogg",
+     "title": "Low Meadow",
+     "note": "new: D Aeolian, 60 beats a minute, 72 seconds, loops"
+    },
+    {
+     "file": "assets/audio/music/music-theme-rising.ogg",
+     "title": "Tide and Toll, Rising",
+     "note": "new, for the age change: the theme made grander, 49 seconds, with an ending"
+    },
+    {
+     "file": "assets/audio/music/music-still-pages.ogg",
+     "title": "Still Pages",
+     "note": "new, for the paused book: quieter and sparser, 60 seconds, loops"
+    }
+   ]
+  }
+ ]
+}
