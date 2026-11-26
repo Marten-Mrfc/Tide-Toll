@@ -301,6 +301,9 @@ public partial class TownTest : TownTestBase
         await Frames(3);
         Check(Main.Hud.HoverCottage == p, $"hovering the suggested cottage picks it (hover {Main.Hud.HoverCottage}, cottage {p}, mode {Main.Hud.ExtendMode}, ok {Main.Hud.Extendable(p)}, at {at}, direct {Main.Hud.ExtendTarget(at)}, gui {GetViewport().GuiGetHoveredControl()?.Name})");
         Check(Main.Hud.HoverTipText.Contains("Extend this cottage"), $"the tip names the price ({Main.Hud.HoverTipText})");
+        // Round 6: the price tip sits beside the pointer, clear of the cottage, and no coin number shows in the mode.
+        Check(!Main.Hud.HoverTipRect.Intersects(Main.Hud.HoverCottageRect), $"the price tip {Main.Hud.HoverTipRect} lies over the cottage {Main.Hud.HoverCottageRect}");
+        Check(Main.Hud.FloatersVisible == 0, "a coin number shows while Extend points at a cottage");
         int room = T.CottageRoom(p);
         await Click(at);
         Check(T.Extensions(p) == 1 && T.CottageRoom(p) == room + 1, "clicking the cottage extended it");
@@ -358,6 +361,26 @@ public partial class TownTest : TownTestBase
         await Frames(10);
         Check(Main.Buildings.BellSwing > 0, "the bell swings");
         Check(Main.Hud.BellButton.Disabled, "the bell rests after ringing");
+        // Round 6: while it rings the card says the time left and the rest after.
+        if (T.BellRinging) Check(Main.Hud.BellButton.Text.Contains(" s left, then rests "), $"the ringing bell's card says the time left: {Main.Hud.BellButton.Text}");
+        await LayoutChecks();
+    }
+
+    /// <summary>Round 6: the left column does not overlap, the shop keeps above the achievements card, coin numbers are
+    /// one per spot, and the map's labels keep clear of the cards and of each other.</summary>
+    private async Task LayoutChecks()
+    {
+        await Frames(3);
+        var h = Main.Hud;
+        if (h.RequestRect.Size.Y > 0) Check(!h.LedgerRect.Intersects(h.RequestRect), $"the ledger {h.LedgerRect} and the request card {h.RequestRect} overlap");
+        var ach = h.AchievementsMark;
+        if (ach.Visible) Check(h.ShopRect.End.Y <= ach.GetGlobalRect().Position.Y + 1, $"the shop {h.ShopRect} runs under the achievements card {ach.GetGlobalRect()}");
+        var kept = h.LabelsShownRects;
+        for (int i = 0; i < kept.Count; i++)
+        {
+            Check(!kept[i].Intersects(h.ShopRect.Grow(-2)) && !kept[i].Intersects(h.LedgerRect.Grow(-2)), $"a map label {kept[i]} lies on a card");
+            for (int j = i + 1; j < kept.Count; j++) Check(!kept[i].Intersects(kept[j]), $"two map labels overlap: {kept[i]} {kept[j]}");
+        }
     }
 
     private async Task BellByClick()

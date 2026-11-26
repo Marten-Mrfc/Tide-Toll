@@ -262,6 +262,60 @@ public partial class SettingsPages
         card.ResetSize();
         var size = card.GetCombinedMinimumSize();
         card.Position = (_rightPage.GetCenter() - size / 2).Round();
+        // Round 6: the clash slip keeps clear of the rows it names (it lay over them); placed again once the rows have
+        // their places (the page is laid out after this call).
+        if (_slip == "clash")
+        {
+            PlaceClashSlip(card);
+            GetTree().CreateTimer(0.02, processAlways: true).Timeout += () => { if (IsInstanceValid(card) && card.IsInsideTree()) PlaceClashSlip(card); };
+        }
+    }
+
+    /// <summary>The rows (whole page width) of the two actions a clash names, in the frame's units (tests).</summary>
+    public System.Collections.Generic.List<Rect2> ClashRows()
+    {
+        var rows = new System.Collections.Generic.List<Rect2>();
+        if (_frame == null) return rows;
+        var off = _frame.GetGlobalRect().Position;
+        float pw = _rightPage.Size.X;
+        var leftPage = new Rect2(_rightPage.Position.X - pw, _rightPage.Position.Y, pw, _rightPage.Size.Y);
+        foreach (var a in new[] { _clash.action, _clash.other })
+            for (int sl = 0; sl < 2; sl++)
+                if (_controls.TryGetValue($"keys.{a}.{sl}", out var b) && b.IsInsideTree())
+                {
+                    var r = b.GetGlobalRect(); r.Position -= off;
+                    var page = r.GetCenter().X >= _rightPage.Position.X ? _rightPage : leftPage;
+                    rows.Add(new Rect2(page.Position.X, r.Position.Y - 4, page.Size.X, r.Size.Y + 8));
+                }
+        return rows;
+    }
+
+    /// <summary>The slip's rectangle in the frame's units while it shows (tests).</summary>
+    public Rect2 SlipRect => _frame?.GetNodeOrNull<Control>("Slip") is { } c ? c.GetRect() : new Rect2();
+
+    private void PlaceClashSlip(Control card)
+    {
+        var size = card.GetCombinedMinimumSize();
+        var rows = ClashRows();
+        float pw = _rightPage.Size.X, m = 24;
+        var leftPage = new Rect2(_rightPage.Position.X - pw, _rightPage.Position.Y, pw, _rightPage.Size.Y);
+        // The free foot of the right page first (under its last row), then each page's middle, bottom and top.
+        var tries = new[]
+        {
+            new Vector2(_rightPage.GetCenter().X - size.X / 2, _rightPage.End.Y - size.Y - m),
+            _rightPage.GetCenter() - size / 2,
+            leftPage.GetCenter() - size / 2,
+            new Vector2(leftPage.GetCenter().X - size.X / 2, leftPage.End.Y - size.Y - m),
+            new Vector2(_rightPage.GetCenter().X - size.X / 2, _rightPage.Position.Y + m),
+            new Vector2(leftPage.GetCenter().X - size.X / 2, leftPage.Position.Y + m),
+        };
+        foreach (var at in tries)
+        {
+            var r = new Rect2(at, size);
+            bool clear = true;
+            foreach (var row in rows) if (row.Intersects(r)) { clear = false; break; }
+            if (clear) { card.Position = at.Round(); return; }
+        }
     }
 
     private void SlipYes()

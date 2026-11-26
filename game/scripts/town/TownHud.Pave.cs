@@ -29,6 +29,7 @@ public partial class TownHud
     private int _litHover = -2, _litSig = -1, _litMode;
     private Vector2 _pointer = new(-1, -1);
     private bool _modeTookView;
+    private Vector2 _tipPlaced;
 
     private void BuildPave()
     {
@@ -236,8 +237,11 @@ public partial class TownHud
         {
             string tip = $"{(t.NextSurface(HoverRoad) == Surface.Cobbles ? "Cobbles" : "Gravel")} for this road: {Money(t.PavePrice(HoverRoad))} coin. Click to pave.";
             if (_hoverTip.Text != tip) { _hoverTip.Text = tip; _hoverTip.ResetSize(); }
-            _hoverTip.Position = _pointer + new Vector2(UiKit.Px(_s, 16), UiKit.Px(_s, 12));
+            // Round 6: beside the pointer and above it, clear of the road line and the people on it.
+            _hoverTip.Position = TipBeside(new Rect2(_pointer - Vector2.One * UiKit.Px(_s, 18), Vector2.One * UiKit.Px(_s, 36)))
+                - new Vector2(0, _hoverTip.Size.Y / 2f + UiKit.Px(_s, 22));
         }
+        if (HoverRoad >= 0) _tipPlaced = _hoverTip.Position;
         int sug = t.SuggestedPave();
         _suggest.Visible = sug >= 0 && Pavable(sug);
         if (_suggest.Visible)
@@ -245,6 +249,9 @@ public partial class TownHud
             string s = $"Suggested: {Money(t.PavePrice(sug))} coin";
             if (_suggest.Text != s) { _suggest.Text = s; _suggest.ResetSize(); }
             _suggest.Position = RoadScreen(sug) - new Vector2(_suggest.Size.X / 2f, _suggest.Size.Y + UiKit.Px(_s, 10));
+            // Round 6: the price tip and the suggestion never lie on each other: the tip goes under the pointer then.
+            if (HoverRoad >= 0 && new Rect2(_tipPlaced, _hoverTip.Size).Intersects(new Rect2(_suggest.Position, _suggest.Size).Grow(UiKit.Px(_s, 4))))
+                _hoverTip.Position = new Vector2(_tipPlaced.X, _pointer.Y + UiKit.Px(_s, 26));
         }
         // Rebuild the lit bands when the hovered road or what can be paved changes.
         int sig = t.RoadsPaved * 1000 + sug + 7 * t.Level;

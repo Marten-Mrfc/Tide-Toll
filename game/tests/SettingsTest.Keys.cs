@@ -46,6 +46,11 @@ public partial class SettingsTest
         await Click("keys.tt_bell.0");
         await Key(Godot.Key.A);
         Check(_pages.Slip == "clash", "no clash shown for A");
+        await Frames(30);
+        // Round 6: the clash slip lies clear of the rows it names.
+        var slipRect = _pages.SlipRect;
+        foreach (var row in _pages.ClashRows()) Check(!row.Intersects(slipRect), $"the clash slip {slipRect} covers a row it names {row}");
+        Check(_pages.ClashRows().Count >= 2, "the clash's rows are found");
         await Key(Godot.Key.Escape);
         Check(_pages.Slip == "" && _rt.Store.KeyFor("tt_bell", 0) == Godot.Key.O && _rt.Store.KeyFor("tt_move_left", 0) == Godot.Key.A, "Esc did not cancel the clash");
         // Esc cancels a rebind.

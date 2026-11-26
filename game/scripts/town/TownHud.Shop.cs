@@ -125,7 +125,7 @@ public partial class TownHud
 
     private void BuildShop()
     {
-        _compactShop = false;
+        _compactShop = false; _tightShop = false;
         _shop = new VBoxContainer { Name = "Shop", MouseFilter = Control.MouseFilterEnum.Ignore };
         _shop.AddThemeConstantOverride("separation", UiKit.Px(_s, 4));
         _root.AddChild(_shop);
@@ -267,8 +267,10 @@ public partial class TownHud
             bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
             string lvl = track && it.Level > 0 ? $", level {it.Level}" : "";
             string text;
-            if (done) text = $"{name}{lvl}\nFinished: {(lastLevel ? "all done this age" : Lower(it.Reason))}";
-            else if (locked) text = $"{name}{keyPart}\n{it.Reason}";
+            // Round 6: finished and locked lines fold to one short line, so the column (both ages' groups) stays short and
+            // clear of the map's middle (the river group was squeezed into the bottom right).
+            if (done) text = $"{name}{lvl}: done";
+            else if (locked) text = $"{name}: {Lower(ShortLock(it.Reason))}";
             else
             {
                 string price = it.Price > 0 && (it.Index >= 0 || it.Kind is not (ShopItemKind.Pave or ShopItemKind.Extend)) ? Money(it.Price) + " coin" : "";
@@ -278,12 +280,17 @@ public partial class TownHud
                 else if (poor) state = $"Need {Money(need)} more";
                 else state = it.Reason.Length > 0 ? it.Reason : "Not yet";
                 text = $"{name}{lvl}{keyPart}\n{(price.Length > 0 ? price + ": " : "")}{state}";
-                if (worth > 0) text += "\n" + WorthText(worth);
+                // Round 6: when even the smaller bookmarks would run under the achievements card, the worth line goes
+                // (it stays in the tooltip).
+                if (worth > 0 && !_tightShop) text += "\n" + WorthText(worth);
             }
             b.Text = text;
             b.Disabled = !(it.Affordable || mode);
             b.Modulate = locked || done ? new Color(1, 1, 1, 0.75f) : Colors.White;
-            b.TooltipText = Tooltip(it);
+            // Round 6: a folded line is smaller and its icon narrower.
+            b.AddThemeFontSizeOverride("font_size", UiKit.FontPx(_s, locked || done ? 13 : _compactShop ? 13 : 15));
+            b.AddThemeConstantOverride("icon_max_width", UiKit.Px(_s, locked || done ? 18 : 26));
+            b.TooltipText = worth > 0 && _tightShop ? Tooltip(it) + " " + WorthText(worth) + "." : Tooltip(it);
         }
         // Lay out: bookmarks down the right edge, the bell bottom left, the next age above it.
         var vp = _built;
@@ -292,13 +299,26 @@ public partial class TownHud
         BellFrame(vp);
         // Round 5: with the worth line every bookmark is three lines; when the column would run off the screen, the
         // bookmarks are set smaller (kept so until the interface is built again).
-        if (!_compactShop && _shop.GetCombinedMinimumSize().Y > vp.Y - UiKit.Px(_s, 80))
+        // Round 6: the room is down to the achievements card (it was the screen's bottom, so at 150 percent the column ran
+        // under the card); a second step drops the worth lines.
+        // (The card is placed by BookFrame after this; until it has its place the old bound holds.)
+        bool achPlaced = _achMark != null && IsInstanceValid(_achMark) && _achMark.Size.Y > 0 && _achMark.Position.Y > vp.Y * 0.5f;
+        float room = (achPlaced ? _achMark!.Position.Y : vp.Y - UiKit.Px(_s, 80)) - UiKit.Px(_s, 10) - _shop.Position.Y;
+        if (_shop.GetCombinedMinimumSize().Y > room)
         {
-            _compactShop = true;
-            RebuildMarks();
-            _markSig = Array.Empty<int>();
+            if (!_compactShop) { _compactShop = true; RebuildMarks(); _markSig = Array.Empty<int>(); }
+            else if (!_tightShop) { _tightShop = true; _markSig = Array.Empty<int>(); }
         }
     }
+
+    /// <summary>Round 6: the bell card while it rings.</summary>
+    public static string BellRingingText(int left, int restAfter) => restAfter > 0 ? $"Ringing: {left} s left, then rests {restAfter} s" : $"Ringing: {left} s left, ready again after";
+
+    private bool _tightShop;
+    /// <summary>The worth lines are dropped so the column fits above the achievements card (tests).</summary>
+    public bool TightShop => _tightShop;
+    /// <summary>The shop column's rectangle on screen (tests: clear of the achievements card).</summary>
+    public Rect2 ShopRect => _shop.GetGlobalRect();
 
     private bool _compactShop;
     /// <summary>The bookmarks are set smaller so the column fits (tests).</summary>
@@ -311,6 +331,9 @@ public partial class TownHud
     /// <summary>Round 5: the simulation's worth (coin a minute) as shown: tenths below 10, whole numbers above.</summary>
     public static int WorthTenths(double w) => w <= 0.05 ? 0 : w < 10 ? (int)Math.Round(w * 10) : (int)Math.Round(w) * 10;
     public static string WorthText(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} coin a minute" : $"+{Money(tenths / 10)} coin a minute";
+
+    /// <summary>Round 6: "Unlocks at level 25" reads "level 25" on a folded line.</summary>
+    private static string ShortLock(string reason) => reason.StartsWith("Unlocks at ") ? reason.Substring("Unlocks at ".Length) : reason;
 
     private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
 
@@ -376,12 +399,16 @@ public partial class TownHud
     {
         var t = _drv.Town;
         bool unlocked = t.Level >= 2 || t.BellRings > 0 || t.BellReady || t.BellWait > 0;
-        int key = !unlocked ? -1 : t.BellRinging ? -2 : t.BellReady ? -3 : (int)Math.Ceiling(t.BellWait);
+        // Round 6: while it rings the card says the seconds left and the rest after (the ring ends at start + duration, the
+        // bell is ready at start + rest, so the ring's end is BellWait - BellRest + BellDuration from now).
+        int ringLeft = t.BellRinging ? Math.Max(1, (int)Math.Ceiling(t.BellWait - t.BellRest + t.BellDuration)) : 0;
+        int restAfter = t.BellRinging ? Math.Max(0, (int)Math.Ceiling(t.BellRest - t.BellDuration)) : 0;
+        int key = !unlocked ? -1 : t.BellRinging ? -(10000 + ringLeft * 1000 + Math.Min(999, restAfter)) : t.BellReady ? -3 : (int)Math.Ceiling(t.BellWait);
         if (Settings.GameInput.Version != _bellKeysVersion) { _bellKeysVersion = Settings.GameInput.Version; _bellKey = int.MinValue; }
         if (key != _bellKey)
         {
             _bellKey = key;
-            string state = key == -1 ? "Comes at level 2" : key == -2 ? "Ringing: everyone hurries" : key == -3 ? "Ring it" : $"Rests {key} s";
+            string state = key == -1 ? "Comes at level 2" : key <= -10000 ? BellRingingText(ringLeft, restAfter) : key == -3 ? "Ring it" : $"Rests {key} s";
             _bell.Text = $"The bell{Settings.GameInput.Tag("tt_bell", "   ")}\n{state}";
             _bell.TooltipText = "Ring the bell: everyone hurries for a few seconds, then it rests.";
         }
