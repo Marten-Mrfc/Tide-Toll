@@ -189,6 +189,8 @@ public sealed partial class Town
     public double TollCoin => R?.EarnedToll ?? 0;
     public double RiverMarketCoin => R?.EarnedMarket ?? 0;
     public long Tolls => R?.Tolls ?? 0;
+    /// <summary>River polish: the ford exists and no other crossing does yet (the ferry not bought, no bridge).</summary>
+    public bool FordOnlyStretch => R != null && CrossingExists(RiverLinkKind.Ford) && !CrossingExists(RiverLinkKind.Ferry) && !CrossingExists(RiverLinkKind.Footbridge) && !CrossingExists(RiverLinkKind.Drawbridge);
     public int BoatsFilled => R?.BoatsFilled ?? 0;
     public int BoatsCome => R?.BoatsCome ?? 0;
     public int BoatsLeftShort => R?.BoatsShort ?? 0;
@@ -197,6 +199,9 @@ public sealed partial class Town
     public double RiverStartTime => R?.StartTime ?? -1;
 
     /// <summary>Second-age hint, or "" (Hint shows it first when it says something).</summary>
+    // River polish: one fixed text per good, so reading the hint every frame builds no string.
+    private static readonly string[] SendItText = { "A boat will leave soon. Send it None.", "A boat will leave soon. Send it Water.", "A boat will leave soon. Send it Grain.", "A boat will leave soon. Send it Flour.", "A boat will leave soon. Send it Wool.", "A boat will leave soon. Send it Cloth." };
+
     public string RiverHint
     {
         get
@@ -208,7 +213,7 @@ public sealed partial class Town
                 return r.FerryOffered ? "People wait at the ford for low water. The ferry would carry them now." : "People wait at the ford for low water.";
             var f = Ferry;
             if (f.Built && f.WaitingNear + f.WaitingFar >= f.Capacity * 2 && r.Raft < TownRulesRiver.RaftMax) return "A queue at the ferry. A bigger raft would help.";
-            foreach (var b in r.Boats) if (b.Phase == BoatPhase.Moored && b.Patience < 30 && b.Loaded < b.Want) return "A boat will leave soon. Send it " + b.Good + ".";
+            foreach (var b in r.Boats) if (b.Phase == BoatPhase.Moored && b.Patience < 30 && b.Loaded < b.Want) return SendItText[Math.Clamp((int)b.Good, 0, SendItText.Length - 1)];
             return "";
         }
     }

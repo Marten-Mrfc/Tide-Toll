@@ -131,11 +131,19 @@ public partial class MenuTest : TownTestBase
         await Frames(10);
         var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
+        // Round 6 (W10): while the cover comes down, the left page (the summary) is still there, turning with it.
+        Main.Cover.Hold(0.4f);
+        await Frames(2);
+        Check(Main.Cover.LeftPageShown, "the left page shows while the cover closes");
+        Main.Cover.Open(instant: true);
+        await Frames(2);
+
         // Esc pauses: the book closes, the tick stands still, the cover menu shows with Resume focused.
         int books0 = Main.Audio.BookSounds;
         await PauseByKey(Godot.Key.Escape);
         Check(Main.Driver.Paused, "Esc did not stop the simulation");
         Check(Main.Cover.Closed, "the cover is not closed");
+        Check(!Main.Cover.LeftPageShown, "the left page is hidden under the shut cover");
         Check(!Main.Hud.Visible, "the interface still shows over the closed book");
         Check(Main.Audio.PauseMusic, "the pause music is not on");
         Check(Main.Audio.BookSounds > books0, "no book-close sound");

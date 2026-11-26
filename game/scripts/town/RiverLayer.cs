@@ -410,7 +410,7 @@ public partial class RiverLayer : Node3D
             var landing = rp.PlotOf(RiverPlotKind.Landing);
             var at = new Vector3((float)rp.Px[RiverPoint.Landing] * Cell, 0, (float)rp.Py[RiverPoint.Landing] * Cell);
             var away = new Vector3((landing.X + landing.W / 2f) * Cell, 0, (landing.Y + landing.H / 2f) * Cell) - at;
-            _seal = Fit(ModelLib.Pick("seal-stone", "charter-stone"), 3.2f, 3.2f, 0f, 1f);
+            _seal = Fit(ModelLib.Pick("seal-stone", "charter-stone"), 4.2f, 4.2f, 0f, 1f); // Round 6 (W1): 3.2 to 4.2 m, plainly seen
             _seal.Name = "SealStone";
             _seal.Position = at - away.Normalized() * 3.5f + new Vector3(0, 0, 3.5f);
             AddChild(_seal);

@@ -82,8 +82,11 @@ public partial class RiverTest : TownTestBase
         await Until(() => Main.Hud.SealPageShown, 600, "the seal's page");
         Check(Main.Hud.AgePageText.Contains("The second age is complete") && Main.Hud.AgePageText.Contains("not in the game yet"), "the seal's page: " + Main.Hud.AgePageText);
         await PauseInTheSecondAge();
-        // Seed 1 with the payback bot: nobody uses the ford in the whole age (docs/plans/sim-wishes.md); then nothing waits.
-        Check(T.Crossings(RiverLinkKind.Ford) == 0 || _fordWaitTicks > 0, $"people wait at the ford at high water (ticks {_fordWaitTicks}, at checks {_fordWaitSeen}, ford crossings {T.Crossings(RiverLinkKind.Ford)})");
+        // Round 6: since the river polish the ford is the only way over for a few minutes before the ferry, and on seed 1
+        // people use it (22 crossings here). That short stretch can fall wholly at low water (the polish's notes: ~1,550
+        // villager-seconds of high-water waiting over 40 runs, none on some), so waiting at high water is no longer
+        // certain on one seed; it is printed in the notes. What the polish promises, and this checks: the ford is used.
+        Check(T.Crossings(RiverLinkKind.Ford) > 0, $"people cross the ford before the ferry (ford crossings {T.Crossings(RiverLinkKind.Ford)}, high-water wait ticks {_fordWaitTicks}, at checks {_fordWaitSeen})");
         // The seal can come before any boat has passed the new drawbridge: play on until one does.
         for (int i = 0; i < 40 && T.DrawbridgeAngle <= 0.5; i++) { Main.Driver.RunBot(bot, t => t.DrawbridgeAngle > 0.5, 600); await Frames(2); CheckAll(); }
         if (T.DrawbridgeAngle > 0.5) _liftTicks++;
@@ -155,6 +158,8 @@ public partial class RiverTest : TownTestBase
         for (int i = 0; i < rp.Links.Length; i++)
         {
             if (t.RiverLinkOpen(i)) Check(Main.River.LinkDrawn(i), $"river link {i} ({rp.Links[i].Kind}) drawn when open");
+            // Round 6 (W2): the ground's ford shallows are drawn exactly while the ford is open.
+            if (rp.Links[i].Kind == RiverLinkKind.Ford) Check(Main.Ground.FordShown == t.RiverLinkOpen(i), $"the ford's shallows drawn only once the ford is open (shown {Main.Ground.FordShown}, open {t.RiverLinkOpen(i)})");
             // Round 5: a lane open and drawn in is worn into the ground (TownGround), at least as a faint trail.
             if (t.RiverLinkOpen(i) && rp.Links[i].Kind == RiverLinkKind.Lane && _checks > 1)
                 Check(Main.Ground.LaneReveal(i) > 0f, $"lane {i} (level {rp.Links[i].Level}, {rp.Links[i].Px.Length} points) open and drawn in by the ground");

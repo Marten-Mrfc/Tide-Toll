@@ -315,6 +315,17 @@ Same map and units as the first age (map cells, 128 x 128, y grows south, headin
 
 One game minute at the seal (about 30 villagers) stays under 10 ms of CPU and `Step()` allocates nothing (`OneGameMinuteAtTheEndOfTheSecondAgeIsCheap`).
 
+### New in the river polish
+
+2026-11-26, `docs/plans/town-river-polish-progress.md`. Nothing renamed or removed; saves unchanged (no new saved field).
+
+- **Lanes are smooth curves** (new in the polish). `RiverLink.Px, Py` of a lane is now the smoothed curve (the first age's smoothing, `Router.SmoothPasses` corner-cutting passes over a half-cell polyline; ends fixed at the link's points; a move is kept only if it stays off water and off every plot of both ages, so a lane never enters water except by a crossing). Positions are still at cell centres: draw as given, no +0.5. New: `RiverLink.PCum` (the same array as `Cum`, under the road's name), `RiverLink.Xs, Ys` (the grid route: start cell, each bend, end cell; a crossing's two head cells). `At(dist, ...)` follows the curve (binary search, no allocation). Crossings stay straight two-point lines. Lanes are longer by a little less than before (corners cut), so walk times change slightly.
+- **The ford's stretch** (new in the polish). `Town.FordOnlyStretch` (bool): the ford exists and no other crossing does. While it holds and the pasture works, one more boat in three asks for Wool (on top of the usual draw), so the far bank is worth reaching by the ford. Level 22 (the ferry) needs a little more renown (`LevelRenown[5]` 3.65 to 3.90 minutes), so the ford is the only way over for 2.2 to 6.9 minutes on seeds 1 to 10.
+- **The drawbridge comes earlier** (new in the polish): `LevelRenown[10]` (level 27) 15.82 to 14.00 minutes, so it stands 3.8 to 10.3 minutes before the seal on seeds 1 to 10 and 2 to 8 boats pay the toll. The toll steps are cheaper: `TollTrackBase` 2500 to 2000, `TollGrowth` 1.25 to 1.12 (all 8 steps 24,600 coin, was 49,600).
+- **Boats' cargo in loads** (new in the polish). Boats still ask for and count units (`Want`, `Loaded`, hundreds at the seal). For labels: `Town.BoatCargoText(i)` gives "Flour 12 of 30 loads" ("" for an unused slot), one load being what a villager carries now (`LoadUnits`); loaded rounds down, wanted up, so a hold reads full only when it is. `Town.LoadsOf(units)`. The string is kept per slot and rebuilt only when a number in it changes, so reading it every frame allocates nothing.
+- **`RiverHint` builds no string per read** (new in the polish): "A boat will leave soon. Send it Flour." is one fixed text per good.
+- Pacing (new in the polish): `RiverPacingResult.FordOnlySeconds, FordCrossingsBeforeFerry, FordHighWaterWaitBeforeFerry, TollsBeforeSeal, DrawbridgeMinutes, TollStepSpent, TollStepEarned`; targets `TownRiverTargets.FordOnlyMinutesMin, FordSeedsUsedMin, FordCrossingsAllMin, FordHighWaterWaitAllMin, TollsMin, DrawbridgeMinutesMin, TollStepsBackAllMin, TollStepsBackMin`. The tool prints them per run (`town --river`).
+
 ## Added in balance round 3 (numbers only)
 
 No API change. `TownRulesRiver` numbers changed: `BoatMinutes` {0.8, 1.8} to {0.6, 1.4}; `FerryPrice` 3000 to 2000; `BerthPrice` 8000 to 5000; `CraneBase` 6000 to 4000; `TollBase` 300 to 3000; `TollTrackBase` 5000 to 2500. Prices in the shop views follow. Tool: `town --set` now also takes `TownRulesRiver` fields (a name that exists in both classes means the first age's; write `River.LevelRenown=...` for the river's), used with `town --river`. Details in docs/plans/town-balance-r3.md.

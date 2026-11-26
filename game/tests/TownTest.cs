@@ -32,6 +32,8 @@ public partial class TownTest : TownTestBase
         await Frames(30);
         float faint = Main.Ground.RoadShown(r0);
         Check(faint > 0.15f && faint < TownGround.TrailWear + 0.2f, $"a new road is a faint trail (drawn wear {faint:0.00})");
+        // Round 6 (W2): no ford is drawn across the river in the first age.
+        Check(!Main.Ground.FordShown, "no ford drawn across the river in the first age");
         Notes.Add($"faint={faint:0.00}");
 
         // Purposeful villagers at 1x: no jumps, no sideways sliding.
@@ -130,7 +132,7 @@ public partial class TownTest : TownTestBase
     private async Task WatchVillagers(int frames)
     {
         Main.Driver.SetSpeed(1);
-        int sideways = 0, moving = 0;
+        int sideways = 0, moving = 0, overlapped = 0;
         float maxStep = 0;
         for (int i = 0; i < frames; i++)
         {
@@ -138,7 +140,12 @@ public partial class TownTest : TownTestBase
             maxStep = Math.Max(maxStep, Main.Villagers.MaxStepCells);
             if (Main.Villagers.MaxStepCells > 0.002f) moving++;
             if (Main.Villagers.MaxSideways > 0.6f) sideways++;
+            if (Main.Villagers.MinStandingGap < 0.3f * Main.Villagers.WalkerScale * TownVillagers.Personal) overlapped++;
         }
+        // Round 6 (W3): people who stand (queued or working) are never drawn inside each other.
+        Check(overlapped <= frames / 5, $"standing villagers drawn apart ({overlapped} of {frames} frames with two closer than {0.3f * Main.Villagers.WalkerScale:0.00} m)");
+        // Round 6 (W6): each Load step is drawn bigger, with a second bundle from the second step.
+        Check(TownVillagers.LoadScale(1) > TownVillagers.LoadScale(0) && TownVillagers.LoadScale(3) >= 1.3f * TownVillagers.LoadScale(1) && TownVillagers.BundlesAt(2) == 2, "each Load step shows on the villager");
         Check(moving > frames / 4, $"villagers walk ({moving} frames moving)");
         Check(maxStep < 0.5f, $"no villager jumps at 1x (largest step {maxStep:0.00} cells)");
         Check(sideways <= moving / 10, $"villagers face the way they walk ({sideways} of {moving} frames turned over 0.6 rad)");

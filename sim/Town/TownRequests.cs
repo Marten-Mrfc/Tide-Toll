@@ -119,6 +119,22 @@ public sealed partial class Town
 
     // ---- Hints ----
 
+    /// <summary>Round 6: seconds a road must have been crowded without a break before the hint speaks of crowding (two
+    /// walkers passing on a short trail are not a crowd).</summary>
+    public const int CrowdHintSeconds = 8;
+    private int[] _crowdedSec = Array.Empty<int>();
+
+    /// <summary>Whole seconds road r has been crowded without a break (sampled once a game second; not saved).</summary>
+    public int CrowdedSeconds(int r) => r >= 0 && r < _crowdedSec.Length ? _crowdedSec[r] : 0;
+
+    private void StepCrowding()
+    {
+        var roads = Plan.Roads;
+        if (_crowdedSec.Length != roads.Length) _crowdedSec = new int[roads.Length];
+        for (int r = 0; r < roads.Length; r++)
+            _crowdedSec[r] = S.RoadOpen[r] && S.RoadWalkers[r] > Comfort(r) ? _crowdedSec[r] + 1 : 0;
+    }
+
     /// <summary>Road the hint is about (-1 none), for the game to highlight. Read after <see cref="Hint"/>.</summary>
     public int HintRoad { get; private set; } = -1;
     /// <summary>Plot the hint is about (-1 none). Read after <see cref="Hint"/>.</summary>
@@ -177,7 +193,7 @@ public sealed partial class Town
             // A crowded road that could be paved.
             for (int r = 0; r < Plan.Roads.Length; r++)
             {
-                if (!S.RoadOpen[r] || S.RoadWalkers[r] <= Comfort(r) || !CanPave(r, out _)) continue;
+                if (!S.RoadOpen[r] || S.RoadWalkers[r] <= Comfort(r) || CrowdedSeconds(r) < CrowdHintSeconds || !CanPave(r, out _)) continue;
                 HintRoad = r;
                 return S.RoadSurface[r] == Surface.Track ? "A road is crowded. Pave it so more can walk it." : "A road is crowded. Cobbles would carry more.";
             }
