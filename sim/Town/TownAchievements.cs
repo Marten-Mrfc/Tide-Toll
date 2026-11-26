@@ -27,10 +27,10 @@ public static class TownAchievements
     public static readonly AchievementDef[] All =
     {
         A("first_coin", "First coin", "Earn your first coin.", 1, t => t.CoinEarned),
-        A("purse_1k", "A full purse", "Earn 1000 coin in all.", 1000, t => t.CoinEarned),
-        A("treasury_20k", "Town treasury", "Earn 20000 coin in all.", 20000, t => t.CoinEarned),
+        A("purse_1k", "A full purse", "Earn 1,000 coin in all.", 1000, t => t.CoinEarned),
+        A("treasury_20k", "Town treasury", "Earn 20,000 coin in all.", 20000, t => t.CoinEarned),
         A("trips_100", "Well trodden", "Finish 100 trips.", 100, t => t.Trips),
-        A("trips_1000", "Busy lanes", "Finish 1000 trips.", 1000, t => t.Trips),
+        A("trips_1000", "Busy lanes", "Finish 1,000 trips.", 1000, t => t.Trips),
         A("water_200", "Water carrier", "Bring home 200 Water.", 200, t => t.Delivered(Good.Water)),
         A("grain_200", "Harvest home", "Bring in 200 Grain.", 200, t => t.Delivered(Good.Grain)),
         A("flour_50", "Daily bread", "Sell 50 Flour at the market.", 50, t => t.Delivered(Good.Flour)),

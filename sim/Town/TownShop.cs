@@ -23,6 +23,10 @@ public struct ShopItem
     public double Renown;
     /// <summary>Rules v3: estimated extra coin per minute this purchase would add now (0 when it has no direct worth).</summary>
     public double Worth;
+    /// <summary>Green pass: not on sale yet (a later level or something still to come; Reason says what).</summary>
+    public bool Locked;
+    /// <summary>Green pass: this track or thing is done; nothing more of it will come (Reason says so).</summary>
+    public bool Finished;
 }
 
 /// <summary>The shop: prices, purchases, renown, perks, the bell and the next age.</summary>
@@ -31,13 +35,13 @@ public sealed partial class Town
     private static readonly string[] PerkNames = { "Good neighbours", "Light feet", "", "Mason's eye" };
 
     public double VillagerPrice => TownRules.VillagerBase * Math.Pow(TownRules.VillagerGrowth, S.VillagersBought);
-    public double PacePrice => TownRules.PaceBase * Math.Pow(TownRules.PaceGrowth, S.PaceLevel);
+    public double PacePrice => TrackPrice(TownRules.PaceBase, TownRules.PaceGrowth, S.PaceLevel, TownRules.PaceMax);
     public double LoadPrice => S.LoadLevel < TownRules.LoadPrices.Length ? TownRules.LoadPrices[S.LoadLevel] : double.PositiveInfinity;
     public int HousingRoom => Housing - S.Villagers.Length;
 
     /// <summary>Rules v2: why the next Load step cannot be bought yet ("" when it can, ignoring coin).</summary>
     public string LoadLockReason => S.LoadLevel >= TownRules.LoadPrices.Length ? "All Load steps bought"
-        : S.Level < TownRules.LoadLevels[S.LoadLevel] ? "Unlocks at level " + TownRules.LoadLevels[S.LoadLevel] : "";
+        : S.Level < TownRules.LoadLevels[S.LoadLevel] ? LevelText(TownRules.LoadLevels[S.LoadLevel]) : "";
 
     /// <summary>Surface the road would get if paved now (Track when it cannot be paved further).</summary>
     public Surface NextSurface(int road) => S.RoadSurface[road] switch
@@ -80,7 +84,7 @@ public sealed partial class Town
         into.Clear();
         string room = HousingRoom > 0 ? "" : "No room: wait for a cottage";
         into.Add(Item(ShopItemKind.Villager, -1, "Villager", S.VillagersBought, VillagerPrice, room));
-        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= TownRules.PaceMax ? 0 : PacePrice, PaceLockReason));
+        into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= PaceCap ? 0 : PacePrice, PaceLockReason));
         if (S.LoadLevel < TownRules.LoadPrices.Length)
             into.Add(Item(ShopItemKind.Load, -1, TownRules.LoadNames[S.LoadLevel], S.LoadLevel, LoadPrice, LoadLockReason));
         int pr = SuggestedPave();
@@ -99,6 +103,7 @@ public sealed partial class Town
         {
             Kind = k, Index = index, Name = name, Level = level, Price = price, Reason = reason,
             Affordable = reason.Length == 0, Renown = RenownFor(price), Worth = EstimateWorth(k, index),
+            Locked = IsLockedReason(reason), Finished = IsFinishedReason(reason),
         };
     }
 

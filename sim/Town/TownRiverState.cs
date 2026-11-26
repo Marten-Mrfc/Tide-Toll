@@ -31,6 +31,10 @@ public sealed class RiverState
     public double RenownBase;            // renown held when the age was rung in
     public double RenownScale = 1;       // renown per level-minute (TownRulesRiver.LevelRenown): the best coin rate at the ring
     public int Reached;                  // river levels reached (0..12)
+    // Green pass: renown of each river level, set when the level before it is reached: the renown of that level plus the
+    // minutes between the two (TownRulesRiver.LevelRenown) times the town's best coin rate then. 0: not set yet (a version 3
+    // save from before the green pass has none set and keeps the ring-time scale for every level).
+    public double[] LevelAt = new double[12];
     public bool Seal;
     public bool[] PlotGiven = Array.Empty<bool>();
     public bool[] LinkOpen = Array.Empty<bool>();

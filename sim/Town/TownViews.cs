@@ -64,7 +64,7 @@ public sealed partial class Town
     public double FirstPurchaseTime => S.FirstPurchaseTime;
 
     /// <summary>Renown needed for the next level (the current level's when at the last one).</summary>
-    public double NextLevelRenown => S.River != null ? RiverLevelRenown(Math.Min(S.Level + 1, MaxLevel)) : S.Level < Plan.MaxLevel ? Plan.Level(S.Level + 1).Renown : Plan.Level(S.Level).Renown;
+    public double NextLevelRenown => S.River != null ? RiverLevelRenown(Math.Min(S.Level + 1, MaxLevel)) : S.Level < Plan.MaxLevel ? LevelRenownOf(S.Level + 1) : LevelRenownOf(S.Level);
 
     /// <summary>Fill of the level bar, 0..1 (1 at the last level).</summary>
     public double LevelBar
@@ -78,7 +78,7 @@ public sealed partial class Town
                 return Math.Clamp((S.Renown - ra) / (rb - ra), 0, 1);
             }
             if (S.Level >= Plan.MaxLevel) return 1;
-            double a = Plan.Level(S.Level).Renown, b = Plan.Level(S.Level + 1).Renown;
+            double a = LevelRenownOf(S.Level), b = LevelRenownOf(S.Level + 1);
             return Math.Clamp((S.Renown - a) / (b - a), 0, 1);
         }
     }

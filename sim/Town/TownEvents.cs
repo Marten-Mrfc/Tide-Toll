@@ -37,6 +37,8 @@ public enum TownEventKind : byte
     DrawbridgeLowered = 29,// X, Y
     Seal = 30,             // the borough seal: the second age is complete
     LandingDelivery = 31,  // Villager, Good, Amount, Coin, X, Y (the landing), Index = boat id (-1: sold to the landing store)
+    // Added in the green pass
+    TouchAdded = 32,       // Index = touch number (Town.Touch(Index)), Level = (int)TouchKind, Plot (first-age plot, -1 if a river plot), Amount = river plot (-1 if first age), X, Y, Value = heading (radians), Text = kind name
 }
 
 /// <summary>One thing that happened during a step. Drain them with Town.DrainEvents each frame.</summary>

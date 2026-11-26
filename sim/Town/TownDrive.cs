@@ -36,7 +36,7 @@ public sealed partial class Town
         double secs = TownRules.DriveMinutes * 60;
         double amount = Math.Max(30, CoinPerMinute) * TownRules.DriveMinutes / unit;
         amount = Math.Min(amount, TownRules.DriveCapacityShare * Capacity(g) * secs);
-        double need = Plan.Level(Plan.MaxLevel).Renown - S.Renown;
+        double need = LevelRenownOf(Plan.MaxLevel) - S.Renown;
         S.DriveActive = true; S.DriveGood = g; S.DriveAmount = Math.Max(10, (int)Math.Round(amount)); S.DriveDelivered = 0;
         S.DriveRenown = Math.Max(1, Math.Round(TownRules.DriveShare * Math.Max(0, need)));
         S.DriveRenownGiven = 0; S.DriveStart = Time;

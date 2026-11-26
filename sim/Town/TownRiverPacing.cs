@@ -38,6 +38,8 @@ public sealed class RiverPacingResult
     public double CoinLanding, CoinToll, CoinMarket, CoinTown;  // earned in the second age by source
     public int BoatsCome, BoatsFilled, BoatsShort;
     public double MinuteMsAtEnd = -1;
+    /// <summary>Green pass: touches when the age was rung in and at the seal; spots of the seed.</summary>
+    public int TouchesAtRing, TouchesAtSeal, TouchSpots;
     /// <summary>Per minute of the second age: coin per minute, coin held, cheapest price on sale, villagers walking/queued/working/idle, river mode.</summary>
     public List<string> Trace = new();
     public double MinutesOfAge => Seal < 0 ? -1 : Seal / 60;
@@ -67,14 +69,14 @@ public static class TownRiverPacing
             bool river = t.InRiverAge;
             foreach (var e in events)
             {
-                if (e.Kind == TownEventKind.NextAge) { res.RungAt = e.Time; lastNew = e.Time; earnedAtRing = t.CoinEarned; }
+                if (e.Kind == TownEventKind.NextAge) { res.RungAt = e.Time; lastNew = e.Time; earnedAtRing = t.CoinEarned; res.TouchesAtRing = t.TouchCount; res.TouchSpots = t.TouchSpots.Length; }
                 if (!river || res.Seal >= 0) continue;
                 double rt = e.Time - res.RungAt;
                 if (e.Kind == TownEventKind.LevelReached && e.Level >= firstRiverLevel) res.LevelTimes[e.Level - firstRiverLevel] = rt;
                 if (e.Kind == TownEventKind.Purchase) { res.Purchases++; res.ByKind[(int)e.Item]++; }
                 // New on the map: level gifts, buildings, paving, extensions, a new villager, and the river upgrades that change a model
                 // (ferry, berth, crane, raft, rope, winch).
-                if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended or TownEventKind.VillagerArrived
+                if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended or TownEventKind.TouchAdded or TownEventKind.VillagerArrived
                     || (e.Kind == TownEventKind.Purchase && e.Item is ShopItemKind.Ferry or ShopItemKind.Berth or ShopItemKind.Crane or ShopItemKind.Raft or ShopItemKind.Rope or ShopItemKind.Winch))
                 {
                     if (e.Time - lastNew > res.LongestMapGap) { res.LongestMapGap = e.Time - lastNew; res.LongestMapGapAt = lastNew - res.RungAt; }
@@ -83,6 +85,7 @@ public static class TownRiverPacing
                 if (e.Kind == TownEventKind.Seal)
                 {
                     res.Seal = rt;
+                    res.TouchesAtSeal = t.TouchCount;
                     for (int c = 1; c < 5; c++) res.CapAtSeal[c] = t.CrossingCapacity((RiverLinkKind)c);
                     res.CoinLanding = t.LandingCoin - t.TollCoin * 0; res.CoinToll = t.TollCoin; res.CoinMarket = t.RiverMarketCoin;
                     res.CoinTown = t.CoinEarned - earnedAtRing - t.LandingCoin - t.TollCoin - t.RiverMarketCoin;
@@ -111,14 +114,14 @@ public static class TownRiverPacing
                 double all = t.CoinEarned - earnedAtRing;
                 res.LandingShareAtMid = all > 0 ? (t.LandingCoin + t.TollCoin) / all : 0;
             }
-            if (t.Tick % 600 == 0)
+            if (t.Tick % 300 == 0)
             {
                 t.ShopItems(items);
                 double cheapest = double.MaxValue; string cn = "";
                 foreach (var it in items) if (it.Reason.Length == 0 || it.Reason == "Not enough coin") if (it.Price < cheapest) { cheapest = it.Price; cn = it.Name; }
                 int[] ph = new int[5]; int rm = 0;
                 foreach (var v in t.S.Villagers) { ph[(int)v.Phase]++; if (v.RMode != 0) rm++; }
-                res.Trace.Add($"{now / 60:0} cpm {t.CoinPerMinute:0} coin {t.Coin:0} cheapest {cn} {cheapest:0} idle/walk/queue/work {ph[0]}/{ph[1]}/{ph[2]}/{ph[3]} river {rm} level {t.Level}");
+                res.Trace.Add($"{now / 60:0} cpm {t.CoinPerMinute:0} coin {t.Coin:0} cheapest {cn} {cheapest:0} idle/walk/queue/work {ph[0]}/{ph[1]}/{ph[2]}/{ph[3]} river {rm} level {t.Level} landing {t.LandingCoin:0} boats {t.BoatsCome}/{t.BoatsFilled}/{t.BoatsLeftShort}");
             }
             if (t.Tick % TownBot.ThinkTicks == 0)
             {

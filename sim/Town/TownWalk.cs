@@ -46,7 +46,7 @@ public sealed partial class Town
     /// <summary>Pace walking factor at a level (rules v3: plus TownRules.PaceMilestone at every fifth step; no boons).</summary>
     public static double PaceFactorAt(int level)
     {
-        int l = Math.Min(level, TownRules.PaceMax);
+        int l = Math.Min(level, TownRules.PaceMax + TownRulesRiver.PaceMore[^1]);
         return 1 + TownRules.PaceStep * l + TownRules.PaceMilestone * (l / TownRules.MilestoneEvery);
     }
     public bool BellRinging => Time < S.BellUntil;

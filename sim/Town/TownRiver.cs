@@ -23,7 +23,7 @@ public sealed partial class Town
             StartTime = Time, RenownBase = S.Renown, RenownScale = Math.Max(TownRulesRiver.LevelRateMin, S.MaxCoinPerMinute),
             PlotGiven = new bool[_rp.Plots.Length], LinkOpen = new bool[_rp.Links.Length],
             Boats = new BoatState[TownRulesRiver.MaxBoats],
-            NextBoatAt = Time + 10,
+            NextBoatAt = Time + TownRulesRiver.FirstBoatAfter,
         };
         for (int i = 0; i < r.Boats.Length; i++) r.Boats[i] = new BoatState();
         S.River = r;
@@ -32,13 +32,39 @@ public sealed partial class Town
     }
 
     /// <summary>Renown needed for town level n (also the second age's levels, 17 to 28, once it is rung in).</summary>
-    public double RiverLevelRenown(int n) => n <= Plan.MaxLevel ? Plan.Level(n).Renown : R!.RenownBase + Math.Round(R.RenownScale * RiverPlan!.Levels[n - Plan.MaxLevel - 1].RenownAbove);
+    /// Green pass: each level's renown is fixed when the level before it is reached, in minutes of the town's best coin rate
+    /// by then (River.LevelAt), so a town whose income grows fast in the age does not race through its later levels. Levels
+    /// not fixed yet are estimated from the last fixed one at today's best rate.
+    public double RiverLevelRenown(int n)
+    {
+        if (n <= Plan.MaxLevel) return LevelRenownOf(n);
+        var r = R!; var lv = RiverPlan!.Levels;
+        int i = n - Plan.MaxLevel - 1;
+        if (r.LevelAt.Length != lv.Length || r.LevelAt[0] <= 0) return r.RenownBase + Math.Round(r.RenownScale * lv[i].RenownAbove);
+        if (r.LevelAt[i] > 0) return r.LevelAt[i];
+        int k = i; while (r.LevelAt[k] <= 0) k--;
+        return r.LevelAt[k] + Math.Round(LevelRate * (lv[i].RenownAbove - lv[k].RenownAbove));
+    }
+
+    private double LevelRate => Math.Max(Math.Max(TownRulesRiver.LevelRateMin, R!.RenownScale), S.MaxCoinPerMinute);
+
+    private void FixNextRiverLevel()
+    {
+        var r = R!; var lv = RiverPlan!.Levels;
+        if (r.Reached < 1 || r.Reached >= lv.Length || r.LevelAt[r.Reached] > 0) return;
+        r.LevelAt[r.Reached] = r.LevelAt[r.Reached - 1] + Math.Round(LevelRate * (lv[r.Reached].RenownAbove - lv[r.Reached - 1].RenownAbove));
+    }
 
     private void CheckRiverLevels()
     {
         var rp = RiverPlan!;
         var r = R!;
-        while (r.Reached < rp.Levels.Length && S.Renown >= RiverLevelRenown(Plan.MaxLevel + 1 + r.Reached)) ApplyRiverLevel(r.Reached++);
+        if (r.LevelAt.Length == rp.Levels.Length && r.LevelAt[0] <= 0 && r.Reached == 0) r.LevelAt[0] = r.RenownBase + Math.Round(r.RenownScale * rp.Levels[0].RenownAbove);
+        while (r.Reached < rp.Levels.Length && S.Renown >= RiverLevelRenown(Plan.MaxLevel + 1 + r.Reached))
+        {
+            ApplyRiverLevel(r.Reached++);
+            if (r.LevelAt.Length == rp.Levels.Length && r.LevelAt[0] > 0) FixNextRiverLevel();
+        }
     }
 
     private void ApplyRiverLevel(int i)
@@ -233,6 +259,7 @@ public sealed partial class Town
         b.Request = id % 2 == 1;
         b.Skipper = (int)(Hash(Seed, id, 11) % (uint)TownRulesRiver.SkipperNames.Length);
         if (b.Request) b.Want = (int)Math.Round(b.Want * 1.25);
+        if (id < TownRulesRiver.OpeningBoats) b.Want = Math.Max(TownRulesRiver.BoatMinUnits, (int)Math.Round(b.Want * TownRulesRiver.OpeningCargo));
         b.Loaded = 0; b.TollPaid = false; b.Filled = false;
         b.Berth = berth; b.WaitSlot = wait;
         b.Phase = BoatPhase.Arriving;

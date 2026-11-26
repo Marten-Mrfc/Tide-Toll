@@ -186,7 +186,7 @@ public sealed partial class Town
         switch (k)
         {
             case ShopItemKind.Villager: return rate / n * 0.9;
-            case ShopItemKind.Pace: return S.PaceLevel >= TownRules.PaceMax ? 0 : rate * 0.55 * (PaceFactorAt(S.PaceLevel + 1) / PaceFactorAt(S.PaceLevel) - 1);
+            case ShopItemKind.Pace: return S.PaceLevel >= PaceCap ? 0 : rate * 0.55 * (PaceFactorAt(S.PaceLevel + 1) / PaceFactorAt(S.PaceLevel) - 1);
             case ShopItemKind.Load: return rate / LoadUnits;
             case ShopItemKind.Pave: return index < 0 ? 0 : rate * 0.05;
             case ShopItemKind.Building: return rate * 0.3;

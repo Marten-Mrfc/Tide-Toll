@@ -94,7 +94,7 @@ public static class TownPacing
                     if (e.Item == ShopItemKind.Load) res.LoadSteps++;
                     if (e.Item == ShopItemKind.Building) res.Buildings++;
                 }
-                if (res.Charter < 0 && e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended)
+                if (res.Charter < 0 && e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.RoadPaved or TownEventKind.CottageExtended or TownEventKind.TouchAdded)
                 {
                     if (e.Time > 120 && e.Time - lastNew > res.LongestMapGap) { res.LongestMapGap = e.Time - lastNew; res.LongestMapGapAt = lastNew; }
                     if (e.Time > 120) lastNew = e.Time;

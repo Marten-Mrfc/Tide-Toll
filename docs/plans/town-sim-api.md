@@ -318,3 +318,43 @@ One game minute at the seal (about 30 villagers) stays under 10 ms of CPU and `S
 ## Added in balance round 3 (numbers only)
 
 No API change. `TownRulesRiver` numbers changed: `BoatMinutes` {0.8, 1.8} to {0.6, 1.4}; `FerryPrice` 3000 to 2000; `BerthPrice` 8000 to 5000; `CraneBase` 6000 to 4000; `TollBase` 300 to 3000; `TollTrackBase` 5000 to 2500. Prices in the shop views follow. Tool: `town --set` now also takes `TownRulesRiver` fields (a name that exists in both classes means the first age's; write `River.LevelRenown=...` for the river's), used with `town --river`. Details in docs/plans/town-balance-r3.md.
+
+## Added in the green pass
+
+Nothing renamed or removed. Saves: new fields default when missing, so version 2 and version 3 saves from before this pass load and play on; a fresh first-age town still saves as version 2 and a rung-in town as version 3 (decided: the existing version tests pin these numbers and every new field has a safe default, so the version did not have to move).
+
+### Touches (sim/Town/TownTouches.cs)
+
+Small things the town dresses itself with. They cost nothing and do nothing.
+
+- `enum TouchKind`: `Woodpile, WashingLine, FlowerBed, HenCoop, Bench, Beehives, Haystack, AppleTree, Handcart, Signpost` (names match the art).
+- `Town.TouchSpots` (`TouchSpot[]`): every reserved spot of the seed, the same in both ages: `Kind`, `X`, `Y` (cell centre), `CellX`, `CellY`, `Heading` (radians, faces its plot), `Plot` (first-age plot id or -1), `RiverPlot` (river plot id or -1). Up to 3 per plot of either age, at most `TownRules.TouchSpotMax` (64). Clear of roads, lanes, crossings, plots, doors, water (and one cell of bank) and of each other (no two in touching cells); tested on seeds 1 to 100.
+- `Town.TouchCount`, `Town.Touch(i)` (`TouchView`: Kind, X, Y, Heading, Plot, RiverPlot), `Town.NextTouchAtCoin`.
+- Event `TouchAdded` (32): Index = touch number, Level = (int)TouchKind, Plot, Amount = river plot, X, Y, Value = heading, Text = kind name.
+- The beat: a touch appears when the coin earned in all passes `TouchNextCoin`; the next beat is `TouchMinutes` (3.5, first age) or `TouchMinutesRiver` (1.5, second age) of the town's income, taken as the lowest of the last beat's average, the beat before and the last minute (a boat's lump of coin would otherwise stretch the next beat). A backstop: `TouchMaxGap` (170 s) after the last touch the next one comes anyway. The next free spot (dressing order: first spot of each plot by level, then the second, then the third) beside a plot the town has gets it. At most `TouchMax` (44). Seeds 1 to 10, all four bots: 16 to 17 at the ring, 33 to 43 at the seal. Saved (`TouchCount`, `TouchOrder`, `TouchNextCoin`, `TouchLastCoin`, `TouchLastTime`, `TouchPrevRate`).
+- Both ages' pacing count a touch as something new on the map.
+
+### Tracks that go on
+
+- In the second age Pace, Tools, the value of Water, Grain and Flour, the bell and extending cottages go on past their first-age last step: `TownRulesRiver.PaceMore`, `ToolsMore`, `ValueMore` (3 more steps on sale per river level, 36 by level 28), `BellTrackMore` (1 per level), `ExtendMore` (a third extension of each first-age cottage, `ExtendMaxRiver` = 3). Further steps start at `TrackStart` (0.3) of the first age's last price and grow by `TrackGrowth` (1.08) a step, so cheap, middling and dear steps are on sale at every river level. `Town.PaceCap`, `ToolsCap`, `ValueCap`, `BellTrackCap`, `ExtendCap` give the last step now. In the first age everything is as before.
+- First age, levels 13 to 16: `PaceMax` 27 (was 25), `ToolsMax` 20 (was 18), `ValueMax` 16 (was 14), tables changed at levels 13 to 16 only.
+- `Town.TrackPrice(base, growth, level, firstAgeMax)`.
+
+### Age lengths
+
+- First age: `LevelRenown` for levels 14 to 16 is 52000, 84000, 160000 (were 48000, 74000, 140000), and the charter needs at least `TownRules.CharterMinutes` (10) of the town's best coin rate above the renown held at level 15, fixed when level 15 is reached (`TownState.CharterRenown`, `Town.LevelRenownOf(n)`). A town that is slow to level 15 meets the table's number as before.
+- Second age: each river level's renown is fixed when the level before it is reached, in minutes of the best coin rate then (`RiverState.LevelAt`); `LevelRenown` minutes are 0.64 of rules v3's. A version 3 save from before keeps the old ring-time scale.
+- The landing's opening: the first boat 5 s after the ring (`FirstBoatAfter`), and until the first `OpeningBoats` (8) boats are served, boats pay `OpeningPremium` (1.6) times more (`Town.OpeningTrade`). Boats still come only at high water.
+
+### The game builders' wishes
+
+- `ShopItem.Locked` (not on sale yet) and `ShopItem.Finished` (nothing more will come), set from the reason inside the simulation (`Town.IsLockedReason`, `Town.IsFinishedReason`).
+- `Town.CanPaveNow(road)`, `Town.CanExtendNow(plot)`: include the coin.
+- `Hint` builds no string per read (Load and hand texts built once and kept; level texts cached); every branch checks that what it points at can be bought (ignoring coin).
+- `Town.OfferBoughtOf(OfferKind)`.
+- Achievement texts print large numbers with thousands separators ("Earn 20,000 coin in all.").
+- After the borough seal: `Town.SecondAgeComplete`, `Town.SecondAgeCompleteText`, `Town.StillOnSale(list)` and `Town.StillOnSaleCount` (what can still be bought, now or later). Saved through the seal itself.
+
+### Not done
+
+- Villagers housed in the riverside and far-bank cottages still keep a first-age cottage as their errand home (decision 6 of the green pass is not built).

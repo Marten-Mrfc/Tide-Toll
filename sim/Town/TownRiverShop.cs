@@ -24,9 +24,9 @@ public sealed partial class Town
         bool ferry = CrossingExists(RiverLinkKind.Ferry), draw = CrossingExists(RiverLinkKind.Drawbridge);
         return k switch
         {
-            ShopItemKind.Ferry => r.FerryBought ? "Already built" : !r.FerryOffered ? "Unlocks at level " + (Plan.MaxLevel + 6) : "",
-            ShopItemKind.Berth => r.BerthBought ? "Already built" : !r.BerthOffered ? "Unlocks at level " + (Plan.MaxLevel + 7) : "",
-            ShopItemKind.Crane => !r.CraneOffered ? "Unlocks at level " + (Plan.MaxLevel + 10) : r.Crane >= TownRulesRiver.CraneMax ? "The biggest crane" : "",
+            ShopItemKind.Ferry => r.FerryBought ? "Already built" : !r.FerryOffered ? LevelText(Plan.MaxLevel + 6) : "",
+            ShopItemKind.Berth => r.BerthBought ? "Already built" : !r.BerthOffered ? LevelText(Plan.MaxLevel + 7) : "",
+            ShopItemKind.Crane => !r.CraneOffered ? LevelText(Plan.MaxLevel + 10) : r.Crane >= TownRulesRiver.CraneMax ? "The biggest crane" : "",
             ShopItemKind.BoatPrices => r.Reached < 1 ? "Comes with the landing" : r.Prices >= TownRulesRiver.PricesMax ? "Best prices reached" : "",
             ShopItemKind.RiverValue when index == (int)Good.Wool => r.Reached < 4 ? "Comes with the pasture" : r.WoolValue >= TownRulesRiver.RiverValueMax ? "Best price reached" : "",
             ShopItemKind.RiverValue => r.Reached < 5 ? "Comes with the weaver" : r.ClothValue >= TownRulesRiver.RiverValueMax ? "Best price reached" : "",
@@ -231,7 +231,7 @@ public sealed partial class Town
         ("Skipper's friend", "Meet 5 skippers' requests."),
         ("Two berths", "Build the second berth."),
         ("The crane", "Build the crane."),
-        ("River trade", "Earn 100000 coin at the landing."),
+        ("River trade", "Earn 100,000 coin at the landing."),
         ("Borough", "Win the borough seal."),
     };
 

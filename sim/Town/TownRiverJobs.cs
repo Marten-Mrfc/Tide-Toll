@@ -41,7 +41,9 @@ public sealed partial class Town
     };
 
     /// <summary>What a boat pays per unit of a good now (before the town's coin bonus).</summary>
-    public double BoatUnitPrice(Good g) => StorePrice(g) * TownRulesRiver.BoatPremium * BoatPriceFactor;
+    public double BoatUnitPrice(Good g) => StorePrice(g) * TownRulesRiver.BoatPremium * BoatPriceFactor * (OpeningTrade ? TownRulesRiver.OpeningPremium : 1);
+    /// <summary>Green pass: the landing's opening trade: until the opening boats have all been served, boats pay more.</summary>
+    public bool OpeningTrade => R != null && R.BoatsFilled + R.BoatsShort < TownRulesRiver.OpeningBoats;
 
     // ---- River routes ----
 

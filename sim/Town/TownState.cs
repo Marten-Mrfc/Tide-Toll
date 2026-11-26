@@ -131,6 +131,14 @@ public sealed class TownState
     public int DriveAmount, DriveDelivered;
     public double DriveRenown, DriveRenownGiven, DriveStart = -1, DriveEnd = -1;
 
+    // ---- Green pass (missing in an older save: these defaults; the touches then start from the coin earned at load) ----
+    public int TouchCount;
+    public int[] TouchOrder = new int[TownRules.TouchMax]; // spot index (Town.TouchSpots) of each touch, in order
+    public double TouchNextCoin;                          // coin earned at which the next touch appears (0: not set yet)
+    public double TouchLastCoin, TouchLastTime;           // coin earned and game time at the last touch (or when the beat was set)
+    public double CharterRenown;                          // renown the charter needs, fixed at level MaxLevel - 1 (0: the table's)
+    public double TouchPrevRate;                          // income a minute over the beat before the last (0: none yet)
+
     // ---- The second age (save version 3; null before it is rung in) ----
     public RiverState? River;
 }

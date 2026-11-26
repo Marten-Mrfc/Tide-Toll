@@ -1,4 +1,125 @@
-# Town pacing (first age, rules v3)
+# Town pacing
+
+## Green pass (current rules; 26 November 2026)
+
+These tables are the current numbers. Every section further down is from older rules (v2 to v3 and the first second-age build) and is kept as history only; read none of its numbers as current.
+
+### First age, seeds 1 to 10 (tool: town --seeds 1-10 --misses --v3)
+
+Columns per bot (cheapest first, best payback first, random affordable, saver): charter minute; purchases-per-minute detail as the tool prints it; requests met/asked; boons; last gap / longest of the three before (minutes); hands bought.
+
+```
+1 | 33.7 ; 40 ; req 10/14 ; AAAA ; gap 4.5/3.2 ; hands 2 | 27.6 ; 26 ; req 7/12 ; BABB ; gap 2.2/3.9 ; hands 2 | 32.8 ; 31 ; req 8/14 ; BBAB ; gap 3.6/4.2 ; hands 2 | 27.1 ; 16 ; req 9/11 ; BAAA ; gap 3.5/3.1 ; hands 2
+   2 | 35.3 ; 37 ; req 12/14 ; AAAA ; gap 3.3/4.5 ; hands 2 | 30.3 ; 25 ; req 5/13 ; BABB ; gap 3.1/3.3 ; hands 1 | 32.2 ; 38 ; req 8/13 ; BABA ; gap 3.4/3.2 ; hands 1 | 28.1 ; 19 ; req 10/11 ; BAAA ; gap 3.0/3.2 ; hands 2
+   3 | 33.4 ; 32 ; req 11/13 ; AAAA ; gap 2.9/4.5 ; hands 2 | 30.0 ; 25 ; req 8/12 ; AAAA ; gap 3.8/2.9 ; hands 3 | 32.6 ; 28 ; req 8/13 ; AABA ; gap 2.7/4.5 ; hands 2 | 27.5 ; 16 ; req 5/11 ; AABA ; gap 3.4/3.7 ; hands 2
+   4 | 32.8 ; 37 ; req 11/13 ; AAAA ; gap 3.2/3.8 ; hands 2 | 28.6 ; 25 ; req 7/11 ; AABB ; gap 3.1/3.0 ; hands 2 | 34.0 ; 32 ; req 10/13 ; BAAB ; gap 3.8/3.9 ; hands 2 | 26.8 ; 16 ; req 6/11 ; BABB ; gap 3.1/3.1 ; hands 2
+   5 | 33.5 ; 36 ; req 10/13 ; AAAA ; gap 3.3/4.5 ; hands 3 | 28.5 ; 26 ; req 9/11 ; BAAA ; gap 3.5/3.7 ; hands 2 | 31.5 ; 31 ; req 8/12 ; BBAA ; gap 3.6/4.0 ; hands 1 | 26.6 ; 18 ; req 9/10 ; AAAA ; gap 3.2/3.1 ; hands 2
+   6 | 33.4 ; 35 ; req 10/14 ; AAAA ; gap 3.5/3.7 ; hands 2 | 29.9 ; 26 ; req 7/12 ; BBAA ; gap 3.5/3.3 ; hands 1 | 31.4 ; 32 ; req 8/13 ; BABA ; gap 3.8/3.1 ; hands 2 | 29.1 ; 16 ; req 7/12 ; BBAA ; gap 3.5/3.9 ; hands 1
+   7 | 33.5 ; 34 ; req 10/14 ; AAAA ; gap 3.9/4.7 ; hands 2 | 28.2 ; 26 ; req 8/12 ; BAAB ; gap 2.1/4.2 ; hands 4 | 30.1 ; 30 ; req 7/13 ; ABBB ; gap 3.3/3.2 ; hands 2 | 26.2 ; 16 ; req 6/12 ; BBAA ; gap 4.1/3.5 ; hands 2
+   8 | 34.8 ; 37 ; req 11/14 ; AAAA ; gap 3.3/4.6 ; hands 2 | 29.4 ; 28 ; req 11/12 ; BAAB ; gap 2.7/3.6 ; hands 3 | 33.2 ; 34 ; req 9/14 ; BBAA ; gap 3.2/3.9 ; hands 1 | 27.9 ; 18 ; req 8/12 ; BAAA ; gap 3.4/3.7 ; hands 2
+   9 | 33.9 ; 32 ; req 9/14 ; AAAA ; gap 4.1/4.1 ; hands 2 | 27.5 ; 25 ; req 6/11 ; BBBA ; gap 3.9/2.5 ; hands 1 | 32.5 ; 32 ; req 6/14 ; BABA ; gap 4.0/3.1 ; hands 1 | 26.2 ; 16 ; req 6/11 ; BBBA ; gap 2.8/3.5 ; hands 1
+  10 | 34.5 ; 37 ; req 10/15 ; AAAA ; gap 3.5/4.6 ; hands 2 | 28.1 ; 25 ; req 8/12 ; BABB ; gap 3.7/2.6 ; hands 2 | 32.9 ; 34 ; req 11/14 ; BAAA ; gap 3.9/3.5 ; hands 2 | 27.7 ; 18 ; req 5/12 ; BABB ; gap 3.7/3.0 ; hands 2
+  MISSED seed 8 best payback first: 1 purchases in minute 24 < 2
+  MISSED seed 10 cheapest first: 1 purchases in minute 34 < 2
+  MISSED seed 10 best payback first: 3 purchases in minute 8 < 4
+misses: 3 (purchases 3, nothing affordable 0, age 0, map 0)
+```
+
+Still red: TownPacingTests.PurchasesKeepComing, 3 runs of 40 (seed 8 best payback: 1 purchase in minute 24, target 2; seed 10 cheapest: 1 purchase in minute 34, target 2; seed 10 best payback: 3 purchases in minute 8, target 4). Every other first-age target holds; charter 25.0 to 35.3 minutes for all four bots.
+
+### Second age, seeds 1 to 10 (tool: town --river --seeds 1-10)
+
+No miss on the tool's checks. Ranges over the 40 runs: age 22.6 to 32.3 minutes (the three buyers), 3.60 to 8.74 purchases a minute, longest spell with nothing affordable 9 to 60 s, longest map gap 76 to 170 s, landing share at the middle 0.34 to 0.95. Touches 16 to 17 at the ring and 33 to 43 at the seal.
+
+| seed | bot | rung (min) | age (min) | buys/min | longest nothing affordable (s) | longest map gap (s) | landing share at mid | ford/ferry/foot/draw per min | longest crossing wait (s) | boats come/filled/short | coin landing / toll / river market / town |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | cheapest first | 33.7 | 29.4 | 6.00 | 40 | 156 | 0.77 | 0.0/24.5/66.1/57.8 | 107 | 26/12/12 | 655719 / 34500 / 18593 / 75525 |
+| 1 | best payback first | 27.7 | 29.4 | 8.24 | 27 | 113 | 0.75 | 0.0/36.2/79.8/136.7 | 55 | 26/14/9 | 1115642 / 27000 / 193554 / 288956 |
+| 1 | random affordable | 32.8 | 26.1 | 7.00 | 36 | 115 | 0.75 | 1.5/26.9/48.2/119.0 | 106 | 22/12/9 | 699487 / 21000 / 39149 / 135447 |
+| 1 | saver | 27.1 | 28.7 | 5.90 | 22 | 156 | 0.75 | 0.0/36.1/60.2/101.1 | 110 | 26/16/7 | 654983 / 48000 / 100346 / 121702 |
+| 2 | cheapest first | 35.3 | 26.1 | 6.60 | 44 | 123 | 0.82 | 0.0/33.8/74.6/103.6 | 116 | 25/13/9 | 632730 / 29250 / 11739 / 58272 |
+| 2 | best payback first | 30.3 | 28.3 | 8.30 | 33 | 170 | 0.81 | 0.0/32.7/79.7/120.5 | 77 | 26/14/9 | 1069481 / 54000 / 140077 / 270182 |
+| 2 | random affordable | 32.2 | 28.3 | 6.79 | 40 | 105 | 0.81 | 0.0/38.5/76.0/101.9 | 96 | 26/14/9 | 758189 / 42000 / 27045 / 90213 |
+| 2 | saver | 28.2 | 25.9 | 5.60 | 25 | 94 | 0.74 | 0.0/37.9/91.3/109.2 | 85 | 23/13/9 | 601894 / 22500 / 24533 / 98090 |
+| 3 | cheapest first | 33.4 | 26.7 | 4.77 | 33 | 115 | 0.94 | 0.0/25.0/49.3/65.3 | 40 | 21/10/8 | 266431 / 24750 / 16541 / 105758 |
+| 3 | best payback first | 30.0 | 24.4 | 5.45 | 22 | 83 | 0.95 | 0.0/36.0/62.0/52.6 | 34 | 22/15/4 | 483852 / 27000 / 3845 / 56148 |
+| 3 | random affordable | 32.6 | 24.3 | 4.94 | 38 | 119 | 0.93 | 0.0/24.2/44.1/61.7 | 31 | 20/6/11 | 229196 / 18000 / 8691 / 131877 |
+| 3 | saver | 27.5 | 28.1 | 5.55 | 29 | 87 | 0.93 | 0.0/29.1/36.1/90.3 | 48 | 26/15/8 | 621901 / 44250 / 8076 / 69562 |
+| 4 | cheapest first | 32.8 | 30.4 | 5.52 | 36 | 122 | 0.79 | 0.0/33.1/32.1/84.1 | 159 | 26/14/9 | 497788 / 50250 / 26799 / 121025 |
+| 4 | best payback first | 28.6 | 24.5 | 8.74 | 29 | 119 | 0.74 | 0.0/35.9/54.3/120.5 | 76 | 23/12/8 | 934339 / 27000 / 46600 / 229713 |
+| 4 | random affordable | 34.0 | 30.8 | 6.91 | 26 | 170 | 0.92 | 0.0/24.8/53.6/80.0 | 142 | 26/17/9 | 905473 / 44250 / 47637 / 168326 |
+| 4 | saver | 26.8 | 31.7 | 7.97 | 21 | 126 | 0.74 | 0.0/45.4/76.6/124.0 | 84 | 29/14/12 | 1749763 / 81000 / 81528 / 249609 |
+| 5 | cheapest first | 33.5 | 28.1 | 6.30 | 38 | 131 | 0.91 | 0.0/35.3/72.7/84.2 | 80 | 26/14/9 | 615882 / 43500 / 34332 / 60549 |
+| 5 | best payback first | 28.6 | 30.1 | 7.60 | 27 | 154 | 0.89 | 0.0/36.6/99.2/108.0 | 62 | 26/18/7 | 1282122 / 54000 / 76375 / 44711 |
+| 5 | random affordable | 31.5 | 29.1 | 7.12 | 32 | 153 | 0.87 | 0.0/36.6/84.4/54.8 | 73 | 27/18/7 | 910635 / 52500 / 27081 / 65907 |
+| 5 | saver | 26.7 | 29.0 | 6.45 | 9 | 119 | 0.82 | 0.0/45.6/81.9/89.1 | 44 | 27/18/6 | 836962 / 63000 / 133135 / 99150 |
+| 6 | cheapest first | 33.4 | 32.3 | 5.24 | 40 | 114 | 0.78 | 0.0/26.9/66.0/44.8 | 68 | 26/12/11 | 553869 / 44250 / 49929 / 52944 |
+| 6 | best payback first | 29.9 | 23.1 | 6.70 | 16 | 114 | 0.74 | 0.0/26.6/100.8/102.3 | 38 | 19/13/4 | 607292 / 25500 / 2673 / 81859 |
+| 6 | random affordable | 31.4 | 22.6 | 8.04 | 28 | 149 | 0.94 | 0.0/23.9/72.5/47.6 | 61 | 18/15/2 | 699822 / 18000 / 22189 / 63388 |
+| 6 | saver | 29.1 | 24.6 | 5.29 | 12 | 76 | 0.77 | 0.0/31.6/108.2/48.7 | 28 | 20/13/4 | 498961 / 23250 / 745 / 58699 |
+| 7 | cheapest first | 33.6 | 29.6 | 5.28 | 37 | 110 | 0.86 | 0.0/32.9/40.8/79.0 | 94 | 25/11/11 | 446340 / 33750 / 42623 / 92115 |
+| 7 | best payback first | 28.3 | 26.3 | 7.57 | 30 | 86 | 0.91 | 0.0/45.1/67.2/100.6 | 67 | 22/12/10 | 820711 / 24000 / 67482 / 170088 |
+| 7 | random affordable | 30.2 | 26.9 | 7.65 | 38 | 117 | 0.86 | 0.0/29.7/20.7/92.5 | 100 | 22/12/9 | 770786 / 30000 / 27746 / 258758 |
+| 7 | saver | 26.2 | 30.9 | 5.73 | 33 | 112 | 0.62 | 0.0/28.7/47.9/90.4 | 44 | 25/12/12 | 768853 / 27000 / 30051 / 80898 |
+| 8 | cheapest first | 34.8 | 29.0 | 5.83 | 37 | 170 | 0.87 | 0.0/19.8/70.1/84.4 | 84 | 23/12/8 | 538977 / 41250 / 22029 / 80526 |
+| 8 | best payback first | 29.4 | 28.6 | 6.37 | 36 | 102 | 0.34 | 0.0/37.1/68.9/72.4 | 59 | 23/7/13 | 559210 / 64500 / 104729 / 204284 |
+| 8 | random affordable | 33.2 | 28.2 | 5.90 | 38 | 131 | 0.89 | 0.0/22.8/62.5/90.1 | 78 | 23/15/5 | 537862 / 42750 / 30258 / 71812 |
+| 8 | saver | 28.0 | 30.9 | 4.59 | 26 | 121 | 0.76 | 0.0/27.0/67.1/78.7 | 57 | 23/13/9 | 502630 / 47250 / 11998 / 97113 |
+| 9 | cheapest first | 34.0 | 27.7 | 3.61 | 37 | 107 | 0.68 | 0.0/6.9/17.7/30.2 | 36 | 22/4/15 | 153543 / 15000 / 5925 / 91121 |
+| 9 | best payback first | 27.5 | 30.2 | 4.14 | 60 | 117 | 0.81 | 4.2/19.6/17.4/53.1 | 155 | 23/7/13 | 334598 / 25500 / 2053 / 59008 |
+| 9 | random affordable | 32.5 | 27.7 | 4.62 | 36 | 86 | 0.58 | 0.0/7.7/48.6/23.0 | 29 | 21/5/15 | 301054 / 21750 / 6351 / 79343 |
+| 9 | saver | 26.2 | 29.2 | 3.60 | 41 | 79 | 0.63 | 0.0/16.1/25.9/28.4 | 55 | 23/9/11 | 297579 / 30750 / 578 / 78916 |
+| 10 | cheapest first | 34.5 | 26.6 | 5.37 | 34 | 101 | 0.86 | 0.0/21.9/39.1/72.9 | 61 | 21/10/10 | 415200 / 19500 / 21303 / 52808 |
+| 10 | best payback first | 28.1 | 27.9 | 7.60 | 24 | 125 | 0.85 | 0.0/28.2/59.7/157.3 | 77 | 27/13/11 | 915190 / 45000 / 100176 / 139660 |
+| 10 | random affordable | 33.0 | 24.8 | 5.21 | 38 | 102 | 0.90 | 0.0/19.2/35.6/87.5 | 73 | 20/9/8 | 296591 / 19500 / 30036 / 75871 |
+| 10 | saver | 27.7 | 30.6 | 7.10 | 10 | 100 | 0.88 | 0.0/14.6/67.6/124.7 | 74 | 26/13/13 | 947944 / 43500 / 201316 / 247880 |
+
+Level times (minutes after the ring), levels 17 to 28:
+- seed 1 cheapest first: 0.0 0.6 0.9 1.2 1.7 3.7 7.9 12.7 14.7 20.0 24.9 29.4 | capacity at the seal (ford/ferry/foot/draw a minute): 17/96/217/245 | touches at ring/seal/spots 17/41/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 39 Raft 3 Rope 4 Toll 7 Winch 5
+- seed 1 best payback first: 0.0 0.5 1.0 1.3 1.7 3.1 8.6 11.9 13.8 19.2 24.7 29.4 | capacity at the seal (ford/ferry/foot/draw a minute): 24/137/308/349 | touches at ring/seal/spots 16/40/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 1 random affordable: 0.0 0.5 0.8 1.1 1.6 3.3 7.3 11.9 14.1 17.2 21.4 26.1 | capacity at the seal (ford/ferry/foot/draw a minute): 17/112/226/256 | touches at ring/seal/spots 17/41/60 | bought: Ferry 1 Berth 1 Crane 4 BoatPrices 20 RiverValue 40 Raft 4 Rope 4 Toll 7 Winch 5
+- seed 1 saver: 0.0 0.6 0.9 1.4 2.0 4.6 8.0 9.7 13.5 16.9 22.4 28.7 | capacity at the seal (ford/ferry/foot/draw a minute): 22/137/284/322 | touches at ring/seal/spots 15/38/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 34 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 2 cheapest first: 0.0 0.5 0.9 1.3 1.7 3.2 7.8 12.3 15.7 19.9 22.7 26.1 | capacity at the seal (ford/ferry/foot/draw a minute): 17/96/217/245 | touches at ring/seal/spots 18/40/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 38 Raft 3 Rope 4 Toll 6 Winch 5
+- seed 2 best payback first: 0.0 0.5 0.7 1.1 1.5 2.7 7.2 9.6 12.6 16.3 21.5 28.3 | capacity at the seal (ford/ferry/foot/draw a minute): 24/137/312/353 | touches at ring/seal/spots 17/41/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 2 random affordable: 0.0 0.5 0.8 1.2 1.6 3.1 6.9 11.4 14.8 19.7 22.0 28.3 | capacity at the seal (ford/ferry/foot/draw a minute): 21/96/271/307 | touches at ring/seal/spots 17/42/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 40 Raft 3 Rope 4 Toll 7 Winch 6
+- seed 2 saver: 0.0 0.7 0.9 1.2 1.9 3.8 7.3 9.5 13.4 17.6 22.1 25.9 | capacity at the seal (ford/ferry/foot/draw a minute): 17/137/226/256 | touches at ring/seal/spots 16/37/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 37 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 3 cheapest first: 0.0 0.6 1.1 1.6 2.2 3.7 5.3 7.7 12.2 17.3 22.0 26.7 | capacity at the seal (ford/ferry/foot/draw a minute): 20/83/266/302 | touches at ring/seal/spots 17/37/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 32 Raft 2 Rope 3 Toll 5 Winch 3
+- seed 3 best payback first: 0.0 0.5 1.0 1.7 2.4 3.5 5.4 7.8 11.2 13.5 19.8 24.4 | capacity at the seal (ford/ferry/foot/draw a minute): 20/149/266/302 | touches at ring/seal/spots 16/35/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 30 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 3 random affordable: 0.0 0.5 0.9 1.6 2.5 4.3 5.7 8.3 10.9 15.8 21.0 24.3 | capacity at the seal (ford/ferry/foot/draw a minute): 21/83/271/307 | touches at ring/seal/spots 17/36/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 31 Raft 2 Rope 3 Toll 4 Winch 4
+- seed 3 saver: 0.0 0.5 1.2 1.6 2.7 3.7 5.6 9.2 14.5 18.6 23.1 28.1 | capacity at the seal (ford/ferry/foot/draw a minute): 21/149/271/307 | touches at ring/seal/spots 16/37/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 35 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 4 cheapest first: 0.0 0.5 0.8 1.2 1.7 3.1 5.5 9.0 13.3 16.3 21.3 30.4 | capacity at the seal (ford/ferry/foot/draw a minute): 17/96/217/245 | touches at ring/seal/spots 17/42/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 37 Raft 3 Rope 4 Toll 6 Winch 5
+- seed 4 best payback first: 0.0 0.4 1.1 1.2 2.1 3.2 6.1 9.0 11.9 14.6 20.0 24.5 | capacity at the seal (ford/ferry/foot/draw a minute): 21/137/279/316 | touches at ring/seal/spots 16/37/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 4 random affordable: 0.0 0.5 0.7 1.1 1.6 2.7 6.3 9.8 12.4 13.8 22.1 30.8 | capacity at the seal (ford/ferry/foot/draw a minute): 22/137/288/326 | touches at ring/seal/spots 17/42/60 | bought: Ferry 1 Berth 1 Crane 4 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 4 saver: 0.0 0.5 1.1 1.2 2.0 3.2 6.6 9.1 11.7 15.4 21.5 31.7 | capacity at the seal (ford/ferry/foot/draw a minute): 26/137/336/381 | touches at ring/seal/spots 16/42/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 5 cheapest first: 0.0 0.1 0.6 0.9 1.4 3.3 5.8 8.2 12.7 17.2 20.6 28.1 | capacity at the seal (ford/ferry/foot/draw a minute): 21/106/271/307 | touches at ring/seal/spots 17/40/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 38 Raft 3 Rope 4 Toll 7 Winch 5
+- seed 5 best payback first: 0.0 0.5 0.8 1.3 2.1 3.9 5.8 7.4 10.4 14.5 21.9 30.1 | capacity at the seal (ford/ferry/foot/draw a minute): 28/149/369/418 | touches at ring/seal/spots 16/41/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 5 random affordable: 0.0 0.6 0.8 1.3 2.3 3.9 5.8 7.3 13.6 17.8 21.3 29.1 | capacity at the seal (ford/ferry/foot/draw a minute): 26/131/343/389 | touches at ring/seal/spots 17/41/60 | bought: Ferry 1 Berth 1 Crane 4 BoatPrices 20 RiverValue 39 Raft 4 Rope 5 Toll 7 Winch 5
+- seed 5 saver: 0.0 0.7 0.8 1.4 2.3 3.9 5.0 6.6 10.1 15.2 21.1 29.0 | capacity at the seal (ford/ferry/foot/draw a minute): 27/149/353/400 | touches at ring/seal/spots 15/40/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 24 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 6 cheapest first: 0.0 0.6 1.0 1.5 2.3 3.8 6.0 6.9 12.2 20.1 24.0 32.3 | capacity at the seal (ford/ferry/foot/draw a minute): 21/106/271/307 | touches at ring/seal/spots 17/44/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 37 Raft 3 Rope 4 Toll 6 Winch 5
+- seed 6 best payback first: 0.0 0.7 1.1 1.7 2.6 4.7 6.9 9.0 12.5 16.1 18.5 23.1 | capacity at the seal (ford/ferry/foot/draw a minute): 22/149/283/321 | touches at ring/seal/spots 16/36/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 39 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 6 random affordable: 0.0 0.2 0.7 1.4 2.2 3.4 5.2 6.9 8.4 13.4 19.2 22.6 | capacity at the seal (ford/ferry/foot/draw a minute): 25/142/330/373 | touches at ring/seal/spots 17/35/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 37 Raft 5 Rope 4 Toll 6 Winch 6
+- seed 6 saver: 0.0 0.7 1.4 1.9 2.8 4.9 7.9 10.2 13.1 16.0 20.9 24.6 | capacity at the seal (ford/ferry/foot/draw a minute): 21/149/278/316 | touches at ring/seal/spots 16/36/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 34 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 7 cheapest first: 0.0 0.5 0.8 1.2 1.6 2.8 5.3 9.2 14.6 19.4 23.3 29.6 | capacity at the seal (ford/ferry/foot/draw a minute): 21/106/271/307 | touches at ring/seal/spots 17/39/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 37 Raft 3 Rope 4 Toll 6 Winch 5
+- seed 7 best payback first: 0.0 0.5 0.8 1.2 1.6 2.6 4.8 7.6 12.2 17.0 22.2 26.3 | capacity at the seal (ford/ferry/foot/draw a minute): 27/149/355/402 | touches at ring/seal/spots 16/38/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 39 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 7 random affordable: 0.0 0.4 0.8 1.1 1.7 2.7 5.4 9.7 12.5 17.4 20.9 26.9 | capacity at the seal (ford/ferry/foot/draw a minute): 26/149/340/385 | touches at ring/seal/spots 17/38/60 | bought: Ferry 1 Berth 1 Crane 4 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 7 saver: 0.0 0.6 1.0 1.2 2.0 4.0 5.9 8.1 12.6 17.8 24.9 30.9 | capacity at the seal (ford/ferry/foot/draw a minute): 27/149/355/402 | touches at ring/seal/spots 15/40/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 37 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 8 cheapest first: 0.0 0.6 1.0 1.5 2.2 3.7 6.9 9.4 12.7 16.6 22.9 29.0 | capacity at the seal (ford/ferry/foot/draw a minute): 17/96/217/245 | touches at ring/seal/spots 18/42/60 | bought: Ferry 1 Berth 1 Crane 3 BoatPrices 20 RiverValue 37 Raft 3 Rope 4 Toll 6 Winch 5
+- seed 8 best payback first: 0.0 0.7 1.1 1.8 2.7 4.3 6.4 8.3 11.2 13.1 19.3 28.6 | capacity at the seal (ford/ferry/foot/draw a minute): 21/137/278/315 | touches at ring/seal/spots 16/41/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 39 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 8 random affordable: 0.0 0.7 1.0 1.5 2.2 3.4 6.4 8.7 10.4 14.8 21.2 28.2 | capacity at the seal (ford/ferry/foot/draw a minute): 17/128/226/256 | touches at ring/seal/spots 17/41/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 35 Raft 5 Rope 4 Toll 6 Winch 6
+- seed 8 saver: 0.0 0.3 1.0 2.2 2.3 3.9 6.9 9.1 12.0 15.9 22.6 30.9 | capacity at the seal (ford/ferry/foot/draw a minute): 17/137/226/256 | touches at ring/seal/spots 15/40/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 33 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 9 cheapest first: 0.0 0.5 1.4 2.6 3.9 6.9 8.4 10.4 13.6 17.5 22.6 27.7 | capacity at the seal (ford/ferry/foot/draw a minute): 20/61/259/294 | touches at ring/seal/spots 17/39/60 | bought: Ferry 1 Berth 0 Crane 1 BoatPrices 19 RiverValue 25 Raft 1 Rope 2 Toll 4 Winch 2
+- seed 9 best payback first: 0.0 1.1 2.2 3.6 4.5 8.5 11.9 15.5 18.3 20.9 25.3 30.2 | capacity at the seal (ford/ferry/foot/draw a minute): 21/89/278/316 | touches at ring/seal/spots 16/39/60 | bought: Ferry 1 Berth 1 Crane 5 BoatPrices 20 RiverValue 25 Raft 2 Rope 4 Toll 8 Winch 4
+- seed 9 random affordable: 0.0 0.7 1.7 2.8 4.6 7.3 8.9 11.3 14.3 16.4 22.6 27.7 | capacity at the seal (ford/ferry/foot/draw a minute): 21/89/278/316 | touches at ring/seal/spots 17/39/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 30 Raft 2 Rope 4 Toll 4 Winch 3
+- seed 9 saver: 0.0 0.8 2.1 3.1 4.5 7.3 9.8 12.3 16.0 18.6 23.8 29.2 | capacity at the seal (ford/ferry/foot/draw a minute): 21/112/278/316 | touches at ring/seal/spots 15/39/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 10 Raft 3 Rope 5 Toll 8 Winch 6
+- seed 10 cheapest first: 0.0 0.5 0.8 1.2 1.9 3.6 6.4 9.8 13.8 19.0 21.6 26.6 | capacity at the seal (ford/ferry/foot/draw a minute): 20/83/266/302 | touches at ring/seal/spots 17/39/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 35 Raft 2 Rope 3 Toll 5 Winch 4
+- seed 10 best payback first: 0.0 0.4 0.9 1.1 2.5 4.0 6.8 8.1 12.5 16.7 20.6 27.9 | capacity at the seal (ford/ferry/foot/draw a minute): 28/149/364/413 | touches at ring/seal/spots 16/39/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+- seed 10 random affordable: 0.0 0.1 0.5 0.8 1.5 3.0 5.1 8.4 13.1 17.4 21.3 24.8 | capacity at the seal (ford/ferry/foot/draw a minute): 21/83/278/316 | touches at ring/seal/spots 17/37/60 | bought: Ferry 1 Berth 1 Crane 2 BoatPrices 20 RiverValue 33 Raft 2 Rope 3 Toll 5 Winch 3
+- seed 10 saver: 0.0 0.5 1.0 1.1 2.5 4.0 6.6 8.3 14.1 17.6 21.5 30.6 | capacity at the seal (ford/ferry/foot/draw a minute): 29/149/385/437 | touches at ring/seal/spots 16/43/60 | bought: Ferry 1 Berth 1 Crane 6 BoatPrices 20 RiverValue 40 Raft 5 Rope 5 Toll 8 Winch 6
+misses: 0
+
+## History (older rules)
+
+ (first age, rules v3)
 
 Generated on 25 November 2026 (rules v3, `docs/plans/town-rules3-progress.md`) with the numbers in `sim/Town/TownRules.cs`:
 `town --seeds 1-10 --misses --averages --v3`. The rules v2.2 report follows further down, unchanged.

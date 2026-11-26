@@ -39,6 +39,7 @@ public sealed partial class Town
                 wps.Add(new WorkplaceState { Plot = p.Id, Places = places });
             }
         }
+        _spots = plan.TouchSpots ??= TownTouchPlanner.Build(plan); // built here so no step allocates it
         if (loaded != null) { S = loaded; if (S.River != null) _rp = TownRiverPlanner.Build(plan); return; }
         S = new TownState
         {
@@ -79,7 +80,7 @@ public sealed partial class Town
         StepRequests();
         StepHands();
         if (S.River != null) StepRiver();
-        if (S.Tick % TownRules.TickHz == 0) CheckAchievements();
+        if (S.Tick % TownRules.TickHz == 0) { CheckAchievements(); StepTouches(); }
     }
 
     /// <summary>Copies the events since the last drain into <paramref name="into"/> (cleared first) and forgets them.</summary>
@@ -126,6 +127,8 @@ public sealed partial class Town
         RefreshWorkplaces();
         Emit(new TownEvent { Kind = TownEventKind.LevelReached, Level = n, Text = lv.Gift });
         OfferChoicesAt(n);
+        if (n == Plan.MaxLevel - 1 && S.CharterRenown <= 0)
+            S.CharterRenown = Math.Max(Plan.Level(Plan.MaxLevel).Renown, Math.Round(S.Renown + TownRules.CharterMinutes * S.MaxCoinPerMinute));
         if (n == Plan.MaxLevel - 1 && !S.DriveActive && !S.DriveDone) StartDrive();
         if (lv.Charter && !S.Charter)
         {
@@ -134,9 +137,14 @@ public sealed partial class Town
         }
     }
 
+    /// <summary>Renown needed for first-age level n. Green pass: the charter (the last level) needs at least the table's renown,
+    /// and at least TownRules.CharterMinutes of the town's best coin rate above the renown held at level MaxLevel - 1, fixed
+    /// when that level is reached (TownState.CharterRenown), so a strong town does not race to the charter.</summary>
+    public double LevelRenownOf(int n) => n == Plan.MaxLevel && S.CharterRenown > 0 ? S.CharterRenown : Plan.Level(n).Renown;
+
     internal void CheckLevels()
     {
-        while (S.Level < Plan.MaxLevel && S.Renown >= Plan.Level(S.Level + 1).Renown) ApplyLevel(S.Level + 1);
+        while (S.Level < Plan.MaxLevel && S.Renown >= LevelRenownOf(S.Level + 1)) ApplyLevel(S.Level + 1);
         if (S.River != null) CheckRiverLevels();
     }
 
