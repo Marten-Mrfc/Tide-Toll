@@ -12,6 +12,14 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 - Then: the lead merges both, takes the pictures again, has them read by a reviewer who did not build them, has the findings fixed, runs the whole check on a clean copy, pushes a finished commit and waits for the Windows build.
 - To resume after a restart: `git worktree list`; each builder's progress file says what is done; a builder that was lost is started again from the sheet and its progress file.
 
+| When (UTC) | What | Result |
+| --- | --- | --- |
+| 07:17 to 07:31 | The lead: pictures of the shop in every state at full size, eleven faults, the sheet, a mock-up | `docs/plans/n4/shop-sheet-v3.md`, `mockup/` |
+| 07:31 to 07:59 | Builder: plain zeros | Merged as `2f47f0b`. A derived family "Tide Legible" (`assets/src/2d/fonts-plain-zero.py`, two ledger rows, OFL kept); the game loads it; Atkinson no longer ships in the game. Layout check passes with no test changed (72,591 checks, 0 failures) |
+| 07:31 to 08:32 | Builder: the shop, tooltip and navigation to the sheet | Merged as `cd393b2`. Every sheet item built; game-layout with seven new shop rules passes (73,325 checks, 0 failures); playthrough unchanged (`charter=33.9min buys=201`). Tests replaced: listed in `docs/plans/n4/shop-progress.md` |
+| 08:34 on | Builder: six follow-up points from the lead's look at the pictures (foot line never over a row; "Later:" instead of "Next:"; the switch between tall and compact rows eased and sticky; a lighter wash; air in the tooltip's facts; a mark for rows out of sight) | running in `build/wt/n4-shop` |
+| 08:42 on | Reviewer who did not build it reads the pictures of the merged game (`build/n4/merged/`) | `docs/plans/n4/shop-review.md` |
+
 | Decision made for the owner | Why |
 | --- | --- |
 | The shop's rows are regrouped for display (People: Villager, Pace, Load; Building: Pave, Extend, the offers; Work: Tools and prices; Town; The river) | So the keys read 1 2 3, 4 5 (F G H), 6 7 8 9, 0 down the list; no key changes |
