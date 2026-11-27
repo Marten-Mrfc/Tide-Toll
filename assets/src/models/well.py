@@ -30,7 +30,7 @@ m.add_gable((0, 2.23, 0), 2.3, 1.2, 0.8, "Reed and thatch", gable="Mud", overhan
 beam(m, (-1.2, 3.03, 0), (1.2, 3.02, 0), 0.3, 0.16, "Brick")                            # ridge cap
 for sz in (-1, 1):
     for f in (0.33, 0.66):
-        beam(m, (-1.2, 3.03 - 0.8 * f, sz * 0.6 * f), (1.2, 3.02 - 0.8 * f, sz * 0.6 * f), 0.08, 0.05, "Packed earth",
+        beam(m, (-1.2, 3.03 - 0.8 * f, sz * 0.6 * f), (1.2, 3.02 - 0.8 * f, sz * 0.6 * f), 0.08, 0.02, "Packed earth",  # n8: painted bands, 1 cm proud
              up=(0, 1, -sz))                                                            # thatch courses
 m.add_frustum((0.6, 0.97, 0.62), 0.18, 0.22, 0.3, "Packed earth", segments=6)              # a bucket on the rim
 m.add_cylinder((0.6, 1.24, 0.62), 0.19, 0.04, "River", segments=6, cap_bottom=False)       # water in it

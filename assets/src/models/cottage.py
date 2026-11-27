@@ -9,7 +9,7 @@
 #      pile, two ridges side by side); twice: and a cross range behind (a T) with a second chimney.
 # Nodes: "house" (all but the door and shutters), "accent" (door and shutters, modelled in Cast-iron green: the game
 # tints this node per plot), and an empty node "Smoke" at the top of every chimney ("Smoke2" for the second).
-# Walls 2.6 m, roofs about 45 degrees with 0.4 m eaves, three thatch courses a slope, a ridge cap, timber corner posts,
+# Walls 2.6 m, roofs about 45 degrees with 0.4 m eaves, three thatch courses a slope (painted bands, n8), a ridge cap, timber corner posts,
 # a stone plinth. cottage-01/02/03 are copies of a0/b0/c0 for the river cottages and the stand-ins.
 import math
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
@@ -18,6 +18,9 @@ from common import glb, ledger, asset_path
 from _kit import beam
 
 THATCH, COURSE, RIDGE, PATCH = "Reed and thatch", "Trail earth", "Packed earth", "Packed earth"
+# n8 (style sheet section 3): thatch courses are painted bands lying 1 cm proud of the slope, no step for the ink to
+# find; the game shades them as a darker tone of the thatch. (They were beams 0.2 x 0.09 m: two black stripes each.)
+PROUD, CW, LIFT = 0.01, 0.2, 0.012
 WALL, FRAME, PLINTH, PANE = "Limewash", "Mud", "Slate roof", "Mud"
 ACCENT = "Cast-iron green"
 EAVE = 0.4
@@ -61,19 +64,19 @@ def block(m, b):
     run, rise = we, rh + drop                              # one roof face: across v from the eave to the ridge
     fs = ((0.17, 0.37, 0.57, 0.77) if b.get("courses", 4) == 4 else (0.22, 0.47, 0.72)) if b.get("main") else (0.3, 0.62)
     for f in fs:                                          # thatch courses (four on the main range), on the slope, proud
-        y = h - drop + f * rise + 0.05
+        y = h - drop + f * rise + LIFT
         for s in (-1, 1):
             v = s * we * (1 - f)
             e = end_at(f) - 0.08
             nrm = T(0, run, s * rise)                      # the face's normal, in the frame's axes
             up = (nrm[0] - T(0, 0, 0)[0], nrm[1], nrm[2] - T(0, 0, 0)[2])
-            beam(m, T(-e, y, v), T(e, y, v), 0.2, 0.09, COURSE, up=up, ends=False)
+            beam(m, T(-e, y, v), T(e, y, v), CW, PROUD, COURSE, up=up, ends=False)
         if kind.startswith("hip") and b.get("main") and f < 0.5:   # and on the main range's two hipped ends
             for s in (-1, 1):
                 u = s * (end_at(f) + 0.1)
                 vv = we * (1 - f) - 0.25
                 if vv > 0.2:
-                    beam(m, T(u, y, -vv), T(u, y, vv), 0.2, 0.09, COURSE, ends=False)
+                    beam(m, T(u, y, -vv), T(u, y, vv), CW, PROUD, COURSE, ends=False)
     if b.get("patch"):                                     # a patch of older, darker thatch on the near face
         y = h - drop + 0.4 * rise + 0.08
         v = we * 0.6

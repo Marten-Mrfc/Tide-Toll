@@ -30,14 +30,12 @@ public partial class InkOutline : Node3D
         float[] crease = { 0.45f, 1.5f };
         for (int i = 0; i < 2; i++)
         {
-            // The canonical shader stays untouched; ink_alpha is added here so soft ink can thin out when zoomed out.
-            var sh = new Shader
-            {
-                Code = code.Replace("\n// STENCIL_MODE\n", $"\nstencil_mode read, {cmp[i]}, 1;\nuniform float ink_alpha = 1.0;\n")
-                           .Replace("ALPHA = e;", "ALPHA = e * ink_alpha;"),
-            };
+            var sh = new Shader { Code = code.Replace("\n// STENCIL_MODE\n", $"\nstencil_mode read, {cmp[i]}, 1;\n") };
             var m = new ShaderMaterial { Shader = sh };
             m.SetShaderParameter("crease", crease[i]);
+            // n8: the soft-ink group (trees, crops, reeds, villagers, small props) keeps the one-pixel outline at every
+            // window size: small things a few dozen pixels across were half outline with the growing weight.
+            m.SetShaderParameter("max_step", i == 1 ? 1f : 8f);
             m.SetShaderParameter("ink", Palette.Ink);
             _mats[i] = m;
             var q = new MeshInstance3D

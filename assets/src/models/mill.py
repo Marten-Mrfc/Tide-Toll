@@ -65,7 +65,7 @@ def mill_body():
     for i in range(3):
         a, b = ys[i], ys[i + 1]
         loft(m, ring(r_at(a), a), ring(r_at(b), b), WOOD, centre=(0, (a + b) / 2, 0))
-        m.add_frustum((0, a, 0), r_at(a) + 0.08, r_at(a + 0.22) + 0.08, 0.22, BAND, segments=8, cap_bottom=True)
+        m.add_frustum((0, a, 0), r_at(a) + 0.01, r_at(a + 0.22) + 0.01, 0.22, BAND, segments=8, cap_bottom=True)  # n8: painted, 1 cm
     # corner posts standing proud on the four front/back corners, so the taper reads in ink
     for k in range(8):
         ang = math.pi / 8 + 2 * math.pi * k / 8

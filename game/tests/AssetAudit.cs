@@ -24,7 +24,8 @@ public partial class AssetAudit : TownTestBase
 
     private string _dir = "";
     private HashSet<string>? _only;
-    private bool _noTown, _nowWork;
+    private bool _noTown, _nowWork, _inkLab, _inkWin, _inkTown, _inkCheck, _inkBoard;
+    private HashSet<string>? _inkNames;
     private Vector2 _spot = new(104, 24);
     private readonly List<string> _lines = new();
 
@@ -38,6 +39,12 @@ public partial class AssetAudit : TownTestBase
             if (a.StartsWith("--out-dir=")) _dir = a[10..];
             else if (a == "--no-town") _noTown = true;
             else if (a == "--now-work") _nowWork = true;
+            else if (a == "--ink-lab") _inkLab = true;       // research n8 (AssetAudit.Ink.cs)
+            else if (a == "--ink-windows") _inkWin = true;
+            else if (a == "--ink-town") _inkTown = true;
+            else if (a == "--ink-check") _inkCheck = true;   // game-ink (AssetAudit.InkCheck.cs)
+            else if (a == "--ink-board") _inkBoard = true;   // n8 before/after pictures (AssetAudit.InkBoard.cs)
+            else if (a.StartsWith("--ink-variants=")) _inkNames = new HashSet<string>(a[15..].Split(','));
             else if (a == "--landing") _landing = true;   // night 6: the landing now and planned (AssetAudit.Landing.cs)   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
@@ -64,6 +71,20 @@ public partial class AssetAudit : TownTestBase
         float playSize = play1080 * 480f / 1080f;
         Notes.Add($"play1080={play1080:0.0} play640={playSize:0.0} walker={walker:0.00}");
 
+        if (_inkCheck || _inkBoard)
+        {
+            if (_inkCheck) await InkCheck(playSize, play1080, walker);
+            if (_inkBoard) await InkBoard(play1080, walker);
+            return;
+        }
+        if (_inkLab || _inkWin || _inkTown)
+        {
+            if (_inkLab) await InkLab(playSize, walker);
+            if (_inkTown) await InkTown(play1080, _inkNames);
+            if (_inkWin) await InkWindows();
+            Notes.Add($"ink lab dir={_dir}");
+            return;
+        }
         var subjects = Subjects(walker);
         int made = 0;
         foreach (var s in subjects)
