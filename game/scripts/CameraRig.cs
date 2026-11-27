@@ -145,7 +145,7 @@ public partial class CameraRig : Node3D
     }
 
     private Vector2 ViewportSize => GetViewport().GetVisibleRect().Size;
-    private Transform3D MapXf => MapOrigin.GlobalTransform;
+    public Transform3D MapXf => MapOrigin.GlobalTransform;
 
     // ------------------------------------------------------------------ picking
 

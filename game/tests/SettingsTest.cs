@@ -238,6 +238,24 @@ public partial class SettingsTest : Node
         Check(!_rt.Store.ShowCoinNumbers, "coin numbers did not turn off");
         await Click("display.follow");
         Check(!_rt.Store.FollowTown, "follow the town did not turn off");
+
+        // n10: drawing detail (the 3D scale) and the outline, kept in the file and applied at once.
+        Check(_rt.Store.DrawingDetail == 100 && !_rt.Store.OutlineLight && Mathf.Abs(_display.RenderScale - 1f) < 0.01f, "drawing detail 100 and the full outline by default");
+        foreach (int pct in new[] { 85, 70, 50 })
+        {
+            await Click("display.detail", 0.9f);
+            Check(_rt.Store.DrawingDetail == pct, $"drawing detail did not go to {pct} (is {_rt.Store.DrawingDetail})");
+            Near(_display.RenderScale, pct / 100f, $"3D scale at {pct} percent");
+        }
+        await Click("display.outline", 0.9f);
+        Check(_rt.Store.OutlineLight, "the light outline was not chosen");
+        string file = Godot.FileAccess.GetFileAsString(_rt.Store.Path);
+        Check(file.Contains("drawing_detail=50") && file.Contains("outline=\"light\""), "drawing detail and outline not kept in the file");
+        Check(Settings.GameSettings.Load(_rt.Store.Path) is var back && back.DrawingDetail == 50 && back.OutlineLight, "drawing detail and outline not read back");
+        for (int k = 0; k < 3; k++) await Click("display.detail", 0.1f);
+        await Click("display.outline", 0.1f);
+        Check(_rt.Store.DrawingDetail == 100 && !_rt.Store.OutlineLight, "drawing detail and outline back to 100 and full");
+        Near(_display.RenderScale, 1f, "3D scale back at 100 percent");
         _notes.Add($"display({_display.Calls.Count} seam calls)");
     }
 }

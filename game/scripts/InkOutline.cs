@@ -16,7 +16,8 @@ public partial class InkOutline : Node3D
     private readonly MeshInstance3D[] _quads = new MeshInstance3D[2];
     private float _lastSize = -1, _lastH = -1;
 
-    private static readonly StringName MetresPerPx = new("metres_per_px"), WidthPx = new("width_px"), InkAlpha = new("ink_alpha");
+    private static readonly StringName MetresPerPx = new("metres_per_px"), WidthPx = new("width_px"), InkAlpha = new("ink_alpha"), MaxStep = new("max_step");
+    private bool _light;
 
     /// <summary>Strength of the soft ink for a number of screen pixels per metre (at 1080p).</summary>
     public static float SoftInk(float pxPerMetre) => Mathf.Clamp(Mathf.Remap(pxPerMetre, 3.5f, 9f, 0.4f, 1f), 0.4f, 1f);
@@ -59,6 +60,10 @@ public partial class InkOutline : Node3D
     /// <summary>Call every frame; only touches the materials when the zoom or window height changed.</summary>
     public void Update(Camera3D cam, Vector2 viewportPx)
     {
+        // n10, the Outline setting: "light" keeps the hard ink at one step (5 depth reads, never 9 to 17), the line's
+        // weight no longer growing with the window (the soft ink is always at one step).
+        bool light = Settings.GameSettings.Current?.OutlineLight ?? false;
+        if (light != _light) { _light = light; _mats[0].SetShaderParameter(MaxStep, light ? 1f : 8f); }
         if (cam.Size == _lastSize && viewportPx.Y == _lastH) return;
         if (viewportPx.Y < 1f || cam.Size <= 0f) return; // zero-height window: keep the last widths, never infinity
         _lastSize = cam.Size; _lastH = viewportPx.Y;

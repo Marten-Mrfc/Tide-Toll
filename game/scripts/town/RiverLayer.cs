@@ -61,6 +61,7 @@ public partial class RiverLayer : Node3D
     private void Clear()
     {
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
+        Words.Clear();
         _plan = null;
         _sheep.Clear(); _sheepHeads.Clear();
         _raft = _lift = _tidePost = _seal = null;
@@ -218,7 +219,18 @@ public partial class RiverLayer : Node3D
         return root;
     }
 
-    private static Label3D StakeLabel(string text, Vector3 at) => new()
+    /// <summary>n10 (Q1): the stakes' words, in the order they were made (the tree's order): TownHud reads this list
+    /// instead of searching the river's tree.</summary>
+    public readonly List<Label3D> Words = new();
+
+    private Label3D StakeLabel(string text, Vector3 at)
+    {
+        var l = NewStakeLabel(text, at);
+        Words.Add(l);
+        return l;
+    }
+
+    private static Label3D NewStakeLabel(string text, Vector3 at) => new()
     {
         Name = "What", Visible = false, Text = text, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
         PixelSize = 0.03f, Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.9f), OutlineSize = 14,

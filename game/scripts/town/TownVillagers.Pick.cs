@@ -60,6 +60,43 @@ public partial class TownVillagers
         return bestD <= radius ? best : -1;
     }
 
+    // n10 (research Q13): the hover's pick is taken again only when something it reads changed: the pointer, the
+    // radius, the hovered one, the camera (its transform, size and the viewport), the map's place, the figures' height
+    // or any drawn villager's feet. Otherwise the last answer is the same answer.
+    private Vector2 _pkP, _pkVp;
+    private float _pkR, _pkSize, _pkH;
+    private int _pkKeep = -2, _pkN = -1, _pkResult = -1;
+    private Transform3D _pkCam, _pkMap;
+    private readonly float[] _pkXY = new float[2 * Capacity];
+    private readonly bool[] _pkSeen = new bool[Capacity];
+    /// <summary>Picks answered from the last one (tests and the notes).</summary>
+    public long PicksReused { get; private set; }
+
+    public int PickCached(CameraRig rig, Vector2 p, float radius, int keep)
+    {
+        var cam = rig.Camera;
+        var ct = cam.GlobalTransform;
+        var mt = rig.MapXf;
+        var vp = cam.GetViewport().GetVisibleRect().Size;
+        float size = cam.Size, h = FigureHeight;
+        int n = Drawn;
+        bool same = p == _pkP && radius == _pkR && keep == _pkKeep && ct == _pkCam && mt == _pkMap && size == _pkSize
+                    && vp == _pkVp && h == _pkH && n == _pkN;
+        for (int i = 0; i < n; i++)
+        {
+            float x = _x[i] + _ox[i], y = _y[i] + _oy[i];
+            if (_pkXY[2 * i] != x || _pkXY[2 * i + 1] != y || _pkSeen[i] != _seen[i])
+            {
+                same = false;
+                _pkXY[2 * i] = x; _pkXY[2 * i + 1] = y; _pkSeen[i] = _seen[i];
+            }
+        }
+        if (same) { PicksReused++; return _pkResult; }
+        _pkP = p; _pkR = radius; _pkKeep = keep; _pkCam = ct; _pkMap = mt; _pkSize = size; _pkVp = vp; _pkH = h; _pkN = n;
+        _pkResult = Pick(rig, p, radius, keep);
+        return _pkResult;
+    }
+
     /// <summary>Screen point of a villager's middle (tests point at it as a player would).</summary>
     public Vector2 ScreenOf(CameraRig rig, int i) => rig.LocalToScreen(FeetLocal(i) + new Vector3(0, FigureHeight * 0.45f, 0));
 
