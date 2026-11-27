@@ -30,6 +30,13 @@ EVENTS = [  # event, stem, variants, volume_db vs coin, loop, pitch_vary (False 
     ("page-turn", "page-turn", 3, -3.0, False, True),
     ("mill", "mill-loop", 1, -6.0, True, False),
     ("charter-granted", "charter", 1, 4.0, False, False),
+    # Night 3 (feel-sounds.py): the small rewards on the map
+    ("coin-hop", "coin-hop", 4, -3.0, False, True),
+    ("dust-puff", "dust-puff", 3, -4.0, False, True),
+    ("grit", "grit", 3, -2.0, False, True),
+    ("ripple", "ripple", 3, -3.0, False, True),
+    ("bell-creak", "bell-creak", 2, -3.0, False, True),
+    ("gift-ring", "gift-ring", 2, -1.0, False, False),
 ]
 
 coin = np.mean([A.momentary_max_lufs(A.read_wav(asset_path(f"audio/sfx/coin-{i:02d}.wav"))[0]) for i in range(1, 7)])

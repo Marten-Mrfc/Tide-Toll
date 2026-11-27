@@ -69,7 +69,20 @@ public partial class RiverAudio : Node
         }
         _p = new AudioStreamPlayer { Name = "RiverFx", Bus = "Effects", VolumeDb = TownAudio.CoinDb, MaxPolyphony = 4 };
         AddChild(_p);
-        drv.Replaced += () => { _seen = false; _phase = Array.Empty<BoatPhase>(); };
+        drv.Replaced += () => { _sealDue = 0; _seen = false; _phase = Array.Empty<BoatPhase>(); };
+    }
+
+    /// <summary>Seconds after the Seal event at which its sound plays anyway if no banner asked for it.</summary>
+    public const double SealWait = 8;
+    private double _sealDue;
+
+    /// <summary>A large message's sound that lives in the river table (the seal): plays now, and the Seal event's
+    /// own wait is over. False when it is not a river cue.</summary>
+    public bool Large(string id)
+    {
+        if (!_cues.ContainsKey(id)) return false;
+        if (id == "seal-granted") _sealDue = 0;
+        return Cue(id, 2);
     }
 
     /// <summary>Plays a cue unless it played within the gap; counted either way it plays.</summary>
@@ -105,10 +118,13 @@ public partial class RiverAudio : Node
                 case TownEventKind.FerryDocked: Cue("ferry-rope", 0.5); break;
                 case TownEventKind.DrawbridgeRaised: Cue("drawbridge-raise", 0.5); break;
                 case TownEventKind.DrawbridgeLowered: Cue("drawbridge-lower", 0.5); break;
-                case TownEventKind.Seal: Cue("seal-granted", 2); break;
+                // Night 3: the seal sounds when its banner "The borough seal" appears (TownHud passes "seal-granted"
+                // to TownAudio.Large, which hands it here). Should no banner ask within SealWait, it plays then.
+                case TownEventKind.Seal: _sealDue = _now + SealWait; break;
                 case TownEventKind.Purchase when e.Item == ShopItemKind.Crane: Cue("crane"); break;
             }
         }
+        if (_sealDue > 0 && _now >= _sealDue) { _sealDue = 0; Cue("seal-granted", 2); }
         if (!t.InRiverAge) return;
         // Boats moored and cast off: their phase changes.
         int n = t.BoatCount;
