@@ -47,6 +47,14 @@ public partial class TownVillagers
         y += MathF.Cos(h) * LineEdgeCells;
     }
 
+    /// <summary>The one heading a whole line is moved aside by: the lane's at the line's front. One shift for all keeps
+    /// the gaps between places exactly as along the lane (a shift by each point's own heading opens them on a bend).</summary>
+    private float EdgeHeading(Town t, int w, float gap)
+    {
+        WorkSites.LinePoint(t, w, _lane[w], gap, out _, out _, out float h);
+        return h;
+    }
+
     private static bool IsWorkplaceKind(PlotKind k) => k is PlotKind.Well or PlotKind.Field or PlotKind.Mill;
 
     /// <summary>Once a frame: the lane of each workplace's line, kept while its line stands (so the line never jumps lanes).</summary>
@@ -100,7 +108,7 @@ public partial class TownVillagers
             }
             float gap = LineStepCells(t.LoadLevel);
             WorkSites.LinePoint(t, w, _lane[w], gap * (1f + _qd[i]), out float lx, out float ly, out float lh);
-            ToEdge(ref lx, ref ly, lh);
+            ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
             _lineX[i] = lx; _lineY[i] = ly;
             tx = lx; ty = ly;
             if (_qd[i] < 0.5f)
@@ -128,7 +136,7 @@ public partial class TownVillagers
                 {
                     _holders[w]++;
                     WorkSites.LinePoint(t, w, _lane[w], tail, out float lx, out float ly, out float lh);
-                    ToEdge(ref lx, ref ly, lh);
+                    ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
                     tx = lx; ty = ly; face = HeadingYaw(lh);
                     return true;
                 }
