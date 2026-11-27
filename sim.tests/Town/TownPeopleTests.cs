@@ -222,4 +222,20 @@ public class TownPeopleTests
         for (int k = 0; k < 60 * TownRules.TickHz; k++) { t.Step(); u.Step(); }
         Assert.Equal(TownSave.Save(t), TownSave.Save(u));
     }
+
+    /// <summary>What ships in step 1: the second age plays exactly as before. A saved second-age town (written by the code
+    /// before n7) played on 10 minutes by the payback bot gives the same save as with every n7 switch off (the hash below
+    /// was printed with them off: `people --replay ... --minutes 10 --millfix 0`).</summary>
+    [Fact]
+    public void TheSecondAgePlaysAsBeforeFromASavedTown()
+    {
+        Assert.False(TownRules.MillWaitCountsOnTheWayInSecondAge);
+        Assert.False(TownRules.SiteWaitCountsOnTheWay);
+        Assert.Equal(0, TownRules.LeanBonus);
+        var t = TownSave.Load(Data("town-v3-seed3-river6min.json"));
+        var bot = new TownBot(BotKind.Payback, 3) { PlayOn = true };
+        for (long k = 0; k < 10L * 60 * TownRules.TickHz; k++) { t.Step(); bot.Act(t); }
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TownSave.Save(t)));
+        Assert.Equal("C2A8E8351FA55DF94E3D8EB4B13F8082CA217FD37149BE761FC76F452AAB8285", Convert.ToHexString(hash));
+    }
 }

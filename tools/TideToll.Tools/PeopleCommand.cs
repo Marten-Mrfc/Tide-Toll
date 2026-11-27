@@ -32,8 +32,21 @@ public static class PeopleCommand
         string which = o.TryGetValue("bot", out var b) ? b : "all";
         bool river = o.ContainsKey("river");
         int max = o.TryGetValue("max", out var m) ? int.Parse(m, Inv) : 120;
+        if (o.TryGetValue("replay", out var rf))
+        {
+            // n7: play a saved town on with the payback bot for --minutes and print the final save's SHA-256 (the rules compared).
+            if (o.TryGetValue("millfix", out var mf0)) { TownRules.MillWaitCountsOnTheWay = mf0 != "0"; TownRules.MillWaitCountsOnTheWayInSecondAge = mf0 == "2"; }
+            var town = TownSave.Load(System.IO.File.ReadAllText(rf));
+            var rb = new TownBot(BotKind.Payback, town.Plan.Seed) { PlayOn = true };
+            int mins = o.TryGetValue("minutes", out var mm0) ? int.Parse(mm0, Inv) : 5;
+            for (long k = 0; k < (long)mins * 60 * TownRules.TickHz; k++) { town.Step(); rb.Act(town); }
+            var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TownSave.Save(town)));
+            Console.WriteLine($"REPLAY {rf} {mins} min: {Convert.ToHexString(hash)}");
+            return 0;
+        }
         if (o.TryGetValue("lean", out var ln)) TownRules.LeanBonus = double.Parse(ln, Inv);
         if (o.TryGetValue("sitefix", out var sf)) TownRules.SiteWaitCountsOnTheWay = sf != "0";
+        if (o.TryGetValue("millfix", out var mf)) { TownRules.MillWaitCountsOnTheWay = mf != "0"; TownRules.MillWaitCountsOnTheWayInSecondAge = mf == "2"; }
         var bots = new List<BotKind>();
         if (which is "all" or "payback") bots.Add(BotKind.Payback);
         if (which is "all" or "cheapest") bots.Add(BotKind.Cheapest);

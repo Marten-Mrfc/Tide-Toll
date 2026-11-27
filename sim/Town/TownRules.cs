@@ -129,8 +129,14 @@ public static class TownRules
     // A villager's own kind of work (Town.LeaningOf, from the seed and its number) counts this much more when it chooses a job.
     // 0 for now (the lead, n7 follow-up: 0.10 pushed the play-through 1.7 min and tipped pacing bands); step 2 gives it meaning.
     public static double LeanBonus = 0;
-    // n7: the second age's blind spot: the pasture's and the weaver's waits count those on their way there (false: as before).
-    public static bool SiteWaitCountsOnTheWay = true;
+    // n7: the blind spots of the expected wait (what ships with step 1: the first age's mill fix only; the second age exactly
+    // as before, until that age is retuned with its own spreading switched on; measured in docs/plans/n7/people-progress.md).
+    // The mill's wait counts flour pickers still at or on the way to the field: in the first age (no river age yet) ...
+    public static bool MillWaitCountsOnTheWay = true;
+    // ... and in the second age (off: as before; on, the second age gets shorter and tips its pacing bands).
+    public static bool MillWaitCountsOnTheWayInSecondAge = false;
+    // The pasture's and the weaver's waits count those on their way there (off: as before).
+    public static bool SiteWaitCountsOnTheWay = false;
 
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;

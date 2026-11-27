@@ -174,7 +174,7 @@ public sealed partial class Town
         var w = S.Workplaces[wi];
         int committed = w.Busy + w.QueueLen;
         var kind = Plan.Plots[w.Plot].Kind;
-        bool mill = kind == PlotKind.Mill;
+        bool mill = kind == PlotKind.Mill && (S.River == null ? TownRules.MillWaitCountsOnTheWay : TownRules.MillWaitCountsOnTheWayInSecondAge);
         foreach (var o in S.Villagers)
         {
             if (o == self) continue;
