@@ -381,3 +381,10 @@ Something cheap is always on sale in the first age, so a player who buys wheneve
 ### Not done
 
 - Villagers housed in the riverside and far-bank cottages still keep a first-age cottage as their errand home (decision 6 of the green pass is not built; green pass 2 left it out too: not safe to build and test in its time box).
+
+## Added for villagers as people (n7 step 1)
+
+- `VillagerView` also has `Dir` (+1 walking A to B, -1 B to A), `Stage`, `Slot` (work spot, -1 none), `WorkLeft` (seconds), `Leaning`, `Trips`, `Earned`, `RiverHome` (-1 unless a river cottage), `OnRiver`. Output only.
+- `town.VillagerName(i)`: a plain given name, with a by-name when an earlier villager has it ("Wat the younger"); kept once made. `Town.VillagerNameOf(seed, id)`, `Town.LeaningOf(seed, id)` and `town.VillagerLeaning(i)` are pure functions of the seed and the number (never saved). `Leaning`: None, Water, Grain, Flour, Wool, Cloth; `Town.LeaningOfJob(job)`.
+- Rule: a villager's own kind of work counts `TownRules.LeanBonus` (10 percent) more in its choice. The mill's expected wait counts flour pickers still at or on the way to the field; the pasture's and the weaver's waits count those whose itinerary still has work there.
+- Save: `VillagerState.Trips` and `Earned` (missing in an older save: 0); the version numbers stay 2 and 3.

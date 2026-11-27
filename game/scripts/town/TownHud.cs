@@ -136,6 +136,7 @@ public partial class TownHud : CanvasLayer
         BuildChoiceParts();
         BuildSecondRequest();
         BuildNav();
+        BuildPerson();
         BuildTip();
         WireMessageClicks();
         _fullParts = new Control?[] { _ledgerPanel, _shop, _bell, _floatLayer };
@@ -157,6 +158,7 @@ public partial class TownHud : CanvasLayer
         StepFloaters((float)delta);
         ShopFrame((float)delta);
         PaveFrame();
+        PeopleFrame((float)delta);
         ModeFadeFrame((float)delta);
         RequestFrame((float)delta);
         HintFrame((float)delta);
@@ -250,7 +252,7 @@ public partial class TownHud : CanvasLayer
         if (!Visible) return false;
         if (Over(_ledger, p) || Over(_lineCard, p) || Over(_banner, p) || Over(_shop, p) || Over(_bell, p)
             || Over(_slim, p) || Over(_achMark, p) || Over(PauseMark, p) || Over(_home, p) || Over(_agePageMark, p)
-            || Over(_choice, p) || Over(_tide, p))
+            || Over(_choice, p) || Over(_tide, p) || Over(_person, p))
             return true;
         return false;
     }
@@ -315,6 +317,7 @@ public partial class TownHud : CanvasLayer
     {
         _perksSeen.Clear();
         ClearMessages();
+        Select(-1); HoverVillager = -1;
         _hintShown = ""; _hintAge = 0; _hintRoad = -1; _hintPlot = -1; _reqFlash = 0;
         _markerOn = false; _markerA = 0f;
         if (_marker != null && IsInstanceValid(_marker)) _marker.Visible = false;

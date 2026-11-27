@@ -45,6 +45,7 @@ public static class Program
             case "checks": return Checks();
             case "river": return River(opt);
             case "town": return TownCommand.Run(opt);
+            case "people": return PeopleCommand.Run(opt);
             default:
                 Console.WriteLine("usage: TideToll.Tools run|bench|gate|checks [options]  (see Program.cs)");
                 return cmd is "help" or "-h" or "--help" ? 0 : 2;

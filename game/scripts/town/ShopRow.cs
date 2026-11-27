@@ -174,9 +174,11 @@ public sealed partial class ShopRow
     /// <summary>The key cap under the icon, centred on it; line 2 starts after it when a long key name needs the room.</summary>
     public void PlaceKey()
     {
-        float capW = Math.Max(U(20), TownHud.TextWidth(Key) + U(8)), cx = Icon.Position.X + Icon.Size.X / 2f;
+        // n7: by construction from the icon's rectangle as placed (after rounding, at any blend of the row's height): the
+        // cap's centre is the icon's centre and its top is never above the icon's foot, whatever the interface size.
+        float capW = Math.Max(Math.Max(U(20), TownHud.TextWidth(Key) + U(8)), Key.GetMinimumSize().X), cx = Icon.Position.X + Icon.Size.X / 2f;
         float x = Math.Max(U(2), cx - capW / 2f);
-        float ky = Button.Size.Y - U(20);
+        float ky = Math.Max(Button.Size.Y - U(20), Icon.Position.Y + Icon.Size.Y);
         Key.Position = new Vector2(x, ky);
         Key.Size = new Vector2(capW, U(18));
         float l2 = Key.Visible ? Math.Max(_nameX, x + capW + U(6)) : _nameX;

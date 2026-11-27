@@ -41,6 +41,7 @@ public partial class PlayThrough : TownTestBase
             if (a.StartsWith("--seed=")) _seed = int.Parse(a.Substring(7));
             if (a.StartsWith("--speed=")) _speed = double.Parse(a.Substring(8), CultureInfo.InvariantCulture);
             if (a.StartsWith("--cap=")) _capMin = double.Parse(a.Substring(6), CultureInfo.InvariantCulture);
+            if (a.StartsWith("--lean=")) TownRules.LeanBonus = double.Parse(a.Substring(7), CultureInfo.InvariantCulture); // n7: measuring the leaning
         }
         if (_seed != Main.Driver.Seed) { Main.Driver.Reset(_seed); await Frames(3); }
         Main.Driver.SetSpeed(_speed);

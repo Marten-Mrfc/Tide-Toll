@@ -125,6 +125,19 @@ public static class TownRules
     public static double BellDuration = 8;
     public static double BellRest = 40;
 
+    // ---- Villagers as people (n7 step 1) ----
+    // A villager's own kind of work (Town.LeaningOf, from the seed and its number) counts this much more when it chooses a job.
+    // Built, off (0) until the ages are retuned (see docs/plans/n7/people-progress.md); step 2 gives it meaning as a trade.
+    public static double LeanBonus = 0;
+    // n7: the blind spots of the expected wait: built, off until the ages are retuned (see docs/plans/n7/people-progress.md,
+    // "What ships in step 1": what each does to herding and which pacing tests each tips). Off: exactly as the main branch.
+    // The mill's wait counts flour pickers still at or on the way to the field, in the first age (no river age yet) ...
+    public static bool MillWaitCountsOnTheWay = false;
+    // ... and in the second age.
+    public static bool MillWaitCountsOnTheWayInSecondAge = false;
+    // The pasture's and the weaver's waits count those on their way there.
+    public static bool SiteWaitCountsOnTheWay = false;
+
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;
     public static double VillagerPerkCoin = 0.05;    // "Good neighbours": +5 % coin per perk

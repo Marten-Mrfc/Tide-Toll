@@ -22,7 +22,9 @@ public partial class LayoutTest
             // The clock starts at a frame boundary just before the switch is asked for: the frame that begins the switch
             // counts its time from the frame before it, so that is where the 0.2 s begin.
             await Frames(1);
-            ulong t0 = Time.GetTicksMsec(), tEnd = t0, tPrev = t0, gap = 0;
+            // n7 follow-up: timed by the clock the slide runs on (the sum of the frames' own times, GetProcessDeltaTime),
+            // not by the wall clock (Time.GetTicksMsec), which read 186 ms on a busy machine for a slide of 0.2 s of frames.
+            double t0 = 0, tEnd = 0, clock = 0, gap = 0;
             hud.CompactForce = toCompact;
             var heights = new HashSet<int>();
             int frames = 0, overlaps = 0, between = 0, backwards = 0;
@@ -38,9 +40,10 @@ public partial class LayoutTest
                 // The height moves one way only, along the slide's curve (never back, never in a jump to the end).
                 if (toCompact ? h > last + 0.5f : h < last - 0.5f) backwards++;
                 last = h;
-                ulong now = Time.GetTicksMsec();
-                gap = Math.Max(gap, now - tPrev); tPrev = now;
-                if (hud.ShopSwitching) tEnd = now;
+                double dtMs = GetProcessDeltaTime() * 1000.0;
+                clock += dtMs;
+                gap = Math.Max(gap, dtMs);
+                if (hud.ShopSwitching) tEnd = clock;
                 if (h > lo + 0.5f && h < hi - 0.5f) between++;
                 for (int i = 0; i + 1 < hud.ShownItems.Count; i++)
                 {
@@ -50,7 +53,7 @@ public partial class LayoutTest
                 }
                 if (!hud.ShopSwitching && frames > 2) break;
             }
-            float ms = tEnd - t0;
+            float ms = (float)(tEnd - t0);
             string what = $"switch to {(toCompact ? "compact" : "tall")}: {frames} frames over {ms:0} ms, {between} with a height between, heights [{string.Join(",", heights)}], overlaps {overlaps}, backwards {backwards}";
             GD.Print("LAYOUT shop " + what);
             Notes.Add(what);
