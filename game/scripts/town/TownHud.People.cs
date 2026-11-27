@@ -32,6 +32,11 @@ public partial class TownHud
     private Button _pClose = null!;
     private readonly MessageFader _personF = new(0.15f), _tagF = new(0.12f);
     private float _hoverHeld;
+    private int _hoverBefore = -1;
+    private Vector2 _lastPointer = new(-1, -1);
+    private float _lostFor;
+    /// <summary>Seconds after a change of hover during which it does not go back to the villager it left.</summary>
+    public const float FlickerHold = 0.4f;
     private int _tagFor = -1, _cardFor = -1, _cardSig = int.MinValue, _cardCountSig = int.MinValue;
 
     private void BuildPerson()
@@ -125,7 +130,14 @@ public partial class TownHud
         var p = _root.GetGlobalMousePosition();
         bool gui = GetViewport().GuiGetHoveredControl() != null;
         int h = gui ? -1 : PersonTarget(p);
-        if (h != HoverVillager) { HoverVillager = h; _hoverHeld = 0f; }
+        // No flicker: the hover does not go back to the one it has just left within FlickerHold seconds while it is on
+        // someone (two neighbours walking under a still pointer change places at the edge of the radius).
+        if (h >= 0 && h == _hoverBefore && HoverVillager >= 0 && _hoverHeld < FlickerHold) h = HoverVillager;
+        // Under a still pointer a figure that steps just out of reach keeps the hover a moment (it may step back).
+        if (h < 0 && HoverVillager >= 0 && !gui && p == _lastPointer && _lostFor < FlickerHold && PickingOn && !OverInterface(p)) { h = HoverVillager; _lostFor += dt; }
+        else if (h >= 0) _lostFor = 0f;
+        _lastPointer = p;
+        if (h != HoverVillager) { _hoverBefore = HoverVillager; HoverVillager = h; _hoverHeld = 0f; }
         else if (h >= 0) _hoverHeld += dt;
         _main.Villagers.HoverId = h;
         if (SelectedVillager >= t.VillagerCount) Select(-1);

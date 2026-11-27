@@ -129,3 +129,51 @@ Run one by one with the commands of `tools/check.sh`, each heavy one under the l
 - `Trips` and `Earned` are per villager already; trade skill or "earned in trade" can count in the same places (`Deliver`, `DeliverLanding`, `DeliverMarket`).
 - The second-age thresholds (above) must be dealt with before trades are tuned, or a poorer role setup is rewarded with a shorter age.
 - The save: a stored `Trade` per villager is a field like the counters (missing: Hand).
+
+## Follow-up (the lead's three points, 27 November afternoon)
+
+### 2. The pacing: three settings measured
+
+New switch `TownRules.SiteWaitCountsOnTheWay` (the second age's fix; the mill's fix stays on in every setting). `people --seeds 1-10 --river --lean x --sitefix 0|1`; herding is payback / cheapest. Tests: the suites that move (`TownPacingTests`, `TownRiverPacingTests`, `TownRulesV3Tests`, `TownPeopleTests`; the rest of `sim.tests` passed in every earlier run). The play-through is the first age only, so the second-age switch does not touch it.
+
+| setting | `sim.tests` failing (name: message) | play-through (seed 1) | herd first age | herd second age |
+| --- | --- | --- | --- | --- |
+| (i) bonus 0, both fixes | `TheSecondAgeTakes20To35MinutesForTheBuyers`: seed 8 random affordable 19.4 minutes (floor 20, 0.6 short); `TollStepsPayBackBeforeTheSeal`: seed 8 random affordable spent 24599, earned 2250 (the same short run) | `charter=33.9min buys=201` | 22 % / 16 % | 41 % / 32 % |
+| (ii) bonus 0, the mill's fix only | `BoatsPayTollsBeforeTheSeal`: seed 2 best payback 3 tolls in 3.4 minutes (floor 3.5); `NeverMoreThan60SecondsWithNothingAffordable`: seed 10 best payback 67 s from 5.1 min (7 s over) | `charter=33.9min buys=201` | 22 % / 16 % | 52 % / 36 % |
+| (iii) bonus 0.10, the mill's fix only | `EveryBotFinishesTheAgeInTime`: seed 7 saver charter at 24.7 min (floor 25, 0.3 short); `BoatsPayTollsBeforeTheSeal`: seed 7 cheapest first 3 tolls in 3.4 minutes (floor 3.5) | `charter=35.6min buys=200` | 19 % / 16 % | 50 % / 37 % |
+| before (for comparison) | none | `charter=33.9min buys=201` | 26 % / 17 % | 55 % / 46 % |
+
+**None of the three passes every test**, so by the lead's rule nothing is chosen by me: I did not hunt for a value. Every miss is one run at a band's edge, and every one of them is in or because of the second age except (iii)'s saver charter. Even (ii) (bonus 0, only the mill's first-age fix) moves the second age's runs across two edges, because the mill's wait is also used by the second age's flour boat job. The branch is left at (i) (`LeanBonus = 0`, both fixes on): it keeps the play-through exactly as before and spreads the town most of the three; both its misses are one seed's random bot sealing in 19.4 minutes, the poorer-town-sooner effect. The lead decides between (i), (ii), (iii) or a band.
+
+The card says a leaning only while it counts (`town.LeaningCounts`, the bonus above 0): with the bonus at 0 the card has four lines (name, home, doing, counts). Names and leanings are still made (the leaning waits for step 2's trades).
+
+### 1. game-motion
+
+See "Check steps (follow-up)" below for the result on the merged code. What was found before the merge: the allocation (29832 B in frame 221 of the banner's recording, the same on every run) stays with the villagers' hover and pick switched off and with round 6's spread in place of the bodies pass; a probe without the HUD's `_Input` override stopped earlier on a CPU gate (machine load), so it did not reach the banner. The bisect on my own commits (`50bb865`, `4b91e0a`, `6b2ca95`) was started twice and stopped both times while waiting more than 25 minutes for the heavy-run lock (another builder's chained picture runs held it from 13:27), so it is not done.
+
+### 3. Pictures
+
+The ring now lies just outside the soft shadow (radii 0.98 to 1.16, selected 0.96 to 1.22, in the wheat accent). New pictures of the final code: see below.
+
+### Check steps (follow-up, on the merged code, setting (i))
+
+`claude/prototype-1` merged once (`2c14096`); the one conflict was the name list at the end of `tools/check.sh` (every step and name kept, `game-people` added).
+
+- simulation tests: **Failed 2, Passed 266**: `TheSecondAgeTakes20To35MinutesForTheBuyers` (seed 8 random 19.4 minutes) and `TollStepsPayBackBeforeTheSeal` (seed 8 random), setting (i)'s two.
+- game-build: 0 errors. game-smoke: `SMOKE PASS renderer=mobile game_s=30.0 coin=4 trips=1 uploads=75`. game-town: `TOWN PASS faint=0.40 maxstep=0.008 worn=0.95 ...`. game-save: `SAVE PASS autosave-clock=0.63/0.63s level 2 paved 1 villagers 4`.
+- game-perf: `PERF PASS`. game-playthrough: **`PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102`**. game-river: `RIVER PASS ... checks=419 ... level=28 villagers=36`.
+- game-motion: **the allocation gate passes now**: `MOTION PASS ... fps=60 transitions=13 alloc-max=5672B cpu-max=4.74ms`, and 30 fps `alloc-max=5672B cpu-max=5.06ms`; at 120 fps `FAIL: esc-during-return: frame 30 took 7.55 ms of CPU (gate 6)` (the processor-time gate, machine load). The banner's 29832 B is gone after the merge; I did not find it in my own code (see above), so I cannot name the cause: either the main branch fixed it, or something of mine that the merge changed. The bisect remains undone.
+- game-work: `WORK RATES PASS` (60: pairs=622 gap=1.98-2.30m villagerbytes=2). game-work-places: `WORK PLACES PASS` at 60, 30 and 120 fps.
+- game-layout: **FAIL**, 9 failures, all `S1-keycap u35 1280x720@80: row '...' key cap ... is not under its icon` (shop rows at one canvas in one state); nothing about the Person zone. Not looked into: the shop rows are not my code, and the main branch's shop changed in the merge; no other worktree has a game-layout log to compare.
+- game-people: see the last lines of this page.
+- game-ink: see the last lines of this page.
+- game-people: `PEOPLE RATES PASS`; 60 fps `picked=21/21 shared=0 passpairs=9790 sidefails=0 follow=1.15m/0.00s spot=99.00m/0.00s flicker=0 bytes=613 villagerbytes=1 pickbytes=0`. Before that it failed once at 60 and 120 fps on the merged town ("the hover does not flicker between neighbours (1 times)"). Fixed in the hover: it does not go back within 0.4 s to the villager it has just left, and under a still pointer a figure that steps just out of reach keeps the hover for up to 0.4 s.
+- game-ink: `ASSET AUDIT PASS play1080=46.0 play640=20.4 walker=1.10 ... villagers-group=0.357`.
+
+### Pictures of the final code (looked at full size; `docs/plans/n7/people/*.jpg`)
+
+- `people-hover.jpg`: Joss with the wider wheat ring just outside his shadow and the tag "Joss". It reads at the normal view now.
+- `people-card*.jpg`: the card has four lines with the bonus at 0 (Joss / Lives by the well lane / On the way to the well / 160 trips · earned (coin) 1,921). The cross sits in the top right corner, inside the card. With four lines there is about 20 units of empty paper at the card's foot.
+- `people-road-before*.jpg` and `people-road-after*.jpg`: a moment when two walkers pass each other on the lane west of the well. After, they hold opposite sides of the cobbles; the before picture has them nearer the middle. Still a modest difference at the normal view, where a figure is wider than the road.
+
+The pictures were taken just before the last hover fix, which does not change what they show.

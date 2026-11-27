@@ -17,6 +17,7 @@ public partial class PeopleShots : TownTestBase
     protected override string Marker => "PEOPLE SHOTS PASS";
     protected override Vector2I WindowSize => GetWindow().Size;
     private string _dir = "";
+    private Vector3 _passAt;
 
     protected override async Task Run()
     {
@@ -31,14 +32,20 @@ public partial class PeopleShots : TownTestBase
         Main.Driver.SetPaused(false);
         await Frames(90);
         var vil = Main.Villagers; var hud = Main.Hud;
-        // The busiest road, at the normal view.
-        int road = T.BusiestRoad;
-        var rd = T.Plan.Roads[Math.Max(0, road)];
+        // A road where people pass each other: run on until one road has walkers both ways, near its middle.
+        int road = -1;
+        for (int f = 0; f < 60 * 120 && road < 0; f++)
+        {
+            await Frames(1);
+            road = PassingRoad();
+        }
+        if (road < 0) road = Math.Max(0, T.BusiestRoad);
+        var rd = T.Plan.Roads[road];
         rd.At(rd.Length / 2, out double rx, out double ry, out _);
-        var mid = new Vector3((float)rx * TownGround.Cell, 0, (float)ry * TownGround.Cell);
+        var mid = _passAt != Vector3.Zero ? _passAt : new Vector3((float)rx * TownGround.Cell, 0, (float)ry * TownGround.Cell);
         Main.Rig.UserMoved = true;
         Main.Rig.LookAt(mid, 46f, instant: true);
-        await Frames(60);
+        await Frames(2);
         // The town held still from here (the same people in every picture).
         Main.Driver.SetPaused(true);
         await Frames(10);
@@ -77,6 +84,27 @@ public partial class PeopleShots : TownTestBase
         }
         TownVillagers.OldSpread = false;
         Notes.Add($"dir={_dir} villagers={T.VillagerCount} road={road} who={who} name={T.VillagerName(who)}");
+    }
+
+    /// <summary>A road with at least one walker each way within two cells of each other away from its ends (-1 none).</summary>
+    private int PassingRoad()
+    {
+        var vil = Main.Villagers;
+        int n = Math.Min(T.VillagerCount, TownVillagers.Capacity);
+        for (int i = 0; i < n; i++)
+        {
+            int r = vil.RoadOf(i);
+            if (r < 0) continue;
+            var a = T.Villager(i); var rd = T.Plan.Roads[r];
+            if (a.Dist < 2 || a.Dist > rd.Length - 2) continue;
+            for (int j = 0; j < n; j++)
+            {
+                if (vil.RoadOf(j) != r) continue;
+                var b = T.Villager(j);
+                if (b.Dir != a.Dir && Math.Abs(b.Dist - a.Dist) < 2.0) { _passAt = new Vector3((float)a.X * TownGround.Cell, 0, (float)a.Y * TownGround.Cell); return r; }
+            }
+        }
+        return -1;
     }
 
     private void Crop(string name, Vector2 centre, int w, int h, int scale = 1)
