@@ -199,6 +199,71 @@
       "measured_vs_coin_db": 4.2,
       "loop": false,
       "pitch_vary": false
+    },
+    "coin-hop": {
+      "files": [
+        "assets/audio/sfx/coin-hop-01.wav",
+        "assets/audio/sfx/coin-hop-02.wav",
+        "assets/audio/sfx/coin-hop-03.wav",
+        "assets/audio/sfx/coin-hop-04.wav"
+      ],
+      "volume_db": -3.0,
+      "measured_vs_coin_db": -3.0,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "dust-puff": {
+      "files": [
+        "assets/audio/sfx/dust-puff-01.wav",
+        "assets/audio/sfx/dust-puff-02.wav",
+        "assets/audio/sfx/dust-puff-03.wav"
+      ],
+      "volume_db": -4.0,
+      "measured_vs_coin_db": -4.0,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "grit": {
+      "files": [
+        "assets/audio/sfx/grit-01.wav",
+        "assets/audio/sfx/grit-02.wav",
+        "assets/audio/sfx/grit-03.wav"
+      ],
+      "volume_db": -2.0,
+      "measured_vs_coin_db": -2.0,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "ripple": {
+      "files": [
+        "assets/audio/sfx/ripple-01.wav",
+        "assets/audio/sfx/ripple-02.wav",
+        "assets/audio/sfx/ripple-03.wav"
+      ],
+      "volume_db": -3.0,
+      "measured_vs_coin_db": -3.0,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "bell-creak": {
+      "files": [
+        "assets/audio/sfx/bell-creak-01.wav",
+        "assets/audio/sfx/bell-creak-02.wav"
+      ],
+      "volume_db": -3.0,
+      "measured_vs_coin_db": -3.0,
+      "loop": false,
+      "pitch_vary": true
+    },
+    "gift-ring": {
+      "files": [
+        "assets/audio/sfx/gift-ring-01.wav",
+        "assets/audio/sfx/gift-ring-02.wav"
+      ],
+      "volume_db": -1.0,
+      "measured_vs_coin_db": -1.0,
+      "loop": false,
+      "pitch_vary": false
     }
   }
 }

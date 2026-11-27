@@ -101,6 +101,16 @@ public partial class TownAudio : Node
         string id = _largeQ[0];
         for (int i = 1; i < _largeN; i++) _largeQ[i - 1] = _largeQ[i];
         _largeN--;
+        if (!_cues.ContainsKey(id))
+        {
+            // A river sound asked for by its message (the borough seal): RiverAudio plays it.
+            _riverAudio ??= GetParent()?.GetNodeOrNull<RiverAudio>("RiverAudio");
+            if (_riverAudio == null || !_riverAudio.Large(id)) return;
+            LargeSounds++;
+            if (_lastLarge > -10) LeastLargeGap = Math.Min(LeastLargeGap, _now - _lastLarge);
+            _lastLarge = _now;
+            return;
+        }
         if (!Cue(id, _largeP, ref LargeSounds)) return;
         if (id == "level-reached" || id == "gift-arrives") Levels++;
         else if (id == "charter-granted") Charters++;
@@ -108,6 +118,11 @@ public partial class TownAudio : Node
         if (_lastLarge > -10) LeastLargeGap = Math.Min(LeastLargeGap, _now - _lastLarge);
         _lastLarge = _now;
     }
+
+    /// <summary>Night 3 (feel): a reward's sound on the map (TownFeel), never more often than its least gap.</summary>
+    public bool Feel(string id) => Cue(id, _world, ref FeelSounds);
+    public int FeelSounds;
+    private RiverAudio? _riverAudio;
 
     public void UiHover() => Cue("ui-hover", _ui, ref UiSounds);
     public void UiPress() => Cue("ui-press", _ui, ref UiSounds);

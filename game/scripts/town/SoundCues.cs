@@ -39,6 +39,9 @@ public static class SoundCues
         ("ui-hover", "ui-hover-0", 2, -9f, true), ("ui-tab", "ui-tab-0", 3, -4f, true),
         ("book-close", "book-close-0", 2, -1f, true), ("book-open", "book-open-0", 2, -1f, true),
         ("page-turn", "page-turn-0", 3, -3f, true), ("charter-granted", "charter-0", 1, 4f, false),
+        // Night 3 (feel): the small rewards on the map (TownFeel)
+        ("coin-hop", "coin-hop-0", 4, -3f, true), ("dust-puff", "dust-puff-0", 3, -4f, true), ("grit", "grit-0", 3, -2f, true),
+        ("ripple", "ripple-0", 3, -3f, true), ("bell-creak", "bell-creak-0", 2, -3f, true), ("gift-ring", "gift-ring-0", 2, -1f, false),
     };
 
     /// <summary>Least seconds between plays of one event (hover and presses can come fast; level sounds never overlap).</summary>
@@ -46,7 +49,9 @@ public static class SoundCues
     {
         "ui-hover" => 0.07, "ui-press" or "ui-tab" or "page-turn" => 0.05,
         "upgrade-bought" or "road-paved-gravel" or "road-paved-cobbles" or "cottage-extended" => 0.09,
-        "cannot-afford" => 0.35, "achievement" => 1.2, "level-reached" or "gift-arrives" => 0.8,
+        "cannot-afford" => 0.35,
+        // Night 3 (feel): with thirty villagers these come often; one at a time, never a wall.
+        "coin-hop" => 0.3, "dust-puff" => 0.4, "grit" => 0.5, "ripple" => 0.35, "bell-creak" => 0.6, "gift-ring" => 0.9, "achievement" => 1.2, "level-reached" or "gift-arrives" => 0.8,
         _ => 0.25,
     };
 
@@ -89,6 +94,12 @@ public static class SoundCues
         }
         if (!d.ContainsKey("mill") && ResourceLoader.Exists("res://assets/audio/sfx/mill-loop.ogg"))
             d["mill"] = new SoundCue { Id = "mill", Streams = new[] { GD.Load<AudioStream>("res://assets/audio/sfx/mill-loop.ogg") }, VolumeDb = -6f, Loop = true };
+        // Trail dust shares the puff's files at a longer gap and a little lower (it can come every few frames).
+        if (d.TryGetValue("dust-puff", out var dp))
+            d["dust-puff-trail"] = new SoundCue { Id = "dust-puff-trail", Streams = dp.Streams, VolumeDb = dp.VolumeDb - 4f, PitchVary = true, MinGap = 1.4 };
+        // A wader on the ford rings a stone every few frames: the ripple's files at a longer gap, so it laps, not rattles.
+        if (d.TryGetValue("ripple", out var rp))
+            d["ripple-ford"] = new SoundCue { Id = "ripple-ford", Streams = rp.Streams, VolumeDb = rp.VolumeDb, PitchVary = true, MinGap = 0.6 };
         return d;
     }
 }

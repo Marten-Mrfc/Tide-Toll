@@ -84,7 +84,8 @@ public partial class RiverTest : TownTestBase
         Check(Main.TownExtent().Size.X > extent0 * 1.05f || Main.TownExtent().Size.X > 60, "the view widened to the riverside");
         await Until(() => Main.River.SealShown, 120, "the seal stone");
         Check(Main.River.SealArriving, "the seal stone arrives");
-        Check(Main.RiverSound.Played.ContainsKey("seal-granted"), "the seal sound");
+        // Night 3 (feel): the seal's sound follows its banner (or plays RiverAudio.SealWait s after the event).
+        await Until(() => Main.RiverSound.Played.ContainsKey("seal-granted"), 1200, "the seal sound");
         await Until(() => Main.Hud.SealPageShown, 600, "the seal's page");
         Check(Main.Hud.AgePageText.Contains("The second age is complete") && Main.Hud.AgePageText.Contains("not in the game yet"), "the seal's page: " + Main.Hud.AgePageText);
         await PauseInTheSecondAge();

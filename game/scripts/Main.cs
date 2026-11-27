@@ -136,6 +136,7 @@ public partial class Main : Node3D
         Ink.Attach(Rig.Camera);
 
         Audio = new TownAudio(); AddChild(Audio); Audio.Init(Driver);
+        var feel = new TownFeel(); MapOrigin.AddChild(feel); feel.Init(this);   // night 3: small rewards on the map
         Audio.SetView(() => (Rig.PivotLocal, Rig.Camera.Size, Rig.MapViewSize));
         Summary = new TownSummary(); Summary.Init(GetNode<Node3D>("Book/LeftPage"), Driver);
         Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
