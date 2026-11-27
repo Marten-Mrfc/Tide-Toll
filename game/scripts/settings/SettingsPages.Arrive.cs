@@ -53,9 +53,9 @@ public partial class SettingsPages
         ArrivalEdge = x;
         _pagesMask?.SetRegion(new Rect2(x0, 0, _canvas.X - x0, _canvas.Y));
         Clip(_showing, 0, _canvas.X);
-        float half = x >= spine ? r - spine : spine - l;
-        float lift = Math.Clamp(1f - Math.Abs(x - spine) / Math.Max(1f, half), 0f, 1f);
-        _leaf?.Place(SpreadArea, spine, x, _arrive <= 0f ? 0f : lift);
+        if (_leaf != null) _leaf.From = 1f;
+        _leaf?.Place(SpreadArea, spine, x, _arrive <= 0f ? 0f : LiftAt(x));
+        OrderForLeaf();
         for (int k = 0; k < 4; k++) PlaceRibbon(k, _arrive);
     }
 

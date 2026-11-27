@@ -208,11 +208,14 @@ public partial class TownHud : CanvasLayer
             _lastStage = stage;
         }
         // Night 3: zoomed out the purse stays as one line in its place; with the book in view only navigation stays.
-        _slim.Visible = a < 1f && stage != Main.ZoomStage.Book;
+        // Round L3 review: once the left page comes into view (the page stage) the line would lie on its title, so it
+        // fades out over the first part of the page stage (sizes slim to 1.08 slim) and is gone beyond.
+        float pageA = Math.Clamp((slim * 1.08f - size) / (slim * 0.08f), 0f, 1f);
+        _slim.Visible = a < 1f && pageA > 0f && stage != Main.ZoomStage.Book;
         if (_slim.Visible)
         {
             // Night 3: the purse stays as one line in its own place.
-            _slim.Modulate = new Color(1, 1, 1, 1f - a);
+            _slim.Modulate = new Color(1, 1, 1, (1f - a) * pageA);
         }
         FirstMinuteFrame(dt, size, slim);
     }

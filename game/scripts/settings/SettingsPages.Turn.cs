@@ -19,7 +19,36 @@ public partial class SettingsPages
     public int Turns { get; private set; }
 
     /// <summary>Seconds until the page now turning lands (0 at rest).</summary>
-    public float TurnLeft => _from >= 0 ? (1f - _turnT) * TurnSeconds / (_queued >= 0 ? QueuedPace : 1f) : 0f;
+    public float TurnLeft => _from >= 0 ? (1f - _turnT) * _segD : 0f;
+
+    // The turn now (round L3, speed carried over): the share of the crossing p runs from _segP0 to 1 over _segD seconds,
+    // leaving at _segV0 (shares per second), _turnT of the way through. From rest: 0, nothing, TurnSeconds (the plain curve).
+    private float _segP0, _segV0, _segA0, _segD = TurnSeconds;
+
+    /// <summary>The share of the crossing the leaf has made now (0 at the side being left, 1 landed).</summary>
+    private float TurnShare => Math.Clamp(_segP0 + (1f - _segP0) * BookMotion.Smoother(_turnT) + BookMotion.Carry(_segV0, _segA0, _segD, _turnT * _segD), 0f, 1f);
+    /// <summary>Its speed now, shares per second, and its acceleration.</summary>
+    private float TurnSpeed => (1f - _segP0) * BookMotion.SmootherSpeed(_turnT) / _segD + BookMotion.CarrySpeed(_segV0, _segA0, _segD, _turnT * _segD);
+    private float TurnAccel => (1f - _segP0) * BookMotion.SmootherAccel(_turnT) / (_segD * _segD) + BookMotion.CarryAccel(_segV0, _segA0, _segD, _turnT * _segD);
+
+    /// <summary>The section being left is chosen back: the same leaf turns back from where it is, keeping its speed (so
+    /// it first slows, then comes back), over a time that grows with the way back.</summary>
+    private void TurnBack()
+    {
+        float p = TurnShare, v = TurnSpeed, a = TurnAccel;
+        _segP0 = 1f - p; _segV0 = -v; _segA0 = -a; _segD = TurnSeconds * (0.9f + 0.3f * p);
+        _turnT = 0f;
+    }
+
+    /// <summary>A third section waits: the turn lands in 1 / QueuedPace of its time left, from where it is at its speed.</summary>
+    private void Hurry()
+    {
+        if (_from < 0) return;
+        float p = TurnShare, v = TurnSpeed, a = TurnAccel, left = (1f - _turnT) * _segD / QueuedPace;
+        if (left < 0.06f) return;
+        _segP0 = p; _segV0 = v; _segA0 = a; _segD = left;
+        _turnT = 0f;
+    }
 
     private void StartTurn(int from, int to)
     {
@@ -27,6 +56,7 @@ public partial class SettingsPages
         _showing = to;
         _fwd = to > from;
         _turnT = 0f;
+        _segP0 = 0f; _segV0 = 0f; _segA0 = 0f; _segD = TurnSeconds;
         Turns++;
         for (int k = 0; k < 4; k++) _ribbonFrom[k] = _ribbonOut[k];
         ApplyState();
@@ -35,7 +65,7 @@ public partial class SettingsPages
     private void StepTurn(float dt)
     {
         if (HoldTurnAt >= 0f) _turnT = Math.Clamp(HoldTurnAt, 0f, 1f);
-        else _turnT += Math.Min(dt, BookMotion.MaxStep) * (_queued >= 0 ? QueuedPace : 1f) / TurnSeconds;
+        else _turnT += Math.Min(dt, BookMotion.MaxStep) / _segD;
         if (_turnT < 1f || HoldTurnAt >= 0f) { ApplyState(); return; }
         int landed = _showing;
         _from = -1;
@@ -61,14 +91,47 @@ public partial class SettingsPages
     }
 
     /// <summary>Shows one section over [x0, x1] of the canvas only (its pages stay where they are).</summary>
-    private void Clip(int i, float x0, float x1)
+    private void Clip(int i, float x0, float x1) => Clip(i, x0, x1, x0, x1);
+
+    /// <summary>Draws one section over [x0, x1] of the canvas, of which [s0, s1] is seen (the rest lies under the new page
+    /// and the leaf: the section being left is drawn whole, so that the leaf's front can carry its page).</summary>
+    private void Clip(int i, float x0, float x1, float s0, float s1)
     {
         var c = _clip[i];
         if (c == null) return;
         if (!c.Visible) c.Visible = true;
         // While the spread arrives or leaves, nothing of it is drawn ahead of that leaf (SettingsPages.Arrive.cs).
         x0 = Math.Max(x0, ArrivalFloor);
+        s0 = Math.Max(s0, ArrivalFloor);
+        _seen0[i] = s0; _seen1[i] = Math.Max(s0, s1);
         c.SetRegion(new Rect2(x0, 0, Math.Max(0f, x1 - x0), _canvas.Y));
+    }
+
+    private readonly float[] _seen0 = new float[4], _seen1 = new float[4];
+    /// <summary>The part of the canvas where section i is seen (tests).</summary>
+    private (float x0, float x1) Seen(int i) => (_seen0[i], _seen1[i]);
+    private BackBufferCopy? _underLeaf;
+
+    /// <summary>The order while a leaf turns: the section being left (whole), then, while the leaf shows its front, a
+    /// copy of the screen and the leaf's face reading it (the page it carries, squeezed), then the section coming; while
+    /// it shows its back, the face comes after the section coming (it lies over it). Moves nodes only when the order is
+    /// wrong (a few times a turn). Clipping sections use the back buffer themselves, so the copy sits right before the face.</summary>
+    private void OrderForLeaf()
+    {
+        if (_frame == null || _underLeaf == null || _leaf == null) return;
+        if (_from >= 0 && _clip[_from] is { } a && _clip[_showing] is { } b && a.GetIndex() > b.GetIndex()) _frame.MoveChild(a, b.GetIndex());
+        var face = _leaf.Face;
+        if (_clip[_showing] is { } show)
+        {
+            if (_leaf.ShowsFront)
+            {
+                if (face.GetIndex() > show.GetIndex()) _frame.MoveChild(face, show.GetIndex());
+                if (_underLeaf.GetIndex() != face.GetIndex() - 1) _frame.MoveChild(_underLeaf, face.GetIndex() > _underLeaf.GetIndex() ? face.GetIndex() - 1 : face.GetIndex());
+            }
+            else if (face.GetIndex() < show.GetIndex()) _frame.MoveChild(face, _leaf.GetIndex());
+        }
+        var mode = _leaf.ShowsFront ? BackBufferCopy.CopyModeEnum.Rect : BackBufferCopy.CopyModeEnum.Disabled;
+        if (_underLeaf.CopyMode != mode) _underLeaf.CopyMode = mode;
     }
 
     private void Live_(int i, bool on)
@@ -93,13 +156,13 @@ public partial class SettingsPages
     {
         if (_frame == null) return;
         if (_from < 0) { SetRest(); return; }
-        float e = BookMotion.Smoother(_turnT);
+        float e = TurnShare;
         float l = LeftEdge, r = RightEdge, spine = Spine, w = _canvas.X;
         float x = _fwd ? r - (r - l) * e : l + (r - l) * e;
         LeafEdge = x;
         for (int i = 0; i < 4; i++)
         {
-            if (i == _from) { if (_fwd) Clip(i, 0, x); else Clip(i, x, w); }
+            if (i == _from) { if (_fwd) Clip(i, 0, w, 0, x); else Clip(i, 0, w, x, w); }
             else if (i == _showing) { if (_fwd) Clip(i, x, w); else Clip(i, 0, x); }
             // A section chosen while another turn finishes (it waits its turn): drawn nowhere yet, but it already takes
             // the clicks and the focus, as the chosen section does.
@@ -107,9 +170,9 @@ public partial class SettingsPages
             else if (_clip[i] is { } c && c.Visible) c.Visible = false;
             Live_(i, i == _target);
         }
-        float half = x >= spine ? r - spine : spine - l;
-        float lift = 1f - Math.Abs(x - spine) / Math.Max(1f, half);
-        _leaf?.Place(SpreadArea, spine, x, Math.Clamp(lift, 0f, 1f));
+        if (_leaf != null) _leaf.From = _fwd ? 1f : -1f;
+        _leaf?.Place(SpreadArea, spine, x, LiftAt(x));
+        OrderForLeaf();
         for (int k = 0; k < 4; k++) SetRibbonOut(k, BookMotion.Mix(_ribbonFrom[k], k == _showing ? 1f : 0f, e));
         if (_arrive < 1f) { _pagesMask?.SetRegion(new Rect2(ArrivalFloor, 0, _canvas.X - ArrivalFloor, _canvas.Y)); for (int k = 0; k < 4; k++) PlaceRibbon(k, _arrive); }
     }
@@ -133,8 +196,18 @@ public partial class SettingsPages
         }
         LeafEdge = _fwd ? LeftEdge : RightEdge;
         _leaf?.Place(SpreadArea, Spine, Spine, 0f);
+        OrderForLeaf();
         for (int k = 0; k < 4; k++) SetRibbonOut(k, k == _showing ? 1f : 0f);
         ApplyArrival();
+    }
+
+    /// <summary>How far the leaf stands up with its free edge at x: the leaf turns on an arc about the spine, so its edge
+    /// seen from above is at cos(angle) of the page's width and it stands up by sin(angle).</summary>
+    private float LiftAt(float x)
+    {
+        float spine = Spine, half = x >= spine ? RightEdge - spine : spine - LeftEdge;
+        float c = Math.Clamp(Math.Abs(x - spine) / Math.Max(1f, half), 0f, 1f);
+        return MathF.Sqrt(1f - c * c);
     }
 
     private void SetRibbonOut(int i, float v)

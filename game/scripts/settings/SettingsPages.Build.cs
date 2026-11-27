@@ -27,10 +27,12 @@ public partial class SettingsPages
         _frame.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_frame);
 
-        float m = 16 * s, ribbonOut = 150 * s, lip = 10 * s;
+        // Round L3: a margin of at least 40 to the window, the navigation row's room at the foot (zoomed all the way out
+        // the 3D book stands exactly here, with navigation under it), and the ribbons inside the window on the right.
+        float m = OwnTable ? 16 * s : Mathf.Max(40f, 40 * s), foot = OwnTable ? m : Mathf.Max(m, 80 * s), ribbonOut = OwnTable ? 150 * s : 170 * s, lip = 10 * s;
         float bookW = Mathf.Min(canvas.X - 2 * m - ribbonOut, 1600 * s);
-        float bookH = Mathf.Min(canvas.Y - 2 * m, 900 * s);
-        float x0 = Mathf.Round((canvas.X - bookW - ribbonOut) / 2), y0 = Mathf.Round((canvas.Y - bookH) / 2);
+        float bookH = Mathf.Min(canvas.Y - m - foot, 900 * s);
+        float x0 = Mathf.Round((canvas.X - bookW - ribbonOut) / 2), y0 = Mathf.Round(m + (canvas.Y - m - foot - bookH) / 2);
         var cover = new Rect2(x0, y0, bookW, bookH);
         CoverRect = cover;
         // The pages have the 3D pages' proportions (the camera's spread view puts them exactly under these): two pages of
@@ -70,8 +72,13 @@ public partial class SettingsPages
             _clip[i] = clip;
             BuildSection(i);
         }
+        // The copy of the screen the leaf's front reads (its place in the order is set while a leaf turns: OrderForLeaf).
+        _underLeaf = new BackBufferCopy { Name = "UnderLeaf", CopyMode = BackBufferCopy.CopyModeEnum.Disabled, Rect = new Rect2(Vector2.Zero, canvas) };
+        _frame.AddChild(_underLeaf);
         _leaf = new PageLeaf { Name = "Leaf", S = s, Size = canvas };
         _frame.AddChild(_leaf);
+        // The leaf's face lives beside the sections (its order is set by OrderForLeaf); the leaf and the frame share a place.
+        _leaf.Face.Reparent(_frame, false);
         if (_slip.Length > 0) BuildSlip(s);
         SyncView();
         SetRibbonsPressed();
@@ -83,6 +90,10 @@ public partial class SettingsPages
     {
         var clip = _clip[i]!;
         _building = i;
+        // Round L3: each section carries its own paper, so the page coming hides the page going under it (the page going
+        // is drawn whole while a leaf turns: the leaf's front carries it).
+        if (clip.GetNodeOrNull("Paper") == null)
+            clip.AddChild(new SpreadArt { Name = "Paper", Cover = CoverRect, Left = _leftPage, Right = _rightPage, S = _s, PagesOnly = true, MouseFilter = MouseFilterEnum.Ignore, Size = _canvas });
         var inner = new Control { Name = "Content", MouseFilter = MouseFilterEnum.Ignore, Size = _canvas };
         clip.AddChild(inner);
         _inner[i] = inner;

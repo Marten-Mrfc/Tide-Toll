@@ -64,6 +64,73 @@ public sealed class BookMotion
     public float Ease(float t0, float t1) => Smoother(Linear(t0, t1));
     /// <summary>True on the one frame the clock passes <paramref name="at"/> (sound cues).</summary>
     public bool Passed(float at) => _prev < at && Time >= at;
+    /// <summary>A carried speed's term at the clock's time now (see <see cref="Carry(float, float, float)"/>).</summary>
+    public float Carry(float v, float d) => Carry(v, d, Time);
+
+    /// <summary>
+    /// Speed carried over (round L3): a transition that takes over another mid-way adds this to each part's eased curve,
+    /// so the part leaves the moment of the takeover at the speed it had (<paramref name="v"/>, units per second) instead
+    /// of dropping to rest. It is v * d * u(1-u)^3(1+3u), u = t / d (the quintic Hermite term for a start speed): speed v
+    /// and no acceleration at t = 0; no place, speed or acceleration left at t = d and after. With v = 0 it is nothing,
+    /// so a curve from rest is the plain smootherstep.
+    /// </summary>
+    public static float Carry(float v, float d, float t)
+    {
+        if (v == 0f || d <= 0f || t >= d || t <= 0f) return 0f;
+        float u = t / d, w = 1f - u;
+        return v * d * u * w * w * w * (1f + 3f * u);
+    }
+
+    /// <summary>
+    /// Speed and acceleration carried over: <see cref="Carry(float, float, float)"/> plus a * d^2 * u^2(1-u)^3 / 2 (the
+    /// quintic Hermite term for a start acceleration <paramref name="a"/>, units per second squared): the part leaves
+    /// the takeover with both, and has neither left at t = d.
+    /// </summary>
+    public static float Carry(float v, float a, float d, float t)
+    {
+        if (d <= 0f || t >= d || t <= 0f) return 0f;
+        float u = t / d, w = 1f - u, w3 = w * w * w;
+        return v * d * u * w3 * (1f + 3f * u) + 0.5f * a * d * d * u * u * w3;
+    }
+
+    /// <summary>The speed of <see cref="Carry(float, float, float)"/> at t (units per second).</summary>
+    public static float CarrySpeed(float v, float d, float t)
+    {
+        if (v == 0f || d <= 0f || t >= d) return 0f;
+        float u = Math.Max(0f, t / d), u2 = u * u;
+        return v * (1f - 18f * u2 + 32f * u2 * u - 15f * u2 * u2);
+    }
+
+    /// <summary>The speed of <see cref="Carry(float, float, float, float)"/> at t (units per second).</summary>
+    public static float CarrySpeed(float v, float a, float d, float t)
+    {
+        if (d <= 0f || t >= d) return 0f;
+        float u = Math.Max(0f, t / d), u2 = u * u;
+        return v * (1f - 18f * u2 + 32f * u2 * u - 15f * u2 * u2) + a * d * (u - 4.5f * u2 + 6f * u2 * u - 2.5f * u2 * u2);
+    }
+
+    /// <summary>The acceleration of <see cref="Carry(float, float, float, float)"/> at t (units per second squared).</summary>
+    public static float CarryAccel(float v, float a, float d, float t)
+    {
+        if (d <= 0f || t >= d) return 0f;
+        float u = Math.Max(0f, t / d), u2 = u * u;
+        return v / d * (-36f * u + 96f * u2 - 60f * u2 * u) + a * (1f - 9f * u + 18f * u2 - 10f * u2 * u);
+    }
+
+    /// <summary>The acceleration of smootherstep in u (d2/du2).</summary>
+    public static float SmootherAccel(float u)
+    {
+        if (u <= 0f || u >= 1f) return 0f;
+        return 60f * u * (1f - u) * (1f - 2f * u);
+    }
+
+    /// <summary>The speed of smootherstep in u (d/du).</summary>
+    public static float SmootherSpeed(float u)
+    {
+        if (u <= 0f || u >= 1f) return 0f;
+        float w = 1f - u;
+        return 30f * u * u * w * w;
+    }
 
     /// <summary>Smootherstep: 6u^5 - 15u^4 + 10u^3, speed and acceleration zero at 0 and 1.</summary>
     public static float Smoother(float u)

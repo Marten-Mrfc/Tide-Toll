@@ -175,6 +175,8 @@ public partial class PauseMenu
         _covTo = _covFrom; _cov0 = 0; _cov1 = 0; _covLand = false;
         _camMoves = false; _cam0 = 0; _cam1 = 0;
         float down = SwingDown * Math.Max(0.4f, 1f - _covFrom), up = SwingUp * Math.Max(0.4f, _covFrom);
+        // A board still swinging turns round over a time of its own, so its carried speed gives way gently.
+        if (turning && _vel[PCov] != 0f) { down = Math.Max(down, CarryBoard); up = Math.Max(up, CarryBoard); }
         switch (move)
         {
             case Move.Close:
@@ -250,7 +252,8 @@ public partial class PauseMenu
             // over from another transition, the page was written when that one started and the motion goes straight on.)
             if (!turning) { _main.Summary.UpdateNow(); _prep = true; }
         }
-        _main.Cover.Driven = _covTo != _covFrom;
+        PlanCarry(turning, len);
+        _main.Cover.Driven = BoardMoves;
         _motion.Start(len);
         // Parts that fade in from their first moment are made visible now, at no opacity: the question takes the focus
         // at once, and so does the cover when it comes back from the question.
@@ -310,14 +313,15 @@ public partial class PauseMenu
             if (_covTo < _covFrom && m.Passed(Math.Max(0.001f, _cov0))) _main.Audio.BookOpen();
             if (_covTo > _covFrom && m.Passed(Math.Max(0.001f, _touch))) _main.Audio.BookClose();
         }
-        _hudA = BookMotion.Mix(_hudFrom, _hudTo, m.Ease(_hud0, _hud1));
-        _letA = BookMotion.Mix(_letFrom, _letTo, m.Ease(_let0, _let1));
-        _askA = BookMotion.Mix(_askFrom, _askTo, m.Ease(_ask0, _ask1));
-        _pagA = BookMotion.Mix(_pagFrom, _pagTo, m.Ease(_pag0, _pag1));
+        // Each part on its eased curve, plus the speed it carried from a transition taken over (PauseMenu.Carry.cs).
+        _hudA = Clamp01(BookMotion.Mix(_hudFrom, _hudTo, m.Ease(_hud0, _hud1)) + CarryOf(PHud));
+        _letA = Clamp01(BookMotion.Mix(_letFrom, _letTo, m.Ease(_let0, _let1)) + CarryOf(PLet));
+        _askA = Clamp01(BookMotion.Mix(_askFrom, _askTo, m.Ease(_ask0, _ask1)) + CarryOf(PAsk));
+        _pagA = Clamp01(BookMotion.Mix(_pagFrom, _pagTo, m.Ease(_pag0, _pag1)) + CarryOf(PPag));
         _askSlide = 1f - _askA;
         var hud = _main.Hud;
         hud.Fade = _hudA;
-        if (_hudTo > 0 && !hud.Visible && m.Time >= _hud0) hud.Visible = true;
+        if (_hudTo > 0 && !hud.Visible && (m.Time >= _hud0 || _hudA > 0f)) hud.Visible = true;
         if (_hudTo <= 0 && _hudA <= 0f && hud.Visible)
         {
             hud.Visible = false;
@@ -328,7 +332,7 @@ public partial class PauseMenu
         // The gilt brightens a little as the lettering comes in.
         float glow = _letTo > _letFrom ? 0.22f * MathF.Sin(MathF.PI * m.Linear(_let0, _let1)) : 0f;
         _cover.Modulate = new Color(1 + glow, 1 + glow * 0.9f, 1 + glow * 0.6f, _letA);
-        if (_letTo > 0 && !_cover.Visible && m.Time >= _let0)
+        if (_letTo > 0 && !_cover.Visible && (m.Time >= _let0 || _letA > 0f))
         {
             _cover.Visible = true;
             _focusOnLetters?.GrabFocus();
@@ -336,23 +340,27 @@ public partial class PauseMenu
         }
         if (_letTo <= 0 && _letA <= 0f && _cover.Visible) _cover.Visible = false;
         _ask.Modulate = new Color(1, 1, 1, _askA);
-        if (_askTo > 0 && !_ask.Visible && m.Time >= _ask0) _ask.Visible = true;
+        if (_askTo > 0 && !_ask.Visible && (m.Time >= _ask0 || _askA > 0f)) _ask.Visible = true;
         if (_askTo <= 0 && _askA <= 0f && _ask.Visible) _ask.Visible = false;
         // The spread is not faded: it arrives and leaves by a leaf turning (SettingsPages.SetArrival).
         if (_pages.Modulate.A != 1f && _pages.Visible) _pages.Modulate = Colors.White;
         if (_pages.Visible) _pages.SetArrival(_pagA);
         if (_pagTo <= 0 && _pagA <= 0f && _pages.Visible) _pages.Visible = false;
-        if (_covTo != _covFrom)
+        if (BoardMoves)
         {
             float u = m.Linear(_cov0, _cov1);
-            _main.Cover.Set(BookMotion.Mix(_covFrom, _covTo, _covLand ? BookMotion.Land(u, Touch) : BookMotion.Smoother(u)),
-                BookMotion.Mix(_sinkFrom, _sinkTo, m.Ease(_sink0, _sink1)));
+            _covA = Clamp01(BookMotion.Mix(_covFrom, _covTo, _covLand ? BookMotion.Land(u, Touch) : BookMotion.Smoother(u)) + CarryOf(PCov));
+            _sinkA = Clamp01(BookMotion.Mix(_sinkFrom, _sinkTo, m.Ease(_sink0, _sink1)) + CarryOf(PSink));
+            _main.Cover.Set(_covA, _sinkA);
         }
         if (_camMoves)
         {
-            float e = m.Ease(_cam0, _cam1);
-            _main.Rig.Place(e >= 1f ? _camToPivot : _camFromPivot.Lerp(_camToPivot, e), BookMotion.MixSize(_camFromSize, _camToSize, e));
+            float e = m.Ease(_cam0, _cam1), kv = BookMotion.Carry(1f, 0f, _cd[PSize], m.Time), ka = BookMotion.Carry(0f, 1f, _cd[PSize], m.Time);
+            _camP = (e >= 1f ? _camToPivot : _camFromPivot.Lerp(_camToPivot, e)) + _cvPiv * kv + _caPiv * ka;
+            _camLS = MathF.Log(Math.Max(1e-3f, BookMotion.MixSize(_camFromSize, _camToSize, e))) + CarryOf(PSize);
+            _main.Rig.Place(_camP, MathF.Exp(_camLS));
         }
+        Measure();
     }
 
     /// <summary>The transition has ended: the state it leads to, at rest.</summary>
