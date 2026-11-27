@@ -39,6 +39,7 @@ public partial class Main : Node3D
     public PauseMenu Menu { get; private set; } = null!;
     public BookCover Cover { get; private set; } = null!;
     public Node3D Book { get; private set; } = null!;
+    public PerfReadout Readout { get; private set; } = null!;
     /// <summary>Folder for the settings and the save: user:// in the game; each test sets a folder of its own first.</summary>
     public static string Profile = "user://";
     /// <summary>Tests own the window's size (--resolution, WindowSize): the stored window mode and size are not applied.</summary>
@@ -146,6 +147,7 @@ public partial class Main : Node3D
         Rig.PressBlocked = Hud.OverInterface;
         Saver = new TownSaver(); AddChild(Saver); Saver.Init(this);
         Menu = new PauseMenu(); AddChild(Menu); Menu.Init(this);
+        Readout = new PerfReadout(); AddChild(Readout); Readout.Init(this);   // n10: F3, the performance readout
         Follow(instant: true);
         // Continue the saved town (camera included); a damaged one is set aside and a note says so.
         if (!seedGiven && !Saver.TryContinue(out string note) && note != "") { StartNote = note; Hud.Trouble(note); }

@@ -28,6 +28,13 @@ public static class TestInput
         using (var up = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false, ShiftPressed = shift }) Input.ParseInputEvent(up);
     }
 
+    /// <summary>n10: one key event, pressed or released (a key held down across frames).</summary>
+    public static void KeyEvent(Key key, bool pressed)
+    {
+        using var e = new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = pressed };
+        Input.ParseInputEvent(e);
+    }
+
     /// <summary>
     /// Night 3: the tests' common way out. Wrappers of engine objects that nothing holds any more (key events made for a
     /// rebinding, events read back from the InputMap) are released before the engine stops: a full collection, the
