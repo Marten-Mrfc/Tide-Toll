@@ -32,7 +32,7 @@ python3 tools/roles-analysis.py     # reads the CSVs from the current directory 
 
 `roles` (`tools/TideToll.Tools/RolesCommand.cs`) plays each seed with the bot to the charter (and with `--river` it plays on to the seal, at most 120 minutes).
 For each age it prints one CSV row. It writes a time series every 10 s (villagers by job, by phase, by role; line length at the well, fields and mill;
-coin a minute; the active request and drive), the purchases, the roads at the charter and the spells. A whole first age takes about 0.4 s, so every
+coin a minute; the active request and drive), the purchases, the roads at the charter and the spells. A whole first age takes well under a second, so every
 number below can be rerun in seconds. With roles off the branch plays exactly as `main`: `town --seeds 1-6 --bot payback` gives the
 same charter minutes with and without the branch's changes (31.7, 30.3, 31.3, 30.7, 27.5, 29.5).
 
@@ -362,7 +362,7 @@ role has villagers and no work, which gives the hint line its "Flour has no mill
   `TownRulesV2Tests` (job values, the queue rule `Busy >= Places when queued`). Auto must stay bit-identical to today, which is how
   this branch was checked (`town --seeds 1-6` unchanged).
 - **The wait fix changes results** (charter 30.2 to 29.7 min with payback): the pacing tests still pass on their bands. Any recorded trace that
-  includes villager jobs would need regenerating (none found in `sim.tests/Town`).
+  includes villager jobs would need regenerating (a grep of `sim.tests/Town` found none).
 - **New tests:** a villager with a role never takes another role's job (hard) or does so only above the factor (soft); counts mode reaches the
   wanted counts within N seconds and never changes more than needed; wait/best fallback when a role has no workplace; the herding measure
   as a target ("share of time > 75 % on one job, 4+ villagers" below a band in Auto after the wait fix, and in Counts mode); roles on
@@ -377,7 +377,7 @@ role has villagers and no work, which gives the hint line its "Flour has no mill
 
 ### Cost per tick
 
-- Measured on the branch: no difference I could measure. A whole first age runs in about 0.4 s with or without roles, and seeds 1-3 played
+- Measured on the branch: no difference I could measure. Seeds 1-3 played
   through both ages take 2.1-2.8 s of wall time in all modes, including the runner's own per-tick reading of every villager.
 - By the code: a decision is O(workplaces x villagers) because of `ExpectedWait`. There are about 2 decisions per game second, so a hard
   role filter costs nothing. A soft role runs the choice three times (role best, overall best, then the real choice), and the counts
