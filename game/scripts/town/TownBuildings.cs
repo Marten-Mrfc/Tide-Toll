@@ -199,7 +199,7 @@ public partial class TownBuildings : Node3D
         // Round 3: a small label says what will stand here, so a staked plot never reads as an editor's box.
         var label = new Label3D
         {
-            Name = "What", Text = StakeText(p), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
+            Name = "What", Visible = false, Text = StakeText(p), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
             PixelSize = 0.03f, Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.9f), OutlineSize = 14,
             Font = UiKit.UiBold, Position = new Vector3(0, 1.6f, p.H * Cell / 2f + 1.6f), NoDepthTest = false, DoubleSided = true,
             VerticalAlignment = VerticalAlignment.Top,

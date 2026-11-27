@@ -44,8 +44,8 @@ public partial class TownHud
 
     private void BuildRiverParts()
     {
-        _iconHigh = IconOr("ui-tide-high", "ui-boat");
-        _iconLow = IconOr("ui-tide-low", "ui-boat");
+        _iconHigh = IconOr("nav-tide-high", "ui-tide-high") ?? IconOr("ui-boat", "ui-boat");
+        _iconLow = IconOr("nav-tide-low", "ui-tide-low") ?? IconOr("ui-boat", "ui-boat");
         // Night 3: the tide in the timers zone (bottom left, beside the bell): the dial, "High, falling", "low in 1:14".
         _tide = new PanelContainer { Name = "Tide", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         _tide.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Card, 0));
@@ -68,33 +68,59 @@ public partial class TownHud
         _tideSig = int.MinValue;
 
         // Round 7: an opaque leaf of the book's paper with a curled, shaded edge and its shadow (PageLeaf), not a
-        // see-through rectangle: nothing behind it shows through.
-        _wipe = new PageLeaf { Name = "PageTurn", Opaque = true, S = _s, Visible = false };
-        _wipe.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        _root.AddChild(_wipe);
-        if (_wipeT >= 0) { PlaceWipe(); _root.MoveChild(_wipe, _root.GetChildCount() - 1); }
+        // see-through rectangle: nothing behind it shows through. Last look: on a canvas layer of its own just over the
+        // interface's (5), so every card (the shop, the bottom strip, cards built again under it) lies under it; the
+        // new age's title is printed on its back.
+        _wipeLayer = new CanvasLayer { Name = "PageTurnLayer", Layer = 6 };
+        AddChild(_wipeLayer);
+        _wipe = new PageLeaf { Name = "PageTurn", Opaque = true, S = _s, Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
+        _wipe.Position = Vector2.Zero; _wipe.Size = _built;
+        _wipeLayer.AddChild(_wipe);
+        _wipeTitle = UiKit.Fixed(_s, UiKit.DisplaySize, UiKit.Display, UiKit.Ink, HorizontalAlignment.Center);
+        _wipeTitle.Name = "AgeTitle";
+        _wipeTitle.ClipText = false;
+        _wipeTitle.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+        _wipeTitle.Text = RiverTitle;
+        _wipeTitle.Size = new Vector2(_built.X, UiKit.U(_s, 80));
+        _wipeTitle.PivotOffset = new Vector2(0, _wipeTitle.Size.Y / 2f);
+        _wipeTitle.Visible = false;
+        _wipeLayer.AddChild(_wipeTitle);
+        if (_wipeT >= 0) PlaceWipe();
     }
 
+    private CanvasLayer _wipeLayer = null!;
+    private Label _wipeTitle = null!;
+
     /// <summary>
-    /// The leaf sweeps in from the right edge (its left edge moving, the curl and its shadow on that side) until it covers
-    /// the whole screen half way, then slides on off to the left (its right edge moving). Eased in and out; its shading
-    /// grows from nothing and goes back to nothing, so it neither appears nor leaves in one frame.
+    /// Last look: the leaf turns about the book's spine, which lies off the left edge of the screen in the play view.
+    /// First half: a leaf of the new age comes over from the spine and lies down on the screen (its free edge sweeping
+    /// left to right, foreshortened, curled and shadowed as it falls), the new age's title on its back; it covers the
+    /// whole screen at the middle (the river is built and the title changes under it). Second half: it is turned on
+    /// over the spine (its free edge lifting from the right and going back to the left), and the new age lies under it.
+    /// The projected edge is the leaf's width times the cosine of its angle, eased; no step at either end.
     /// </summary>
     private void PlaceWipe()
     {
         float k = Math.Clamp(_wipeT / WipeSeconds, 0f, 1f);
-        float e = BookMotion.Smoother(k);
-        float w = _built.X, x = w * (1f - 2f * e);
-        float lift = Math.Clamp(4f * Math.Min(e, 1f - e), 0f, 1f);
-        var area = new Rect2(0, 0, w, _built.Y);
-        // First half: the leaf hangs from the right edge and its left edge comes in; then it is held at the left edge
-        // and its right edge goes out.
-        if (x >= 0) _wipe.Place(area, w + 2f, x, lift);
-        else _wipe.Place(area, -2f, w + x, lift);
-        if (!_wipe.Visible && k < 1f) _wipe.Visible = true;
-        // Over every card, also those the new age builds again while the leaf covers them.
-        int last = _root.GetChildCount() - 1;
-        if (_wipe.GetIndex() != last) _root.MoveChild(_wipe, last);
+        // 0 standing at the spine, 1 lying flat over the screen, back to 0; held flat for a moment in the middle.
+        float flat = k < 0.5f ? BookMotion.Smoother(Math.Min(1f, k / 0.46f)) : BookMotion.Smoother(Math.Min(1f, (1f - k) / 0.46f));
+        float ang = (1f - flat) * MathF.PI / 2f;             // 90 degrees standing, 0 lying
+        float w = _built.X + 4f, spine = -2f;
+        float edge = spine + w * MathF.Cos(ang);
+        float lift = Math.Max(0.04f, MathF.Sin(ang));
+        bool on = k < 1f && (flat > 0f || k > 0f);
+        var area = new Rect2(0, 0, _built.X, _built.Y);
+        _wipe.From = k < 0.5f ? -1f : 1f;
+        _wipe.Place(area, spine, edge, flat >= 1f ? 0.04f : lift);
+        if (_wipe.Visible != on) _wipe.Visible = on;
+        // The title on the leaf's back, squeezed with it toward the spine, clearest as it lies flat.
+        float squeeze = Math.Max(0.001f, (edge - spine) / w);
+        _wipeTitle.Scale = new Vector2(squeeze, 1f);
+        _wipeTitle.Position = new Vector2(spine, _built.Y * 0.42f - _wipeTitle.Size.Y / 2f);
+        float ta = Math.Clamp((flat - 0.5f) / 0.5f, 0f, 1f);
+        _wipeTitle.Modulate = new Color(1, 1, 1, ta * ta * (3f - 2f * ta));
+        bool tv = on && ta > 0f;
+        if (_wipeTitle.Visible != tv) _wipeTitle.Visible = tv;
     }
 
     /// <summary>The dial: a ring with high water at the top and low at the foot, the needle at the tide now.</summary>
@@ -118,8 +144,6 @@ public partial class TownHud
     private void RiverRung()
     {
         _wipeT = 0;
-        // Over every card of the interface (some are made after it).
-        _root.MoveChild(_wipe, _root.GetChildCount() - 1);
         _main.Audio.PageTurn();
         // The title changes under the leaf (RiverFrame), once it covers the page.
     }
@@ -141,7 +165,7 @@ public partial class TownHud
         {
             _wipeT = HoldPageTurnAt >= 0 ? Math.Min(HoldPageTurnAt, WipeSeconds) : _wipeT + Math.Min(dt, BookMotion.MaxStep);
             PlaceWipe();
-            if (_wipeT >= WipeSeconds) { _wipeT = -1; _wipe.Visible = false; }
+            if (_wipeT >= WipeSeconds) { _wipeT = -1; _wipe.Visible = false; _wipeTitle.Visible = false; }
         }
         if (t.InRiverAge != _titleRiver && PageCovering) SetPageTitle(t.InRiverAge);
         bool show = t.InRiverAge && _fullA > 0.01f && PageCovering;
@@ -179,7 +203,7 @@ public partial class TownHud
                         if (_drv.Town.Boat(i).Id == e.Index) { string s = _drv.Town.BoatRequestText(i); if (s.Length > 0) Log(NoteLog, s + "."); }
                 break;
             case TownEventKind.Seal:
-                Large("The borough seal", "The town is a borough. The second age is complete.", PrioMoment, BannerLongStay, "");
+                Large("The borough seal", "The town is a borough. The second age is complete.", PrioMoment, BannerLongStay, "seal-granted");
                 _agePageIn = AgePageDelay;
                 break;
         }

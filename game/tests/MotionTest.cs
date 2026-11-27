@@ -188,6 +188,9 @@ public partial class MotionTest : TownTestBase
 
         // A working run of the message part alone (--messages-only: never used by ./check, which runs everything).
         if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--messages-only") >= 0) { await Messages(); Summary(); return; }
+        // --impatient-only: the impatient cases alone; --cpu-info: CPU over the gate printed, not fatal (working switches only).
+        _cpuInfo = Array.IndexOf(OS.GetCmdlineUserArgs(), "--cpu-info") >= 0;
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--impatient-only") >= 0) { await Impatient(pivot0, size0); GD.Print($"MOTION CPU frames over the gate: {_cpuOver}"); Summary(); return; }
 
         // ---- the staged transitions, each from rest
         await Record(() => TestInput.Key(Godot.Key.Escape));
@@ -265,6 +268,7 @@ public partial class MotionTest : TownTestBase
         await HudPages();
         await PagesAlign();
         await Messages();
+        if (_cpuInfo) GD.Print($"MOTION CPU frames over the gate: {_cpuOver}");
         Summary();
     }
 }

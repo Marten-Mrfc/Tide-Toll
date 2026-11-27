@@ -111,6 +111,27 @@ public partial class TownHud
         _ => it.Kind.ToString().ToLowerInvariant(),
     };
 
+    private static readonly string[] OfferIconNames = { "shop-building-bucket", "shop-building-stall", "shop-building-field", "shop-building-mill" };
+    private static readonly System.Collections.Generic.Dictionary<string, string> LoadIconNames = new();
+
+    /// <summary>The icon track's names (assets-r3-ic, "For the lead" 1): the louder bell, each load step, each building
+    /// offer by its kind; "" for the shared name.</summary>
+    private string SpecificIcon(in ShopItem it)
+    {
+        switch (it.Kind)
+        {
+            case ShopItemKind.BellTrack: return "shop-belltrack";
+            case ShopItemKind.Load:
+                if (!LoadIconNames.TryGetValue(it.Name, out var ln)) LoadIconNames[it.Name] = ln = "shop-load-" + it.Name.ToLowerInvariant();
+                return ln;
+            case ShopItemKind.Building:
+                var offers = _drv.Town.Plan.Offers;
+                if (it.Index >= 0 && it.Index < offers.Length) { int k = (int)offers[it.Index].Kind; if (k >= 0 && k < OfferIconNames.Length) return OfferIconNames[k]; }
+                return "";
+            default: return "";   // (no string is made here: this runs whenever a row's content changes)
+        }
+    }
+
     private static string StandInIcon(ShopItemKind k) => k switch
     {
         ShopItemKind.Villager => "ui-reputation", ShopItemKind.Pace => "ui-speed", ShopItemKind.Load => "ui-boat",
@@ -211,9 +232,16 @@ public partial class TownHud
 
     private void RowContent(ShopRow r, in ShopItem it, int ord, ShopRow.PillState st, long need, int worth)
     {
-        if (r.Icon.Texture == null)
-            r.Icon.Texture = IconOr(ShopIconName(it), it.Kind == ShopItemKind.RiverValue ? (it.Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(it.Kind))
+        // Last look: the icon track's own names first (a step's or an offer's icon), then the shared name, then stand-ins;
+        // looked up again only when the name changes (the load's step, an offer row reused).
+        string iconKey = SpecificIcon(it);
+        if (r.Icon.Texture == null || iconKey != r.IconKey)
+        {
+            r.IconKey = iconKey;
+            r.Icon.Texture = (iconKey.Length > 0 ? IconOr(iconKey, ShopIconName(it)) : null)
+                             ?? IconOr(ShopIconName(it), it.Kind == ShopItemKind.RiverValue ? (it.Index == (int)Good.Wool ? "good-wool" : "good-cloth") : IconFor(it.Kind))
                              ?? IconOr(StandInIcon(it.Kind), "ui-coin");
+        }
         // Each part is set only when it changed (the signature changes with every coin while saving up).
         string key = FirstKey(ActionFor(it, ord));
         if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0; }

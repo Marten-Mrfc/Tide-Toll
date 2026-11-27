@@ -66,7 +66,26 @@ public partial class CameraRig : Node3D
     /// View height of the play view: the map page with its title and compass (about 30 m above the map) and the
     /// frame's outer rule (5 m below it) fully in view, with a few metres of paper round them.
     /// </summary>
-    public float PlaySize => MapSize * 1.2f;
+    /// <remarks>Last look (night 3): the page stage stands inside the window like the book stage: the whole open book
+    /// with at least <see cref="PageMarginPx"/> to every window edge and <see cref="NavRoomPx"/> more at the foot for the
+    /// navigation row (never over the folio), centred there by <see cref="Clamp"/>. Was MapSize * 1.2 (the map page
+    /// alone, which cut the compass and put the navigation on the folio); that size is <see cref="MapViewSize"/>.</remarks>
+    public float PlaySize
+    {
+        get
+        {
+            var vp = ViewportSize;
+            float h = Math.Max(1f, vp.Y), w = Math.Max(1f, vp.X);
+            float sv = BookSize.Y * h / Math.Max(1f, h - 2f * PageMarginPx - NavRoomPx);
+            float sh = BookSize.X * h / Math.Max(1f, w - 2f * PageMarginPx - PlayRoomPx);
+            return Math.Max(MapViewSize, Math.Min(Math.Max(sv, sh), MaxSize * 0.96f));
+        }
+    }
+    /// <summary>The map page alone in view, with its title and compass (the old play view height): the tilt, the slim
+    /// strip and the sound's zoom are keyed to it.</summary>
+    public float MapViewSize => MapSize * 1.2f;
+    /// <summary>The page stage's least margin to the window, and the room kept at its foot for navigation (window units; Main sets it).</summary>
+    public float PageMarginPx = 44f, NavRoomPx = 58f;
     /// <summary>Map-local z of the play view's centre: the middle of the compass top (-30 m) and the frame bottom.</summary>
     public float PlayCentreZ => (MapSize + 5f - 30f) / 2f;
 
@@ -294,15 +313,29 @@ public partial class CameraRig : Node3D
         var b0 = inv * (BookCentre - new Vector3(BookSize.X / 2f, 0, BookSize.Y / 2f));
         var b1 = inv * (BookCentre + new Vector3(BookSize.X / 2f, 0, BookSize.Y / 2f));
         float bx0 = Math.Min(b0.X, b1.X), bx1 = Math.Max(b0.X, b1.X), bz0 = Math.Min(b0.Z, b1.Z), bz1 = Math.Max(b0.Z, b1.Z);
-        float play = MapSize * 1.05f, book = Math.Max(BookSize.Y * 1.10f, play + 1f);
-        float t = Mathf.Clamp((size - play) / (book - play), 0f, 1f);
+        float mapEnd = MapSize * 1.05f, book = Math.Max(BookSize.Y * 1.10f, mapEnd + 1f);
+        float t = Mathf.Clamp((size - mapEnd) / (book - mapEnd), 0f, 1f);
         float lx = Mathf.Lerp(-PanMargin, bx0, t), hx = Mathf.Lerp(MapSize + PanMargin, bx1, t);
         float lz = Mathf.Lerp(-PanMargin, bz0, t), hz = Mathf.Lerp(MapSize + PanMargin, bz1, t);
         float room = PlayRoomPx * size / h; // metres of table right of the book kept for the tabs
         p.X = Axis(p.X, lx, hx, bx0, bx1 + room, ex);
         p.Z = Axis(p.Z, lz, hz, bz0, bz1, ey);
-        // 3. at the outer end of the zoom the whole book settles to the middle of the screen (with the tabs' room).
-        float bc0 = PlaySize * 1.05f, tb = MaxSize > bc0 ? Mathf.Clamp((size - bc0) / (MaxSize - bc0), 0f, 1f) : 0f;
+        // 3. last look: zooming out from the map page to the page stage, the whole book settles to its page-stage place
+        // (centred, its foot clear of the navigation row) ...
+        float play = PlaySize, pv0 = MapViewSize;
+        float tp = play > pv0 ? Mathf.Clamp((size - pv0) / (play - pv0), 0f, 1f) : (size >= play ? 1f : 0f);
+        if (tp > 0f)
+        {
+            tp = tp * tp * (3f - 2f * tp);
+            // The book a little high: at least PageMarginPx above it (less only if the window has no room for both
+            // margins) and the navigation row's room below it.
+            float spare = h - (bz1 - bz0) * h / size, top = Math.Max((spare - NavRoomPx) / 2f, Math.Min(PageMarginPx, spare / 2f));
+            var pc = new Vector3((bx0 + bx1 + room) / 2f, 0, (bz0 + bz1) / 2f + (spare / 2f - top) * size / h);
+            p.X = Mathf.Lerp(p.X, pc.X, tp);
+            p.Z = Mathf.Lerp(p.Z, pc.Z, tp);
+        }
+        // 4. ... and on to the book stage's one place at the outer end of the zoom (the settings spread's view).
+        float bc0 = play, tb = MaxSize > bc0 ? Mathf.Clamp((size - bc0) / (MaxSize - bc0), 0f, 1f) : 0f;
         if (tb > 0f)
         {
             tb = tb * tb * (3f - 2f * tb);

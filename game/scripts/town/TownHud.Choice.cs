@@ -51,6 +51,14 @@ public partial class TownHud
         _ => "ui-achievement",
     };
 
+    /// <summary>The icon track's boon names (assets-r3-ic, "For the lead" 2); <see cref="BoonIcon"/> is the stand-in.</summary>
+    public static string BoonIconNew(Boon b) => b switch
+    {
+        Boon.WiderLanes => "boon-wider-lanes", Boon.StrongerBacks => "boon-stronger-backs", Boon.DeeperWell => "boon-deeper-well",
+        Boon.LongerRows => "boon-longer-rows", Boon.ThirdRoom => "boon-third-room", Boon.FasterHands => "boon-faster-hands",
+        Boon.MarketRight => "boon-market-right", Boon.MillersGuild => "boon-millers-guild", _ => "ui-achievement",
+    };
+
     private void BuildChoiceParts()
     {
         // Night 3: the choice of two in the Message zone (card style, at most 200 high): per option the icon, the name
@@ -188,7 +196,7 @@ public partial class TownHud
                     _boonText[side].Text = side == 0 ? c.AText : c.BText;
                     int w = WorthTenths(side == 0 ? c.AWorth : c.BWorth);
                     _boonWorth[side].Text = w > 0 ? WorthLine(w) + " now" : "";
-                    _boonIcon[side].Texture = IconOr(BoonIcon(b), "ui-achievement");
+                    _boonIcon[side].Texture = IconOr(BoonIconNew(b), BoonIcon(b)) ?? IconOr(BoonIcon(b), "ui-achievement");
                 }
             }
             // Night 3: in the Message zone (TownHud.Zones.cs); no pulse of its own (the next round's motion).

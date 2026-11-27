@@ -230,8 +230,9 @@ public partial class PauseMenu : CanvasLayer
         {
             case State.Playing when pause && !_main.Hud.TakesEsc: Pause(); break;
             // Impatient input: Esc while the book closes opens it again from where it is; while it opens, closes it.
-            case State.Closing when cancel: Resume(); break;
-            case State.Opening when pause: Pause(); break;
+            // (A turn-round asked for in a transition's first TurnGap waits for it: see PauseMenu.Tail.cs.)
+            case State.Closing when cancel: if (!HoldTurn()) Resume(); break;
+            case State.Opening when pause: if (!HoldTurn()) Pause(); break;
             case State.Cover when cancel: Resume(); break;
             case State.Asking when cancel: CancelAsk(); break;
             // On the way back from the settings Esc means what it means on the cover: back to the town.
@@ -247,6 +248,7 @@ public partial class PauseMenu : CanvasLayer
         SaveDue();
         if (_motion.Running) Step(delta);
         else if (Now == State.Settings) HoldSpreadView();
+        TurnHeld();
         if (_cover.Visible || _ask.Visible) Layout(false);
     }
 

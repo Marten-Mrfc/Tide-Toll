@@ -21,7 +21,7 @@ public partial class UiAudit
         await WaitFor(() => Math.Abs(Main.Rig.Camera.Size - Main.Rig.TargetSize) < 0.5f && Main.Rig.InPlayView && !Main.Cover.Moving
                             && Main.Hud.FullAlpha <= 0f, 8000);
         await Wait(600);
-        await Shot(pageId, $"Page stage ({age} age)", $"camera to Rig.PlaySize (the whole page); slim strip={Main.Hud.SlimVisible}, stage={Main.Stage}");
+        await Shot(pageId, $"Page stage ({age} age)", $"camera to Rig.PlaySize (the whole page); slim strip={Main.Hud.SlimVisible}, stage={Main.Stage}, size={Main.Rig.Camera.Size:0} (page {Main.Rig.PlaySize:0}, book {Main.Rig.MaxSize:0})");
         Main.Rig.LookAt(pivot, Main.Rig.MaxSize, instant: true);
         await Wait(1500);
         await Shot(bookId, $"Book stage ({age} age)", $"camera to Rig.MaxSize (the open book, summary on the left page); stage={Main.Stage}");

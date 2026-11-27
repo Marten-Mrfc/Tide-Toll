@@ -19,6 +19,8 @@ public sealed partial class ShopRow
     public readonly Button Button;
     public readonly Label Key, Name, Step, Line2, Price;
     public readonly TextureRect Icon, Coin;
+    /// <summary>The icon name the row shows (last look: a row's item can change its step, and its icon with it).</summary>
+    public string IconKey = "";
     public readonly Panel Pill;
     public readonly ColorRect PillFill;
     public readonly DashFrame Dash;

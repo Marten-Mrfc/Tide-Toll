@@ -60,7 +60,7 @@ public partial class RiverBoats : Node3D
             _cargo[i] = new MeshInstance3D[CargoSlots];
             _label[i] = new Label3D
             {
-                Name = "Wants", Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 36, PixelSize = 0.026f,
+                Name = "Wants", Visible = false, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 36, PixelSize = 0.026f,
                 Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.95f), OutlineSize = 16, Font = UiKit.UiBold,
                 Position = new Vector3(0, 5.5f, 0), DoubleSided = true,
             };

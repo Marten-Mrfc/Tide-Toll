@@ -56,6 +56,9 @@ public partial class PauseMenu
         _measured = turning ? 2 : 0;
     }
 
+    /// <summary>The camera moved in the last frame of the transition under way (speed to carry).</summary>
+    private bool CamGoing => _vPiv.LengthSquared() > 1e-8f || _vel[PSize] != 0f;
+
     private static float CarryFor(float end, float len) => Math.Min(len, Math.Max(CarryMin, end));
 
     private bool BoardMoves => _covTo != _covFrom || _cv[PCov] != 0f || _cv[PSink] != 0f || _ca[PCov] != 0f || _ca[PSink] != 0f;
