@@ -42,7 +42,8 @@ public partial class AssetAudit : TownTestBase
             else if (a == "--ink-lab") _inkLab = true;       // research n8 (AssetAudit.Ink.cs)
             else if (a == "--ink-windows") _inkWin = true;
             else if (a == "--ink-town") _inkTown = true;
-            else if (a.StartsWith("--ink-variants=")) _inkNames = new HashSet<string>(a[15..].Split(','));   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
+            else if (a.StartsWith("--ink-variants=")) _inkNames = new HashSet<string>(a[15..].Split(','));
+            else if (a == "--landing") _landing = true;   // night 6: the landing now and planned (AssetAudit.Landing.cs)   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
             {
@@ -86,7 +87,8 @@ public partial class AssetAudit : TownTestBase
         }
         // Night 3: when only book subjects are asked for, the book is pictured at once on the new town (it needs no
         // played town), instead of after the bot's whole run to the seal.
-        if (_nowWork) await NowWorkShots(playSize);
+        if (_landing) await LandingShots(playSize);
+        else if (_nowWork) await NowWorkShots(playSize);
         else if (!_noTown && _only != null && _only.Count > 0 && System.Linq.Enumerable.All(_only, n => n.StartsWith("book-")))
         {
             _play = playSize;

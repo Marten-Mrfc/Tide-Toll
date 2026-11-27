@@ -145,7 +145,16 @@ public partial class RiverTest : TownTestBase
             if (v.Road >= 0 || v.Phase != VillagerPhase.Queued) continue;
             float a = Main.Driver.Alpha;
             var at = new Vector2((float)(v.PrevX + (v.X - v.PrevX) * a), (float)(v.PrevY + (v.Y - v.PrevY) * a));
-            Check(Main.Villagers.Shown(i).DistanceTo(at) < 0.3f, $"villager {i} waiting on the river drawn where it stands ({Main.Villagers.Shown(i)} vs {v.X:0.0},{v.Y:0.0})");
+            if (v.Workplace >= 0 && Main.Villagers.LaneOf(v.Workplace) >= 0)
+            {
+                // n5 (work you can watch): someone waiting at a first-age workplace (the well, a field, the mill) stands in
+                // its line along the lane, at its place in the queue, not on the simulation's queue spot (the equal check
+                // for the new look; game-work checks the line itself).
+                WorkSites.LinePoint(T, v.Workplace, Main.Villagers.LaneOf(v.Workplace), TownVillagers.LineStepCells(T.LoadLevel) * (1 + v.QueuePosition), out float lx, out float ly, out _);
+                at = new Vector2(lx, ly);
+                Check(Main.Villagers.InLine(i), $"villager {i} waiting at workplace {v.Workplace} drawn in its line");
+            }
+            Check(Main.Villagers.Shown(i).DistanceTo(at) < 0.3f, $"villager {i} waiting {(v.Workplace >= 0 ? "in a workplace's line" : "on the river")} drawn where it stands ({Main.Villagers.Shown(i)} vs {at.X:0.0},{at.Y:0.0}; simulation {v.X:0.0},{v.Y:0.0}, place {v.QueuePosition}, drawn place {Main.Villagers.LinePlace(i):0.00}, in line {Main.Villagers.InLine(i)})");
             _waitingChecked++;
         }
     }
