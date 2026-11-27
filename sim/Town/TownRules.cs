@@ -152,7 +152,11 @@ public static class TownRules
     // ---- Rules v3 (docs/plans/town-rules3-progress.md) ----
     // Choices of two: at each of these levels the town picks one of two boons for good (Boon pairs 0/1, 2/3, 4/5, 6/7: lanes or backs, well or rows, room or hands, market or guild).
     public static readonly int[] ChoiceLevels = { 4, 7, 10, 13 };
-    public static double BoonWellWork = 0.2;       // Deeper well: well work this much faster (time / (1 + x))
+    // n7 trades: 0.2 -> 0.235. With Deeper well forced at choice 1 the payback bot reached the charter 2.54 % later on average
+    // than with Longer rows (seeds 1-10), over the 2 % NeitherSideOfAChoiceIsAMistake allows. 0.21 / 0.22 / 0.23 gave 2.68 /
+    // 2.27 / 2.04 %; 0.235 gives 1.74 % (sooner on 4 / 6 seeds) and every pacing band passes. The runs are noisy at this
+    // scale: 0.232, 0.24 and 0.25 also meet 2 % but each tips a pacing band (landing share, requests, the second age's floor).
+    public static double BoonWellWork = 0.235;      // Deeper well: well work this much faster (time / (1 + x))
     public static double BoonFieldWork = 0.6;       // Longer field rows: field work this much faster
     public static double BoonLanes = 0.5;           // Wider lanes: every road carries this much more before crowding
     public static double BoonWalk = 0.045;           // Stronger backs: everyone walks this much faster
