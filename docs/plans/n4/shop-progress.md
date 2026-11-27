@@ -94,8 +94,46 @@ pointer on a blocked row.
 
 Check steps run in the worktree (commands of `tools/check.sh`):
 
-RESULTS_PLACEHOLDER
+All passed (logs in `build/n4/logs/`, not committed). game-perf was run as well, as it gates per-frame allocation.
+
+| Step | Result line |
+| --- | --- |
+| game-build | pass, 0 warnings, 0 errors |
+| game-smoke | `SMOKE PASS renderer=mobile game_s=30.0 coin=4 trips=1 uploads=75 slow-frame=384steps` |
+| game-town | `TOWN PASS faint=0.40 maxstep=0.009 worn=0.95 paved=0 boonclick=Wider lanes extended=0 level=6 bought=50 ...` |
+| game-playthrough | `PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102` (unchanged: 33.9 min, 201 purchases) |
+| game-river | `RIVER PASS pause2=ok cover=960,540 lanes=...` |
+| game-layout | `LAYOUT PASS states=36 canvases=8 checks=73325 failures=0 loud<=2 quiet<=3` |
+| game-book | `BOOK PASS villager_px=39.9 pitch=53.0 size=46.0 paved=0 notches=14 town=Dunstead hint=1` |
+| game-settings | `SETTINGS PASS sound display(18 seam calls) keys saving reopen damaged keyboard(181 keys) fits(...)` |
+| game-menu | `MENU PASS pause-mark 48px->72px cover-keys=ok ...` |
+| game-motion | `MOTION RATES PASS`; at 60 fps `MOTION PASS impatient=ok pages-align=0.00px transitions=13 alloc-max=5672B cpu-max=5.42ms` |
+| game-save | `SAVE PASS autosave-clock=0.63/0.63s level 2 paved 1 villagers 4` |
+| game-perf (extra) | `PERF PASS`; 1x bytes/frame 545 (gate 1536), 8x 738 (6144), river 1x 1224, 8x 1592 |
+| ledger | `ledger: 465 rows, 439 asset files checked, 0 problems` |
+
+On the way, game-layout failed twice and was fixed, not loosened: the Achievements count "40 of 40" was 2 px too wide
+at 2560 x 1440 (box widened), and a skipper's "Loaded 460 of 3264, leaves in 100 s" 2 px too wide in u38 at
+1280x720@150 (short form when it does not fit).
 
 ## Pictures
 
-PICTURES_PLACEHOLDER
+In the worktree, not committed: `build/n4/shop-1080/` (u01 u02 u03 u05 u07 u08 u10 u11 u13 u16 u30 u32 u33 u36 u42
+to u48), `build/n4/shop-720/` (u13, u33), `build/n4/shop-1080-150/` (u06, u13), `build/n4/shop-720-150/` (u13),
+`build/n4/shop-1080-80/` (u13). All looked at, right side at full size. Seen and fixed on the way: the count "22 of …"
+cut, a tooltip sentence cut, "pays back in 1063 s" wrapping (now minutes), "10k" for 10,697 on the wide rail (pill
+104 now, whole numbers to 99,999).
+
+What I still see:
+- The zeros are slashed (the font job; not touched here).
+- The pill is 104 wide on the 320 rail, not 96: "99,999" in bold tabular figures does not fit 96 (the sheet allows up to
+  104); the name box stays wide enough for every catalogue name at body.
+- u32 (the longest list, 14 rows and 5 headings) goes compact at 1080: tall rows would need 1032 of the 976 the card
+  may have. Nothing overlaps the navigation.
+- When the foot line itself appears or goes (rare: the first locked purchase, the last one unlocked), the card's edge
+  eases over 0.2 s while the foot already stands at the bottom, so for those frames the foot can cover the last row's
+  lower part.
+- On the narrow rail the foot "Next: Extend a cottage at a later level" does not fit and reads "Next: Extend a cottage".
+- u46 and u47 (hover, pressed) are pictures only: under game-layout's headless run the pointer does not reach a row, so
+  those two states are "not made" there (as u42 already was); u48 is made in both.
+- At 1280x720 at 150 the shop scrolls (Regulars below); whole rows only, as before.
