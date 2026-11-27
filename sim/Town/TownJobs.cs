@@ -18,7 +18,7 @@ public sealed partial class Town
                 if (Walk(v)) Arrive(v, 0);
                 break;
             case VillagerPhase.Working:
-                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1) * ToolsFactor;
+                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1) * ToolsFactor * TradeWorkFactor(v);
                 if (v.WorkLeft <= 1e-9) FinishWork(v);
                 break;
             case VillagerPhase.Queued:
@@ -155,8 +155,9 @@ public sealed partial class Town
 
     private void Deliver(VillagerState v)
     {
-        double coin = v.Amount * JobValue(v.Job) * CoinBonus;
+        double coin = v.Amount * JobValue(v.Job) * CoinBonus * TradeWorthFactor(v);
         Earn(coin, v.Carry);
+        TradeEarned(v, coin);
         v.Trips++; v.Earned += coin;
         if (S.ReqActive && v.Carry == S.ReqGood) RequestDelivered(v.Amount);
         if (S.DriveActive && v.Carry == S.DriveGood) DriveDelivered(v.Amount);
@@ -191,11 +192,34 @@ public sealed partial class Town
     /// <summary>Picks the job paying the most coin per second (travel, work and expected wait), then sets off. Ties: lower workplace, then job order.</summary>
     private bool ChooseJob(VillagerState v)
     {
+        var bestJob = PickJob(v, out int bestW);
+        if (bestJob is JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket) return StartRiverJob(v, bestJob);
+        if (bestJob == JobKind.None) return false;
+        v.Job = bestJob; v.Stage = 0; v.Workplace = bestW;
+        if (!SetRoute(v, Plan.Plots[S.Workplaces[bestW].Plot].Node)) { DropJob(v); return false; }
+        return true;
+    }
+
+    /// <summary>The job villager <paramref name="id"/> would choose now with no trade (as a Helper weighs it), without
+    /// starting it: the best-pay rule. For the careful player's mix and the tools; not called by the rules.</summary>
+    public JobKind BestPayJob(int id)
+    {
+        var v = S.Villagers[id];
+        var keep = v.Trade;
+        v.Trade = Trade.None;
+        var j = PickJob(v, out _);
+        v.Trade = keep;
+        return j;
+    }
+
+    /// <summary>The best-pay choice (the lean included) without starting it; bestW is its workplace (-1 for wool and cloth).</summary>
+    private JobKind PickJob(VillagerState v, out int bestW)
+    {
         int home = Plan.Plots[v.Home].Node;
         int market = _marketPlot >= 0 && PlotWorks(_marketPlot) ? Plan.Plots[_marketPlot].Node : -1;
         int mill = MillWorkplace();
         int millNode = mill >= 0 ? Plan.Plots[S.Workplaces[mill].Plot].Node : -1;
-        double best = 0; JobKind bestJob = JobKind.None; int bestW = -1;
+        double best = 0; JobKind bestJob = JobKind.None; bestW = -1;
         double load = LoadUnits * CoinBonus;
         _choosing = LeaningOf(S.Seed, v.Id);
         _choosingTrade = v.Trade;
@@ -220,15 +244,8 @@ public sealed partial class Town
             if (market >= 0 && millNode >= 0)
                 Consider(JobKind.Flour, wi, baseT + TravelTime(wn, millNode) + ExpectedWait(mill, v) + WorkTime(PlotKind.Mill) / ToolsFactor + TravelTime(millNode, market), ref best, ref bestJob, ref bestW, load);
         }
-        if (S.River != null)
-        {
-            ConsiderRiver(v, ref best, ref bestJob, ref bestW, load);
-            if (bestJob is JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket) return StartRiverJob(v, bestJob);
-        }
-        if (bestJob == JobKind.None) return false;
-        v.Job = bestJob; v.Stage = 0; v.Workplace = bestW;
-        if (!SetRoute(v, Plan.Plots[S.Workplaces[bestW].Plot].Node)) { DropJob(v); return false; }
-        return true;
+        if (S.River != null) ConsiderRiver(v, ref best, ref bestJob, ref bestW, load);
+        return bestJob;
     }
 
     private void Consider(JobKind j, int wi, double seconds, ref double best, ref JobKind bestJob, ref int bestW, double load)

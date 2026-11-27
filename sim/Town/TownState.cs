@@ -153,7 +153,8 @@ public sealed class TownState
     public bool[] TradeCountByPlayer = new bool[Town.TradeCount]; // by Trade (index 0: the Helpers): the player set this count
     public int[] TradeWant = new int[Town.TradeCount];           // the count the player set (read where TradeCountByPlayer)
     public int Training;                                         // Training steps bought
-    public double[] TradeEarn = new double[Town.TradeCount];     // coin its members earned, decaying by TradeEarnKeep a second (about the last minute)
+    public double[] TradeEarn = new double[Town.TradeCount];     // coin of each trade's work, whoever made it, decaying a little each second (about the last minute)
+    public double[] TradeAt = new double[Town.TradeCount];       // each trade's member-seconds, decaying the same way (TradeEarn / TradeAt: coin a head)
     public double TradeMoveAt = -1;                              // game time of the town's last rebalancing move
     public long TradeChanges;                                    // trade changes in all (the town's and the player's)
     public long TradeChangesByTown;                              // the town's
