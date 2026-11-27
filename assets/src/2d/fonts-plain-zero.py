@@ -103,7 +103,7 @@ def make(weight):
     if "DSIG" in f:                                                      # a signature of the old file; now wrong
         del f["DSIG"]
     names = f["name"]
-    full = FAMILY if weight == "Regular" else f"{FAMILY} {weight}"
+    full = f"{FAMILY} {weight}"
     for rec in list(names.names):
         if rec.nameID in (16, 17, 18):
             names.removeNames(nameID=rec.nameID)
