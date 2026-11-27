@@ -110,11 +110,21 @@ public partial class TownTest
         await Until(() => !Main.Hud.DriveCardVisible, 400, "the met drive's strip goes");
         // An extra hand: offered in the shop and over its workplace, bought by a click.
         int w = -1;
+        // n7 trades: villagers have trades, and the town spreads them so that no line of two lasts the thirty seconds the
+        // offer asks (TownRules.HandQueueSeconds). The line is staged by the player's own means: most of the town made
+        // millers (SetTradeCount), so the mill keeps a line; once a hand is offered every count is handed back to the
+        // town (SetTownFillsTrades on). The rule and every assertion are unchanged.
+        // (Carriers at the well were tried first: a trip to the well is long and short at the well, so its line seldom
+        // held; the mill's work is long, so most of the town as millers keeps a line there.)
+        T.SetTradeCount(Trade.Flour, Math.Max(1, T.VillagerCount - 2));
+        int staged = T.TradeInfo(Trade.Flour).Members;
         Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
+        T.SetTownFillsTrades(true);
         for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
         var wps = new System.Text.StringBuilder();
         for (int i = 0; i < T.WorkplaceCount; i++) { var v = T.Workplace(i); wps.Append($" [{i} open {v.Open} places {v.Places} busy {v.Busy} queue {v.QueueLength} hands {T.HandsBought(i)} offered {T.HandOffered(i)}]"); }
-        Check(w >= 0, $"a hand is offered at a queued workplace (level {T.Level}, time {T.Time:0}, workplaces{wps})");
+        Notes.Add($"staged-millers={staged}");
+        Check(w >= 0, $"a hand is offered at a queued workplace (millers staged {staged}; level {T.Level}, time {T.Time:0}, workplaces{wps})");
         for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
         // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
         if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
@@ -129,12 +139,23 @@ public partial class TownTest
         // Night 3: a row that moved in the last 0.3 s takes no click (layout sheet section 3): aim when it is still.
         int mi = -1; for (int i = 0; i < Main.Hud.Marks.Count; i++) if (Main.Hud.Marks[i] == mark) mi = i;
         Check(mi >= 0 && Main.Hud.RowTipParts(mi).title == T.HandName(w), "the offer's tooltip names it whole");
-        await Until(() => Main.Hud.RowCalm(mi), 120, "the hand's row comes to rest");
+        // The shop holds a new row back while the pointer rests on it (rows never move under the pointer); the pointer
+        // may be on the shop from an earlier click, so it moves off, as a player's would, before the row is awaited.
+        TestInput.Motion(GetViewport().GetVisibleRect().GetCenter());
+        for (int k = 0; k < 120 && !Main.Hud.RowCalm(mi); k++) await Frames(1);
+        Check(Main.Hud.RowCalm(mi), $"the hand's row comes to rest (row {mi}: {Main.Hud.RowDebug(mi)}; offers {string.Join(",", OffersNow())})");
         var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
         await Click(markRect.GetCenter());
         Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");
         _bought++; _kinds[ShopItemKind.Hand] = Got(ShopItemKind.Hand) + 1;
 
-        Notes.Add($"hand0={hands} boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
+        Notes.Add($"offers={string.Join(",", OffersNow())} hand0={hands} boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
+    }
+
+    private System.Collections.Generic.List<int> OffersNow()
+    {
+        var l = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < T.WorkplaceCount; i++) if (T.HandOffered(i)) l.Add(i);
+        return l;
     }
 }
