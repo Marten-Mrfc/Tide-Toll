@@ -35,19 +35,10 @@ public static class TestInput
     /// load the engine could exit before the collector had run and report each of them as "Leaked unsafe reference".
     /// An object still held by managed code (a true leak: a static list, a live field) is not collected by this and is
     /// still reported, so the test still fails on it.
+    /// Night 9: the game's own way out (CleanExit) does this and more: it frees the scene first, so the wrappers the
+    /// scene drops are finalized while the engine is whole, not during its shutdown ("Handle is not initialized").
     /// </summary>
-    public static async void QuitClean(Node n, int code)
-    {
-        var tree = n.GetTree();
-        for (int i = 0; i < 2; i++)
-        {
-            System.GC.Collect();
-            System.GC.WaitForPendingFinalizers();
-            System.GC.Collect();
-            await n.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-        }
-        tree.Quit(code);
-    }
+    public static void QuitClean(Node n, int code) => CleanExit.Quit(n.GetTree(), code);
 
     /// <summary>Waits n process frames (input parsed in one frame is handled by the next).</summary>
     public static async Task Frames(Node n, int count)
