@@ -191,14 +191,14 @@ Check steps after the addendum (machine load 8 to 27 from other work; `uptime` n
 | game-river | `RIVER PASS` |
 | game-perf | `PERF PASS` (means 1.58 / 1.07 ms at load 20+, were 0.46 / 0.52 quiet; bytes/frame 537 / 738 / 1225 / 1579, all under their gates) |
 | game-layout | `LAYOUT PASS` with `switch to compact: 29 frames over 193 ms ... overlaps 0, backwards 0`, `switch to tall: 30 frames over 200 ms`, `foot in: 60 frames`, `foot out: 31 frames` |
-| game-motion | FAIL four times, each time on one frame's CPU in a different settings/pause transition (8.96 ms "tab-saving-keys", 6.40 "click-while-closing", 9.31 "notes", 8.92 "pause"; gate 6) at load 8 to 27; 60 fps passed in two of them (cpu-max 5.44 ms). Before this round it passed at 5.42 ms. Not yet seen to pass on a quiet machine: to be re-run quiet. |
+| game-motion | `MOTION RATES PASS` at load 3 (cpu-max 5.60 / 2.20 / 1.98 ms at 60 / 30 / 120 fps, alloc-max 5672 B). Before that it failed six times at load 4 to 27, each time on a single frame's CPU (6.4 to 10.5 ms, gate 6) in a different transition (tab-saving-keys, click-while-closing, notes, pause, banner, tab-display-sound), none of them in the shop. |
 
-Pictures (worktree, not committed): `build/n4/g-1080/` (u03 u05 u08 u13 u42 u46 u47; u32 see below),
+Pictures (worktree, not committed): `build/n4/g-1080/` (u03 u05 u08 u13 u32 u42 u46 u47),
 `build/n4/g-1080-150/u13.png`, `build/n4/g-720/u13.png`, `build/n4/g-720-150/u13.png`. Seen: tall rows 48, line 2
 ends before the pills ("Cottages are full"), the wash light with a soft edge ("2,108" reads on both sides at 100 and
 150), every pill the same width (the Regulars pulse at 150 is lighter, not larger), hover and pressed told apart with
 the pill darker when pressed, the card 8 from the sheet with "Pays back" on its own line, "Later: Basket at level 3 ·
-+1 more", "1 more below ↓" at 1280x720@150, rulings as faint as the ledger's.
++1 more", "1 more below ↓" at 1280x720@150, rulings as faint as the ledger's. u32 (the longest list) is now tall at 1920 x 1080: 14 rows with keys and rates; the card ends about 80 px above the navigation buttons.
 
 Left: "N more above" under the header (point 6, second half). The tooltip sentences still say "Click a lit road" /
 "Click a lit cottage" (only line 2 was shortened).
