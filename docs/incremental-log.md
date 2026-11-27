@@ -160,7 +160,11 @@ One pending at a time, about every 50 minutes, held outside the container (the o
 
 ## Needs you
 
-(Nothing yet.)
+1. Play the newest Windows build yourself. Everything tonight was judged from pictures and measurements on a machine without a graphics card: say whether the screen stays calm in play, whether messages come at a good pace, and whether anything stutters.
+2. Listen. The six new reward sounds have players on the review page; in the game, check that a sound now comes with its message and that the sounds do not pile up when the town is busy.
+3. Answer the yes-or-no questions on the review page and say continue.
+4. Decide about the digits. The interface font draws a slashed zero and has no other; plain zeros need another font for numbers (a free-licence font from a site this machine may not reach, which needs your approval) or digits drawn by us.
+5. Say whether the next round should go to what was not reached tonight: the second age played through by real input (river villagers walking home to first-age cottages, the ford mattering on half the towns) and a title page.
 
 ## Replaced tests
 
