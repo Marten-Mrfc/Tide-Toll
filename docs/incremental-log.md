@@ -31,6 +31,21 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: research on the ink lines and blur (27 November, from 10:40 UTC)
+
+The owner, with a picture of a cottage whose thatch courses are heavy black stripes (`docs/plans/n8/owner-picture.png`): "Also start research in how we can minimalize this blurring/black lines to much. Like this is everywhere"
+
+- Research only. What is known from the code: the lines are a screen pass over the depth buffer (`game/shaders/outline_screen.gdshader`, `game/scripts/InkOutline.cs`): a pixel is inked fully, in flat near-black, wherever the depth's second difference passes a threshold; no smoothing; the sample step is 1 to 2 pixels and the line about twice that; modellers were told to raise every inner line 1 to 2 cm "so the ink finds them" (style sheet, section 3).
+- Three researchers, each writing into `docs/plans/n8/research/`:
+
+| Who | Question | File | Due (UTC) |
+| --- | --- | --- | --- |
+| Haiku | The map of what the game does today for line weight and sharpness (shader, soft-ink groups, inner lines per model, scaling and anti-aliasing settings) | `ink-code-map.md` | 11:05 |
+| Sonnet | Line weight in illustration and in games with outlines; a rewritten "Line" section for the style sheet | `line-art-research.md` | 11:20 |
+| Opus | Experiments on branch `wt/n8-ink` (`build/wt/n8-ink`): reproduce the picture, measure the ink per model, find the cause of the blur, try the remedies, a board of options | `ink-experiments.md`, `ink-now-and-options.png` | 11:55 |
+
+- Then the lead shows the owner the options board with a recommendation.
+
 ## Next request: research on villagers, roles and "hitboxes" (27 November, from 10:27 UTC)
 
 The owner: "Okay start an agent that will research how to improve the villagers. They don't have hitboxes and they don't spread well. Like they all start doing the same task. That is not the idea. I would like each villager to have a role and that it can be assigned. Like I would like to add that as a full system. Please do some research into it with opus, sonnet and haiku agents"
@@ -57,6 +72,8 @@ The owner, while villagers at work is being built: "okay next start work on the 
 - What happens now, read from the code: `docs/plans/n6/boats-design.md`, first section. The worst: a boat's place across the river is the middle of the map row it is in, so it jumps sideways in every bend and its bow flicks; on leaving it jumps from the quay to mid-river and turns about in one tick; waiting boats lie on the line the next boat sails along; the crane swings on a clock, loading nothing.
 - The design: the same file (a smooth course in two lanes, waiting at mooring posts, coming alongside and going away as manoeuvres, a quay with a yard and a sign per berth, a crane that does the loading). Rules, prices and timing stay; the simulation's position along the river stays the truth.
 - The pictures: a builder in `build/wt/n6-boats` (branch `wt/n6-boats`), due 11:45 UTC: `docs/plans/n6/mockup/boats-journey-now-and-planned.png` (the real track from the simulation beside the designed course) and `landing-now-and-planned.png` (a real frame beside a staged quay, yard, signs and crane). Notes `docs/plans/n6/mockup/notes.md` there.
+- The boards were done at 10:41 UTC, merged as `3b99f39` and sent to the owner at 10:44: `docs/plans/n6/mockup/boats-journey-now-and-planned.png` and `landing-now-and-planned.png`; notes in `docs/plans/n6/mockup/notes.md` (the real numbers: a sideways jump of 2 m and a bow swing of 73 degrees in one tick, 23 times each way; on leaving 194 degrees in 0.2 s; 31 pairs of boats within one cell of each other over 41 visits). Thirteen quay models were made (`assets/src/models/quay-scenes.py`, ledger 504 rows); the prototype of the course is `tools/mockup/boat_course.py`.
+- Found on the way: the river is 8 m wide, too narrow for two lanes with oars out, and the simulation's berths are 6 m apart while a barge is 8.5 m long. The lead's recommendation: do not widen the river now (it would change every town's map); boats ship their oars when moored and a passing barge keeps the middle; the drawn berths stand a barge length apart.
 - Building it waits for the owner's yes and for a free machine (two builders are at work on the villagers and the places until about 12:30 UTC).
 
 ## Next request: villagers at work (27 November, from 08:50 UTC)
