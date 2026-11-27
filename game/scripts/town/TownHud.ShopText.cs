@@ -68,6 +68,7 @@ public partial class TownHud
         ShopItemKind.Value or ShopItemKind.RiverValue => "A better price",
         ShopItemKind.BellTrack => "A longer ring",
         ShopItemKind.Regulars => "Pays more",
+        ShopItemKind.Training => "Better at their trades",
         ShopItemKind.Hand => "Another worker",
         ShopItemKind.Ferry => "Any tide",
         ShopItemKind.Berth => "Two berths",
@@ -158,6 +159,7 @@ public partial class TownHud
         ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
         ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
         ShopItemKind.Regulars => RegularsHelp,
+        ShopItemKind.Training => "Every villager works faster at its own trade and its goods fetch more.",
         ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
         _ => "A building for the town, placed on its plot by the town.",
     };

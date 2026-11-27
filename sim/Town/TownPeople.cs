@@ -101,7 +101,22 @@ public sealed partial class Town
     private Leaning _choosing;
 
     /// <summary>A job's rate as the choosing villager weighs it: its own kind of work counts a little more.</summary>
-    internal double LeanedFor(int id, JobKind j, double rate) { var keep = _choosing; _choosing = LeaningOf(S.Seed, id); double r = Leaned(j, rate); _choosing = keep; return r; }
+    internal double LeanedFor(int id, JobKind j, double rate)
+    {
+        var keep = _choosing; var keepT = _choosingTrade;
+        _choosing = LeaningOf(S.Seed, id); _choosingTrade = S.Villagers.Length > id ? S.Villagers[id].Trade : Trade.None;
+        double r = Leaned(j, rate);
+        _choosing = keep; _choosingTrade = keepT;
+        return r;
+    }
 
-    private double Leaned(JobKind j, double rate) => _choosing != Leaning.None && LeaningOfJob(j) == _choosing ? rate * (1 + TownRules.LeanBonus) : rate;
+    /// <summary>The trade of the villager choosing a job now (set by ChooseJob; None for a Helper).</summary>
+    private Trade _choosingTrade;
+
+    private double Leaned(JobKind j, double rate)
+    {
+        if (_choosing != Leaning.None && LeaningOfJob(j) == _choosing) rate *= 1 + TownRules.LeanBonus;
+        if (_choosingTrade != Trade.None && TradeOfJob(j) == _choosingTrade) rate *= TownRules.TradeLean; // n7 trades: its own trade
+        return rate;
+    }
 }

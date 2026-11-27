@@ -280,7 +280,9 @@ public sealed partial class Town
             coin = (put * unit + (v.Amount - put) * store) * CoinBonus;
         }
         else coin = v.Amount * StorePrice(g) * CoinBonus;
+        coin *= TradeWorthFactor(v); // n7 trades: grain and flour carried by their own trade's members
         RiverEarn(coin, g);
+        TradeEarned(v, coin);
         v.Trips++; v.Earned += coin;
         r.Delivered[(int)g] += v.Amount;
         if ((int)g < S.Delivered.Length) S.Delivered[(int)g] += v.Amount;
@@ -305,6 +307,7 @@ public sealed partial class Town
         if (v.Amount <= 0) return;
         double coin = v.Amount * StorePrice(v.Carry) * CoinBonus;
         r.EarnedMarket += coin;
+        TradeEarned(v, coin);
         r.EarnedBy[(int)v.Carry] += coin;
         Earn(coin);
         v.Trips++; v.Earned += coin;
