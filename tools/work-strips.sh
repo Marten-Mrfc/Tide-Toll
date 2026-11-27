@@ -19,6 +19,8 @@ for a in "$@"; do
   esac
 done
 mkdir -p "$OUT/frames"
+OUT=$(cd "$OUT" && pwd)
+[ -n "$JPEG" ] && mkdir -p "$JPEG" && JPEG=$(cd "$JPEG" && pwd)
 rm -f "$OUT"/frames/work-*
 if [ -n "${DISPLAY_NUM:-}" ]; then XVFB=(xvfb-run -n "$DISPLAY_NUM"); else XVFB=(xvfb-run -a); fi
 "$ROOT/tools/godot-test.sh" 'WORK STRIPS PASS' timeout 3000 "${XVFB[@]}" -s '-screen 0 1920x1080x24' "$GODOT" --path "$ROOT/game" \

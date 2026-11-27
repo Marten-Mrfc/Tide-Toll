@@ -88,8 +88,8 @@ public partial class WorkStrips : TownTestBase
         var ev = new List<TownEvent>();
         var best = new Scene { Villager = -1 };
         PlotKind want = j == Job.Water ? PlotKind.Well : j == Job.Reap ? PlotKind.Field : PlotKind.Mill;
-        double finishOf = -1; int fv = -1;
-        for (int k = 0; k < 1500; k++)
+        double finishOf = -1, bestWait = -1; int fv = -1;
+        for (int k = 0; k < 1200; k++)
         {
             c.Step();
             ev.Clear();
@@ -110,9 +110,13 @@ public partial class WorkStrips : TownTestBase
                     {
                         var wp = c.Workplace(at[i]);
                         bool lineJob = j is Job.Water or Job.Reap or Job.Mill;
-                        // A line job: the first villager who waited behind someone (the line moving up) and finished.
-                        if (lineJob && wp.Kind == want && join[i] >= 0 && best.Villager < 0 && (ahead[i] >= 1 || k > 900))
-                            return new Scene { Villager = i, Workplace = at[i], Plot = wp.Plot, Join = join[i], Start = start[i], Finish = now, Deliver = -1 };
+                        // A line job: the villager who waited longest in the scan (behind someone: the line moves up), and finished.
+                        double wait = start[i] - join[i] + (ahead[i] >= 1 ? 100 : 0);
+                        if (lineJob && wp.Kind == want && join[i] >= 0 && (best.Villager < 0 || wait > bestWait))
+                        {
+                            bestWait = wait;
+                            best = new Scene { Villager = i, Workplace = at[i], Plot = wp.Plot, Join = join[i], Start = start[i], Finish = now, Deliver = -1 };
+                        }
                         if (!lineJob && fv < 0) { finishOf = now; fv = i; }
                         if (!lineJob && fv == i) finishOf = now;
                     }
