@@ -79,6 +79,9 @@ public partial class TownHud
             return null;
         }
         side = HudZones.TipSide.Right;
+        // n7 trades: the Trades card's lines, pills and switch, and the villager card's Trade caps.
+        if (TradesTipOwner(p) is { } tro) return tro;
+        if (PersonCapOwner(p) is { } cap) return cap;
         if (Hit(_bell, p)) return _bell;
         if (Hit(_tide, p)) return _tide;
         if (_ledgerPanel.Modulate.A > 0.5f && Hit(_purse, p)) return _purse;
@@ -100,7 +103,7 @@ public partial class TownHud
         float dt = (float)GetProcessDeltaTime();
         var p = _root.GetGlobalMousePosition();
         var owner = TipOwnerAt(p, out var side);
-        if (owner != _tipOwner) { _tipOwner = owner; _tipAge = 0; _tip.Visible = false; }
+        if (owner != _tipOwner) { _tipOwner = owner; _tipAge = 0; _tip.Visible = false; _tradeTipFor = null; }
         if (owner == null) return;
         _tipAge += dt;
         if (_tipAge < TipDelay) return;
@@ -131,6 +134,12 @@ public partial class TownHud
                 // Addendum F: a row's card stands 8 away from the sheet, not from the row inside it.
                 var o = owner.GetGlobalRect();
                 if (row >= 0) { var sh = _shop.GetGlobalRect(); o = new Rect2(sh.Position.X, o.Position.Y, o.End.X - sh.Position.X, o.Size.Y); }
+                // n7 trades: a tip of a part of the Trades card or the villager's card stands 8 right of the card, not of the part.
+                if (_trades.IsAncestorOf(owner) || _person.IsAncestorOf(owner))
+                {
+                    var card = (_trades.IsAncestorOf(owner) ? _trades : _person).GetGlobalRect();
+                    o = new Rect2(card.Position.X, o.Position.Y, card.Size.X, o.Size.Y);
+                }
                 r = Zones.TipRect(o, size, side, avoid);
             }
             _tip.Position = r.Position;
@@ -194,6 +203,8 @@ public partial class TownHud
         var t = _drv.Town;
         var sb = _tipSb.Clear();
         if (owner == _foot) return FootTip();
+        if (TradesTipText(owner) is { } trs) return trs;
+        if (PersonCapTip(owner) is { } cps) return cps;
         if (owner == _bell) return _bellTip;
         if (owner == _tide) return "The tide. Boats come at high water; the ford can be walked at low water. " + _tideText.Text.Replace("\n", ", ") + ".";
         if (owner == _purse)
@@ -201,6 +212,8 @@ public partial class TownHud
             sb.Append(CoinMark).Append(Money(t.Coin)).Append("; +\u2060").Append(CoinMark).Append(Money(t.CoinPerMinute)).Append(" a minute. ");
             sb.Append(_level.Text).Append(t.Level < t.MaxLevel ? $": renown {Money(t.Renown)} of {Money(t.NextLevelRenown)}." : ".");
             if (t.NextGift.Length > 0) sb.Append(" Next: ").Append(t.NextGift);
+            // n7 trades: since the retune a second-age level's renown eases with time (the number after "of" falls slowly).
+            if (t.InRiverAge && t.Level < t.MaxLevel) sb.Append(" Word of the river spreads: each level asks a little less as time goes by.");
             return sb.ToString();
         }
         string Key(string action) { string k = Settings.GameInput.Bound(action); return k.Length > 0 ? $" [{k}]" : ""; }

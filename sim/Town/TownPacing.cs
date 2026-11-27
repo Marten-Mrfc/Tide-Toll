@@ -28,7 +28,7 @@ public sealed class PacingResult
     public int WorstEarlyMinute = -1, WorstLateMinute = -1;
     // ---- Rules v2 ----
     /// <summary>Purchases by ShopItemKind (index = (int)kind) before the charter.</summary>
-    public int[] ByKind = new int[22]; // rules v3: Hand = 11; green pass 2: Regulars = 21
+    public int[] ByKind = new int[23]; // rules v3: Hand = 11; green pass 2: Regulars = 21; n7 trades: Training = 22
     /// <summary>Load steps and building offers bought before the charter.</summary>
     public int LoadSteps, Buildings;
     /// <summary>Longest gap in seconds between new things on the map (level gift, building opened, road paved, cottage extended) after minute 2 and before the charter.</summary>

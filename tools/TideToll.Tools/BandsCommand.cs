@@ -28,6 +28,7 @@ public static class BandsCommand
         Apply(o);
         if (o.ContainsKey("rates")) return Rates(a, z);
         if (o.ContainsKey("demo")) return Demo(a, z);
+        if (o.TryGetValue("choice", out var chs)) return Choice0(a, z, int.Parse(chs, Inv));
         int ns = z - a + 1;
         var first = new PacingResult[ns * Bots.Length];
         var river = new RiverPacingResult[ns * Bots.Length];
@@ -54,6 +55,7 @@ public static class BandsCommand
                 string w = $"seed {x.Seed} {TownBot.Name(x.Bot)}";
                 long total = x.ByKind.Sum(); double top = total > 0 ? (double)x.ByKind.Max() / total : 0;
                 Console.WriteLine($"FIRST {x.Seed,3} | {x.Bot,-8} | {x.Charter / 60,6:F2} | {x.Purchases,4} | {x.FirstCoin,5:F1} | {x.FirstPurchase,5:F1} | {x.MinEarlyPerMinute,3} | {x.MinLatePerMinute,3} | {x.LongestNothingAffordable,4:F0} | {x.LongestMapGap,4:F0} | {top,5:F3} | {x.LongestPurchaseGap,4:F0} | {x.RequestsMet}/{x.RequestsAsked}");
+                Console.WriteLine($"EARLY {x.Seed,3} | {x.Bot,-8} | {string.Join(" ", x.Minutes.Take(12).Select(m => m.Purchases))} | boons {string.Join("", x.Boons.Select(b => b < 0 ? "-" : (b % 2 == 0 ? "A" : "B")))} | choice0 {x.ChoiceWorth[0]:F1}/{x.ChoiceWorth[1]:F1} | lastgap {x.LastGap:F2}/{x.LongestEarlierGap:F2} | training {x.ByKind[(int)ShopItemKind.Training]} | cpm {string.Join(" ", x.Minutes.Take(12).Select(m => m.CoinPerMinute.ToString("F0", Inv)))}");
                 E("1 first coin <= 25 s", (TownTargets.FirstCoinBy - x.FirstCoin) / TownTargets.FirstCoinBy, w + $" {x.FirstCoin:F1} s");
                 E("1 first purchase <= 45 s", (TownTargets.FirstPurchaseBy - x.FirstPurchase) / TownTargets.FirstPurchaseBy, w + $" {x.FirstPurchase:F1} s");
                 if (x.Bot != BotKind.Saver)
@@ -230,6 +232,30 @@ public static class BandsCommand
         return 0;
     }
 
+    /// <summary>n7 trades: the payback bot with each side of choice 0 forced; the charter minute per seed.</summary>
+    private static int Choice0(int a, int z, int choice)
+    {
+        int n = z - a + 1;
+        var ch = new double[n, 2];
+        System.Threading.Tasks.Parallel.For(0, 2 * n, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 }, i =>
+        {
+            int seed = a + i / 2, side = i % 2;
+            var t = new Town(seed);
+            var bot = new TownBot(BotKind.Payback, seed) { ForceChoice = choice, ForceSide = side };
+            while (!t.HasCharter && t.Time < 60 * 60) { t.Step(); bot.Act(t); }
+            ch[i / 2, side] = t.Time / 60;
+        });
+        int sa = 0, sb = 0; double ma = 0, mb = 0;
+        for (int s = 0; s < n; s++)
+        {
+            Console.WriteLine($"CHOICE{choice} {a + s,3} | A {ch[s, 0],6:F2} | B {ch[s, 1],6:F2}");
+            ma += ch[s, 0] / n; mb += ch[s, 1] / n;
+            if (ch[s, 0] < ch[s, 1]) sa++; else if (ch[s, 1] < ch[s, 0]) sb++;
+        }
+        Console.WriteLine($"CHOICE{choice} mean A {ma:F2} B {mb:F2} differ {Math.Abs(ma - mb) / Math.Min(ma, mb) * 100:F2} % | sooner: A {sa}, B {sb}");
+        return 0;
+    }
+
     /// <summary>The switches and --set (measuring only).</summary>
     public static void Apply(Dictionary<string, string> o)
     {
@@ -243,7 +269,7 @@ public static class BandsCommand
             int br = q[0].IndexOf('[');
             if (br > 0)
             {
-                var af = typeof(TownRulesRiver).GetField(q[0][..br]) ?? throw new ArgumentException("no array " + q[0]);
+                var af = (q[0].StartsWith("First.") ? typeof(TownRules).GetField(q[0][6..br]) : typeof(TownRulesRiver).GetField(q[0][..br])) ?? throw new ArgumentException("no array " + q[0]);
                 ((double[])af.GetValue(null)!)[int.Parse(q[0][(br + 1)..^1], Inv)] = double.Parse(q[1], Inv);
                 Console.WriteLine($"SET {q[0]} = {q[1]}");
                 continue;

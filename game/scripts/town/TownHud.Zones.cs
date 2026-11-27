@@ -46,6 +46,7 @@ public partial class TownHud
         _lineBack.Modulate = new Color(1, 1, 1, 0);
         holder.AddChild(_lineBack);
         _lineText.Text = _lineShown;
+        FitLine();
         _lineCardF.Set(false);
         // The hint and the mode text are kept as labels of their own (tests read them); the line shows one of them.
         _hint = new Label { Name = "Hint", Visible = false };

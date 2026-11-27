@@ -174,6 +174,11 @@ if have_godot; then
   # standing spots), nothing in one frame, allocation; at 60, 30 and 120 fps (tools/people-check.sh).
   step game-people env GODOT="$GODOT" tools/people-check.sh
   note "$(grep -o 'PEOPLE RATES PASS' "$LOGS/game-people.log" | head -1) $(grep -o 'picked=[0-9/]* shared=[0-9]* passpairs=[0-9]* sidefails=[0-9]*' "$LOGS/people-60.log" | head -1)"
+  # n7, trades: no Helper in a hat, heads changing over frames, the Trades card and the villager's card in one zone, the
+  # stepper and its hit areas, the hover rings, the tags, the hint writing no file, the Training row; allocation; at 60,
+  # 30 and 120 fps (tools/trades-check.sh).
+  step game-trades env GODOT="$GODOT" tools/trades-check.sh
+  note "$(grep -o 'TRADES RATES PASS' "$LOGS/game-trades.log" | head -1) $(grep -o 'hintframe=[0-9]*B bytes=[0-9]* tags=[0-9]*' "$LOGS/trades-60.log" | head -1)"
   # Saving: the town at level 2+ with a paved road saved and the scene loaded again (same state, camera, runs on), a
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
@@ -218,7 +223,7 @@ if have_godot; then
     skip game-readout "no xvfb-run"
   fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save game-work-places screenshot game-ink game-readout; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-trades game-save game-work-places screenshot game-ink game-readout; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

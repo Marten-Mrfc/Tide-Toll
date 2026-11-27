@@ -95,6 +95,7 @@ public partial class TownSaver : Node, ISaveActions
     public bool SaveNow(bool background)
     {
         FinishWrite();
+        if (_readFailed) Settings.GameSettings.Current?.SaveHintsIfChanged(); // the settings are still written
         if (_readFailed) return Failed("The save on disk could not be read, so it is not written over. Restart the game to try it again.");
         try
         {
@@ -107,10 +108,12 @@ public partial class TownSaver : Node, ISaveActions
             DirAccess.MakeDirRecursiveAbsolute(Main.Profile);
             string tmp = SavePath + ".tmp";
             byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(f);   // the same bytes StoreString wrote from Serialize
-            if (!background) GameSettings.Current?.WritePendingReadout();   // n10: the readout's F3 choice, with a save
             if (background)
             {
                 _clock = 0;
+                // The settings kept in memory (hints seen, the readout's F3) are written here, in the autosave's own frame
+                // on the main thread (the store is the main thread's), as the save on the main thread writes them below.
+                Settings.GameSettings.Current?.SaveHintsIfChanged();
                 return WriteInBackground(bytes, ProjectSettings.GlobalizePath(tmp), ProjectSettings.GlobalizePath(SavePath));
             }
             using (var fa = FileAccess.Open(tmp, FileAccess.ModeFlags.Write))
@@ -125,6 +128,9 @@ public partial class TownSaver : Node, ISaveActions
             }
             Saves++;
             _clock = 0;
+            // First-minute hints seen and the readout's F3 choice since the last save go to the settings file with the town
+            // (never in a frame of their own).
+            Settings.GameSettings.Current?.SaveHintsIfChanged();
             _failNoted = false;
             return true;
         }

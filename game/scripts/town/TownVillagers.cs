@@ -26,15 +26,11 @@ public partial class TownVillagers : Node3D
     public float WalkerScale = 1f;
 
     private TownDriver _drv = null!;
-    private MultiMeshInstance3D _bodies = null!, _heads = null!, _shadows = null!, _frames = null!, _carts = null!;
-    private readonly MultiMeshInstance3D?[] _headKinds = new MultiMeshInstance3D?[3];
-    private readonly int[] _headCount = new int[3];
-    /// <summary>Night 3: the five tunic colours of the style sheet (section 2), chosen per villager by <see cref="TunicOf"/>.</summary>
-    public static readonly Color[] Clothes = { Palette.Brick, Palette.River, Palette.CastIronGreen, Palette.Thatch, Palette.SootBrick };
-    /// <summary>The three heads: hair, a pale hood, a straw hat (villager.glb's head, then the two head files).</summary>
-    public static readonly string[] HeadModels = { "villager", "villager-head-hood", "villager-head-hat" };
-    /// <summary>A villager's head (0 hair, 1 hood, 2 hat) and tunic colour, from its index: the same town always looks the same.</summary>
-    public static int HeadOf(int i) => i % 3;
+    private MultiMeshInstance3D _bodies = null!, _shadows = null!, _frames = null!, _carts = null!;
+    /// <summary>n7 trades: the five tunic colours (build sheet part 3: River and Thatch went, they merged with the kerchief
+    /// and the straw hat), chosen per villager by <see cref="TunicOf"/>. Heads: TownVillagers.Heads.cs.</summary>
+    public static readonly Color[] Clothes = { Palette.Brick, Palette.PackedEarth, Palette.CastIronGreen, Palette.Mud, Palette.SootBrick };
+    /// <summary>A villager's tunic colour, from its index: the same town always looks the same.</summary>
     public static Color TunicOf(int i) => Clothes[(i + i / 3) % Clothes.Length];
     private readonly float[] _lean = new float[Capacity];
     private long _lastTick = -1;
@@ -82,17 +78,7 @@ public partial class TownVillagers : Node3D
             _bodies.Multimesh.Mesh = body;
             _bodies.Multimesh.InstanceCount = Capacity;
             for (int i = 0; i < Capacity; i++) _bodies.Multimesh.SetInstanceColor(i, TunicOf(i));
-            for (int h = 0; h < 3; h++)
-            {
-                string hm = ModelLib.Has(HeadModels[h]) && ModelLib.HasPart(HeadModels[h], "head") ? HeadModels[h] : "villager";
-                _headKinds[h] = new MultiMeshInstance3D
-                {
-                    Name = h == 0 ? "Heads" : "Heads" + h,
-                    Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = Capacity, Mesh = SoftInk(ModelLib.Part(hm, "head")) },
-                };
-                AddChild(_headKinds[h]);
-            }
-            _heads = _headKinds[0]!;
+            InitHeads();
         }
         ModelHeight = Math.Max(0.5f, ModelLib.Mesh("villager").GetAabb().End.Y);
         AddChild(_bodies);
@@ -114,6 +100,7 @@ public partial class TownVillagers : Node3D
         AddChild(_carts);
         InitProps();
         InitRings();
+        InitTradeRings();
         for (int w = 0; w < _lane.Length; w++) _lane[w] = -1;
         drv.Replaced += Reset;
     }
@@ -137,7 +124,7 @@ public partial class TownVillagers : Node3D
     /// One villager as the game draws villager <paramref name="index"/> (tunic, head), carrying good g at a Load level,
     /// leaning as a walker (lean 1) or standing (0): for the asset audit's pictures.
     /// </summary>
-    public static Node3D Figure(int index, float scale, Good g = Good.None, int level = 0, float lean = 0f, string? load = null)
+    public static Node3D Figure(int index, float scale, Good g = Good.None, int level = 0, float lean = 0f, string? load = null, Trade trade = Trade.None)
     {
         var n = new Node3D { Name = "Figure" };
         var xf = new Transform3D((new Basis(Vector3.Right, 0.13f * lean)).Scaled(Vector3.One * scale), Vector3.Zero);
@@ -145,9 +132,11 @@ public partial class TownVillagers : Node3D
         mm.SetInstanceTransform(0, xf);
         mm.SetInstanceColor(0, TunicOf(index));
         n.AddChild(new MultiMeshInstance3D { Name = "Body", Multimesh = mm });
-        string hm = HeadModels[HeadOf(index)];
+        string hm = HeadModels[HeadOf(index, trade)];
         if (!ModelLib.Has(hm)) hm = "villager";
         n.AddChild(new MeshInstance3D { Name = "Head", Mesh = ModelLib.Part(hm, "head"), Transform = xf });
+        if (trade == Trade.Flour && ModelLib.Has("villager-apron"))
+            n.AddChild(new MeshInstance3D { Name = "Apron", Mesh = ModelLib.Part("villager-apron", "apron"), Transform = xf });
         if (g == Good.None && load == null) return n;
         string lm = load ?? LoadModel(g);
         for (int k = 0; k < BundlesAt(level); k++)
@@ -163,6 +152,7 @@ public partial class TownVillagers : Node3D
         Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); Array.Clear(_seenPose); Array.Clear(_inLine);
         Array.Clear(_fly); Array.Clear(_take); Array.Clear(_tip); Array.Fill(_lane, -1); _lastTick = -1;
         HoverId = -1; SelectedId = -1; _hoverA = 0f; _selA = 0f;
+        ResetHeads();
     }
 
     /// <summary>Catch-up rate of a drawn villager, cells per second of frame time (delta, not frame count); beyond SnapCells it snaps.</summary>
@@ -180,7 +170,7 @@ public partial class TownVillagers : Node3D
         float limit = ChaseCellsPerSecond(_drv.Speed) * dt;
         float turn = 10f * dt * (float)Math.Max(1, Math.Min(_drv.Speed, 8));
         Array.Clear(_loadCount);
-        Array.Clear(_headCount);
+        BeginHeads();
         int frames = 0, carts = 0, sickles = 0, scythes = 0;
         var bodies = _bodies.Multimesh;
         MaxPoseRate = 0;
@@ -197,6 +187,7 @@ public partial class TownVillagers : Node3D
             var v = t.Villager(i);
             float tx = (float)(v.PrevX + (v.X - v.PrevX) * a), ty = (float)(v.PrevY + (v.Y - v.PrevY) * a);
             bool fresh = !_seen[i];
+            _headFresh[i] = fresh;
             if (fresh) { _x[i] = tx; _y[i] = ty; _yaw[i] = HeadingYaw(v.Heading); _seen[i] = true; }
             Transitions(t, i, v, fresh);
             // n5: those who wait stand in a line along the lane, workers at their work spots (WorkSites); drawing only.
@@ -233,8 +224,7 @@ public partial class TownVillagers : Node3D
             if (fwd != 0f) pos += new Vector3(MathF.Sin(_yaw[i]), 0, MathF.Cos(_yaw[i])) * fwd;
             var xf = new Transform3D(basis, pos);
             bodies.SetInstanceTransform(i, xf);
-            int hk = HeadOf(i);
-            if (_headKinds[hk] != null) _headKinds[hk]!.Multimesh.SetInstanceTransform(_headCount[hk]++, xf);
+            DrawHead(i, v.Trade, _headFresh[i], xf, dt);
             _shadows.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * WalkerScale * (1f - bob * 0.6f)), new Vector3(pos.X, 0.04f, pos.Z)));
             // Night 3: loads are modelled in the body's frame (held in the arms, on the shoulder, a yoke on the
             // shoulders); each Load step shows: a second load on the back, a pack frame, a handcart. n5: taken up,
@@ -243,7 +233,7 @@ public partial class TownVillagers : Node3D
         }
         _frameOut = Math.Max(0f, _frameOut - dt * 3.5f);
         bodies.VisibleInstanceCount = n;
-        for (int h = 0; h < 3; h++) if (_headKinds[h] != null) _headKinds[h]!.Multimesh.VisibleInstanceCount = _headCount[h];
+        EndHeads();
         _frames.Multimesh.VisibleInstanceCount = frames;
         _carts.Multimesh.VisibleInstanceCount = carts;
         _sickles.Multimesh.VisibleInstanceCount = sickles;
@@ -253,6 +243,7 @@ public partial class TownVillagers : Node3D
         for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
         Drawn = n;
         RingFrame(dt, n);
+        TradeRingFrame(t, dt, n);
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
         MaxSideways = maxSide;

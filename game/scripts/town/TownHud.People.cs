@@ -21,9 +21,9 @@ public partial class TownHud
     public string PersonTagText => _personTag.Visible && _tagF.Value > 0.5f ? _personTag.Text : "";
     public bool PersonCardVisible => _person.Visible && _personF.On;
     public Rect2 PersonCardRect => _person.Visible ? _person.GetGlobalRect() : new Rect2();
-    public string PersonCardText => _person.Visible ? $"{_pName.Text}|{_pHome.Text}|{(_pLean.Visible ? _pLean.Text + "|" : "")}{_pNow.Text}|{_pCount.Text}" : "";
-    /// <summary>The bottom of the card's last line on screen (tests: the card hugs its lines).</summary>
-    public float PersonLastLineBottom => _pCount.GetGlobalRect().End.Y;
+    public string PersonCardText => _person.Visible ? $"{_pName.Text}{_pTrade.Text}|{_pHome.Text}|{_pNow.Text}|{_pCount.Text}" : "";
+    /// <summary>The bottom of the card's last line on screen (tests: the card hugs its lines): n7 trades, the Trade caps.</summary>
+    public float PersonLastLineBottom => _pCapsLabel.GetGlobalRect().End.Y;
     /// <summary>The close cross on the card (tests click it).</summary>
     public Button PersonClose => _pClose;
     /// <summary>The hit radius on screen now, canvas pixels.</summary>
@@ -32,13 +32,14 @@ public partial class TownHud
     private Panel _person = null!;
     private Label _personTag = null!, _pName = null!, _pHome = null!, _pLean = null!, _pNow = null!, _pCount = null!;
     private Button _pClose = null!;
-    private readonly MessageFader _personF = new(0.15f), _tagF = new(0.12f);
+    private readonly MessageFader _personF = new(TradesFadeSeconds), _tagF = new(0.12f);
     private float _hoverHeld;
     private int _hoverBefore = -1;
     private Vector2 _lastPointer = new(-1, -1);
     private float _lostFor;
     /// <summary>Seconds after a change of hover during which it does not go back to the villager it left.</summary>
     public const float FlickerHold = 0.4f;
+    private Trade _tagTrade;
     private int _tagFor = -1, _cardFor = -1, _cardSig = int.MinValue, _cardCountSig = int.MinValue;
 
     private void BuildPerson()
@@ -62,9 +63,12 @@ public partial class TownHud
         _pName = Line("Name", UiKit.Body, UiKit.UiBold, UiKit.Ink, 8, 24, cross);
         _pName.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _pHome = Line("Home", UiKit.Caption, UiKit.UiFont, UiKit.Muted, 33, 20);
-        _pLean = Line("Leaning", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 52, 20);
-        _pNow = Line("Now", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 71, 20);
-        _pCount = Line("Counts", UiKit.Caption, UiKit.TabRegular, UiKit.Muted, 92, 20);
+        _pLean = Line("Leaning", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 56, 20);
+        _pNow = Line("Now", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 56, 20);
+        _pCount = Line("Counts", UiKit.Caption, UiKit.TabRegular, UiKit.Muted, 79, 20);
+        _pLean.Visible = false; // n7 trades: the like is said on line 2 ("Likes reaping · by the well lane")
+        _pName.Size = new Vector2(inner - cross, _pName.Size.Y);
+        BuildPersonTrade(pad, inner - cross);
         // Sized to its text by the coin sign's layout (SetCoinText resets the size): no clipping, or it would shrink to nothing.
         _pCount.ClipText = false;
         _pCount.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
@@ -81,6 +85,8 @@ public partial class TownHud
         _pClose.Position = new Vector2(w - UiKit.U(s, 6) - cs.X, UiKit.U(s, 4));
         _pClose.Pressed += () => Select(-1);
         _personTag = Tag("PersonTag", UiKit.Caption);
+        BuildTrades();
+        BuildAutoTags();
         _personF.Set(SelectedVillager >= 0);
         _tagF.Set(false);
         _cardFor = -1; _cardSig = int.MinValue; _cardCountSig = int.MinValue; _tagFor = -1;
@@ -106,7 +112,7 @@ public partial class TownHud
     /// <summary>The villager a player pointing here would pick now (-1: none, or picking is off here).</summary>
     public int PersonTarget(Vector2 screen)
     {
-        if (!PickingOn || OverInterface(screen) || OverPerson(screen)) return -1;
+        if (!PickingOn || OverInterface(screen) || OverPerson(screen) || OverTrades(screen)) return -1;
         if (!new Rect2(Vector2.Zero, _built).HasPoint(screen)) return -1;
         return _main.Villagers.Pick(_main.Rig, screen, PickRadius, HoverVillager);
     }
@@ -117,7 +123,7 @@ public partial class TownHud
     {
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } mb && !_main.Rig.LeftDragged)
         {
-            if (!PickingOn || OverInterface(mb.Position) || OverPerson(mb.Position)) return;
+            if (!PickingOn || OverInterface(mb.Position) || OverPerson(mb.Position) || OverTrades(mb.Position)) return;
             int id = _main.Villagers.Pick(_main.Rig, mb.Position, PickRadius, HoverVillager);
             Select(id); // a click on the open map away from everyone closes the card
             // Not marked handled: the camera must see the release too.
@@ -127,6 +133,8 @@ public partial class TownHud
     private void PeopleFrame(float dt)
     {
         var t = _drv.Town;
+        TradesFrame(dt);
+        AutoTagsFrame(dt);
         // The pointer as the system has it (an _Input override to follow events cost a managed object per event:
         // game-motion's allocation gate). Picture runs under xvfb move the system pointer with Input.WarpMouse.
         var p = _root.GetGlobalMousePosition();
@@ -147,7 +155,13 @@ public partial class TownHud
         // The name tag: after the tooltip's delay, above the figure's head, in the map's tag style.
         _tagF.Want(h >= 0 && _hoverHeld >= TipDelay);
         _tagF.Step(dt);
-        if (h >= 0 && _tagFor != h) { _tagFor = h; _personTag.Text = t.VillagerName(h); _personTag.ResetSize(); }
+        // n7 trades: "Joss, reaper" (made again when the trade changes).
+        if (h >= 0 && (_tagFor != h || t.Villager(h).Trade != _tagTrade))
+        {
+            _tagFor = h; _tagTrade = t.Villager(h).Trade;
+            _personTag.Text = t.VillagerName(h) + ", " + TradeOne[(int)_tagTrade];
+            _personTag.ResetSize();
+        }
         bool tag = _tagF.Value > 0.001f && _tagFor >= 0 && _tagFor < t.VillagerCount;
         if (_personTag.Visible != tag) _personTag.Visible = tag;
         if (tag)
@@ -175,18 +189,10 @@ public partial class TownHud
         if (id != _cardFor)
         {
             _cardFor = id; _cardSig = int.MinValue; _cardCountSig = int.MinValue;
-            _pName.Text = t.VillagerName(id);
-            _pHome.Text = HomeWords(t, v);
-            _pLean.Text = LeaningWords(v.Leaning);
-            // A leaning is said only while it changes anything in play (step 2 gives it meaning as a trade).
-            bool lean = t.LeaningCounts;
-            _pLean.Visible = lean;
-            float y = lean ? 71 : 52;
-            _pNow.Position = new Vector2(_pNow.Position.X, UiKit.U(_s, y));
-            _pCount.Position = new Vector2(_pCount.Position.X, UiKit.U(_s, y + 21));
-            // The card hugs its lines inside its zone (the zone stays HudZones.PersonH; one line less, 19 less paper).
-            _person.Size = new Vector2(_person.Size.X, UiKit.U(_s, lean ? HudZones.PersonH : HudZones.PersonH - 19));
+            // n7 trades: one size for both cards (HudZones.PersonH, 156): the title with its trade, the like and the
+            // home, now, the counts, the Trade caps (TownHud.PeopleTrade.cs).
         }
+        PersonTradeFrame(t, id, v);
         int sig = HashCode.Combine(v.Phase, v.Job, v.Carry, v.Stage, v.QueuePosition, v.Workplace, v.OnRiver);
         if (sig != _cardSig) { _cardSig = sig; _pNow.Text = NowWords(t, v); }
         int csig = HashCode.Combine(v.Trips, (long)Math.Floor(v.Earned), _s);
@@ -266,7 +272,7 @@ public partial class TownHud
                         : v.Job is JobKind.Water or JobKind.GrainHome ? "home"
                         : v.Stage == 1 ? "the mill" : "the market";
                     if (v.Job is JobKind.ClothBoat or JobKind.ClothMarket && v.Carry == Good.Wool) to = "the weaver";
-                    return $"Carrying {GoodWord(v.Carry)} to {to}";
+                    return to == "home" ? $"Carrying {GoodWord(v.Carry)} home" : $"Carrying {GoodWord(v.Carry)} to {to}";
                 }
                 if (v.Job == JobKind.None) return "Looking for work";
                 if (v.Job is JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket) return "On the way to the pasture";

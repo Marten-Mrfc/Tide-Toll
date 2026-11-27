@@ -28,6 +28,10 @@ public struct VillagerView
     public double Earned;            // coin those deliveries paid
     public int RiverHome;            // river cottage plot (RiverPlan.Plots) when it lives by the river, else -1
     public bool OnRiver;             // walking or standing on the river plan (the second age)
+    // n7 trades
+    public Trade Trade;              // its trade (None: a Helper)
+    public bool TradeByPlayer;       // set on its card by the player
+    public Trade Likes;              // the trade it likes (None while that trade is not open)
 }
 
 public struct RoadView
@@ -117,6 +121,7 @@ public sealed partial class Town
             QueuePosition = v.Phase == VillagerPhase.Queued ? QueuePosition(v) : -1,
             Dir = v.Dir, Stage = v.Stage, Slot = v.Slot, WorkLeft = v.WorkLeft, Leaning = LeaningOf(S.Seed, v.Id),
             Trips = v.Trips, Earned = v.Earned, RiverHome = v.RHome, OnRiver = v.RMode != 0,
+            Trade = v.Trade, TradeByPlayer = v.TradeByPlayer, Likes = VillagerLikes(v.Id),
         };
     }
 

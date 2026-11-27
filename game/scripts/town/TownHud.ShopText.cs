@@ -68,6 +68,7 @@ public partial class TownHud
         ShopItemKind.Value or ShopItemKind.RiverValue => "A better price",
         ShopItemKind.BellTrack => "A longer ring",
         ShopItemKind.Regulars => "Pays more",
+        ShopItemKind.Training => "Better at trades",
         ShopItemKind.Hand => "Another worker",
         ShopItemKind.Ferry => "Any tide",
         ShopItemKind.Berth => "Two berths",
@@ -123,7 +124,7 @@ public partial class TownHud
         "Villager", "Pace", "Basket", "Yoke", "Handcart", "Pave a road", "Extend a cottage", "Second bucket", "Market stall",
         "Second field", "Mill", "Tools", "Water price", "Grain price", "Flour price", "Louder bell", "Regulars",
         "Well hand", "Field hand", "Mill hand", "The ferry", "A second berth", "Crane", "Better boat prices", "Wool price",
-        "Cloth price", "A bigger raft", "A faster rope", "A higher toll", "A faster winch",
+        "Cloth price", "A bigger raft", "A faster rope", "A higher toll", "A faster winch", "Training",
     };
 
     /// <summary>Round 5: the simulation's worth (coin a minute) as shown: tenths below 10, whole numbers above.</summary>
@@ -158,9 +159,20 @@ public partial class TownHud
         ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
         ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
         ShopItemKind.Regulars => RegularsHelp,
+        ShopItemKind.Training => TrainingHelp(TrainingStep),
         ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
         _ => "A building for the town, placed on its plot by the town.",
     };
+
+    /// <summary>The Training row's tooltip: what one more step does (Town.TrainingStepBonus, read when the tip is made).</summary>
+    public static string TrainingHelp(double step)
+    {
+        double p = Math.Round(step * 100);
+        return p > 0 ? $"Every villager works {p}% faster at its own trade and its goods fetch {p}% more."
+            : "Every villager works faster at its own trade and its goods fetch more.";
+    }
+    /// <summary>Set by the shop tip before it makes the sentence (Tooltip is static).</summary>
+    private static double TrainingStep;
 
     public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 }

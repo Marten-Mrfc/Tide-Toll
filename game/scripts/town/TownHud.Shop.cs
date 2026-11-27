@@ -43,7 +43,7 @@ public partial class TownHud
     /// <summary>Sheet v3: the display group of a kind (the simulation's order is not changed, only shown regrouped).</summary>
     public static ShopGroup GroupOf(ShopItemKind k, bool secondAge) => k switch
     {
-        ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load => ShopGroup.People,
+        ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Training => ShopGroup.People,
         ShopItemKind.Pave or ShopItemKind.Extend or ShopItemKind.Building => ShopGroup.Building,
         ShopItemKind.Tools or ShopItemKind.Value => ShopGroup.Work,
         ShopItemKind.BellTrack or ShopItemKind.Regulars => ShopGroup.Town,
@@ -57,7 +57,7 @@ public partial class TownHud
     /// key after (offers share one rank: the stable order keeps them F, G, H).</summary>
     public static int KeyRank(in ShopItem it) => it.Kind switch
     {
-        ShopItemKind.Villager => 10, ShopItemKind.Pace => 20, ShopItemKind.Load => 30, ShopItemKind.Pave => 40,
+        ShopItemKind.Villager => 10, ShopItemKind.Pace => 20, ShopItemKind.Load => 30, ShopItemKind.Training => 35, ShopItemKind.Pave => 40,
         ShopItemKind.Extend => 50, ShopItemKind.Building => 55, ShopItemKind.Tools => 60,
         ShopItemKind.Value => it.Index == (int)Good.Water ? 70 : it.Index == (int)Good.Grain ? 80 : 90,
         ShopItemKind.BellTrack => 100,
@@ -126,6 +126,7 @@ public partial class TownHud
     {
         ShopItemKind.Value or ShopItemKind.RiverValue => "value-" + GoodName((Good)it.Index).ToLowerInvariant(),
         ShopItemKind.BellTrack => "bell",
+        ShopItemKind.Training => "train",   // n7 trades: assets/icons/shop-train.svg
         _ => it.Kind.ToString().ToLowerInvariant(),
     };
 
@@ -276,7 +277,7 @@ public partial class TownHud
         // Each part is set only when it changed (the signature changes with every coin while saving up).
         string key = FirstKey(ActionFor(it, ord));
         if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Line2.Visible; r.PlaceKey(); }
-        bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
+        bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars or ShopItemKind.Training;
         string name = RowLabel(it);
         int step = track && it.Level > 0 ? it.Level : 0;
         if (name != r.NameShown || step != r.StepShown)

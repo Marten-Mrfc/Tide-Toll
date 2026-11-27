@@ -83,6 +83,7 @@ public partial class TownHud
         bool mode = it.Kind == ShopItemKind.Pave ? PaveMode : it.Kind == ShopItemKind.Extend && ExtendMode;
         _rtTitle = it.Name.Length > 0 && it.Kind == ShopItemKind.Hand ? it.Name : RowName(it);
         if (_rowOrder[i].Step.Text.Length > 0) _rtTitle += " " + _rowOrder[i].Step.Text;
+        TrainingStep = _drv.Town.TrainingStepBonus;
         _rtSentence = Tooltip(it);
         _rtKeys.Clear();
         int ord = 0;

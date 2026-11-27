@@ -181,6 +181,38 @@ public static class TownRules
     // Each regular: every delivery pays RegularsStep more. Price: RegularsMinutes of the best coin rate when the level was
     // reached (at least RegularsRateMin a minute), times RegularsGrowth ^ regulars won at this level; starts again each level.
     public static double RegularsStep = 0.004, RegularsMinutes = 0.15, RegularsGrowth = 1.35, RegularsRateMin = 20;
+    // ---- n7 trades (sim/Town/TownTrades.cs, TownTradeRules.cs; tables and the runs behind each value:
+    //      docs/plans/n7/trades-progress.md) ----
+    // The choice of work: a job of the villager's own trade counts TradeLean times its rate (a Helper weighs every job at 1).
+    // 1.6: at 1.5 the second age's members made 66-70 % of their trips at their trade (target 70 %); at 1.75 the first
+    // age's requests fell under half met (0.495) and the payback bot had minutes of 2 purchases early (it waits longer for
+    // the Load step); 1.6 keeps both and the share at 91 % / 69-74 %.
+    public static double TradeLean = 1.6;
+    // The reward at its own trade: work time / (1 + TradeWork + Training * TradeStep), a delivery of its trade's good worth
+    // (1 + TradeWorth + Training * TradeStep); in the trade it likes, TradeLikes more on both. The two bonuses give back
+    // what the lean costs: with none the bots reached the charter about 15 % later (lean 1.75); 0.12 and 0.05 bring every
+    // bot's mean charter minute back to within 0.5 minute of the minute before trades (payback 29.30, cheapest 36.71,
+    // random 35.25, saver 27.08). Work 0.10: a payback minute of 3 purchases early (seed 8) and the second age's landing
+    // share under a third (seed 9 random); 0.15: the saver under 25 minutes (seed 1) and requests under half met.
+    // TradeLikes 0.05 is the sheet's "+5 %"; 0 or 0.1 each tipped a charter band. TradeStep 0.04: at 0.03 the saver's last
+    // stretch (level 15 to the charter, 2.96 min) was longer than the longest of the three before it (2.93); 0.04 gives
+    // 2.91 against 3.10.
+    public static double TradeWork = 0.12, TradeWorth = 0.05, TradeLikes = 0.05, TradeStep = 0.04;
+    // The town's filling: at most one rebalancing move every TradeMoveEvery seconds, when the best-paid trade's members earn
+    // more than (1 + TradeMoveGap) times the worst's a head (the sheet's values; 30 s tipped three first-age bands, 10 s
+    // doubled the hat changes). TradeFloorShare: the town first fills each trade to this many villagers a place of its
+    // workplaces (one working, two on the road); without a floor the earnings figure kept one reaper beside fifteen
+    // carriers through minutes 6 to 12 and the herding rose (first age 27-31 %); 3 brings it to 15-17 %. At 2 the saver's
+    // last stretch grew longer than the gaps before it (3.22 against 3.02 min); at 1 five bands failed.
+    public static double TradeMoveEvery = 20, TradeMoveGap = 0.2;
+    public static double TradeFloorShare = 3;
+    // Training: ten steps; price TrainingMinutes of the best coin a minute (at least TrainingRateMin), times TrainingGrowth ^
+    // steps, so its payback sits among Regulars' and Tools' (at 1.5 minutes no bot bought it in 40 first-age runs).
+    public const int TrainingMax = 10;
+    public static double TrainingMinutes = 0.5, TrainingRateMin = 20, TrainingGrowth = 1.45;
+    // The bots' estimate of a Training step: the share of a trip that is work (the rest is walking and waiting, which
+    // Training does not speed).
+    public static double TrainingWorkShare = 0.3;
     public static double HandWellBase = 150, HandFieldBase = 600, HandMillBase = 4000, HandGrowth = 2.5;
 }
 
