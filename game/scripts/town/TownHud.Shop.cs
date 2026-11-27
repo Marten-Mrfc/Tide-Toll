@@ -297,7 +297,7 @@ public partial class TownHud
         if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
         if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
         bool priced = it.Price > 0 && !double.IsInfinity(it.Price);
-        string price = st == ShopRow.PillState.On ? "On" : !priced ? "\u2013" : (it.Kind == ShopItemKind.Pave ? "from " : "") + PillMoney(it.Price);
+        string price = st == ShopRow.PillState.On ? "On" : !priced ? "\u2013" : (it.Kind == ShopItemKind.Pave ? "from " : "") + PillPrice(it.Price);
         if (price != r.PriceShown)
         {
             r.PriceShown = price;

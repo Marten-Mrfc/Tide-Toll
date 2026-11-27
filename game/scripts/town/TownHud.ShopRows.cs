@@ -97,6 +97,7 @@ public partial class TownHud
         _footSig = int.MinValue;
         _card.Reset();
         _nameSize = NameSizeFor(w - 2 * pad);
+        DecidePillShort();
         _rows.Clear(); _rowOrder.Clear(); _shown.Clear(); _marks.Clear(); _pulseQueue.Clear();
         _scroll = 0; _holdAge = -1f; _compactShop = false; _shopScrolls = false; _affordSig = int.MinValue;
     }

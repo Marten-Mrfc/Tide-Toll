@@ -53,22 +53,23 @@ public static class LayoutFixture
         {
             if (n is not Button b || !b.Name.ToString().StartsWith("Row")) continue;
             var price = b.GetNodeOrNull<Label>("Pill/Price");
-            if (price != null)
+            if (price != null && price.Visible)
             {
-                bool from = b.Name == "Row3000"; // Pave: "from" and the cheapest road's price
-                // As the row does (ShopRow.FitPrice): body when it fits, else caption.
-                price.Text = from ? "from 9,999" : "9.99M";
-                if (from) { price.GetParent().GetNode<Control>("Coin").Visible = false; price.Position = new Vector2(UiKit.U(hud.UiScale, 8), 0); price.Size = new Vector2(price.GetParent<Control>().Size.X - UiKit.U(hud.UiScale, 12), price.Size.Y); }
+                // Sheet v3: the largest price a pill shows (whole up to 99,999, then "999k", "9.99M"), at body size in
+                // every row: it must fit as it is (was: set in caption when it did not fit).
+                bool from = b.Name == "Row3000"; // Pave: "from" and the cheapest road's price, centred
+                string widest = "";
+                foreach (double v in new[] { 99_999d, 999_999d, 9_999_999d, 99_999_999d })
+                {
+                    string t = hud.PillPrice(v);
+                    if (UiKit.TabBold.GetStringSize(t, HorizontalAlignment.Left, -1, UiKit.Type(hud.UiScale, UiKit.Body)).X > UiKit.TabBold.GetStringSize(widest, HorizontalAlignment.Left, -1, UiKit.Type(hud.UiScale, UiKit.Body)).X) widest = t;
+                }
+                price.Text = from ? "from " + widest : price.HorizontalAlignment == HorizontalAlignment.Right ? widest : price.Text;
+                price.AddThemeFontOverride("font", UiKit.TabBold);
                 price.AddThemeFontSizeOverride("font_size", UiKit.Type(hud.UiScale, UiKit.Body));
-                if (TownHud.TextWidth(price) > price.Size.X) price.AddThemeFontSizeOverride("font_size", UiKit.Type(hud.UiScale, UiKit.Caption));
             }
             var line2 = b.GetNodeOrNull<Label>("Line2");
-            if (line2 != null && line2.Visible)
-            {
-                // As the row does (TownHud.RowContent): the worth is dropped whole when the line does not fit.
-                line2.Text = "+120 a minute · 49,999 short";
-                if (TownHud.TextWidth(line2) > line2.Size.X) line2.Text = "49,999 short";
-            }
+            if (line2 != null && line2.Visible) line2.Text = "No room in the cottages";
         }
     }
 }

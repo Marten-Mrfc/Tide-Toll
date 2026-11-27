@@ -156,6 +156,13 @@ public partial class TownHud
         _tipLabel.Position = new Vector2(pad, pad);
         _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
         h = Math.Max(h, _tipLabel.GetContentHeight());
+        // A one-line tip is as wide as its text (sheet v3: "Achievements · Tab" is a small slip, not a wide card).
+        if (h <= lineH + 1)
+        {
+            float tw = f.GetStringSize(measure, HorizontalAlignment.Left, -1, fs).X;
+            w = Math.Min(w, MathF.Ceiling(tw) + 2 * pad + 4);
+            _tipLabel.Size = new Vector2(w - 2 * pad, _tipLabel.Size.Y);
+        }
         _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
         return new Vector2(w, MathF.Ceiling(h) + 2 * pad + 2);
     }

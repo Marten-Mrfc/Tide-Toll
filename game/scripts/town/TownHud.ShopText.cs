@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Godot;
 using TideToll.Sim.Town;
 
 namespace TideToll.Game;
@@ -8,13 +9,24 @@ namespace TideToll.Game;
 /// blocked), the pill's money, the tooltips' sentences.</summary>
 public partial class TownHud
 {
-    /// <summary>Sheet v3: a pill's price, the same way in every row: whole up to 99,999, then "123k", then "1.24M".</summary>
-    public static string PillMoney(double c)
+    /// <summary>Sheet v3: a pill's price, the same way in every row: whole below <see cref="_pillShortFrom"/> (100,000
+    /// when "99,999" fits the pill at body size, else 10,000), then "123k", then "1.24M".</summary>
+    public string PillPrice(double c)
     {
         c = Math.Floor(c);
-        if (c < 100_000) return c.ToString("N0", Inv);
+        if (c < _pillShortFrom) return c.ToString("N0", Inv);
         if (c < 1_000_000) return Math.Floor(c / 1000).ToString(Inv) + "k";
         return UiKit.Short(c);
+    }
+
+    private double _pillShortFrom = 100_000;
+
+    /// <summary>Decides where pills start to shorten for this layout (once, when the shop is built).</summary>
+    private void DecidePillShort()
+    {
+        float box = UiKit.U(_s, PillUnits) - UiKit.U(_s, 29) - UiKit.U(_s, 11);
+        float w = UiKit.TabBold.GetStringSize("99,999", HorizontalAlignment.Left, -1, UiKit.Type(_s, UiKit.Body)).X;
+        _pillShortFrom = w <= box ? 100_000 : 10_000;
     }
 
     /// <summary>Line 2 of a blocked row: why, in a few words.</summary>

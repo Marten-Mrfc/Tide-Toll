@@ -66,6 +66,7 @@ public partial class LayoutTest : UiAudit
             LayoutFixture.Apply(Main.Hud);
             await Frames(1);
             LayoutRules.CheckFit(Main.Hud, new HudZones(canvas, s), "fixture", name, Fail, ref _checks);
+            LayoutRules.CheckCatalogue(Main.Hud, new HudZones(canvas, s), name, Fail, ref _checks);
         }
         Main.Hud.ForceCanvas(null);
         await Frames(2);

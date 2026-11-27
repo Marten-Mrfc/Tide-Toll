@@ -43,6 +43,8 @@ public partial class TownHud
         _rcText.Name = "Text";
         _rcText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _rcText.VerticalAlignment = VerticalAlignment.Top;
+        _rcText.ClipText = false;
+        _rcText.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         _rowCard.AddChild(_rcText);
         _rcRule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
         _rowCard.AddChild(_rcRule);
@@ -143,6 +145,8 @@ public partial class TownHud
         float y = pad + UiKit.U(_s, 28);
         _rcText.Text = _rtSentence;
         float th = f.GetMultilineStringSize(_rtSentence, HorizontalAlignment.Left, inner, fs).Y;
+        _rcText.Size = new Vector2(inner, th + 2);
+        th = Math.Max(th, _rcText.GetLineCount() * (f.GetHeight(fs) + _rcText.GetThemeConstant("line_spacing")));
         _rcText.Position = new Vector2(pad, y);
         _rcText.Size = new Vector2(inner, MathF.Ceiling(th) + 2);
         y += MathF.Ceiling(th) + UiKit.U(_s, 8);

@@ -6,7 +6,7 @@ using TideToll.Sim.Town;
 namespace TideToll.Game.Tests;
 
 /// <summary>The rules of the layout sheet's section 8, read from the live interface by stable node names.</summary>
-public static class LayoutRules
+public static partial class LayoutRules
 {
     public delegate void FailFn(string rule, string id, string canvas, string what);
 
@@ -71,6 +71,7 @@ public static class LayoutRules
         }
         CheckFit(hud, z, id, canvas, fail, ref checks);
         CheckRows(hud, id, canvas, fail, ref checks);
+        CheckShop(hud, id, canvas, fail, ref checks);
         CheckTips(hud, z, id, canvas, fail, ref checks);
         CheckMessages(hud, z, id, canvas, fail, ref checks);
         // Rule 5: the attention budget (night 3, L2: it fails the step; at most 3 loud and 4 quiet things at once).
