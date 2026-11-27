@@ -92,3 +92,10 @@ Changes (pictures: `/home/user/tide-toll/build/n3/assets-audit/r3-lf-fix`):
   (`TownTouches`, at the simulation's touch spot), not a garden: not moved. Washing line in life-cat: no washing line
   is in the new life-cat picture (the gardens moved with the road rule), so not checked.
 - 02:55 whole ./check started (log `build/n3/lf-fix-check.log`).
+- ./check (02:55 to 03:31, load 20 to 22): sim-build, sim-test, godot-nuget, sync-assets, game-build, game-smoke,
+  game-town, game-perf (town 1x 0.878 ms, 489 B/frame; 8x 1.023 ms, 739 B; river 1x 1.110 ms, 1293 B; 8x 1.632 ms,
+  1551 B), game-playthrough, game-river, game-layout, game-book, game-settings, game-menu, game-save: PASS.
+  game-motion: CPU gate only ("30 fps tab-flick frame 6 took 7.84 ms of CPU (gate 6)"; "120 fps pause frame 110 took
+  8.49 ms of CPU (gate 6)"; at 60 fps PASS, cpu-max 3.73 ms). The screenshot step was still running at 03:31 (its
+  verdict and the ledger step after it not seen; ledger checked alone at 02:50: 342 rows, 0 problems). The check
+  keeps running into `build/n3/lf-fix-check.log`.

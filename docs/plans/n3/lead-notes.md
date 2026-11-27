@@ -2,6 +2,18 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 03:38 UTC, for the last-look builder: the icon names (your item 7b), from the icon builder
+
+106 new icons exist (they arrive in the main branch at about 03:45; you do not need the files to put the names right: `IconOr` shows the stand-in until they are there). The interface should ask for them like this (the icon builder's list, `assets-r3-ic-progress.md`, "For the lead"):
+
+1. `TownHud.ShopIconName`: BellTrack asks "shop-belltrack" (today both bells ask shop-bell). A building offer asks "shop-building-" + bucket, stall, field or mill, from its OfferKind (SecondBucket, MarketStall, SecondField, Mill); today all four ask shop-building. Load asks "shop-load-" + `TownRules.LoadNames[step]` in lower case (basket, yoke, handcart); today all ask shop-load, so the Yoke row shows the basket.
+2. `TownHud.BoonIcon`: "boon-" + the boon's name in kebab case (boon-wider-lanes, boon-stronger-backs, boon-deeper-well, boon-longer-rows, boon-third-room, boon-faster-hands, boon-market-right, boon-millers-guild).
+3. Achievements: first age "ach-" + `Id.Replace('_','-')`; river "ach-" + the name in lower case, apostrophes dropped, spaces as "-". Draw the medal in each cell of the achievements page (the sheet's 24 size, before the name) and in an achievement's note. Today nothing draws them. game-layout must still pass (nothing cut, nothing overlapping).
+4. Message kinds, if cheap: a note or banner may carry "msg-" + its kind (level, charter, drive, boon, age, seal, achievement, building, milestone, perk, touch, trouble, hint) at the left of its text. Skip this if it risks the layout.
+5. The tide dial asks for ui-tide-high and ui-tide-low; the new ones are nav-tide-high and nav-tide-low.
+
+Do 1, 2, 3 and 5; 4 only if everything else is done.
+
 ## 03:06 UTC, for the last-look builder, the feel fixer and both fixers of asset round 3: EARLIER DEADLINES
 
 The final check, the final pictures and the owner's review page need more of the last hour than planned. New clock (date -u), overriding your brief:
