@@ -31,6 +31,51 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: research on the ink lines and blur (27 November, from 10:40 UTC)
+
+The owner, with a picture of a cottage whose thatch courses are heavy black stripes (`docs/plans/n8/owner-picture.png`): "Also start research in how we can minimalize this blurring/black lines to much. Like this is everywhere"
+
+- Research only. What is known from the code: the lines are a screen pass over the depth buffer (`game/shaders/outline_screen.gdshader`, `game/scripts/InkOutline.cs`): a pixel is inked fully, in flat near-black, wherever the depth's second difference passes a threshold; no smoothing; the sample step is 1 to 2 pixels and the line about twice that; modellers were told to raise every inner line 1 to 2 cm "so the ink finds them" (style sheet, section 3).
+- Three researchers, each writing into `docs/plans/n8/research/`:
+
+| Who | Question | File | Due (UTC) |
+| --- | --- | --- | --- |
+| Haiku | The map of what the game does today for line weight and sharpness (shader, soft-ink groups, inner lines per model, scaling and anti-aliasing settings) | `ink-code-map.md` | 11:05 |
+| Sonnet | Line weight in illustration and in games with outlines; a rewritten "Line" section for the style sheet | `line-art-research.md` | 11:20 |
+| Opus | Experiments on branch `wt/n8-ink` (`build/wt/n8-ink`): reproduce the picture, measure the ink per model, find the cause of the blur, try the remedies, a board of options | `ink-experiments.md`, `ink-now-and-options.png` | 11:55 |
+
+- Then the lead shows the owner the options board with a recommendation.
+
+## Next request: research on villagers, roles and "hitboxes" (27 November, from 10:27 UTC)
+
+The owner: "Okay start an agent that will research how to improve the villagers. They don't have hitboxes and they don't spread well. Like they all start doing the same task. That is not the idea. I would like each villager to have a role and that it can be assigned. Like I would like to add that as a full system. Please do some research into it with opus, sonnet and haiku agents"
+
+- Research only; nothing is built before the owner decides. This one may change how the game plays (the owner asks for a new system).
+- What the code does today: each idle villager takes the job paying most coin per second, counting the walk, the expected wait and the work (`sim/Town/TownJobs.cs`, `ChooseJob`); there are no roles; a villager cannot be pointed at; overlapping figures are pushed apart in the drawing only.
+- Six researchers, each writing one file in `docs/plans/n7/research/`:
+
+| Who | Question | File | Due (UTC) |
+| --- | --- | --- | --- |
+| Haiku | The map of today's code: how work is chosen, what is saved, what can be clicked, which tests pin it | `code-map.md` | 10:50 |
+| Haiku | Godot lookups: picking one of many instances, avoidance, highlighting | `engine-notes.md` | 10:55 |
+| Sonnet | How other games give workers roles (incremental and colony games), the patterns, what fits here | `games-survey.md` | 11:10 |
+| Sonnet | Three or four complete designs for this game, criticised, with a recommendation and the owner's open questions | `design-options.md` | 11:15 |
+| Opus | Bodies and picking: what "hitboxes" and "spreading" should mean and how to build them | `bodies-and-picking.md` | 11:35 |
+| Opus | Experiments in the real simulation: what villagers do today, in numbers; what roles do to the charter minute; the technical design (branch `wt/n7-roles`, not to be merged) | `sim-roles-experiments.md`, `plots/` | 11:40 |
+
+- All six reported by 10:45 UTC. The lead's proposal: `docs/plans/n7/villager-roles.md` (sent to the owner at 10:50 with the plot `research/plots/jobs-seed1-today.png`). The numbers that decide it: more than three quarters of the villagers are on one job for 24 percent of the first age and 63 percent of the second; the wait a villager counts has two blind spots (the mill; the pasture and weaver); fixed roles make the first age 15 to 26 percent longer and no fixed split comes within 15 percent of today's rule; a soft role at a factor of 1.25 costs 5 percent. Proposed in three steps: (1) people you can point at who spread by themselves, (2) trades as a lean that give something back, assigned by count or on a card, (3) the second age. Seven decisions are the owner's; nothing is built before they answer. The experiments' code is on branch `wt/n7-roles` (not to be merged).
+
+## Next request: the boats (27 November, from 10:14 UTC)
+
+The owner, while villagers at work is being built: "okay next start work on the boats. I want the animation of them going through the river to be better and the dock + crane to work better. Work out a design etc. like this can be done a lot better design wise but also like use wise as the boats move terrible through the river"
+
+- What happens now, read from the code: `docs/plans/n6/boats-design.md`, first section. The worst: a boat's place across the river is the middle of the map row it is in, so it jumps sideways in every bend and its bow flicks; on leaving it jumps from the quay to mid-river and turns about in one tick; waiting boats lie on the line the next boat sails along; the crane swings on a clock, loading nothing.
+- The design: the same file (a smooth course in two lanes, waiting at mooring posts, coming alongside and going away as manoeuvres, a quay with a yard and a sign per berth, a crane that does the loading). Rules, prices and timing stay; the simulation's position along the river stays the truth.
+- The pictures: a builder in `build/wt/n6-boats` (branch `wt/n6-boats`), due 11:45 UTC: `docs/plans/n6/mockup/boats-journey-now-and-planned.png` (the real track from the simulation beside the designed course) and `landing-now-and-planned.png` (a real frame beside a staged quay, yard, signs and crane). Notes `docs/plans/n6/mockup/notes.md` there.
+- The boards were done at 10:41 UTC, merged as `3b99f39` and sent to the owner at 10:44: `docs/plans/n6/mockup/boats-journey-now-and-planned.png` and `landing-now-and-planned.png`; notes in `docs/plans/n6/mockup/notes.md` (the real numbers: a sideways jump of 2 m and a bow swing of 73 degrees in one tick, 23 times each way; on leaving 194 degrees in 0.2 s; 31 pairs of boats within one cell of each other over 41 visits). Thirteen quay models were made (`assets/src/models/quay-scenes.py`, ledger 504 rows); the prototype of the course is `tools/mockup/boat_course.py`.
+- Found on the way: the river is 8 m wide, too narrow for two lanes with oars out, and the simulation's berths are 6 m apart while a barge is 8.5 m long. The lead's recommendation: do not widen the river now (it would change every town's map); boats ship their oars when moored and a passing barge keeps the middle; the drawn berths stand a barge length apart.
+- Building it waits for the owner's yes and for a free machine (two builders are at work on the villagers and the places until about 12:30 UTC).
+
 ## Next request: villagers at work (27 November, from 08:50 UTC)
 
 The owner, while the right side was being finished: "Next spend time on interaction. I mean the villagers their interactions with the buildings, fields etc. Right now this looks super basic. This can be improved I think. Create a good idea like you did earlier with the screenshot of the Early: Now, Early: planned."
@@ -42,7 +87,8 @@ The owner, while the right side was being finished: "Next spend time on interact
 - 09:28 UTC, the owner on the board: "Look at the image does it look good. Give an agent an audit over it. As right now I find the field a bit ugly etc. Like improve the assets make it more detailed maybe like do improvements. Make it fit more." So round 2 of the mock-up: the lead's own look (`docs/plans/n5/mockup/lead-look.md`), an independent art audit (`docs/plans/n5/mockup/audit.md`, due 09:50), and the builder remakes the things in the pictures as proper models through the asset generators (the field first), re-stages and re-shoots, due 10:50 UTC in `build/wt/n5-mock`. While the shop's whole check runs, the file `build/n4/machine-busy` tells the builder to start no Godot runs; the lead removes it when the check is done.
 - 09:34 UTC, the owner: "Okay when done implement it." So the idea is approved: when the improved board is done it is built into the game. The build sheet is `docs/plans/n5/work-build-sheet.md` (round 1: the line, the well, a field, the mill, the market, a cottage; drawing only; judged by interaction strips and a new check step `game-work`). No workflow was asked for; agents are started one by one.
   - **Villagers' builder** (started 09:40 UTC, due 12:15): `build/wt/n5-villagers`, branch `wt/n5-villagers`, progress `docs/plans/n5/villagers-progress.md` there. Order: the strip tool `tools/work-strips.sh` and the "before" strips; the shared interface `game/scripts/town/WorkSites.cs`; the line; poses, tools, taking up the goods; the cart and the bell; the check step `game-work`; the "after" strips. It runs nothing heavy while `build/n4/machine-busy` exists.
-  - **Places' builder** (the well, a field, the mill, the market, a cottage, with the models from the board): starts when the board's round 2 is done (due 10:50 UTC).
+  - **The board, round 2** (done 10:06 UTC, merged as `b6b7e43`, sent to the owner 10:10): the things remade as 24 proper models (`assets/src/models/work-scenes.py`, ledger 491 rows), real "now" frames with the staged camera (`--now-work` in the asset audit). The round-1 board is kept as `work-now-and-planned-round1.png`. What still does not look right is in `docs/plans/n5/mockup/notes.md`, "Round 2".
+  - **Places' builder** (started 10:12 UTC, due 12:30): `build/wt/n5-places`, branch `wt/n5-places`, progress `docs/plans/n5/places-progress.md` there. Order: a field (row pieces as multimeshes, fronts that move per unit of work, regrowth, stooks), the mill, the well, the market table, the cottage door; its own check step `game-work-places`; real frames with `--now-work`. It owns `game/scripts/town/work/*` and `WorkPlaces.cs` and does not create `WorkSites.cs` (the villagers' builder's); the lead joins the two after both are done.
   - Then: merge both, strips read by a reviewer who did not build them, fixes, the whole check on a clean copy, the Windows build. If yes: first age first (queue lines, the well, a field, the mill, the market, a cottage), judged by interaction strips; second-age places after.
 
 ## The brief (from the owner, word for word)

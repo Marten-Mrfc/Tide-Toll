@@ -37,7 +37,8 @@ public partial class AssetAudit : TownTestBase
         {
             if (a.StartsWith("--out-dir=")) _dir = a[10..];
             else if (a == "--no-town") _noTown = true;
-            else if (a == "--now-work") _nowWork = true;   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
+            else if (a == "--now-work") _nowWork = true;
+            else if (a == "--landing") _landing = true;   // night 6: the landing now and planned (AssetAudit.Landing.cs)   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
             {
@@ -73,7 +74,8 @@ public partial class AssetAudit : TownTestBase
         }
         // Night 3: when only book subjects are asked for, the book is pictured at once on the new town (it needs no
         // played town), instead of after the bot's whole run to the seal.
-        if (_nowWork) await NowWorkShots(playSize);
+        if (_landing) await LandingShots(playSize);
+        else if (_nowWork) await NowWorkShots(playSize);
         else if (!_noTown && _only != null && _only.Count > 0 && System.Linq.Enumerable.All(_only, n => n.StartsWith("book-")))
         {
             _play = playSize;

@@ -163,6 +163,12 @@ if have_godot; then
   # the end states; then at 30 and 120 fps: the same lengths (two frames) and the same end states (tools/motion-check.sh).
   step game-motion env GODOT="$GODOT" tools/motion-check.sh
   note "$(grep -o 'MOTION RATES PASS' "$LOGS/game-motion.log" | head -1) $(grep -o 'alloc-max=[0-9]*B cpu-max=[0-9.]*ms' "$LOGS/motion-60.log" | head -1)"
+  # n5, work you can watch: the villagers at work on a real town (the payback bot to the mill, then frame by frame at
+  # 1x and 4x, the bell, later a handcart and the scythe), sampled every frame at 60, 30 and 120 fps: the line's spacing,
+  # order and facing, outside buildings and crop; no load before the work is finished, none popping or vanishing, every
+  # delivery landing; nothing changing in one frame; tools, parked cart, bell; allocation (tools/work-check.sh).
+  step game-work env GODOT="$GODOT" tools/work-check.sh
+  note "$(grep -o 'WORK RATES PASS' "$LOGS/game-work.log" | head -1) $(grep -o 'pairs=[0-9]* gap=[0-9.-]*m' "$LOGS/work-60.log" | head -1)"
   # Saving: the town at level 2+ with a paved road saved and the scene loaded again (same state, camera, runs on), a
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
@@ -189,7 +195,7 @@ if have_godot; then
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-save game-work-places screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save game-work-places screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done
