@@ -64,6 +64,7 @@ public partial class TownHud
             }
             _lineShown = want;
             _lineText.Text = want;
+            FitLine();
         }
         if (_lineCross.Running) _lineCross.Advance(dt);
         float x = LineCross;
@@ -77,4 +78,33 @@ public partial class TownHud
             _lineCard.Modulate = new Color(1, 1, 1, a * Math.Clamp(_fullA, 0f, 1f));
         }
     }
+
+    /// <summary>
+    /// Fix round (n7 trades): the line holds its text on every canvas. One line when it fits; else two, the card growing
+    /// upward from its zone's bottom edge (never cut, never into the middle). Measured only when the text changes; the
+    /// old text of a cross-fade is measured too, so the card is as tall as the taller of the two.
+    /// </summary>
+    /// <summary>Tests (the layout fixture): the line sized for this text as if it showed it.</summary>
+    public void FitLineFor(string text) { _lineShown = text; _lineText.Text = text; FitLine(); }
+
+    private void FitLine()
+    {
+        var z = Zones;
+        float w = _lineText.Size.X, zoneH = z.Line.Size.Y;
+        int px = _lineText.GetThemeFontSize("font_size");
+        Font f = UiKit.CapFont;
+        float h = Math.Max(TextHeight(f, _lineShown, w, px), _lineCross.Running ? TextHeight(f, _lineBack.Text, w, px) : 0f);
+        float cardH = Math.Max(zoneH, MathF.Ceiling(h + UiKit.U(_s, 6)));
+        var r = new Rect2(z.Line.Position.X, z.Line.End.Y - cardH, z.Line.Size.X, cardH);
+        if (_lineCard.Position != r.Position || _lineCard.Size != r.Size)
+        {
+            _lineCard.Position = r.Position;
+            _lineCard.Size = r.Size;
+            _lineText.Size = new Vector2(w, cardH);
+            _lineBack.Size = _lineText.Size;
+        }
+    }
+
+    private static float TextHeight(Font f, string text, float w, int px) =>
+        text.Length == 0 ? 0f : f.GetMultilineStringSize(text, HorizontalAlignment.Center, w, px, -1, TextServer.LineBreakFlag.WordBound | TextServer.LineBreakFlag.Mandatory).Y;
 }

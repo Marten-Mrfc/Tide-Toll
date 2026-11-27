@@ -97,7 +97,8 @@ public partial class PeopleTest : TownTestBase
         Check(hud.HoverVillager == who, $"the pointer on villager {who} hovers it (hover {hud.HoverVillager})");
         Check(hud.PersonTagText == "", "no name before the tooltip's delay");
         await Frames((int)(_fps * 0.6f));
-        Check(hud.PersonTagText == T.VillagerName(who), $"the name tag after the delay ('{hud.PersonTagText}', want '{T.VillagerName(who)}')");
+        // n7 trades: the tag names the trade too ("Joss, reaper"; was the name alone).
+        Check(hud.PersonTagText == T.VillagerName(who) + ", " + TownHud.TradeOne[(int)T.Villager(who).Trade], $"the name tag after the delay ('{hud.PersonTagText}', want '{T.VillagerName(who)}, {TownHud.TradeOne[(int)T.Villager(who).Trade]}')");
         Check(vil.HoverRingAlpha > 0.99f, $"the hover ring under the feet ({vil.HoverRingAlpha:0.00})");
         await Click(vil.ScreenOf(Main.Rig, who));
         await Frames(_fps / 2);
@@ -107,7 +108,9 @@ public partial class PeopleTest : TownTestBase
         Check(Near(new Rect2(cr.Position, cr.Size.X, z.Person.Size.Y), z.Person) && cr.Size.Y <= z.Person.Size.Y + 1, $"the card in its zone under the ledger ({cr} vs {z.Person})");
         Check(cr.End.Y - hud.PersonLastLineBottom <= UiKit.U(hud.UiScale, 16), $"the card hugs its lines (foot {cr.End.Y - hud.PersonLastLineBottom:0} px of paper)");
         string card = hud.PersonCardText;
-        Check(card.StartsWith(T.VillagerName(who) + "|") && card.Contains("Lives ") && card.Contains("A good hand") == T.LeaningCounts && card.Contains("trip"), $"the card says who it is ({card})");
+        // n7 trades: the title is "Joss · Reaper"; line 2 is the like and the home ("Likes reaping · by the well lane", or
+        // "Lives by ..." while the like's trade is not open); the leaning line is gone (was: "A good hand" while it counted).
+        Check(card.StartsWith(T.VillagerName(who) + " · ") && (card.Contains("|Likes ") || card.Contains("|Lives ")) && !card.Contains("A good hand") && card.Contains("trip"), $"the card says who it is ({card})");
         Check(vil.SelectedRingAlpha > 0.99f, $"the selected villager keeps its ring ({vil.SelectedRingAlpha:0.00})");
         Check(hud.OverInterface(hud.PersonCardRect.GetCenter()), "the card stops the map (OverInterface)");
         await Click(hud.PersonClose.GetGlobalRect().GetCenter());

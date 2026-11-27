@@ -126,6 +126,7 @@ public partial class TownHud
     {
         ShopItemKind.Value or ShopItemKind.RiverValue => "value-" + GoodName((Good)it.Index).ToLowerInvariant(),
         ShopItemKind.BellTrack => "bell",
+        ShopItemKind.Training => "train",   // n7 trades: assets/icons/shop-train.svg
         _ => it.Kind.ToString().ToLowerInvariant(),
     };
 

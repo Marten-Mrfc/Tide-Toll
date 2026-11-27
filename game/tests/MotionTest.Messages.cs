@@ -106,7 +106,7 @@ public partial class MotionTest
         for (int i = 1; i < _ms.Count; i++) { _msAllocWorst = Math.Max(_msAllocWorst, _ms[i].Alloc); _msCpuWorst = Math.Max(_msCpuWorst, _ms[i].Cpu); }
         for (int i = 1; i < _ms.Count; i++)
         {
-            Check(_ms[i].Alloc <= AllocGate, $"{name}: frame {i} allocated {_ms[i].Alloc} B (gate {AllocGate})");
+            Check(_ms[i].Alloc <= AllocGate, $"{name}: frame {i} allocated {_ms[i].Alloc} B (gate {AllocGate}; first hints shown {Main.Hud.FirstHintsShown}, now {Main.Hud.FirstHintNow})");
             // --cpu-info (working switch, never used by ./check): printed, not fatal, as in the book's cases.
             if (_cpuInfo && _ms[i].Cpu > CpuGate) { _cpuOver++; GD.Print($"MOTION CPU over the gate: {name}: frame {i} took {_ms[i].Cpu:0.00} ms (gate {CpuGate})"); }
             else Check(_ms[i].Cpu <= CpuGate, $"{name}: frame {i} took {_ms[i].Cpu:0.00} ms of CPU (gate {CpuGate})");

@@ -29,6 +29,8 @@ public partial class AssetAudit
         ("street", 0.28f), ("villagers-group", 0.42f),
     };
 
+    private static readonly Trade[] GroupTrades = { Trade.None, Trade.Water, Trade.Grain, Trade.Flour, Trade.None, Trade.Grain };
+
     private Node3D InkSubject(string name, float walker)
     {
         if (name.StartsWith("cottage-"))
@@ -43,7 +45,8 @@ public partial class AssetAudit
             var n = new Node3D { Name = "Subject" };
             for (int i = 0; i < 6; i++)
             {
-                var f = TownVillagers.Figure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, i % 2);
+                // n7 trades: the game's own heads in a mixed group (two Helpers, a carrier, two reapers, a miller with apron).
+                var f = TownVillagers.Figure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, i % 2, trade: GroupTrades[i]);
                 f.Position = new Vector3((i % 3 - 1) * 1.6f * walker, 0, (i / 3) * 1.8f * walker);
                 f.Rotation = new Vector3(0, 0.4f * (i - 2), 0);
                 n.AddChild(f);
@@ -75,9 +78,26 @@ public partial class AssetAudit
         // --ink-variants=a,b (any model names) measures those instead, with no ceiling (a look, not a check).
         var list = new List<(string, float)>(InkCeilings);
         if (_inkNames != null) { list.Clear(); foreach (var n in _inkNames) list.Add((n, 1f)); }
+        // n7 trades: the first subject measured in a run read too high whatever it was (a villagers' group alone 0.53,
+        // second in a run 0.36): the 20 frames above do not settle it. A warm-up subject is measured first and thrown away.
+        GD.Print($"INK warm-up (villagers-group, not counted) share={await InkMeasure("villagers-group", walker, playSize, play1080):0.000}");
         foreach (var (name, ceiling) in list)
         {
             if (_only != null && !_only.Contains(name)) continue;
+            float share = await InkMeasure(name, walker, playSize, play1080);
+            string line = $"INK {name} share={share:0.000} ceiling={ceiling:0.00}";
+            GD.Print(line);
+            Notes.Add($"{name}={share:0.000}");
+            if (share > ceiling) fails.Add(line);
+            await Frames(1);
+        }
+        Check(fails.Count == 0, "ink above its ceiling: " + string.Join("; ", fails));
+    }
+
+    /// <summary>One subject's weighted ink share (the class summary), its pictures saved when --out-dir is given.</summary>
+    private async Task<float> InkMeasure(string name, float walker, float playSize, float play1080)
+    {
+        {
             var at = new Vector3((_spot.X + 0.5f) * TownGround.Cell, 0, (_spot.Y + 0.5f) * TownGround.Cell);
             var subject = InkSubject(name, walker);
             subject.Position = at;
@@ -116,14 +136,8 @@ public partial class AssetAudit
                 noink.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}-noink.png"));
                 ground.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}-ground.png"));
             }
-            float share = InkShare(drawn, noink, ground);
-            string line = $"INK {name} share={share:0.000} ceiling={ceiling:0.00}";
-            GD.Print(line);
-            Notes.Add($"{name}={share:0.000}");
-            if (share > ceiling) fails.Add(line);
-            await Frames(1);
+            return InkShare(drawn, noink, ground);
         }
-        Check(fails.Count == 0, "ink above its ceiling: " + string.Join("; ", fails));
     }
 
     private static float MeanDiff(Image a, Image b)

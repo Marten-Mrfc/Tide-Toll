@@ -22,16 +22,36 @@ public static class LayoutFixture
         ("Ledger/NoteSection/Note", "Achievement: A town of many trades. Every workplace has an extra hand and a full queue."),
         ("Banner/Box/Title", "The borough seal"),
         ("Banner/Box/Text", "The town is granted its charter. Ring in the next age when you are ready, and read its page."),
-        ("Line/Box/Text", "Extend: click a lit cottage. Hold Shift to extend several. E or Esc to stop."),
+        // Fix round: the longer of the longest mode help and the longest first-minute hint (the trades' hint, 87 characters);
+        // the card grows upward for two lines (TownHud.FitLine, run by Apply below).
+        ("Line/Box/Text", Longer("Extend: click a lit cottage. Hold Shift to extend several. E or Esc to stop.", LongestFirstHint)),
         ("Bell/State", "rests 99 s"),
         ("Achievements/Count", "40 of 40"),
         // n7: the villager's card (the longest name with a by-name, home, leaning, now and counts).
         ("Person/Name", "Yolande of the brook 2"),
-        ("Person/Home", "Lives by the well lane"),
-        ("Person/Leaning", "A good hand at the harvest"),
+        // n7 trades: line 2 is the like and the home; the home is dropped whole by the card when it does not fit, so the
+        // longest text the card can show alone is the longest like (or the longest home with no like). The leaning line
+        // is gone (its label stays hidden).
+        ("Person/Home", "Likes carrying water"),
+        ("Person/Trade", " · Carrier"),
+        ("Person/TradeLabel", "Trade"),
+        // The Trades card: the longest names and a two-figure count in every line.
+        ("Trades/Heading", "Trades"),
+        ("Trades/Switch/Caption", "Town fills trades"),
+        ("Trades/LineCarriers/Name", "Carriers"), ("Trades/LineCarriers/Count", "99"),
+        ("Trades/LineReapers/Name", "Reapers"), ("Trades/LineReapers/Count", "99"),
+        ("Trades/LineMillers/Name", "Millers"), ("Trades/LineMillers/Count", "99"),
+        ("Trades/LineHelpers/Name", "Helpers"), ("Trades/LineHelpers/Count", "99"),
         ("Person/Now", "Carrying cloth to the landing"),
         ("Person/Counts", "999 trips · earned     9,999,999"),
     };
+
+    private static string Longer(string a, string b) => b.Length > a.Length ? b : a;
+
+    public static string LongestFirstHint
+    {
+        get { string l = ""; foreach (var h in TownHud.FirstHints) if (h.Length > l.Length) l = h; return l; }
+    }
 
     public static void Apply(TownHud hud)
     {
@@ -49,6 +69,7 @@ public static class LayoutFixture
             // L2: a note is two lines at most (message-system 1): the longest note goes in as the note section sets it,
             // cut at a word with an ellipsis when it would take a third line (was: written raw into a 3-line label).
             l.Text = path == "Ledger/NoteSection/Note" ? hud.NoteFit(text) : text;
+            if (path == "Line/Box/Text") hud.FitLineFor(text);
             l.GetParent<Control>().Visible = true;
             l.Visible = true;
         }
