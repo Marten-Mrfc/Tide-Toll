@@ -347,3 +347,4 @@ Smallest margin over the first-age band tests (counts that sit at their floor on
 
 - `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   299, Skipped:     0, Total:   300` (`ThePaybackBotDoesNotAlwaysPickTheSameSide`, "choice 2: side A 9, side B 1 of 10").
 - `bands --bell`, both ages: no band fails; the margins are those of the band table above (nothing in the rules changed).
+- game-playthrough (lock, free at 18:20, given back at once): `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107`.
