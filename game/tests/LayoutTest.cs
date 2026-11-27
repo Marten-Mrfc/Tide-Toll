@@ -66,12 +66,19 @@ public partial class LayoutTest : UiAudit
             LayoutFixture.Apply(Main.Hud);
             await Frames(1);
             LayoutRules.CheckFit(Main.Hud, new HudZones(canvas, s), "fixture", name, Fail, ref _checks);
+            LayoutRules.CheckCatalogue(Main.Hud, new HudZones(canvas, s), name, Fail, ref _checks);
         }
         Main.Hud.ForceCanvas(null);
         await Frames(2);
         GD.Print($"LAYOUT budget (rule 5, a failure above its limits): most loud {_maxLoud} (limit 3), most quiet {_maxQuiet} (limit 4); worst: {_budgetNote}");
         foreach (var kv in _failKinds) GD.Print($"LAYOUT rule {kv.Key}: {kv.Value} failures");
         for (int i = 0; i < Math.Min(60, _fails.Count); i++) GD.Print("LAYOUT FAIL " + _fails[i]);
+        // And the first three of every rule (a rule with few failures is not hidden behind a common one).
+        foreach (var kv in _failKinds)
+        {
+            int shown = 0;
+            for (int i = 60; i < _fails.Count && shown < 3; i++) if (_fails[i].StartsWith(kv.Key + " ")) { GD.Print("LAYOUT FAIL " + _fails[i]); shown++; }
+        }
         Notes.Add($"states={_states} canvases={Canvases.Length} checks={_checks} failures={_fails.Count} loud<={_maxLoud} quiet<={_maxQuiet}");
         Check(_fails.Count == 0, $"{_fails.Count} layout failures (first: {(_fails.Count > 0 ? _fails[0] : "")})");
     }

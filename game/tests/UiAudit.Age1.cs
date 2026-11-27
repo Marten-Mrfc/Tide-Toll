@@ -227,6 +227,7 @@ public partial class UiAudit
         await Settle(600);
         await Calm();
         await Shot("u13", "Late in the age at rest, full shop", $"bot to level {T.Level}, banners and notes gone; drive card={Main.Hud.DriveCardVisible}");
+        await RowStates();
 
         // u14: the charter drive card.
         if (await Fast(t => t.Drive.Active && t.Drive.Delivered > 0, 120))

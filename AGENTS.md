@@ -71,7 +71,7 @@ The camera tilts with the zoom (`CameraRig.PitchFor`: 56 degrees close in, strai
 
 ## The town interface (round 3, rules v2)
 
-- The shop is data-driven from `Town.ShopItems`, grouped People / Work / Roads / Town (`TownHud.Shop.cs`); every bookmark has its own InputMap action (`tt_buy_0..9`, `tt_offer_1..3`); locked ("Unlocks at level N") and finished steps are read from the item's `Reason`.
+- The shop is data-driven from `Town.ShopItems`, grouped for display People / Building / Work / Town / The river so the keys read 1 to 9, then 0 (`TownHud.Shop.cs`; sheet v3 `docs/plans/n4/shop-sheet-v3.md`: rows in `ShopRow.cs`, card, headings and foot in `TownHud.ShopRows.cs`/`ShopFoot.cs`, the row tooltip card in `TownHud.ShopTip.cs`, checks S1-S7 in `game/tests/LayoutRules.Shop.cs`); every bookmark has its own InputMap action (`tt_buy_0..9`, `tt_offer_1..3`); locked ("Unlocks at level N") and finished steps are read from the item's `Reason`.
 - Pave and Extend are click modes (`TownHud.Pave.cs`, `TownHud.Extend.cs`): hover and click use one picking (`PaveTarget`, `ExtendTarget`) that only finds what can be bought this moment; a click acts on exactly what the tip names. Never mark the left release handled: the camera must see it.
 - Roads are drawn from `Road.Px/Py` (the curve villagers walk), never `Xs/Ys`. Villagers stand where the simulation puts them (work spots, queue spots); no display fan-out.
 - Request card and hint line: `TownHud.Request.cs`; level banner and the Home control: `TownHud.Banner.cs`.

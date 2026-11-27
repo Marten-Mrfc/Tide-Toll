@@ -106,6 +106,7 @@ public partial class UiAudit
             await Shot("u32", "Second age middle: ferry, tide dial, skipper's request",
                 $"bot until the ferry stood and a skipper asked (Town.Boat(i).Request), at rest, then waited for the card to name the skipper: card shows skipper={SkipperCardShown} ('{Main.Hud.RequestCardText}'), town request={T.Request.Active}, level {T.Level}; tide dial={Main.Hud.TideVisible}");
         else NotMade("u32", "Second age middle", T.HasSeal ? "the seal came first" : "no ferry");
+        await BlockedRowShot();
 
         // u35: the busiest moment of the second age: a level-up in the middle of the age (20..24) with a request (the
         // town's or a skipper's) running, 1.2 s after, nothing cleared.

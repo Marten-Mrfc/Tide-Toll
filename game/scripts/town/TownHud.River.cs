@@ -233,6 +233,8 @@ public partial class TownHud
             _reqWho.Text = $"Request from the skipper {v.Skipper}";
             _reqAsk.Text = $"{v.Want} {GoodName(v.Good)} at the landing";
             _reqDone.Text = v.Phase == BoatPhase.Moored ? $"Loaded {v.Loaded} of {v.Want}, leaves in {secs} s" : "Waiting for a berth";
+            // A large cargo's line may not fit the narrow rail: the shorter form, never cut (game-layout u38 at 1280x720@150).
+            if (v.Phase == BoatPhase.Moored && TextWidth(_reqDone) > _reqDone.Size.X) _reqDone.Text = $"Loaded {v.Loaded} of {v.Want}, {secs} s left";
             _reqReward.Text = $"Pays {Money(t.BoatUnitPrice(v.Good))} a unit, more when filled";
             _reqDone.AddThemeColorOverride("font_color", UiKit.MutedNumber);
             _reqTintDirty = true;

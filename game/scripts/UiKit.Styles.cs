@@ -77,15 +77,24 @@ public static partial class UiKit
         return b;
     }
 
-    /// <summary>A shop row: air at rest (no frame, the shop is the card); hover lighter with border 3; pressed darker.</summary>
+    /// <summary>A shop row: air in every state (sheet v3: the row draws its own hover and pressed band, ShopRow.SetBand).</summary>
     public static void StyleRow(Button b, float s)
     {
         StyleButton(b, s, 0);
         var rest = new StyleBoxFlat { BgColor = new Color(Paper, 0), DrawCenter = false };
         rest.SetMeta("ui_card", "Row");
-        b.AddThemeStyleboxOverride("normal", rest);
-        var off = (StyleBoxFlat)rest.Duplicate();
-        b.AddThemeStyleboxOverride("disabled", off);
+        foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled" }) b.AddThemeStyleboxOverride(state, rest);
+    }
+
+    private static FontVariation? _tabRegular, _tabBold;
+    /// <summary>Sheet v3: the interface faces with tabular figures (OpenType tnum), so prices line up as a column.</summary>
+    public static FontVariation TabRegular => _tabRegular ??= Tabular(UiFont);
+    public static FontVariation TabBold => _tabBold ??= Tabular(UiBold);
+
+    private static FontVariation Tabular(Font f)
+    {
+        var features = new Godot.Collections.Dictionary { [TextServerManager.GetPrimaryInterface().NameToTag("tnum")] = 1 };
+        return new FontVariation { BaseFont = f, OpentypeFeatures = features };
     }
 
     /// <summary>The five button states on a button (no keyboard focus in play).</summary>
