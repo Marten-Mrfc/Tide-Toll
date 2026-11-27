@@ -137,6 +137,7 @@ Stopping
 | L2 + L3 (messages, the book) | `924e819` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45931659971 | success on the second attempt, artifact `TideToll-windows-x64` (87 MB). The first attempt failed before building anything: the GitHub machine got "403 Forbidden" from a Microsoft package server while installing its system packages; re-run, it passed |
 | R3 (assets) | `eb40c66` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45935225528 | success, artifact `TideToll-windows-x64` (88 MB): 106 icons and life in the town, on top of everything before |
 | final (feel, last look) | `e02da4e` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45939301484 | success, artifact `TideToll-windows-x64` (88 MB): **the final build of the night**, with everything |
+| the right side, version 3 | `ca1be1e` | https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45977143036 | success, artifact `TideToll-windows-x64`: the rebuilt shop, tooltip and navigation and the plain zero, on top of the night's final build. **The newest build** |
 
 ## Scheduled check
 
