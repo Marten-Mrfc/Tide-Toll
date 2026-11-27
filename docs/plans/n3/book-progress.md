@@ -63,3 +63,12 @@ Review: `l3-review.md`. What was changed (all in the checkout `build/wt/n3-book`
   u17 wait (`UiAudit.Book.cs` line 22) no longer waits for the slim strip. Compass, folio, navigation and the left
   page's margin at the page stage: NOT fixed (needs the page stage's framing, PlaySize, and the tests built on it).
 - MUST 6 (esc twice overshoot): not changed (see final answer).
+- Strips retaken 01:46 to 02:11 (`build/motion/frames`; interim sheets in the fixer's scratchpad): tab-forward and
+  tab-back frames 9 to 10 show the new page coming through the fading leaf, frame 11 and 12 the same page: no cut from
+  ruled paper to text. question: frame 4 now shows faint text and buttons with the card, frame 9 the same going out
+  (one picture); the card's mid-fade tone over the dark cover is still grey-brown (a light card at part opacity over
+  red leather). age-page: a darker band now runs along the free edge (frames 5, 8); it is still a sweep, not a turn
+  about a spine; frame 7 shows the shop and the bottom strip drawn OVER the leaf (TownHud order, not mine).
+- u17 retaken (`build/n3/ui-audit/l3-fix/u17.png`): no purse over "Dunstead"; compass cut, navigation over the folio,
+  left page without margin: unchanged.
+- ./check started 02:12 UTC.

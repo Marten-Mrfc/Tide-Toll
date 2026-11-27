@@ -32,10 +32,49 @@ Checkout `/home/user/tide-toll/build/wt/n3-art2`. Pictures: `/home/user/tide-tol
   not a roof. Animals were small at the normal view: scale raised (hens, ducks 2.2x, cat 2x, dog 1.8x, heron 1.6x);
   cat reworked grey with a clear head, dog in two lumps with paws.
 
+- 02:06 second pictures read: meadow without the dark holes; new trail = two faint ruts (road-new-trail); bunting by
+  the market stall; rocks with a gull; ducks larger; hens, cat, dog read. Faults found and fixed: a willow grew through
+  a rock outcrop (trees now skip 2 cells round each outcrop: `TownLife.RockSpot` + `TownSpace.KeepClear`, asked by
+  `TownTrees` before planting); the rocks' flat mud slab read as a pallet (dropped from dress-rocks).
+- Tests while working (01:42, loaded): game-smoke, game-town, game-perf (1x mean 0.524 ms, 494 B/frame; 8x 0.700 ms,
+  738 B; river 1x 0.607 ms, 1211 B/frame), game-save, game-river: PASS. Ledger merged (342 rows, 0 problems).
+
+- 02:16 rocks retaken (life-rocks, town-view-river, life-river): the willow now stands clear of the outcrop, the gull
+  sits on top; no slab.
+
+- 02:25 lead's note of 01:58: `field.py`: the ploughed slab's sides are Bent grass (top still earth), so the
+  sprouting field lies in a mown headland (field-sprouting/-ripe pictures retaken; the ripe field still shows a thin flat
+  earth ring round the grain). Heron drawn 2.1x (2.3 m) in source: NOT built or pictured (the check's screenshot step
+  was running with the built game).
+- ./check (01:56 onward, load 30 to 45): every step PASS up to game-save, except game-motion's CPU gate only
+  (120 fps, enter-on-lettering frame 77 12.32 ms, gate 6). The screenshot step was still running at 02:26 (2400 s
+  limit); ledger checked alone: 342 rows, 0 problems.
+
 ## Left
 
-- Pictures read and fixed; tests; ledger rows merged; item 6.
+- Screenshot step verdict; heron picture at 2.1x; the flock's lift was never caught mid-air in a picture; sheep are
+  RiverLayer's and unchanged.
 
 ## How to resume
 
 `tools/asset-audit.sh --only=<names> --out=/home/user/tide-toll/build/n3/assets-audit/r3-lf --skip=flat,sounds`
+
+## After the review (fixer, from 02:27 UTC)
+
+Changes (pictures: `/home/user/tide-toll/build/n3/assets-audit/r3-lf-fix`):
+
+- Vegetable bed (`gardens.py`): light Trail earth soil, 8 cm low Packed earth edging, four rows of Bent grass and
+  Meadow sprouts; no dark cabbages, no scarecrow, 146 tris.
+- Rocks: trees kept 4 cells (was 2) round each outcrop (`TownLife.RockSpot`).
+- Ducks (`animals.py`, `TownLife.cs`): Limewash breast, Packed earth back, green head, a pale ring ripple; 3x; a loose
+  pair (two), not a line of three.
+- Birds: Limewash body and wings with Ink tips, 3.6x (was 2x); gliders and the flock cast no shadow (the dark ground
+  specks). New audit subject `life-flock`: the flock held 4.5 s into its lift (`TownLife.HoldFlock`, audit only).
+- Heron: Limewash body and neck, Slate wings, Ink wing tips and crest, thicker legs; 2.1x (about 2.5 m drawn).
+- Dog: lies at the market plot's back edge, beside the stall (not 2 cells out in the meadow); 2.4x; Limewash chest.
+- Cat: ginger (Reed and thatch) with Brick ears, stripe and a curled tail tip; 2.6x.
+- Gull: 2.5x, Slate wings with an Ink edge.
+- Gardens 3 cells off every road (cells and curve; queue spots stand on roads): `TownSpace.NearRoad`.
+- Bunting: poles 2.0 m (was 2.6), Packed earth (was Mud); the flag shader's line moved with it.
+- Meadow (`ground.py`): pale blotches about a third less area (threshold 0.66 -> 0.70); flower specks twice the size.
+- Ripe field (`field.py`): the grain fills the ploughed patch's own outline, so no earth ring.

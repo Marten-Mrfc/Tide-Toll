@@ -121,3 +121,45 @@ Reviews read: `l2-review-1.md`, `l2-review-2.md`, `lead-notes.md` (no note for t
 | R1 S4 | "A new age" says what changes: "The town turns to the river: a landing, boats and crossings." | `TownHud.Book.cs` |
 | R1 M6, R2 must 5 | The tour has four tooltip states: u42 a shop row not yet affordable, u43 the bell, u44 the achievements button, u45 a boon of the choice | `game/tests/UiAudit.Tips.cs`, `UiAudit.Age1.cs` |
 | (working aid) | `motion.tscn -- --messages-only` runs only the message part of game-motion (./check still runs everything) | `game/tests/MotionTest.cs` |
+| (tour) | The tooltip states move the window's real pointer (`Input.WarpMouse`): the play tooltip reads the pointer's place from the window, not from the events the tour sends | `game/tests/UiAudit.Tips.cs` |
+
+### Disagreed or left (and why)
+
+- R1 M3 (a large message covers a roof; the line lies over a stake frame): the Message zone and the line are fixed zones of the sheet; moving the camera when a message comes would change the follow view (how the town is seen while playing). The banner leaves after 3.2 s. Left; for the lead if wanted: the follow view could frame the town inside `HudZones.Middle`.
+- R2 must 3 (hint 4's words): `message-system.md` section 4 gives the words "Scroll out to see the whole page, and the book." The sheet is the specification: left. For the lead: the reviewer's "Scroll the wheel down to zoom out and see the whole town." is plainer.
+- R2 should 1 (page 5 to 6 px from the rails at 1280): the sheet's gap is 8 sheet units; at 1280 x 720 the scale is about 0.78, so 8 units are 6 px. As the sheet says.
+- R2 should 4 (slashed zero): Atkinson Hyperlegible has no plain zero (its only alternate, `zero.tf`, is slashed too; checked with fontTools). A font change is under `assets/` (not mine).
+- R2 should 7 (coin sign in "Reward: 385 and renown", "Pays 29 a unit"): needs the coin icon inline in a text line; not done.
+- R1 S3 (achievement icon in the note): not done. R2 should 9 (a coin number near a tag), R2 should 10 beyond the pulse: not done.
+- R1 M5 (strips retaken): the message strips were started twice (01:50 and before) and produced no frame in 16 minutes under a load of 40 to 50 with two tours beside them; stopped at 02:05 to leave time for ./check. Not retaken.
+- Hint showing when the choice opens (R2 should 2): fixed at 02:10 after b-u06 showed hint 3 under the choice: the first-minute hint is held out of the line while the choice or a page is open (its time does not run) and comes back after (`TownHud.Line.cs`). Retake: `d-1280x720-100/u06`.
+
+### Pictures after the fixes (read)
+
+`build/n3/ui-audit/l2-fix/`: `1280x720-100/` (u01 to u13, the build with the 0.25 s cap), `b-1280x720-100/` (u01, u02, u03, u04, u06, u11, u42, u45; final clocks), `c-1920x1080-100/` (u01, u42, u44, u02; with the pointer warp).
+
+- 1280 b-u02: the line says hint 2 "You can afford your first upgrade..." with three pills gold (it was hint 1 in every early picture before).
+- 1280 b-u04: the Level 2 banner at level 2; hint 2 still in the line (the tour bought within a few frames at 1 fps: the hint stays its least 4 s on screen).
+- 1280 b-u03: level 2, hint 3 "Each level gives the town something new..." right after the first banner (before: first seen in the second age).
+- 1280 u13 (stale fix in): level 15, the banner is the charter drive's, which is running (Charter 0 of 10 in the strip); no stale "Level 12". The hint ring is a thin faint circle around the field. Coin numbers "+36" and "+99" apart.
+- 1280 b-u11: level 13, the choice open, the request in brick (22 s left), no coin number under the choice.
+- 1280 b-u06: the choice open; hint 3 in the line (see above, not fixed).
+- 1920 c-u42: the tooltip of the Villager row beside the shop, three lines; FAULT: its text is cut "pays for itself in 50 s...." (ellipsis after a full stop) and says "+5.4 coin a minute" (the word coin).
+- 1920 c-u44: the achievements button's tooltip "Achievements [Tab]: 0 of 24." above the navigation, inside the window. Fine.
+- 1280 d-u06 (after the hint hold): the choice open, the line empty (no hint under the decision); the milestone note in the ledger. Fixed.
+- 1280 d-u45: FAULT: the tooltip of boon A ("Wider lanes [Z]: Every road carries 50 % more people... while you...") lies over boon B's half of the card and its text is cut with an ellipsis. The tooltip should go below the choice card (it avoids the card only when its owner is outside it: `HudZones.TipRect`) and the text should fit (three lines). Not fixed (time).
+- u43 (the bell) with the pointer warp: not taken (time).
+
+### ./check of 02:10 (after all fixes; load 37 to 50, other checkouts' runs beside it)
+
+sim-build, sim-test, godot-nuget, sync-assets, game-build, game-smoke: pass. game-town: TOWN PASS (hints=16 markers=12). game-perf: PERF PASS. game-playthrough: PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102 (as before the fixes). game-river: RIVER PASS. game-layout: LAYOUT PASS states=36 canvases=8 checks=71910 failures=0 loud<=2 quiet<=3 made=40 notmade=4. game-book, game-settings, game-menu, game-save: PASS.
+game-motion: FAIL on the CPU gate only, at 60 fps in a book transition: "tab-redirected: frame 17 took 8.57 ms of CPU (gate 6)". At 30 fps MOTION PASS (cpu-max 1.51 ms) and at 120 fps MOTION PASS (cpu-max 1.25 ms), both with every message line (banner, notes, note-clicked, line-cross, choice, busiest moment: at most 1 large, 1 note, 1 line over 2706 frames). Not rerun alone: the screenshot step was still running at 02:40 (the final-answer deadline).
+screenshot: still running at 02:40.
+
+### Left
+
+- Rerun game-motion alone on a quiet machine (`tools/motion-check.sh`); see the screenshot step's result in `build/check-logs/screenshot.log`.
+- The message strips (`tools/motion-strips.sh --messages-only`): not retaken.
+- The boon tooltip over the other boon (d-u45) and the cut tooltip texts (c-u42): `HudZones.TipRect` / `TownHud.Tip.cs`.
+- u43 (the bell's tooltip) not pictured; the second-age states u30 to u35 not pictured.
+- The coin sign in the goal's reward lines; the achievement's icon in its note; a third request waiting (builder's list); the lit band of Pave/Extend.
