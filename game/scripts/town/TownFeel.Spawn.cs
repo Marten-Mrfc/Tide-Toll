@@ -48,7 +48,16 @@ public partial class TownFeel
         {
             switch (e.Kind)
             {
-                case TownEventKind.Delivery: CoinHop(e.X, e.Y); break;
+                case TownEventKind.Delivery:
+                    // n5 fix round: the market's coin hops from its table (where the load was set down), not from the
+                    // lane, and smaller (it read as a pale disc floating by the lane)
+                    if (e.Plot >= 0 && e.Plot == _market && _main.Work != null && _main.Buildings.PlotDrawn(e.Plot))
+                    {
+                        var at = _main.Work.TableEdge(e.Plot);
+                        CoinHop(at.X / TownGround.Cell, at.Z / TownGround.Cell, 1.05f, at.Y);
+                    }
+                    else CoinHop(e.X, e.Y);
+                    break;
                 case TownEventKind.VillagerArrived: Flourish(DoorOf(t, e.Plot, e.X, e.Y)); break;
                 case TownEventKind.BuildingOpened: if (e.Plot >= 0 && e.Plot < t.Plan.Plots.Length) Flourish(DoorOf(t, e.Plot, 0, 0)); break;
                 case TownEventKind.Purchase: Purchase(t, in e); break;
@@ -120,12 +129,12 @@ public partial class TownFeel
     private static Vector3 CentreOf(Plot p) => At(p.X + p.W / 2.0, p.Y + p.H / 2.0);
 
     /// <summary>A coin hops out at the building and falls back (its sound as it lands). At most one every 0.2 s.</summary>
-    private void CoinHop(double x, double y)
+    private void CoinHop(double x, double y, float size = 1.6f, float h = 0.5f)
     {
         if (_now - _lastCoinAt < 0.2 || !Room(1, true)) return;
         _lastCoinAt = _now;
         Started[(int)Reward.Coin]++;
-        Add(Kind.Coin, At(x, y, 0.5f), new Vector3(R(-0.3f, 0.3f), R(5.4f, 5.8f), R(-0.3f, 0.3f)), 0.95f, 1.6f, CoinColour, gravity: 12f);
+        Add(Kind.Coin, At(x, y, h), new Vector3(R(-0.3f, 0.3f), R(5.4f, 5.8f), R(-0.3f, 0.3f)), 0.95f, size, CoinColour, gravity: 12f);
     }
 
     /// <summary>A small flourish: a thin ring on the ground and five sparks rising a little (a new villager, a hand,

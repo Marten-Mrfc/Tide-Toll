@@ -191,6 +191,9 @@ public partial class TownVillagers
         var up = new Basis(Vector3.Up, _yaw[i]).Scaled(Vector3.One * WalkerScale);
         // To the owner's right (the model's -X), a little behind, and turned to stand along the way they face.
         var at = feet + up * new Vector3(-side, 0, -0.35f) - new Vector3(0, feet.Y, 0);
+        // n5 fix round (places): a reaper's frame or cart stands on the field's grass headland, never in the crop
+        var tw = _drv.Town;
+        if (_kind[i] == 2 && _pWp[i] >= 0 && _pWp[i] < tw.WorkplaceCount && WorkSites.ParkAt(tw.Workplace(_pWp[i]).Plot, _slot[i], side, out var park)) at = park;
         var q0 = xf.Basis.Orthonormalized().GetRotationQuaternion();
         var q1 = up.Orthonormalized().GetRotationQuaternion();
         var b = new Basis(q0.Slerp(q1, k)).Scaled(Vector3.One * WalkerScale);

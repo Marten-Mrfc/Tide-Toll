@@ -128,7 +128,8 @@ public partial class WellWorks : Node3D
 
     public Vector3 CrankSpot(int plot, int slot, out float yaw)
     {
-        var at = _w.OnPlot(plot, new Vector3(slot % 2 == 0 ? 2.75f : -2.75f, 0, 0.9f) / BoardScale);
+        // at the end of the windlass (the crank, +X; the second rope's worker at the other end), a little toward the view
+        var at = _w.OnPlot(plot, new Vector3(slot % 2 == 0 ? 2.75f / BoardScale : -2.75f / BoardScale, 0, 0) + _toView * 0.55f);
         var c = _w.OnPlot(plot, Vector3.Zero);
         yaw = MathF.Atan2(c.X - at.X, c.Z - at.Z);
         return new Vector3(at.X, 0, at.Z);

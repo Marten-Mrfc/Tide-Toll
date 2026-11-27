@@ -32,6 +32,14 @@ public partial class MillWorks : Node3D
     private readonly int[] _flourAge = new int[3];
     private int _serial;
     private float _front, _sailAngle, _hoistS, _hoistBob;
+    // Fix round: the doorway, step, sacks and the miller's spot stand on the flank of the tower nearest the plan's
+    // door (east or west): the camera looks from the south, and the plan's door here is on the north, behind the tower
+    // and the sails. Everything below is written for the model's +Z face and turned onto that flank by _faceYaw.
+    private float _faceYaw;
+    private Vector3 _faceMap = Vector3.Right;
+    private Vector3 Face(Vector3 v) => v.Rotated(Vector3.Up, _faceYaw);
+    /// <summary>The flank the work is on, as a unit vector on the map (tests, pictures).</summary>
+    public Vector3 FaceOnMap => _faceMap;
     private static readonly Vector3[] GrainAt = { new(-2.1f, 0, 0.2f), new(-2.9f, 0, -0.3f), new(-2.45f, 0, 1.05f) };
     private static readonly float[] GrainYaw = { 0.3f, 1.9f, 3.0f };
     private static readonly Vector3[] FlourPos = { new(2.0f, 0, 0.3f), new(2.7f, 0, -0.3f), new(2.35f, 0, 1.0f) };
@@ -74,8 +82,14 @@ public partial class MillWorks : Node3D
     {
         _body = body;
         var b = ModelLib.Mesh("mill").GetAabb();
-        _front = b.End.Z;
-        var holder = new Node3D { Name = "Work" };
+        var p = _w.Town.Plan.Plots[_plot];
+        float cx = p.X + p.W / 2f;
+        _faceMap = p.DoorX + 0.5f >= cx ? Vector3.Right : Vector3.Left;
+        float yaw = body.Rotation.Y;
+        var local = _faceMap.Rotated(Vector3.Up, -yaw);
+        _faceYaw = MathF.Atan2(local.X, local.Z);
+        _front = MathF.Abs(local.X) > 0.5f ? b.End.X : b.End.Z;
+        var holder = new Node3D { Name = "Work", Rotation = new Vector3(0, _faceYaw, 0) };
         body.AddChild(holder);
         Put(holder, ModelLib.Pick("work-doorway", "work-door-leaf"), new Vector3(0, 0.22f, _front - 0.75f), 0f);
         _door = Put(holder, "work-door-leaf", new Vector3(0.6f, 0.22f, _front - 0.36f), MathF.PI + OpenYaw * DoorOpen);
@@ -106,7 +120,7 @@ public partial class MillWorks : Node3D
         var c = new Color(Palette.Limewash, 0.85f);
         for (int i = 0; i < 4; i++)
         {
-            var at = _w.OnPlot(_plot, new Vector3(0.1f + i * 0.35f, 2.6f + i * 0.25f, _front + 0.35f + i * 0.2f));
+            var at = _w.OnPlot(_plot, Face(new Vector3(0.1f + i * 0.35f, 2.6f + i * 0.25f, _front + 0.35f + i * 0.2f)));
             _w.Puffs.Puff(at, new Vector3(0.3f, 1.2f, 0.25f), 0.95f - i * 0.12f, 1.5f, c, i * 0.08f);   // rising clear of the door
         }
     }
@@ -139,9 +153,14 @@ public partial class MillWorks : Node3D
         if (s >= 0) _flourHold[s] = WorkPlaces.DetectFromSim ? FlourHold : 0f;
     }
 
-    public Vector3 StepAt(int plot) => _w.OnPlot(plot, new Vector3(0, 0.22f, _front + 0.9f));
-    public Vector3 DoorAt(int plot) => _w.OnPlot(plot, new Vector3(0, 0.22f, _front - 0.3f));
-    public Vector3 FlourAt(int plot, int i) => _w.OnPlot(plot, FlourPos[Math.Clamp(i, 0, 2)] + new Vector3(0, 0, _front));
+    public Vector3 StepAt(int plot) => _w.OnPlot(plot, Face(new Vector3(0, 0.22f, _front + 0.9f)));
+    public Vector3 DoorAt(int plot) => _w.OnPlot(plot, Face(new Vector3(0, 0.22f, _front - 0.3f)));
+    public Vector3 FlourAt(int plot, int i) => _w.OnPlot(plot, Face(FlourPos[Math.Clamp(i, 0, 2)] + new Vector3(0, 0, _front)));
+    /// <summary>Where the grain sack is tipped in: just inside the doorway.</summary>
+    public Vector3 IntakeAt(int plot) => _w.OnPlot(plot, Face(new Vector3(0, 0.7f, _front - 0.2f)));
+    /// <summary>The miller of spot <paramref name="slot"/>: on the step in the doorway, side by side, facing in.</summary>
+    public Vector3 WorkerAt(int plot, int slot) => _w.OnPlot(plot, Face(new Vector3((slot % 2 == 0 ? -0.45f : 0.45f) * (1 + slot / 2), 0f, _front + 0.75f + 0.5f * (slot / 2))));
+    public bool Attached => _body != null;
 
     public void Step(float dt)
     {
