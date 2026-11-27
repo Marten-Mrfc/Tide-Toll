@@ -31,6 +31,15 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: research on performance (27 November, 18:10 UTC)
+
+The owner: "Okay continue, also start a research agent into performance. I see the app slowing down a bit. I think we can improve performance probably!"
+
+- Research only, to `docs/plans/n10/performance-research.md` (a Sonnet researcher, started 18:11, about 50 minutes): a map of what costs frame by frame, the drawing (draw calls, the ink pass at 9 depth reads a pixel, viewports, shader compiling at first sight), the suspects ranked, the measurements that would settle it, a proposal for a small readout in the game so the owner can read numbers from their own PC, the questions to ask the owner, quick wins.
+- Known before it starts: `game-perf` runs headless and measures no drawing; nobody has measured this game on a real graphics card; the ink pass got dearer today; an interface frame of 35 to 54 KB turns up now and then.
+- The measuring itself (probes, counts, the tick at 40 and 100 villagers) waits for a quiet machine: three builders hold the lock until about 19:30.
+- Asked of the owner (18:12): which build, what graphics card and resolution, and when it slows.
+
 ## "Okay start all of them implement them etc" (27 November, 10:50 UTC)
 
 The owner approved everything open: the boats, the villager roles, the ink lines. What is running, and in what order (this is the section to resume from):
