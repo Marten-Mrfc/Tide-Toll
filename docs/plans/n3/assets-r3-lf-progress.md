@@ -78,3 +78,17 @@ Changes (pictures: `/home/user/tide-toll/build/n3/assets-audit/r3-lf-fix`):
 - Bunting: poles 2.0 m (was 2.6), Packed earth (was Mud); the flag shader's line moved with it.
 - Meadow (`ground.py`): pale blotches about a third less area (threshold 0.66 -> 0.70); flower specks twice the size.
 - Ripe field (`field.py`): the grain fills the ploughed patch's own outline, so no earth ring.
+- Second pass after the pictures: the bed's sprouts drew a grid of ink dots, so the bed is now a 5 cm Trail earth slab
+  with Bent grass sides and four flat rows (2 cm, Meadow and Cast-iron green), soft ink, 2.6 m long (50 tris). The
+  road rule took the hen coop away (no hens): the coop and the flower bed (the fallback kind when a woodpile or bench
+  finds no room) are exempt from it, and the coop goes to the second cottage that has room. Heron moved 1 cell into
+  the water (was on the bank's edge). Duck ripple: a broken ring of two arcs (16 segments), not a hard hoop. Birds 3.2x.
+- Pictures read (02:35 to 02:54, `r3-lf-fix`, `-fix2`, `-fix3`): bed reads as a light earth bed with green rows;
+  hens round their coop; ginger cat on its step; dog beside the stall (about 3 m off, on the stall's back side, not in
+  the open meadow); bunting short and tied over the stall; ducks a clear pair with pale wakes; heron white with dark
+  wings in the shallows; rocks clear of trees with the gull on top; gliders and the flock white birds with dark tips,
+  no ground specks; the flock caught mid-lift (`life-flock`); ripe field without the earth ring.
+- Not done: the woodpile right beside the road at the west cottage in town-view-level-8 is a simulation touch
+  (`TownTouches`, at the simulation's touch spot), not a garden: not moved. Washing line in life-cat: no washing line
+  is in the new life-cat picture (the gardens moved with the road rule), so not checked.
+- 02:55 whole ./check started (log `build/n3/lf-fix-check.log`).
