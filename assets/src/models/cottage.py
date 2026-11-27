@@ -9,7 +9,7 @@
 #      pile, two ridges side by side); twice: and a cross range behind (a T) with a second chimney.
 # Nodes: "house" (all but the door and shutters), "accent" (door and shutters, modelled in Cast-iron green: the game
 # tints this node per plot), and an empty node "Smoke" at the top of every chimney ("Smoke2" for the second).
-# Walls 2.6 m, roofs about 45 degrees with 0.4 m eaves, three thatch courses a slope, a ridge cap, timber corner posts,
+# Walls 2.6 m, roofs about 45 degrees with 0.4 m eaves, three thatch courses a slope (painted bands, n8), a ridge cap, timber corner posts,
 # a stone plinth. cottage-01/02/03 are copies of a0/b0/c0 for the river cottages and the stand-ins.
 import math
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
@@ -18,12 +18,9 @@ from common import glb, ledger, asset_path
 from _kit import beam
 
 THATCH, COURSE, RIDGE, PATCH = "Reed and thatch", "Trail earth", "Packed earth", "Packed earth"
-# Research n8 (ink lines): INK_COURSES=flat lays the courses as painted bands 1 cm proud (no step for the ink to find);
-# INK_COURSES=few keeps them proud but two on the main range, one on the others, 0.3 m wide.
-import os
-_IC = os.environ.get("INK_COURSES", "")
-PROUD = 0.01 if _IC == "flat" else 0.09
-CW = 0.3 if _IC == "few" else 0.2
+# n8 (style sheet section 3): thatch courses are painted bands lying 1 cm proud of the slope, no step for the ink to
+# find; the game shades them as a darker tone of the thatch. (They were beams 0.2 x 0.09 m: two black stripes each.)
+PROUD, CW, LIFT = 0.01, 0.2, 0.012
 WALL, FRAME, PLINTH, PANE = "Limewash", "Mud", "Slate roof", "Mud"
 ACCENT = "Cast-iron green"
 EAVE = 0.4
@@ -66,9 +63,8 @@ def block(m, b):
     drop = EAVE * rh / half
     run, rise = we, rh + drop                              # one roof face: across v from the eave to the ridge
     fs = ((0.17, 0.37, 0.57, 0.77) if b.get("courses", 4) == 4 else (0.22, 0.47, 0.72)) if b.get("main") else (0.3, 0.62)
-    if _IC == "few": fs = (0.3, 0.62) if b.get("main") else (0.45,)
     for f in fs:                                          # thatch courses (four on the main range), on the slope, proud
-        y = h - drop + f * rise + (0.012 if _IC == "flat" else 0.05)
+        y = h - drop + f * rise + LIFT
         for s in (-1, 1):
             v = s * we * (1 - f)
             e = end_at(f) - 0.08
