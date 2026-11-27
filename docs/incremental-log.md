@@ -31,6 +31,30 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## "Okay start all of them implement them etc" (27 November, 10:50 UTC)
+
+The owner approved everything open: the boats, the villager roles, the ink lines. What is running, and in what order (this is the section to resume from):
+
+| Work | Sheet | Builder's checkout | Due (UTC) | State |
+| --- | --- | --- | --- | --- |
+| Villagers at work, the places | `docs/plans/n5/work-build-sheet.md` | `build/wt/n5-places` (`wt/n5-places`) | 12:30 | building; told to merge the villagers' part and register `IWorkSite`s |
+| The boats, the quay, the crane | `docs/plans/n6/boats-build-sheet.md` | `build/wt/n6-boats-build` (`wt/n6-boats-build`) | 13:40 | started 10:55 |
+| Villagers as people (step 1 of roles) | `docs/plans/n7/people-build-sheet.md` | `build/wt/n7-people` (`wt/n7-people`) | 14:00 | started 10:55; the simulation part is committed first and may be merged early |
+| Ink lines and blur | research first: `docs/plans/n8/research/` | `build/wt/n8-ink` (`wt/n8-ink`, experiments) | 11:55 | research running; then the recommended option is built |
+| Villager trades (steps 2 and 3) | to be written | | | after step 1 is merged |
+
+- Rules for builders sharing the machine: `docs/plans/builders-rules.md` (a heavy-run lock: the folder `build/locks/heavy`).
+- After each builder: its pictures looked at by the lead, a reviewer who did not build it, fixes, merge into `claude/prototype-1`, and when a batch is in: the whole check on a clean copy (under the lock), a finished (non-Snapshot) commit, the Windows build.
+- To resume after a restart: `git worktree list`; each builder's progress file in its checkout says what is done; a lost builder is started again from its sheet and progress file.
+
+| Decision made for the owner | Why |
+| --- | --- |
+| The seven decisions of `docs/plans/n7/villager-roles.md` are taken as recommended there (step 1 first; blind spots fixed; a trade is a lean; a trade gives something back; by count and on the card; names and cards; bodies as a look only) | The owner said to start all of them without answering one by one |
+| Walkers keep to the right | One had to be chosen |
+| The river is not widened for the boats' two lanes; moored boats ship their oars and drawn berths stand a barge length apart | Widening would change every town's map |
+| The floating text over a boat becomes a sign at its berth (icon, bar, colour for time left) | Readable from the normal view; the words stay in a tooltip |
+| The recorded play-through figure (`charter=33.9min buys=201`) may move by up to a minute and ten purchases with the blind-spot fix and the leaning, and is then recorded anew | The owner asked for villagers that spread; that is a change of rule |
+
 ## Next request: research on the ink lines and blur (27 November, from 10:40 UTC)
 
 The owner, with a picture of a cottage whose thatch courses are heavy black stripes (`docs/plans/n8/owner-picture.png`): "Also start research in how we can minimalize this blurring/black lines to much. Like this is everywhere"
