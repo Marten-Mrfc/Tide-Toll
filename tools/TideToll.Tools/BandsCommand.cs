@@ -28,7 +28,7 @@ public static class BandsCommand
         Apply(o);
         if (o.ContainsKey("rates")) return Rates(a, z);
         if (o.ContainsKey("demo")) return Demo(a, z);
-        if (o.ContainsKey("choice0")) return Choice0(a, z);
+        if (o.TryGetValue("choice", out var chs)) return Choice0(a, z, int.Parse(chs, Inv));
         int ns = z - a + 1;
         var first = new PacingResult[ns * Bots.Length];
         var river = new RiverPacingResult[ns * Bots.Length];
@@ -233,7 +233,7 @@ public static class BandsCommand
     }
 
     /// <summary>n7 trades: the payback bot with each side of choice 0 forced; the charter minute per seed.</summary>
-    private static int Choice0(int a, int z)
+    private static int Choice0(int a, int z, int choice)
     {
         int n = z - a + 1;
         var ch = new double[n, 2];
@@ -241,18 +241,18 @@ public static class BandsCommand
         {
             int seed = a + i / 2, side = i % 2;
             var t = new Town(seed);
-            var bot = new TownBot(BotKind.Payback, seed) { ForceChoice0 = side };
+            var bot = new TownBot(BotKind.Payback, seed) { ForceChoice = choice, ForceSide = side };
             while (!t.HasCharter && t.Time < 60 * 60) { t.Step(); bot.Act(t); }
             ch[i / 2, side] = t.Time / 60;
         });
         int sa = 0, sb = 0; double ma = 0, mb = 0;
         for (int s = 0; s < n; s++)
         {
-            Console.WriteLine($"CHOICE0 {a + s,3} | lanes {ch[s, 0],6:F2} | backs {ch[s, 1],6:F2}");
+            Console.WriteLine($"CHOICE{choice} {a + s,3} | A {ch[s, 0],6:F2} | B {ch[s, 1],6:F2}");
             ma += ch[s, 0] / n; mb += ch[s, 1] / n;
             if (ch[s, 0] < ch[s, 1]) sa++; else if (ch[s, 1] < ch[s, 0]) sb++;
         }
-        Console.WriteLine($"CHOICE0 mean lanes {ma:F2} backs {mb:F2} differ {Math.Abs(ma - mb) / Math.Min(ma, mb) * 100:F2} % | sooner: lanes {sa}, backs {sb}");
+        Console.WriteLine($"CHOICE{choice} mean A {ma:F2} B {mb:F2} differ {Math.Abs(ma - mb) / Math.Min(ma, mb) * 100:F2} % | sooner: A {sa}, B {sb}");
         return 0;
     }
 

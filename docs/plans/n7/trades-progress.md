@@ -348,3 +348,137 @@ Smallest margin over the first-age band tests (counts that sit at their floor on
 - `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   299, Skipped:     0, Total:   300` (`ThePaybackBotDoesNotAlwaysPickTheSameSide`, "choice 2: side A 9, side B 1 of 10").
 - `bands --bell`, both ages: no band fails; the margins are those of the band table above (nothing in the rules changed).
 - game-playthrough (lock, free at 18:20, given back at once): `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107`.
+
+## Fourth round (one criterion for all four choices)
+
+### The test replaced for all four choices
+
+`TownRulesV3Tests.NeitherSideOfAChoiceIsAMistake` replaces `ThePaybackBotDoesNotAlwaysPickTheSameSide`. Old assertion (all four choices): on seeds 1 to 10 neither side is picked by the payback bot more than 8 times. New assertion (all four): with side A forced and with side B forced at that choice (`TownBot.ForceChoice` / `ForceSide`; the bot's own play otherwise), seeds 1 to 10, the two mean charter minutes differ by at most 2 percent and neither side reaches the charter sooner on more than 8 seeds. Why: with villagers spread by trades, crowding and queues no longer differ enough from town to town at the moment of a choice for the bot's estimate to split (choice 0 went to Stronger backs on all ten seeds, choice 2 to Third room on nine; no `BoonWalk` from 3 to 4.5 % split choice 0); what a choice is worth is now measured by what it does. The comment at the test says the same. (This supersedes the third round's choice-0-only replacement.)
+
+### Forced-pick tables (charter minute, payback bot; `bands --choice c`): before = constants as shipped in round 1, after = Deeper well 0.235
+
+**Choice 0 (A / B = Wider lanes / Stronger backs)**
+
+| seed | A before | B before | A after | B after |
+| --- | --- | --- | --- | --- |
+| 1 | 28.92 | 29.45 | 29.29 | 28.64 |
+| 2 | 30.37 | 32.81 | 30.15 | 29.89 |
+| 3 | 29.52 | 29.12 | 29.74 | 29.46 |
+| 4 | 29.60 | 30.73 | 29.88 | 30.60 |
+| 5 | 29.24 | 29.23 | 28.62 | 28.62 |
+| 6 | 28.88 | 28.95 | 28.88 | 28.95 |
+| 7 | 28.35 | 26.21 | 28.90 | 26.80 |
+| 8 | 31.23 | 30.90 | 32.19 | 30.67 |
+| 9 | 29.75 | 29.61 | 30.00 | 30.70 |
+| 10 | 30.07 | 27.55 | 30.13 | 29.55 |
+
+Before: A 29.59 B 29.46 differ 0.46 % | sooner: A 4, B 6. After: A 29.78 B 29.39 differ 1.33 % | sooner: A 3, B 6.
+
+**Choice 1 (A / B = Deeper well / Longer rows)**
+
+| seed | A before | B before | A after | B after |
+| --- | --- | --- | --- | --- |
+| 1 | 29.45 | 28.98 | 28.64 | 28.98 |
+| 2 | 32.81 | 29.18 | 29.89 | 29.18 |
+| 3 | 29.12 | 29.79 | 29.46 | 29.79 |
+| 4 | 30.73 | 30.02 | 30.60 | 30.02 |
+| 5 | 29.23 | 28.23 | 28.62 | 28.23 |
+| 6 | 30.51 | 28.95 | 30.70 | 28.95 |
+| 7 | 26.21 | 27.97 | 26.80 | 27.97 |
+| 8 | 30.90 | 31.05 | 30.67 | 31.05 |
+| 9 | 29.61 | 28.85 | 30.70 | 28.85 |
+| 10 | 29.38 | 27.55 | 29.55 | 27.55 |
+
+Before: A 29.80 B 29.06 differ 2.54 % | sooner: A 3, B 7. After: A 29.56 B 29.06 differ 1.74 % | sooner: A 4, B 6.
+
+**Choice 2 (A / B = Third room / Faster hands)**
+
+| seed | A before | B before | A after | B after |
+| --- | --- | --- | --- | --- |
+| 1 | 29.45 | 28.77 | 28.64 | 28.05 |
+| 2 | 32.81 | 29.60 | 29.89 | 29.79 |
+| 3 | 29.00 | 29.12 | 29.46 | 27.75 |
+| 4 | 30.73 | 29.43 | 30.60 | 29.37 |
+| 5 | 29.23 | 27.35 | 28.62 | 26.65 |
+| 6 | 28.95 | 29.20 | 28.95 | 29.20 |
+| 7 | 26.21 | 27.29 | 26.80 | 26.96 |
+| 8 | 30.90 | 29.88 | 30.67 | 30.11 |
+| 9 | 29.61 | 29.48 | 30.70 | 28.63 |
+| 10 | 27.55 | 27.36 | 29.55 | 28.92 |
+
+Before: A 29.44 B 28.75 differ 2.42 % | sooner: A 3, B 7. After: A 29.39 B 28.54 differ 2.96 % | sooner: A 2, B 8.
+
+**Choice 3 (A / B = Market right / Miller's guild)**
+
+| seed | A before | B before | A after | B after |
+| --- | --- | --- | --- | --- |
+| 1 | 29.25 | 29.45 | 28.64 | 28.83 |
+| 2 | 32.13 | 32.81 | 29.89 | 31.76 |
+| 3 | 29.12 | 28.56 | 29.46 | 29.57 |
+| 4 | 30.84 | 30.73 | 30.48 | 30.60 |
+| 5 | 29.23 | 28.76 | 28.62 | 28.64 |
+| 6 | 28.95 | 29.76 | 28.95 | 29.76 |
+| 7 | 26.21 | 28.17 | 26.80 | 27.85 |
+| 8 | 31.44 | 30.90 | 32.38 | 30.67 |
+| 9 | 29.61 | 30.51 | 30.70 | 30.70 |
+| 10 | 27.55 | 28.28 | 29.55 | 29.79 |
+
+Before: A 29.43 B 29.79 differ 1.22 % | sooner: A 6, B 4. After: A 29.55 B 29.82 differ 0.92 % | sooner: A 8, B 1.
+
+### Tried and undone: Deeper well (`BoonWellWork`)
+
+Choice 1 fails the new assertion (Deeper well 2.54 % slower than Longer rows); its weaker side's constant is `BoonWellWork` (0.2; a third either side: 0.133 to 0.267). Swept upward (lower only makes the well weaker), each value with the choice-1 test, every pacing band (`bands`), and the saver's last-gap test:
+
+| BoonWellWork | choice 1: mean differs, sooner A / B | pacing bands failing | saver last stretch / longest before |
+| --- | --- | --- | --- |
+| 0.2 (shipped) | 2.54 %, 3 / 7 | 0 | 2.91 / 3.10 |
+| 0.215 | 2.85 %, 2 / 8 | 1 | 2.98 / 3.07 |
+| 0.22 | 2.27 %, 5 / 5 | | |
+| 0.225 | 2.44 %, 3 / 7 | 3 | 2.98 / 2.93 (fails) |
+| 0.23 | 2.04 %, 3 / 7 | | |
+| 0.232 | 1.74 %, 4 / 6 | 3 (requests 0.483; second-age floor seed 5 random 18.93; landing share seed 9 random 0.288) | |
+| 0.233 | 2.04 %, 4 / 6 | 2 | 3.13 / 3.06 (fails) |
+| 0.234 | 1.41 %, 5 / 5 | 1 | 3.15 / 2.94 (fails) |
+| 0.235 | 1.74 %, 4 / 6 | 0 | 3.04 / 2.97 (fails: `TheLastGapIsNoLongerThanTheOnesBeforeIt`) |
+| 0.236 | 2.13 %, 4 / 6 | 1 | 3.09 / 3.01 (fails) |
+| 0.237 | 2.12 %, 3 / 6 | 2 | 3.01 / 3.00 (fails) |
+| 0.238 | 1.94 %, 3 / 6 | 1 | 3.04 / 3.04 |
+| 0.24 | 1.46 %, 3 / 6 | 1 (landing share seed 9 random 0.278) | 3.08 / 3.00 (fails) |
+| 0.245 | 1.59 %, 5 / 5 | 2 | 3.16 / 3.04 (fails) |
+| 0.25 | 2.04 %, 3 / 7 | 2 | 2.98 / 2.94 (fails) |
+| 0.255 | 2.88 %, 3 / 7 | 1 | 3.12 / 2.98 (fails) |
+| 0.26 | 2.26 %, 4 / 6 | 3 | 3.09 / 2.99 (fails) |
+| 0.265 | 2.43 %, 4 / 6 | 1 | 3.05 / 3.02 (fails) |
+
+**No value within a third of 0.2 passes choice 1, every pacing band and the last-gap test together**; the single runs swing by noise from one step to the next. 0.235 was committed (`8bf1699`, with the pin recorded anew there) before the full suite showed the last-gap failure (saver 3.04 against 2.97); it was then undone: `BoonWellWork` is back to 0.2 and the pin back to its hashes from `70922b8` (the code is again that of `4300f3f` apart from the test and the bot's switch). Stopped there: the lead's call.
+
+### Not brought to pass: choices 1 and 2 (the lead's call)
+
+- Choice 1 (Deeper well / Longer rows): mean differs 2.54 % (the well slower), sooner 3 / 7. Its constant cannot do it (above).
+- Choice 2 (Third room / Faster hands): Faster hands reaches the charter 2.42 % sooner, sooner on 7 seeds. The weaker side is **Third room**, whose `BoonRoom` is a whole number (1) and stays. (The decision expected `BoonHands`, but hands is the stronger side.)
+- Choices 0 and 3 pass (0.46 %, 4 / 6; 1.22 %, 6 / 4).
+
+### The pin
+
+Unchanged in the end: it passed with only trades added (`ff77486` and every commit to `4300f3f`), was recorded anew at `8bf1699` for the well's change, and is back to the `70922b8` hashes with the well undone.
+
+### Result lines (fourth round, `BoonWellWork` back at 0.2)
+
+- `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   299, Skipped:     0, Total:   300` (`NeitherSideOfAChoiceIsAMistake`: "choice 1: mean charter A 29.80 min, B 29.06 min; sooner A 3, B 7 of 10; choice 2: mean charter A 29.44 min, B 28.75 min; sooner A 3, B 7 of 10"). With 0.235 it was 298 of 300 (that test on choice 2, and `TheLastGapIsNoLongerThanTheOnesBeforeIt`: "Saver: last gap 3.04 min > longest of the three before 2.97 min").
+- `bands --bell`, both ages: no band fails; every margin as in the round-1 band table (identical output).
+- game-playthrough: no constant changed in the end, so it reads as before, `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107` (also run under the lock at 18:26 with 0.235: the same line).
+
+## Fifth round: the bound on the means (the lead's decision)
+
+`NeitherSideOfAChoiceIsAMistake`, clause (a) is now **the two means differ by at most 5 percent**; clause (b) stays (neither side sooner on more than 8 of 10 seeds). History: the 2 percent was first set by the lead; choices 1 and 2 measured 2.54 and 2.42 percent with the sides sooner on 3 / 7 seeds. The standard error of the mean of the paired per-seed differences (A minus B, seeds 1-10, from the forced-pick tables above):
+
+| choice | mean difference | sd of differences | standard error | as share of the age |
+| --- | --- | --- | --- | --- |
+| 0 | +0.14 min | 1.44 min | 0.45 min | 1.54 % |
+| 1 | +0.74 min | 1.47 min | 0.46 min | 1.58 % |
+| 2 | +0.70 min | 1.22 min | 0.39 min | 1.33 % |
+| 3 | -0.36 min | 0.81 min | 0.26 min | 0.86 % |
+
+None is under 0.8 percent, so the bound was changed: 2 percent was within about one and a half standard errors (it could not tell a real disadvantage from noise); 5 percent is more than three standard errors for every choice. The old assertion never bounded the means; clause (b) is its outcome form. The same is written in the test's comment. No constant changed (`BoonWellWork` 0.2, `BoonWalk` 0.045, `CharterMinutes` 10; the pin on its `70922b8` hashes).
+
+Result lines (fifth round): `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Passed!  - Failed:     0, Passed:   300, Skipped:     0, Total:   300`. `bands --bell`, both ages: no band fails; identical to the round-1 band table.
