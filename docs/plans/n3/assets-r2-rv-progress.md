@@ -80,3 +80,76 @@ tools/asset-audit.sh --only=<names> --out=/home/user/tide-toll/build/n3/assets-a
 - Reeds in the first age (the river is drawn there too, without reeds): RiverBanks only runs in the second age.
 - Low-water flats read grey-blue rather than mud; reeds' seed heads are dark and chunky (thin blades read as pure ink at the normal
   view, so the blades were made wider: the clumps are toy-like rather than slender).
+
+## After the review (fixer, 00:02 to 01:15 UTC)
+
+Pictures retaken into `build/n3/assets-audit/r2-rv/` (four audit runs 00:07 to 00:16, a last full track run after ./check).
+
+### MUST FIX
+
+1. **Ferry raft — fixed.** `ferry.py` raft: one Packed earth deck slab with a Paper edge band, faint plank lines, two Thatch
+   rail posts a side and Thatch rails, a mooring post with a Brick cap at the bow, sacks and a Thatch crate; the loose pole
+   is gone and the rope stub through the guides is now the rope's Mud (it was the "Thatch rail floating off the right").
+   The ferry posts stand 1.5 m further up each bank (`RiverLayer.cs`). The "green cap and Brick-white pole" the reviewer
+   saw on the raft was the tide post (the old placement put it at the ferry); it now stands at the landing.
+2. **Reeds — fixed.** `reeds.py` rebuilt: three shapes (small 0.9 m three blades no heads; reeds 1.6 m five blades two
+   heads; tall 2.2 m seven blades two heads, leaning); flat two-sided blades, two in three Bent grass, the rest Cast-iron
+   green; Mud seed heads 0.12 x 0.35 m on Thatch stems; no hub, no Brick. Blades 0.3 m at the foot, not 0.14: at 0.2 m
+   they still read as ink scribbles at the normal view (picture read 00:08). `RiverBanks.cs` plants rows of five to nine.
+3. **Low-water flats — fixed.** `ground.gdshader`: the flat is Packed earth over Mud, darker wet Mud toward the water, no
+   water colour mixed in (that, not the shallows band, made it grey: the shallows only colour the water); puddles fewer.
+   Pictures: the flats read brown mud.
+4. **Ford — fixed (the tree is not mine).** Stones about 1.6 x 1.4 m one every 1.6 m (they touch to the eye); a worn way
+   3 cells long runs from each bank end (`TownGround.Lanes.cs`, worn like a lane once the crossing opens; a mesh patch
+   was tried first and read as a dark plank, removed). The willows on the east end: For the lead, below.
+5. **Drawbridge — fixed.** Towers 0.9 m square, top of tower 4.9 m (pivot 3.6 m above the deck, `DbH` in
+   `RiverLayer.Drawbridge.cs` follows); the leaf is Packed earth on both faces with Packed earth rails and tip.
+6. **Barge cloth — fixed.** `RiverBoats.SetClothRolls`: plain Brick rolls laid across the hold, two a row, no stripe.
+7. **Tide post — fixed.** `river-town.py`: 3.2 m stubby gauge, 0.7 m, bands about 0.5 m with Brick at the top, Cast-iron
+   green cap, Concrete plinth with a Paper step, a Thatch flag pointer 0.9 m wide. Stands on the bank edge at the landing's
+   upstream end, pointer turned to the river (`RiverLayer.cs`, `RiverLayer.Landing.cs`); in the landing pictures now.
+8. **Placement — crane fixed, tree and heaps for the lead / track P.** The crane stands on the lip at the water's edge
+   at the landing's downstream end (1.8 m nearer the water, about 1 m nearer the landing), its jib swinging ±0.45 rad
+   about the river side: it no longer crosses the cottage roof.
+
+### SHOULD FIX
+
+- Bank-stones — fixed: two touching stones 1.8 m across, 0.5 m high, Concrete with Paper tops.
+- Footbridge abutments — fixed: one stone wall 2.7 m across at the river end with a Paper cap, slim cheeks; the end is
+  fitted at its own size (2.84 m) so it is no wider than the span.
+- Bank lip — fixed: width wanders 0.6 to 2.4 m over tens of metres, grass bites to the bank line now and then.
+- Ferry post band vs raft pole — done by moving the tide post (the only banded post near the ferry was the tide post).
+- Trodden ends of footbridge and drawbridge — fixed with the same worn ways as the ford (and the ferry's ends).
+- Reeds in the first age, ferry rope alone — left as the reviewer accepts.
+
+### For the lead
+
+1. `TownTrees.cs` (not mine): keep trees off the river's crossings and the landing. In `TownTrees.Make`, before the loop:
+   `var rp = TideToll.Sim.Town.TownRiverPlanner.Build(plan);` and in the loop, after the `dRiver` test:
+   `if (NearRiverWork(rp, x + 0.5f, y + 0.5f)) continue;` with
+   `static bool NearRiverWork(RiverPlan rp, float x, float y) { foreach (var l in rp.Links) { if (l.Kind == RiverLinkKind.Lane) continue; int n = l.Px.Length; for (int e = 0; e < 2; e++) { double ex = e == 0 ? l.Px[0] : l.Px[n - 1], ey = e == 0 ? l.Py[0] : l.Py[n - 1]; if ((x - ex) * (x - ex) + (y - ey) * (y - ey) < 36) return true; } } var p = rp.PlotOf(RiverPlotKind.Landing); return x > p.X - 5 && x < p.X + p.W + 5 && y > p.Y - 5 && y < p.Y + p.H + 5; }`
+   (6 cells round each crossing end, 5 round the landing). Check that `TownRiverPlanner.Build(plan)` is what `Town` uses
+   (Town.cs line 43 does) and costs nothing per frame (Make runs once). If the willow in front of the landing is a touch
+   prop (`TownTouches.cs`) rather than a tree, the same test belongs there.
+2. Track P (`TownVillagers.cs`): the load heaps queueing at the landing also stand at the crane's foot (now on the lip at the
+   landing's downstream end, `RiverLayer.Landing.cs` `MakeCrane`): keep queue spots 2 m off it.
+3. Crossings now wear a 3-cell way into the ground at each bank end (`TownGround.Lanes.cs`): display only, nothing in `sim/`.
+
+### Tests (the whole ./check, 00:16 to 01:06 UTC, load average about 24 on 4 cores from other agents' picture runs)
+
+sim-build, sim-test (258), godot-nuget, sync-assets, game-build, game-smoke, game-town, game-perf (1x mean 0.458 ms, river 1x
+0.486 ms), game-playthrough, game-river, game-book, game-menu, game-save, ledger (325 rows, 0 problems): PASS.
+game-settings: SETTINGS PASS printed, then exit 134 on the exit-time "Leaked unsafe reference" lines; alone at 00:49: the
+same (SETTINGS PASS, 1181 Leaked lines, GODOT TEST FAIL: exit code 134).
+game-motion: CPU gate only (60 fps click-settings-on-lettering 8.39 ms, 120 fps tab-turned-back 6.76 ms; gate 6); alone at
+00:49 (load 24): tab-display-sound 7.89 ms at 60, tab-redirected 14.31 ms at 30, pause 12.86 ms at 120; a different frame
+each run.
+screenshot: stopped by its own 2400 s timeout (exit 124) with no FAIL line, the log only Godot's banner and "river banks: 205
+reeds, 6 stones" twice. Not rerun (no time before 01:15): it needs a run on a quieter machine.
+
+### Not done
+
+- The screenshot step's verdict (timed out under load, above).
+- The willows on the ford's east end and in front of the landing; load heaps at the crane's foot (For the lead 1 and 2).
+- Some town pictures in the folder (river-high/low-water, landing-low-water) were taken at 00:07, before the reed blades went
+  from 0.2 to 0.3 m and the ferry posts moved; crossing-footbridge, town-view-river and crossing/town-view-ferry are newest.

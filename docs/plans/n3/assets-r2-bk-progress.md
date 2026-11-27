@@ -56,6 +56,8 @@ first-age subjects stops after the charter.
 
 ## For the lead
 
+- (fixer) `town-touches-last` shows a touch prop placed half under a cottage's roof: the spot comes from `Town.Touch(i)` (sim), drawn by TownTouches at that cell. Worth a look in the town audit.
+
 - `RiverLayer.cs` (not mine) stakes river plots with the whole `plot-stakes` model scaled to the plot: with the new
   model the stakes are stretched a little but the rope still lies on the ground. Better: use the same fitting as
   `TownBuildings.FittedStakes` (could be made `internal static` and called from RiverLayer.MakeStakes).
@@ -122,6 +124,30 @@ Generators and game code changed after `assets-r2-bk-review.md`. Pictures retake
 | SHOULD keeper's hut | fixed: bell-cote moved to the east gable end, chimney clear at the west on the back slope |
 | SHOULD pasture | fixed: grazed ground in Bent grass with Meadow patches, four tufts (was nine), thatch courses and a ridge roll on the shelter |
 | SHOULD quill label | fixed: the Slate roof bar is gone |
-| SHOULD charter stone | done in TownBuildings.cs: 15 percent larger (want max 4.6 m, 0.63 of the green), moved to 0.36 of the green's width so its patch clears the bench |
-| SHOULD props in a town picture | not done: needs a new audit subject (TownTouches props appear only later in the age) |
+| SHOULD charter stone | done in TownBuildings.cs: 15 percent larger (want max 4.6 m, 0.63 of the green), moved to 0.42 of the green's width (0.36 still touched the bench) so its patch clears the bench |
+| SHOULD props in a town picture | done in the audit tool: AssetAudit.Town.cs pictures the first and last TownTouches item at the charter stop (`town-touches-first`, `town-touches-last`). In this run they were a woodpile and a prop half under a cottage's roof; none of this track's props had been placed by the charter |
 | SHOULD RiverLayer stakes | not mine (RiverLayer.cs): see "For the lead" above |
+
+### Pictures read after the fixes (00:12 to 00:25 UTC)
+
+- prop-handcart close: round wheels on edge either side with hubs, two thick handles, tied sack in the bed; N: true size, small beside the villager (a dark cart shape with a pale sack).
+- sheep close (soft ink): a white fleece of round lumps on four dark legs with a small dark face; the lumps still show facets. N: a white blob with a dark face, legs hard to see at true size.
+- fence-wattle close: upright pale withies alternately in front of and behind three dark rails between two dark posts; N: a dark fence strip with pale teeth. fence-post N: the Paper cap shows as a pale dot on the dark post.
+- prop-flower-bed close: stone-edged bed with red, gold and white blossoms with raised centres on green cushions; N: a small coloured bed.
+- prop-hen-coop close: the framed dark door and the wide ramp read; the hens are still small and blocky (a white hen with a red comb, a golden hen by the ramp).
+- plot-stakes N and town-plot-stakes N: four red-capped stakes and a clear pale rope with a dark edge round the plot, the label below; no black yard.
+- keeper-hut close: the chimney stands clear at the west, the bell-cote sits at the east gable.
+- pasture N: lighter grazed ground, four tufts, a coursed shelter roof.
+- desk-candle close: a Thatch flame with a round bulb wider than the candle and a pointed tip.
+- book-closed N and close: the outer blind frames and a gilt dotted roll now show round the board, the corner pieces sit inside the corners; the middle (lettering field) stays plain.
+- book-desk-normal (640 x 480): the quill lies fully in the picture; the seal is still cut by the right edge of this 4:3 frame (the game's 16:9 view holds it).
+- book-table-close: still soft at that magnification; the joint is thinner.
+- town-charter-stone close: larger stone with its red seal, its paved patch now clear of the green's bench.
+- town-touches-first: a woodpile beside a lane; town-touches-last: a prop half hidden under a cottage's roof (the touch's spot comes from the simulation; see "For the lead").
+
+### Whole ./check after the fixes (00:24 to 01:11 UTC, load 15 to 25)
+
+Pass: sim-build, sim-test (258), godot-nuget, sync-assets, game-build, game-smoke, game-town, game-perf, game-playthrough (PLAY PASS charter=33.9min buys=201), game-river, game-book, game-menu, game-save, ledger (328 rows, 0 problems).
+Fail: game-settings (SETTINGS PASS, then exit 134 on leaked objects at exit; rerun alone 00:55: the same, 1595 "Leaked unsafe reference" lines);
+game-motion (CPU gate only: 60 fps tab-turned-back 6.57 ms, 120 fps tab-display-sound 8.32 ms; rerun 01:05 while the screenshot step ran, load 25: CPU gate only, 60 fps pause 8.66 ms, 30 fps tab-keys-display 23.97 ms, 120 fps pause 6.11 ms);
+screenshot: killed by its 2400 s timeout with an empty log (load 20 to 25; no verdict, no FAIL line). Not rerun: no time before 01:15. Next: run the screenshot step alone on a quieter machine.
