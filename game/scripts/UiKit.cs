@@ -25,8 +25,8 @@ public static partial class UiKit
     public static readonly Color Warn = Color.FromHtml("#E69F00");
 
     private static FontFile? _ui, _uiBold, _serif, _display;
-    public static FontFile UiFont => _ui ??= GD.Load<FontFile>("res://assets/fonts/AtkinsonHyperlegible-Regular.ttf");
-    public static FontFile UiBold => _uiBold ??= GD.Load<FontFile>("res://assets/fonts/AtkinsonHyperlegible-Bold.ttf");
+    public static FontFile UiFont => _ui ??= GD.Load<FontFile>("res://assets/fonts/TideLegible-Regular.ttf");
+    public static FontFile UiBold => _uiBold ??= GD.Load<FontFile>("res://assets/fonts/TideLegible-Bold.ttf");
     public static FontFile Serif => _serif ??= GD.Load<FontFile>("res://assets/fonts/Alegreya-Variable.ttf");
     public static FontFile Display => _display ??= GD.Load<FontFile>("res://assets/fonts/UncialAntiqua-Regular.ttf");
 

@@ -36,6 +36,9 @@ for d in models textures icons fonts audio; do
     rm -rf "$DST/$d"
   fi
 done
+# The Atkinson Hyperlegible files are only the source of Tide Legible (assets/src/2d/fonts-plain-zero.py, plain
+# zero); the game loads Tide Legible, so the originals are kept out of the game and of the export.
+rm -f "$DST"/fonts/AtkinsonHyperlegible-*.ttf "$DST"/fonts/AtkinsonHyperlegible-*.ttf.import
 # Icons are imported at 4x (game/project.godot, importer_defaults); drop sidecars from before that setting so
 # Godot imports them again with it.
 { grep -l '^svg/scale=1.0' "$DST"/icons/*.svg.import 2>/dev/null || true; } | xargs -r rm -f

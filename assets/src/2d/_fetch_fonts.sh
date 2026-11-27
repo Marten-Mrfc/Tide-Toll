@@ -2,7 +2,8 @@
 # Re-fetches the UI fonts (OFL-1.1) from github.com/google/fonts and checks them against the hashes recorded on
 # 2026-11-24. Not run by tools/build-assets.sh (leading underscore: builds stay offline). Run by hand:
 #   assets/src/2d/_fetch_fonts.sh            -> assets/fonts/*.ttf, assets/licences/*-OFL.txt
-# Fonts ship unmodified (Uncial Antiqua has a Reserved Font Name). The @fontsource npm packages (5.3.0, OFL-1.1)
+# Fonts ship unmodified (Uncial Antiqua has a Reserved Font Name), except Atkinson Hyperlegible: the game ships
+# Tide Legible, made from it by assets/src/2d/fonts-plain-zero.py (plain zero); run that after a refetch. The @fontsource npm packages (5.3.0, OFL-1.1)
 # hold the same families but only as WOFF2; the pipeline guide asks for TTF, so the google/fonts files are used.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
