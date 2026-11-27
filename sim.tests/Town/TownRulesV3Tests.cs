@@ -96,10 +96,35 @@ public class TownRulesV3Tests
     [Fact]
     public void ThePaybackBotDoesNotAlwaysPickTheSameSide()
     {
-        // The lead's decision 1: on seeds 1 to 10 neither side of any choice is picked by the payback bot more than 8 times.
+        // The lead's decision 1: on seeds 1 to 10 neither side of choices 1 to 3 is picked by the payback bot more than 8 times.
+        // n7 trades, the lead's decision: choice 0 (Wider lanes or Stronger backs) is replaced by the equal test for the new
+        // rule. Old assertion: the payback bot's picks at choice 0 split (neither side more than 8 of 10). New assertion: with
+        // each side forced at choice 0 (the bot's own play otherwise), the mean charter minutes differ by at most 2 percent and
+        // neither side reaches the charter sooner on more than 8 of 10 seeds. Why: with villagers spread by trades no road is
+        // crowded at level 4 in any town, so the bot's estimate is the same everywhere and its picks cannot split whatever the
+        // constants (BoonWalk swept 3 to 4.5 %: all ten flip together at 0.0364); the new test looks at what the choice does.
         var runs = new PacingResult[TownTargets.SeedTo - TownTargets.SeedFrom + 1];
         Parallel.For(TownTargets.SeedFrom, TownTargets.SeedTo + 1, s => runs[s - TownTargets.SeedFrom] = TownPacing.Run(s, BotKind.Payback, TownTargets.RunMinutes));
-        for (int c = 0; c < TownRules.ChoiceLevels.Length; c++)
+        int n = runs.Length;
+        var forced = new double[n * 2];
+        Parallel.For(0, n * 2, i =>
+        {
+            int seed = TownTargets.SeedFrom + i / 2;
+            var t = new T(seed);
+            var bot = new TownBot(BotKind.Payback, seed) { ForceChoice0 = i % 2 };
+            while (!t.HasCharter && t.Time < TownTargets.RunMinutes * 60) { t.Step(); bot.Act(t); }
+            Assert.True(t.HasCharter, $"seed {seed} side {i % 2}: no charter");
+            forced[i] = t.Time / 60;
+        });
+        double lanes = 0, backs = 0; int lanesSooner = 0, backsSooner = 0;
+        for (int s = 0; s < n; s++)
+        {
+            lanes += forced[2 * s] / n; backs += forced[2 * s + 1] / n;
+            if (forced[2 * s] < forced[2 * s + 1]) lanesSooner++; else if (forced[2 * s + 1] < forced[2 * s]) backsSooner++;
+        }
+        Assert.True(Math.Abs(lanes - backs) <= 0.02 * Math.Min(lanes, backs), $"choice 0: mean charter lanes {lanes:F2} min, backs {backs:F2} min");
+        Assert.True(lanesSooner <= 8 && backsSooner <= 8, $"choice 0: lanes sooner on {lanesSooner}, backs on {backsSooner} of {n}");
+        for (int c = 1; c < TownRules.ChoiceLevels.Length; c++)
         {
             int a = runs.Count(r => r.Boons[c] == 2 * c), b = runs.Count(r => r.Boons[c] == 2 * c + 1);
             Assert.True(a + b == runs.Length, $"choice {c}: decided in {a + b} of {runs.Length} runs");
