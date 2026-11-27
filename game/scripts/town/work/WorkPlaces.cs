@@ -70,7 +70,12 @@ public partial class WorkPlaces : Node3D
         OnReplaced();
     }
 
-    public override void _ExitTree() { if (Driver != null) Driver.Replaced -= OnReplaced; }
+    public override void _ExitTree()
+    {
+        if (Driver != null) Driver.Replaced -= OnReplaced;
+        // the static site table must not keep this node alive past the scene (finalized after the engine is gone)
+        WorkSites.Clear();
+    }
 
     private void OnReplaced()
     {

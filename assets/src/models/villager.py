@@ -117,7 +117,8 @@ def sack_lying(m, c, colour, band, tie="Mud"):
 def cargo(kind):
     m = glb.Mesh()
     if kind == "grain":        # a hessian sack (never Thatch: the straw hat and the roofs are Thatch), grain at its ear
-        sack_upright(m, HOLD, "Packed earth", ear="Reed and thatch")
+        # n5 fix round: ochre (Thatch), so grain, flour (pale) and water (blue) are told apart at the normal view
+        sack_upright(m, HOLD, "Thatch", ear="Reed and thatch")
     elif kind == "flour":      # a white sack lying across the arms, one dark band, tied at the neck
         sack_lying(m, (HOLD[0], HOLD[1] + 0.06, HOLD[2]), "Limewash", band="Mud")
     elif kind == "wool":       # a ragged bale on the left shoulder: three lumps, two proud Thatch ties
@@ -137,37 +138,40 @@ def cargo(kind):
         tube(m, (0.3, 1.95, -0.95), (0.3, 2.0, 1.0), 0.21, "Packed earth", n=7, end_colour="Trail earth")
         beam(m, (0.3, 2.0, 0.35), (0.3, 2.25, 0.55), 0.1, 0.1, "Packed earth")  # a stub of a branch
     elif kind == "water":      # yoke across the shoulders (0.12 m thick life size), a pail at each end
-        beam(m, (-0.95, 1.86, -0.04), (0.95, 1.86, -0.04), 0.18, 0.17, "Packed earth")
+        # n5 fix round: a thin yoke, River-blue pails with a pale water top and a light hoop (they read as pails, not a
+        # dark lump beside the body)
+        beam(m, (-0.95, 1.86, -0.04), (0.95, 1.86, -0.04), 0.1, 0.1, "Trail earth")
         for sx in (-1, 1):
-            beam(m, (sx * 0.86, 1.86, -0.04), (sx * 0.86, 1.2, -0.04), 0.08, 0.08, "Mud")
+            beam(m, (sx * 0.86, 1.86, -0.04), (sx * 0.86, 1.2, -0.04), 0.05, 0.05, "Trail earth")
             m.add_frustum((sx * 0.86, 0.72, -0.04), 0.24, 0.3, 0.48, "River", segments=8, cap_top=False)
-            m.add_cylinder((sx * 0.86, 1.1, -0.04), 0.27, 0.06, "Deep water", segments=8)
-            m.add_frustum((sx * 0.86, 0.94, -0.04), 0.285, 0.29, 0.06, "Mud", segments=8, cap_top=False)
+            m.add_cylinder((sx * 0.86, 1.15, -0.04), 0.27, 0.04, "Limewash", segments=8)
+            m.add_frustum((sx * 0.86, 0.94, -0.04), 0.285, 0.29, 0.06, "Trail earth", segments=8, cap_top=False)
     return m
 
 
 def packframe():
+    # n5 fix round: lighter wood (Trail earth), so a parked frame or cart is not a near-black smear
     m = glb.Mesh()
     for sx in (-1, 1):
-        beam(m, (sx * 0.28, 0.75, -0.42), (sx * 0.3, 2.35, -0.46), 0.1, 0.1, "Packed earth")
-        beam(m, (sx * 0.3, 1.6, -0.36), (sx * 0.22, 1.66, 0.12), 0.08, 0.06, "Mud")   # strap over the shoulder
+        beam(m, (sx * 0.28, 0.75, -0.42), (sx * 0.3, 2.35, -0.46), 0.1, 0.1, "Trail earth")
+        beam(m, (sx * 0.3, 1.6, -0.36), (sx * 0.22, 1.66, 0.12), 0.08, 0.06, "Packed earth")   # strap over the shoulder
     for y in (0.95, 2.2):
-        beam(m, (-0.36, y, -0.45), (0.36, y, -0.45), 0.08, 0.08, "Packed earth")
-    m.add_box((0, 1.2, -0.68), (0.72, 0.08, 0.5), "Packed earth", bottom="Packed earth")   # shelf the load sits on
+        beam(m, (-0.36, y, -0.45), (0.36, y, -0.45), 0.08, 0.08, "Trail earth")
+    m.add_box((0, 1.2, -0.68), (0.72, 0.08, 0.5), "Trail earth", bottom="Trail earth")   # shelf the load sits on
     return m
 
 
 def handcart():
     m = glb.Mesh()
     z0, z1, y0 = 0.95, 2.35, 0.62
-    m.add_box((0, y0, (z0 + z1) / 2), (1.1, 0.1, z1 - z0), "Packed earth", bottom="Packed earth")
+    m.add_box((0, y0, (z0 + z1) / 2), (1.1, 0.1, z1 - z0), "Trail earth", bottom="Trail earth")
     for sx in (-1, 1):
         m.add_box((sx * 0.55, y0, (z0 + z1) / 2), (0.08, 0.34, z1 - z0), "Trail earth", bottom=False)
-        tube(m, (sx * 0.66, 0.42, 1.65), (sx * 0.76, 0.42, 1.65), 0.42, "Mud", n=8, end_colour="Packed earth")
-        beam(m, (sx * 0.5, y0 + 0.1, z0 + 0.1), (sx * 0.3, 1.2, 0.5), 0.08, 0.08, "Packed earth")   # handles
+        tube(m, (sx * 0.66, 0.42, 1.65), (sx * 0.76, 0.42, 1.65), 0.42, "Packed earth", n=8, end_colour="Trail earth")
+        beam(m, (sx * 0.5, y0 + 0.1, z0 + 0.1), (sx * 0.3, 1.2, 0.5), 0.08, 0.08, "Trail earth")   # handles
     m.add_box((0, y0, z1), (1.1, 0.34, 0.08), "Trail earth", bottom=False)
     m.add_box((0, y0, z0), (1.1, 0.3, 0.08), "Trail earth", bottom=False)
-    beam(m, (0, 0.05, 2.2), (0, y0, 2.2), 0.1, 0.1, "Mud")                         # the leg it rests on
+    beam(m, (0, 0.05, 2.2), (0, y0, 2.2), 0.1, 0.1, "Packed earth")                         # the leg it rests on
     return m
 
 

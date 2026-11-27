@@ -35,6 +35,26 @@ public partial class TownVillagers
     /// <summary>Gap between two in a line at the town's Load level, in cells.</summary>
     public static float LineStepCells(int loadLevel) => (CartAt(loadLevel) ? WorkSites.LineStepCart : WorkSites.LineStep) / Cell;
 
+    /// <summary>n5 fix round: how far the line stands off the lane's middle, cells (a third of a cell), so those walking
+    /// the same lane pass beside it instead of merging with it.</summary>
+    public const float LineEdgeCells = 1f / 3f;
+
+    /// <summary>Moves a point of the line to the right-hand edge of the lane as one walks toward the place (the lane's
+    /// heading <paramref name="h"/> faces the place; map cells, y south).</summary>
+    private static void ToEdge(ref float x, ref float y, float h)
+    {
+        x -= MathF.Sin(h) * LineEdgeCells;
+        y += MathF.Cos(h) * LineEdgeCells;
+    }
+
+    /// <summary>The one heading a whole line is moved aside by: the lane's at the line's front. One shift for all keeps
+    /// the gaps between places exactly as along the lane (a shift by each point's own heading opens them on a bend).</summary>
+    private float EdgeHeading(Town t, int w, float gap)
+    {
+        WorkSites.LinePoint(t, w, _lane[w], gap, out _, out _, out float h);
+        return h;
+    }
+
     private static bool IsWorkplaceKind(PlotKind k) => k is PlotKind.Well or PlotKind.Field or PlotKind.Mill;
 
     /// <summary>Once a frame: the lane of each workplace's line, kept while its line stands (so the line never jumps lanes).</summary>
@@ -88,6 +108,7 @@ public partial class TownVillagers
             }
             float gap = LineStepCells(t.LoadLevel);
             WorkSites.LinePoint(t, w, _lane[w], gap * (1f + _qd[i]), out float lx, out float ly, out float lh);
+            ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
             _lineX[i] = lx; _lineY[i] = ly;
             tx = lx; ty = ly;
             if (_qd[i] < 0.5f)
@@ -115,6 +136,7 @@ public partial class TownVillagers
                 {
                     _holders[w]++;
                     WorkSites.LinePoint(t, w, _lane[w], tail, out float lx, out float ly, out float lh);
+                    ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
                     tx = lx; ty = ly; face = HeadingYaw(lh);
                     return true;
                 }

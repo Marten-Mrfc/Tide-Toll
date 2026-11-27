@@ -231,8 +231,21 @@ public partial class FieldRows : Node3D
         var f = Of(plot);
         if (f == null || !f.Built) return Vector3.Zero;
         int r = RowOf(f.Rows, slot);
-        float x = PieceX(f, r, f.Front[r]) - Piece * 0.55f;
+        // on the cut stretch behind the front, so the reaper's step forward (0.8 m) still ends on cut ground
+        float x = PieceX(f, r, f.Front[r]) - Piece * 0.75f;
         return f.Centre + new Vector3(x, 0.03f, f.RowZ[r] + 0.15f);
+    }
+
+    /// <summary>Where a reaper's frame or cart stands: on the grass headland at the west end of their row (a cart a
+    /// little further out), never on the soil or in the crop.</summary>
+    public Vector3 ParkAt(int plot, int slot, float side)
+    {
+        var f = Of(plot);
+        if (f == null || !f.Built) return Vector3.Zero;
+        int r = RowOf(f.Rows, slot);
+        var p = _w.Town.Plan.Plots[f.Plot];
+        float half = p.W * WorkPlaces.Cell * 0.96f / 2f;
+        return new Vector3(f.Centre.X - half + 0.55f - (side > 1.2f ? 0.25f : 0f), 0f, f.Centre.Z + f.RowZ[r]);
     }
 
     public Vector3 StookAt(int plot, int slot)

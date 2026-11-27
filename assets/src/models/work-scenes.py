@@ -118,7 +118,7 @@ def crop(m, rng, body_h, hmin, hmax, stalk, dark, ear, per_line=7, r=0.17, w=0.8
     loft(m, [(x, 0.1, z) for x, z in b2], [(x, 0.1 + body_h, z) for x, z in t2], stalk, centre=(0, 0.1, 0))
     cap(m, [(x, 0.1 + body_h, z) for x, z in t2], stalk)
     k = 0
-    for line, z0 in enumerate((-0.33, -0.11, 0.11, 0.33)):
+    for line, z0 in enumerate((-0.28, 0.0, 0.28)):   # fix round: three lines, not four (calmer)
         for i in range(per_line):
             k += 1
             if rng.random() < 0.08:
@@ -139,7 +139,8 @@ def row_ripe():
     rng = random.Random(SEED + 1)
     m = glb.Mesh()
     ridge(m, rng)
-    crop(m, rng, 0.42, 0.72, 0.88, "Reed and thatch", "Trail earth", "Reed and thatch")
+    # fix round: fewer, slimmer tufts in one tone (the review: the rows read as hedges, the loudest thing on the map)
+    crop(m, rng, 0.42, 0.7, 0.84, "Reed and thatch", "Reed and thatch", "Reed and thatch", per_line=5, r=0.14)
     return m
 
 
@@ -147,7 +148,7 @@ def row_green():
     rng = random.Random(SEED + 2)
     m = glb.Mesh()
     ridge(m, rng)
-    crop(m, rng, 0.2, 0.36, 0.48, "Meadow", "Cast-iron green", "Bent grass", per_line=6, r=0.16)
+    crop(m, rng, 0.2, 0.36, 0.48, "Meadow", "Meadow", "Bent grass", per_line=5, r=0.14)
     return m
 
 
@@ -173,22 +174,21 @@ def stalk(m, rng, x, z, y, length, ang, colour="Reed and thatch"):
 def row_stubble():
     rng = random.Random(SEED + 4)
     m = glb.Mesh()
-    ridge(m, rng, colour="Trail earth", h=0.05)
-    for line, z0 in enumerate((-0.22, 0.22)):
-        for i in range(8):
-            x = -PIECE / 2 + (i + 0.4 + 0.4 * line) * PIECE / 8.4 + rng.uniform(-.04, .04)
-            m.add_frustum((x, 0.06, z0 + rng.uniform(-.05, .05)), 0.06, 0.07, rng.uniform(0.08, 0.14),
+    # fix round: a pale straw band (the cut row never looks like bare earth), a few low stubs, no loose stalks
+    ridge(m, rng, colour="Reed and thatch", h=0.08)
+    for line, z0 in enumerate((-0.2, 0.2)):
+        for i in range(5):
+            x = -PIECE / 2 + (i + 0.4 + 0.4 * line) * PIECE / 5.4 + rng.uniform(-.04, .04)
+            m.add_frustum((x, 0.08, z0 + rng.uniform(-.05, .05)), 0.07, 0.08, rng.uniform(0.06, 0.1),
                           "Reed and thatch", segments=4, yaw=rng.uniform(0, 1.5))
-    for _ in range(2):                                                               # a few fallen stalks
-        stalk(m, rng, rng.uniform(-.7, .7), rng.uniform(-.45, .45), 0.09, rng.uniform(.45, .7), rng.uniform(-.8, .8))
     return m
 
 
 def row_swath():
     rng = random.Random(SEED + 5)
     m = glb.Mesh()
-    ridge(m, rng, colour="Trail earth", h=0.08)
-    for i in range(9):                                                               # stalks lying across, ears one way
+    ridge(m, rng, colour="Reed and thatch", h=0.08)
+    for i in range(0, 9, 2):                                                         # fix round: half the stalks                                                               # stalks lying across, ears one way
         x = -PIECE / 2 + 0.15 + i * 0.21 + rng.uniform(-.05, .05)
         a = math.pi / 2 + rng.uniform(-.5, .5)
         stalk(m, rng, x, rng.uniform(-.1, .1), 0.1 + 0.03 * (i % 2), rng.uniform(.75, .95), a)
@@ -203,11 +203,11 @@ def row_edge():
     m = glb.Mesh()
     ridge(m, rng)
     sub = glb.Mesh()
-    crop(sub, rng, 0.42, 0.6, 0.88, "Reed and thatch", "Trail earth", "Reed and thatch")
+    crop(sub, rng, 0.42, 0.6, 0.84, "Reed and thatch", "Reed and thatch", "Reed and thatch", per_line=5, r=0.14)
     for tri in sub.tris:                                                             # keep the -X half only
         if max(p[0] for p in tri[:3]) < -0.05 + 0.25 * math.sin(7 * tri[0][2]):
             m.tris.append(tri)
-    for i in range(5):
+    for i in range(0, 5, 2):                                                         # fix round: fewer loose stalks
         x = 0.2 + i * 0.17 + rng.uniform(-.04, .04)
         stalk(m, rng, x, rng.uniform(-.25, .25), 0.12 + 0.03 * (i % 2), rng.uniform(.6, .8), rng.uniform(-.6, .6))
     return m
@@ -227,7 +227,8 @@ def field_bed():
     head = hull2d(pts)
     m.add_extrude((0, 0, 0), head, 0.04, "Bent grass")
     inner = hull2d([(x * 0.88 + rng.uniform(-.12, .12), z * 0.88 + rng.uniform(-.12, .12)) for x, z in head])
-    m.add_extrude((0, 0.04, 0), inner, 0.05, "Bent grass", top="Mud", cap_bottom=False)
+    # fix round: the soil one step lighter, toward the path (Mud was the darkest big shape on the map)
+    m.add_extrude((0, 0.04, 0), inner, 0.05, "Bent grass", top="Trail earth", cap_bottom=False)
     return m
 
 

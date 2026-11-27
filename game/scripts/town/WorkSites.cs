@@ -36,6 +36,16 @@ public interface IWorkSite
     bool GoodsAt(int slot, out Vector3 at);
 }
 
+/// <summary>Fix round (places): a site whose doorway is not where the plan's door is (the mill's work turned onto the
+/// flank the camera sees) says where the grain goes in (map-local metres, with height).</summary>
+public interface IWorkDoorway
+{
+    bool DoorwayAt(out Vector3 at);
+    /// <summary>Where a worker's pack frame or handcart stands while they work (map-local metres, on the ground);
+    /// <paramref name="side"/> is 0.95 for a frame and 1.4 for a cart. False: beside the owner.</summary>
+    bool ParkAt(int slot, float side, out Vector3 at);
+}
+
 /// <summary>
 /// The shared interface between the villagers (TownVillagers*.cs) and the places (Work*.cs): for a workplace, where in
 /// the drawing its work spots, its line and its goods are, and the calls "a unit of work was finished here" and "a load
@@ -151,8 +161,15 @@ public static class WorkSites
     }
 
     /// <summary>The doorway of a plot (map-local metres, at the threshold): where the mill's grain sack goes in.</summary>
+    public static bool ParkAt(int plot, int slot, float side, out Vector3 at)
+    {
+        at = Vector3.Zero;
+        return plot >= 0 && plot < Sites.Length && Sites[plot] is IWorkDoorway d && d.ParkAt(slot, side, out at);
+    }
+
     public static Vector3 Doorway(Town t, int plot)
     {
+        if (plot >= 0 && plot < Sites.Length && Sites[plot] is IWorkDoorway d && d.DoorwayAt(out var at)) return at;
         var p = t.Plan.Plots[plot];
         DoorDir(p, out _, out _, out float dx, out float dy);
         return new Vector3((p.DoorX + 0.5f - dx * 1.0f) * Cell, 0.5f, (p.DoorY + 0.5f - dy * 1.0f) * Cell);

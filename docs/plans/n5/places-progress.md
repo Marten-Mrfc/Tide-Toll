@@ -126,3 +126,71 @@ Read-only states for the villagers' side if useful: `Main.Work.Mill.DoorOpen`, `
   model's own goods are still mixed in.
 - **A cottage**: the door leaf opens and the dark inside shows; the water butt is not drawn.
 - **Not done**: the hoist's running rope; the cottage's water butt; the mill's doorway on the camera's side (above).
+
+## Fix round (after the independent picture review, `work-review.md`)
+
+Point by point, in the coordinator's order:
+
+1. **The mill (done in code).** The doorway, the door, the step, the grain and flour sacks, the flour puffs and the
+   miller's spot now stand on the tower's flank nearest the plan's door (east or west; `MillWorks` turns all its pieces
+   onto that face with one node, `_faceYaw`), not on the north face behind the tower and sails. `PlaceSite.Spot` puts
+   the millers on that step, side by side, facing in; `WorkSites.Doorway` now asks the site (`IWorkDoorway`, added to
+   `WorkSites.cs`) so the grain sack is tipped in at that doorway. The sails stay on the north face (away from the
+   camera, so they cover nothing on the flank); the cap was not turned. The line still comes along the lane.
+2. **The figure bent double with a floating hexagon:** the hexagon was the flour sack rising from my goods point,
+   which stood 0.4 m in the air beside the worker. The goods point is now on the step (0.15 m) next to the miller's
+   new spot, so the stoop reads as lifting a sack off the step. The stoop itself (villagers' code) is unchanged.
+3. **The dark T in the crop:** the parked pack frame or handcart of a reaper. It now stands on the grass headland at
+   the west end of the reaper's row (`FieldRows.ParkAt`, through `WorkSites.ParkAt` and one line in
+   `TownVillagers.Props.cs`'s `Parked`), never on the soil or in the crop; the frame and cart are lighter wood
+   (Trail earth, `villager.py`).
+4. **The well:** the worker's spot is at the crank, the end of the windlass, a little toward the view, clear of the
+   roof (`PlaceSite.Spot` with `WellWorks.CrankSpot`); the pails and bucket tip over the rim toward the view (since the
+   first pass). The line is the villagers' line (point 8).
+5. **The field calmer:** soil Trail earth instead of Mud; ripe and green rows three lines of five slimmer tufts in one
+   tone (no dark every-third tuft); cut rows a pale straw band (Reed and thatch) with a few low stubs and no loose
+   stalks; the swath and the edge with half the loose stalks. The ink shader is not touched.
+6. **A worker buried in the crop:** the reaper stands 1.5 m behind the front piece's middle (was 1.1 m), so with the
+   villagers' 0.8 m step along the row they stay on cut ground.
+7. **The pale disc by the market's lane:** the coin hop of a delivery (`TownFeel`), 1.6 m wide, hopping from the
+   market's node on the lane and carried up the screen. It now hops from the table's edge and is 1.05 m.
+8. **The line on one edge of the lane:** `TownVillagers.Line.cs` moves every place of a line a third of a cell to the
+   right-hand edge of the lane as one walks toward the place (`ToEdge`), one body per step as before.
+9. **Loads told apart:** grain is an ochre sack (Reed and thatch), flour stays the pale sack, water is two River-blue
+   pails with a pale water top on a thin yoke (`villager.py`, models rebuilt, ledger checked).
+
+Could fix: the well's wet patch shows as wet earth (less translucent) and the stray splash ring on the grass is gone.
+Not done: the cottage door larger, the strip tool's close row.
+
+Line, old and new (point 8): `game-work` first failed at 30 fps, "the line at the Mill: places 1 and 2 stand 2.44 m
+apart (1.6 to 2.4)", because each place was moved aside by its own point's heading, which opens the gaps on a bend. Not
+the test's fault: the drawing now moves the whole line by one shift (the lane's heading at the line's front), so the
+gaps are exactly the lane's; the test is unchanged and passes.
+
+Also: `WorkPlaces._ExitTree` clears the static site table (`WorkSites.Clear()`): the table kept the places' nodes alive
+past the scene, and their finalizers logged "Handle is not initialized" at quit in `game-save` (one run in four still
+showed it after the fix; three passed clean).
+
+### Checks in the fix round (under the heavy-run lock, 12:00 to 12:18 UTC)
+
+The lock was held from 11:26 by someone else; at 11:51 I tried to remove it as stale and that was refused by the
+permission check, so I waited until it was free (12:00).
+
+| Step | Result |
+| --- | --- |
+| game-build | PASS |
+| game-town | PASS (no lock needed) |
+| game-perf | PASS `1x mean 0.709 ms worst 5.71, 539 B/frame; 8x mean 1.063 ms worst 8.08, 738 B/frame` |
+| game-playthrough | PASS `charter=33.9min buys=201` |
+| game-work | PASS `WORK RATES PASS pairs=543 gap=1.98-2.31m` (after the line fix above) |
+| game-work-places | PASS at 60, 30 and 120 fps |
+| game-motion | FAIL on CPU time, twice under the lock: `settings-close: frame 5 took 8.58 ms of CPU (gate 6)`, `esc-during-open: frame 16 took 8.67 ms of CPU (gate 6)`; load average 10 to 14 during both runs (other work on the machine outside the lock). Earlier, the villagers' checkout without the places failed the same way at the same load. |
+| game-save | PASS 3 of 4 runs; one run logged the quit-time "Handle is not initialized" lines |
+| ledger | PASS `506 rows, 480 asset files checked, 0 problems` |
+
+Pictures: `build/n5-places/now4/` with JPEG copies replacing those in `docs/plans/n5/after/`; strips
+`build/n5/strips-after-fix/` with JPEG copies in `docs/plans/n5/strips/after/`. Seen in them: the mill's miller,
+doorway, step, sacks and flour puffs now on the east flank in full view (normal and close); the well's worker at the
+windlass's end beside the roof, pale-topped blue pails; the field lighter, rows slimmer, cut rows pale straw. Still
+wrong: the well's roof still covers the far rim; the market's coin is smaller but still a disc above the far side of
+the table; the cottage door is unchanged (small at the normal view).

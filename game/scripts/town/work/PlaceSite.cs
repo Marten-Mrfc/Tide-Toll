@@ -11,7 +11,7 @@ namespace TideToll.Game;
 /// stook as the goods; the well's two pails on the rim; the mill's flour sack of that spot on the step; the market's
 /// next free place on the table; a cottage's door. Nothing here allocates.
 /// </summary>
-public sealed class PlaceSite : IWorkSite
+public sealed class PlaceSite : IWorkSite, IWorkDoorway
 {
     private readonly WorkPlaces _w;
     private readonly int _plot;
@@ -47,9 +47,37 @@ public sealed class PlaceSite : IWorkSite
         else if (_kind == PlotKind.Cottage) _w.Doors.CameHome(_plot, good);
     }
 
+    public bool DoorwayAt(out Vector3 at)
+    {
+        at = Vector3.Zero;
+        if (_kind != PlotKind.Mill || !_w.Mill.Attached) return false;
+        at = _w.Mill.IntakeAt(_plot);
+        return true;
+    }
+
+    public bool ParkAt(int slot, float side, out Vector3 at)
+    {
+        at = Vector3.Zero;
+        if (_kind != PlotKind.Field) return false;
+        at = _w.Fields.ParkAt(_plot, slot, side);
+        return at != Vector3.Zero;
+    }
+
     public bool Spot(int slot, out float x, out float y, out float heading)
     {
         x = y = heading = 0f;
+        if (_kind == PlotKind.Mill || _kind == PlotKind.Well)
+        {
+            // fix round: the miller on the step of the doorway on the flank the camera sees; the well's worker at the
+            // crank, at the end of the windlass, clear of the roof
+            if (_w.Buildings.BuiltBody(_plot) == null) return false;
+            Vector3 p = _kind == PlotKind.Mill ? _w.Mill.WorkerAt(_plot, slot) : _w.Well.CrankSpot(_plot, slot, out _);
+            if (_kind == PlotKind.Mill && !_w.Mill.Attached) return false;
+            var c = _kind == PlotKind.Mill ? _w.Mill.DoorAt(_plot) : _w.OnPlot(_plot, Vector3.Zero);
+            x = p.X / WorkPlaces.Cell; y = p.Z / WorkPlaces.Cell;
+            heading = MathF.Atan2(c.Z - p.Z, c.X - p.X);
+            return true;
+        }
         if (_kind != PlotKind.Field) return false;
         var at = _w.Fields.WorkSpot(_plot, slot, out _);
         if (at == Vector3.Zero) return false;
@@ -67,7 +95,7 @@ public sealed class PlaceSite : IWorkSite
             case PlotKind.Well: if (_w.Buildings.BuiltBody(_plot) == null) return false; at = _w.Well.PailsMid(_plot); return true;
             case PlotKind.Mill:
                 if (_w.Buildings.BuiltBody(_plot) == null) return false;
-                at = _w.Mill.FlourAt(_plot, ((slot % 3) + 3) % 3) + new Vector3(0, 0.4f, 0); return true;
+                at = _w.Mill.FlourAt(_plot, ((slot % 3) + 3) % 3) + new Vector3(0, 0.15f, 0); return true;   // on the step
             case PlotKind.Market:
                 if (_w.Buildings.BuiltBody(_plot) == null) return false;
                 at = _w.Stall.PlaceAt(_plot, _w.Stall.NextPlace()); return true;

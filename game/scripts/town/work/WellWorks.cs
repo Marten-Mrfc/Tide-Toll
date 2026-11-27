@@ -104,7 +104,7 @@ public partial class WellWorks : Node3D
         Wet = Math.Min(1f, Wet + 0.12f);
         var at = _w.OnPlot(_plot, new Vector3(b == 0 ? 0.15f : -0.35f, 1.05f, 0) + _toView * 0.55f);
         _w.Puffs.Ring(at, 0.25f, 0.9f, 0.7f, new Color(Palette.Limewash.Lerp(Palette.River, 0.3f), 1f));
-        _w.Puffs.Ring(_w.OnPlot(_plot, new Vector3(0, 0.03f, 0) + _toView * 1.1f), 0.4f, 1.2f, 0.9f, new Color(Palette.River, 0.8f), 0.15f);
+        // (fix round: no ring on the grass: it read as a stray halo; the wet earth carries the splash)
     }
 
     /// <summary>Someone began drawing: the two pails stand on the rim and fill as the bucket comes up.</summary>
@@ -128,7 +128,8 @@ public partial class WellWorks : Node3D
 
     public Vector3 CrankSpot(int plot, int slot, out float yaw)
     {
-        var at = _w.OnPlot(plot, new Vector3(slot % 2 == 0 ? 2.75f : -2.75f, 0, 0.9f) / BoardScale);
+        // at the end of the windlass (the crank, +X; the second rope's worker at the other end), a little toward the view
+        var at = _w.OnPlot(plot, new Vector3(slot % 2 == 0 ? 2.75f / BoardScale : -2.75f / BoardScale, 0, 0) + _toView * 0.55f);
         var c = _w.OnPlot(plot, Vector3.Zero);
         yaw = MathF.Atan2(c.X - at.X, c.Z - at.Z);
         return new Vector3(at.X, 0, at.Z);
@@ -200,7 +201,7 @@ public partial class WellWorks : Node3D
         if (_wet != null)
         {
             // darker and wider with use; trodden earth only when dry (translucent: the ink draws no hard line round it)
-            _wet.Transparency = Math.Clamp(0.6f - 0.6f * Wet, 0f, 0.95f);
+            _wet.Transparency = Math.Clamp(0.3f - 0.4f * Wet, 0f, 0.95f);   // fix round: wet earth that reads, darker with use
             float s = (0.8f + 0.25f * Wet) * k;
             _wet.Scale = new Vector3(s, k, s);
         }
