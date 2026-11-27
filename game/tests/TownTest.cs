@@ -116,7 +116,7 @@ public partial class TownTest : TownTestBase
         for (int i = 0; i < items.Count && i < Main.Hud.Marks.Count; i++)
         {
             string key = Main.Hud.RowKey(i);
-            if (key.Length == 0) continue; // a row without a key keeps the empty column
+            if (key.Length == 0) continue; // a row without a key shows no cap
             Check(seen.Add(key), $"two rows share the key [{key}]");
         }
     }
