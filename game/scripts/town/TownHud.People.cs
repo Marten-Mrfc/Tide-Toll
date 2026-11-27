@@ -62,17 +62,26 @@ public partial class TownHud
         _pCount.ClipText = false;
         _pCount.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         _pClose = new Button { Name = "Close", Text = "×", Flat = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "" };
+        foreach (var st in new[] { "normal", "hover", "pressed", "focus", "hover_pressed" }) _pClose.AddThemeStyleboxOverride(st, new StyleBoxEmpty());
         _pClose.AddThemeFontSizeOverride("font_size", UiKit.Type(s, UiKit.Title));
         _pClose.AddThemeColorOverride("font_color", UiKit.Muted);
         _pClose.AddThemeColorOverride("font_hover_color", UiKit.Ink);
-        _pClose.Position = new Vector2(w - pad / 2f - cross, UiKit.U(s, 4));
-        _pClose.Size = new Vector2(cross, cross);
+        _person.AddChild(_pClose); // in the tree first, so its measure uses the interface's theme
+        // Inside the card's top right corner, as large as its glyph (never wider than the card leaves it).
+        var cs = _pClose.GetMinimumSize();
+        cs = new Vector2(Math.Max(cs.X, cross * 0.8f), Math.Min(Math.Max(cs.Y, cross * 0.8f), UiKit.U(s, 30)));
+        _pClose.Size = cs;
+        _pClose.Position = new Vector2(w - UiKit.U(s, 6) - cs.X, UiKit.U(s, 4));
         _pClose.Pressed += () => Select(-1);
-        _person.AddChild(_pClose);
         _personTag = Tag("PersonTag", UiKit.Caption);
         _personF.Set(SelectedVillager >= 0);
         _tagF.Set(false);
         _cardFor = -1; _cardSig = int.MinValue; _cardCountSig = int.MinValue; _tagFor = -1;
+        // Warm the pick and the names once here (first calls compile and set up), not in the frame the pointer first
+        // comes to rest on someone.
+        _main.Villagers.Pick(_main.Rig, Vector2.Zero, 1f);
+        for (int i = 0; i < _drv.Town.VillagerCount; i++) _drv.Town.VillagerName(i);
+        PersonTarget(new Vector2(-1, -1));
     }
 
     /// <summary>Opens the card of villager <paramref name="id"/> (-1 closes it).</summary>
@@ -97,15 +106,6 @@ public partial class TownHud
 
     private bool OverPerson(Vector2 p) => Over(_person, p);
 
-    private Vector2 _peoplePointer = new(-1, -1);
-
-    /// <summary>Where the pointer is: from its own motion events, which also pass over cards (the viewport's own
-    /// mouse position is the system pointer's, not an injected one's). Never handled here.</summary>
-    public override void _Input(InputEvent e)
-    {
-        if (e is InputEventMouse m) _peoplePointer = m.Position;
-    }
-
     private void PeopleInput(InputEvent e)
     {
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } mb && !_main.Rig.LeftDragged)
@@ -120,7 +120,9 @@ public partial class TownHud
     private void PeopleFrame(float dt)
     {
         var t = _drv.Town;
-        var p = _peoplePointer;
+        // The pointer as the system has it (an _Input override to follow events cost a managed object per event:
+        // game-motion's allocation gate). Picture runs under xvfb move the system pointer with Input.WarpMouse.
+        var p = _root.GetGlobalMousePosition();
         bool gui = GetViewport().GuiGetHoveredControl() != null;
         int h = gui ? -1 : PersonTarget(p);
         if (h != HoverVillager) { HoverVillager = h; _hoverHeld = 0f; }

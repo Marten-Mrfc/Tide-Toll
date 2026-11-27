@@ -45,6 +45,7 @@ public partial class PeopleShots : TownTestBase
         // Hover: the clearest villager on screen near the middle.
         int who = Clearest(vil);
         Check(who >= 0, "a villager to point at");
+        Input.WarpMouse(vil.ScreenOf(Main.Rig, who)); // the system pointer too (xvfb): the hover reads it
         TestInput.Motion(vil.ScreenOf(Main.Rig, who));
         await Frames(40);
         var under = GetViewport().GuiGetHoveredControl();
@@ -54,6 +55,7 @@ public partial class PeopleShots : TownTestBase
         await Click(vil.ScreenOf(Main.Rig, who));
         await Frames(40);
         Check(hud.SelectedVillager == who, "selected");
+        Input.WarpMouse(new Vector2(1500, 900));
         TestInput.Motion(new Vector2(1500, 900));
         await Frames(20);
         Save("people-card", GetViewport().GetTexture().GetImage());
