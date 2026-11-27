@@ -291,3 +291,9 @@ How fragile: the margins of the first age's bands are those of single runs that 
 ### 5. The Training tooltip's view
 
 Added `town.TrainingStepBonus` (what one more step adds to both bonuses, 0 after the tenth; commit `ba55341`); the tooltip's percentages: `TradeWorkBonus`, `TradeWorthBonus` (now) and `TrainingStepBonus` (one more step). No rule changed.
+
+### 4. Result lines (second round, at `ba55341`)
+
+- `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   297, Skipped:     0, Total:   298` (`ThePaybackBotDoesNotAlwaysPickTheSameSide`).
+- `bands --bell` (both ages): no band fails; every margin as in the band table above (unchanged: no rule changed this round).
+- game-playthrough (under the lock; the lock folder was 25.7 minutes old, its holder presumed gone, removed and taken at 18:01): `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107`.
