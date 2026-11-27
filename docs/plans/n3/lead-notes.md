@@ -2,6 +2,16 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 03:06 UTC, for the last-look builder, the feel fixer and both fixers of asset round 3: EARLIER DEADLINES
+
+The final check, the final pictures and the owner's review page need more of the last hour than planned. New clock (date -u), overriding your brief:
+
+- **Last-look builder:** stop starting new items at **03:50 UTC**; final answer by **04:12 UTC**. Items 1 to 5 of your list matter most; the title page (item 8) is dropped.
+- **Feel fixer:** final answer by **04:14 UTC**. Fix the must-fix items only, then run game-perf, game-smoke, game-town, game-river, game-save and game-playthrough; skip the whole ./check (the lead runs it on a clean copy).
+- **Asset round 3 fixers (IC and LF):** final answer by **03:35 UTC** as planned, not later: the lead merges your work at 03:38.
+
+In every case: hand back a tree that builds and passes the tests named above, with nothing half-edited.
+
 ## 01:58 UTC, for the L2 fixer (messages): stale banners
 
 A person who read the pictures of the new layout found banners that were out of date when they showed: u05 shows the banner "Level 2" while the town is at level 3; u13 shows "Level 12" at level 15; u33 at 1280 x 720 shows "A new age" at level 18; u16 shows the charter drive's banner after the charter is granted. Whatever the cause in each case (a banner that waited while the view was zoomed out or a page was open, or the tour running the game fast), the rule for the queue is: **a banner is dropped, not shown, when what it says is no longer true** (a level banner when the town has passed that level; the drive's banner once the drive is met or the charter granted; "A new age" once the age's first level is passed). The same for notes. Add a check for it to game-motion's queue checks, and look at u05, u13, u16 and u33 in your pictures.
