@@ -104,8 +104,8 @@ public partial class TownHud
         _achMark.Pressed += ToggleAchievements;
         _achCount = UiKit.Fixed(_s, UiKit.Body, UiKit.UiBold);
         _achCount.Name = "Count";
-        _achCount.Position = new Vector2(UiKit.U(_s, 39), 0);
-        _achCount.Size = new Vector2(_achMark.Size.X - UiKit.U(_s, 42), _achMark.Size.Y);
+        _achCount.Position = new Vector2(UiKit.U(_s, 37), 0);
+        _achCount.Size = new Vector2(_achMark.Size.X - UiKit.U(_s, 39), _achMark.Size.Y);
         _achMark.AddChild(_achCount);
         _agePageMark = NavButton("AgePage", 1, "nav-page", "ui-new-map");
         _agePageMark.Pressed += NextAgePressed;

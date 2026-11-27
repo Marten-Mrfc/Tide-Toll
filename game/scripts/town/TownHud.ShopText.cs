@@ -32,12 +32,16 @@ public partial class TownHud
 
     private double _pillShortFrom = 100_000;
 
-    /// <summary>Decides where pills start to shorten for this layout (once, when the shop is built).</summary>
+    /// <summary>Decides the pill's width and where its prices start to shorten for this layout (once, when the shop is
+    /// built): "99,999" whole at body size if a pill of 96 (or, on the 320 rail, 104) holds it, else from 10,000 "12k".</summary>
     private void DecidePillShort()
     {
-        float box = UiKit.U(_s, PillUnits) - UiKit.U(_s, 29) - UiKit.U(_s, 11);
+        bool wide = Zones.RailUnits >= 320;
         float w = UiKit.TabBold.GetStringSize("99,999", HorizontalAlignment.Left, -1, UiKit.Type(_s, UiKit.Body)).X;
-        _pillShortFrom = w <= box ? 100_000 : 10_000;
+        float Box(float units) => UiKit.U(_s, units) - UiKit.U(_s, 29) - UiKit.U(_s, 11);
+        _pillUnits = wide ? 96 : 88;
+        if (wide && w > Box(96)) _pillUnits = 104;
+        _pillShortFrom = w <= Box(_pillUnits) ? 100_000 : 10_000;
     }
 
     /// <summary>Line 2 of a blocked row: why, in a few words.</summary>

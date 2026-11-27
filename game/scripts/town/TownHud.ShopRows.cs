@@ -38,7 +38,10 @@ public partial class TownHud
     private int _affordSig = int.MinValue;
     private readonly Queue<int> _pulseQueue = new();
 
-    private float PillUnits => Zones.RailUnits >= 320 ? 96 : 88;
+    /// <summary>The pill's width in sheet units: 96 on the 320 rail (104 when "99,999" would not fit at body size), 88 on
+    /// the 272 rail (decided when the shop is built, <see cref="DecidePillShort"/>).</summary>
+    private float _pillUnits = 96;
+    private float PillUnits => _pillUnits;
 
     private void BuildShopCard()
     {
@@ -96,8 +99,8 @@ public partial class TownHud
         _shop.AddChild(_foot);
         _footSig = int.MinValue;
         _card.Reset();
-        _nameSize = NameSizeFor(w - 2 * pad);
         DecidePillShort();
+        _nameSize = NameSizeFor(w - 2 * pad);
         _rows.Clear(); _rowOrder.Clear(); _shown.Clear(); _marks.Clear(); _pulseQueue.Clear();
         _scroll = 0; _holdAge = -1f; _compactShop = false; _shopScrolls = false; _affordSig = int.MinValue;
     }
