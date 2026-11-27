@@ -76,3 +76,38 @@ Problems found by looking:
 - The hover tag "Joss, reaper" and the one-time hint were not drawn.
 - `game-ink` was not run on the new heads; `./check` was not run (no shipping code changed: only a test file and one test line).
 - The ledger rows were added by `tools/merge-ledger-rows.py` on this branch (see the report).
+
+## Round 2 (after `trades-review.md` findings 2, 6, 7, 8, 13, 25; the lead's decisions)
+
+Picture: `hats-round2.png`: (1) Helper, carrier, reaper, miller now beside planned at the play view, 3 x and true size, and the three Helpers; (2) close up; (3) every headwear on every tunic colour; (4) the trades under their own load and under another's; (5) the icons at 24 and 19 px on paper and on wheat, and at 3 x. All figures are real frames (`game/tests/AssetAudit.Trades.cs`, `asset-audit.tscn -- --trades --no-town`); the tunic colour is set on the body's MultiMesh instance exactly as the game dyes it.
+
+**What changed** (`assets/src/models/villager-trades.py`, `assets/src/2d/icons-trades.py`):
+
+- **Helper** (was Hand): hair only. New `villager-head-helper-{mud,earth,soot}.glb` (108 triangles each): the hair-only head of `villager.py` in Mud, Packed earth or Soot brick. No hood, no straw hat, no Thatch, Limewash or River on its head.
+- **Miller's cap**: the band is 0.40 across against the head's 0.36 (the head plus a tenth; it was 0.50); the crown's top is 2.58, over the face's 2.52, so nothing shows through it; from above a white crown (Paper, 0.33) sits inside a **Brick** ring (the band's top); a Packed earth peak 0.36 wide stands 0.13 out at the front. 196 triangles.
+- **Apron**: a Brick tie 9 cm deep round the waist with two ends hanging at the hips; it shows beside a flour sack (section 4). 120 triangles.
+- **Kerchief**: a Limewash hem, the cloth's folded front edge, 10 cm wide and 1.5 cm proud, over the front of the crown from ear to ear: from above a pale band across the blue. 192 triangles.
+- **Straw hat**: the band is Brick (was Mud), 9 cm deep: a red ring on the straw from above.
+- **Icons**: `trade-flour` has a Limewash crown, a Brick band and a Packed earth peak (its own colour on paper); `trade-hand` is renamed `trade-helper` and drawn in muted ink only (lines, hair and shoulders #7B746A = `UiKit.Muted`); ledger rows added, the old row pruned. At 19 px on paper and on wheat the four read apart: grey head (Helper), blue cap (carrier), wide yellow hat (reaper), white-over-red cap (miller). The carrier's and the Helper's are both small round heads: they differ by colour only (blue against grey).
+- Note for the build: Brick on the heads and the apron is safe only because heads and props are not drawn with the tunic-dye shader (only the body's MultiMesh is, `TownVillagers.DyedBody`); the apron must stay a separate mesh too.
+
+**Ink** (`game-ink`'s measure, `--ink-check --ink-variants=cottage-a0,villagers-group,villagers-trades-group`; the new subject is `villagers-trades-group` in `AssetAudit.Trades.cs`, hooked into `InkSubject`): six villagers in the same places, turns and loads as `villagers-group`, in mixed planned headwear (two Helpers, a carrier, two reapers, a miller with apron) and the proposed tunics: **0.349**. Today's group in the same run: 0.357. Ceiling 0.42. Took 37 s, no lock needed.
+
+A finding on the check itself: measured as the **first** subject of a run (`--ink-check --only=villagers-group`, or first in `--ink-variants`), today's group reads **0.533** and fails its ceiling; second in the run it reads 0.357. The warm-up in `InkCheck` is not enough for the first subject (its own comment says the first subject once read 0.73). `./check` is not affected because cottages come first, but anyone running one subject alone gets a false failure.
+
+**Tunics** (section 3; today's list `TownVillagers.Clothes` = Brick, River, Cast-iron green, Thatch, Soot brick):
+
+- **River must go**: under the kerchief it makes one blue column; only the hem separates head from body.
+- **Thatch must go**: under the straw hat, hat and body are one yellow mass; the Brick band and the outline still mark the hat, but the figure reads as one blob. It is also the miller's and the field's colour.
+- **Packed earth** replaces one of them: it reads under every headwear.
+- **Slate roof** (the review's second proposal) is **not good under the kerchief**: blue-grey under blue, nearly as weak as River. It is fine under the hat and the cap. I recommend **Mud** in its place, which reads under all three hats; its only weak pairing is a Helper with Mud hair, and a Helper is meant to look plain. If the lead prefers Slate roof, the carriers in it rely on the hem.
+- Recommended list: **Brick, Packed earth, Cast-iron green, Mud, Soot brick**. I did not change the game's list.
+
+**Under a load** (section 4): the carrier with flour, the reaper with pails and the miller with a grain basket all still read by the hat. The reaper's hat covers most of its own load from above. The miller carrying flour reads by the cap's red ring and the apron's red tie, not by white: the sack, cap and apron are all pale.
+
+**Still weak**:
+
+- The kerchief's hem sits low over the brow, so at close range it reads a little like a visor.
+- The miller's peak covers the upper face from the game's tilt. At the play view it is a dark line under the cap.
+- The Soot brick Helper hair reads reddish-brown on a Brick tunic; still no trade colour.
+- At the play view the carrier and a Helper differ by the head's colour alone (blue against dark hair, both small round heads); the hem is 1 to 2 px there.

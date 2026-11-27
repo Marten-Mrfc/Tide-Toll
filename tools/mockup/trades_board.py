@@ -223,7 +223,7 @@ def coin_text(img, k, x, y, box_h, before, amount, colour):
     text(img, k, (x + w + cs + k.U(5), y), amount, "ui", CAPTION, colour, box_h=box_h, tnum=True)
 
 
-CAPS = [("trade-hand", "Hand"), ("trade-water", "Water carrier"), ("trade-grain", "Reaper"), ("trade-flour", "Miller")]
+CAPS = [("trade-helper", "Helper"), ("trade-water", "Water carrier"), ("trade-grain", "Reaper"), ("trade-flour", "Miller")]
 CAP_W, CAP_H = 40, 32
 
 
