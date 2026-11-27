@@ -71,7 +71,10 @@ public partial class RiverTest : TownTestBase
             if (stretches % 10 == 0 && WaitingOnRiver() > 0)
             {
                 Main.Driver.SetPaused(true);
-                await Frames(60);
+                // The drawing catches up by frame time (delta), not by frame count: give it at least 60 frames and at
+                // least the longest catch-up's frame time (free-running frames headless can be far shorter than 1/60 s).
+                double need = TownVillagers.LongestCatchUpSeconds(Main.Driver.Speed) + 0.1, held = 0;
+                for (int f = 0; f < 1200 && (f < 60 || held < need); f++) { await Frames(1); held += GetProcessDeltaTime(); }
                 CheckWaiting();
                 Main.Driver.SetPaused(false);
             }

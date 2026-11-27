@@ -152,6 +152,11 @@ public partial class TownVillagers : Node3D
 
     public void Reset() { Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); }
 
+    /// <summary>Catch-up rate of a drawn villager, cells per second of frame time (delta, not frame count); beyond SnapCells it snaps.</summary>
+    public static float ChaseCellsPerSecond(double speed) => (float)(TownRules.BaseSpeed * 4.0 * Math.Max(1, speed));
+    /// <summary>The longest catch-up after a jump, in seconds of frame time: what a test's wait must give the drawing.</summary>
+    public static double LongestCatchUpSeconds(double speed) => SnapCells / ChaseCellsPerSecond(speed);
+
     public override void _Process(double delta)
     {
         var t = _drv.Town;
@@ -159,7 +164,7 @@ public partial class TownVillagers : Node3D
         int n = Math.Min(t.VillagerCount, Capacity);
         float maxStep = 0, maxSide = 0;
         // Fast enough to follow any walker at the current speed, slow enough that a queue shuffle is a short walk.
-        float limit = (float)(TownRules.BaseSpeed * 4.0 * Math.Max(1, _drv.Speed)) * dt;
+        float limit = ChaseCellsPerSecond(_drv.Speed) * dt;
         float turn = 10f * dt * (float)Math.Max(1, Math.Min(_drv.Speed, 8));
         Array.Clear(_loadCount);
         Array.Clear(_headCount);

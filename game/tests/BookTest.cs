@@ -122,7 +122,16 @@ public partial class BookTest : TownTestBase
         Check(Main.Summary.NextText == T.NextGift, "the summary shows the next gift");
         Main.Driver.SetPaused(false);
         int rewrites = Main.Summary.Rewrites;
-        await Until(() => Main.Summary.Rewrites > rewrites, 600, "the summary updates while watched");
+        // The page rewrites every half second of frame time (delta) and the town moves by frame time too, so the wait is
+        // 600 frames and at least the 10 s of frame time those frames make at 60 fps (free-running frames are shorter).
+        double watched = 0;
+        for (int f = 0; f < 6000 && !(Main.Summary.Rewrites > rewrites); f++)
+        {
+            if (f >= 600 && watched >= 10.0) break;
+            await Frames(1);
+            watched += GetProcessDeltaTime();
+        }
+        Check(Main.Summary.Rewrites > rewrites, $"the summary updates while watched (waited {watched:0.0} s of frame time)");
         Notes.Add($"notches={notches} town={Main.Summary.NameText}");
 
         // Home returns to the town.
