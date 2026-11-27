@@ -110,7 +110,13 @@ public partial class TownTest
         await Until(() => !Main.Hud.DriveCardVisible, 400, "the met drive's strip goes");
         // An extra hand: offered in the shop and over its workplace, bought by a click.
         int w = -1;
+        // n7 trades: villagers have trades, and the town spreads them so that no line of two lasts the thirty seconds the
+        // offer asks (TownRules.HandQueueSeconds). The line is staged by the player's own means: most of the town made
+        // carriers (SetTradeCount), so the well keeps a line; once a hand is offered every count is handed back to the
+        // town (SetTownFillsTrades on). The rule and every assertion are unchanged.
+        T.SetTradeCount(Trade.Water, Math.Max(1, T.VillagerCount - 2));
         Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
+        T.SetTownFillsTrades(true);
         for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
         var wps = new System.Text.StringBuilder();
         for (int i = 0; i < T.WorkplaceCount; i++) { var v = T.Workplace(i); wps.Append($" [{i} open {v.Open} places {v.Places} busy {v.Busy} queue {v.QueueLength} hands {T.HandsBought(i)} offered {T.HandOffered(i)}]"); }
