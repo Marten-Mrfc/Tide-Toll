@@ -54,6 +54,9 @@
       "With many things affordable the shop is a wall of gold pills, and early in the game the ledger is mostly blank ruled paper.",
       "The age-change leaf reads as a leaf laid down and lifted again, not as one forward turn. Pressing Esc twice quickly still overshoots a little.",
       "Zoomed out, the page stage and the book stage now look almost alike: both show the whole book.",
+      "In pave mode two labels show near the pointer at once (the suggested price and the road's own price), and the milestone note in the ledger is set in a heavier letter than everything around it. Both were found in the last pictures, too late to fix.",
+      "In the second age the shop fills the whole right side from top to bottom once the river group opens, and villagers pile up in one dark knot at the landing.",
+      "At interface size 150 percent the ledger's \"Next:\" line is shortened with three dots, and the shop rows lose their second line (what a purchase is worth); the tooltip still says it.",
       "The digits have a slashed zero (the interface font has no other); it reads as code in a book.",
       "The small rewards (the coin hop, dust, ripples, the bell's rings) were reviewed once and fixed once; I have not seen them move.",
       "Under load three tests are not steady (a row coming to rest in the town test, a ten-second wait in the settings test, the motion test's 6 ms gate): they pass on a quiet machine, but a steady test would not need one."
@@ -274,6 +277,6 @@
   "needs": 5,
   "sounds": 6,
   "better": 7,
-  "not_better": 11
+  "not_better": 14
  }
 }

@@ -97,12 +97,12 @@ Stopping
 
 ## Scheduled check
 
-One pending at a time, about every 50 minutes, held outside the container (the one pending now: `trig_01UrjAXz5VXxVVs8aGMax5fF`, due 03:52 UTC; the id changes each time, find it with the scheduled-task list). It says: read this log, resume the round in progress, keep to the clock rules. Cancelled when the night stops.
+One pending at a time through the night, about every 50 minutes, held outside the container. It said: read this log, resume the round in progress, keep to the clock rules. The last one is cancelled when the final report is posted; none is pending after the night.
 
 ## The night's end (05:10 UTC on 27 November)
 
 - Final commit `e02da4e`, checked on a clean copy (all 19 steps pass) and built for Windows: https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45939301484 .
-- The review page for the owner is built by `python3 docs/review/n3/build_review.py` from `docs/review/n3/manifest.json` into `build/review-n3/` and published as an Artifact (its link is in the lead's last chat message and in `docs/review/n3/README.md`).
+- The review page for the owner is built by `python3 docs/review/n3/build_review.py` from `docs/review/n3/manifest.json` into `build/review-n3/` and published as an Artifact: https://claude.ai/artifact/Gs8asamHMnQmLug2aLPSwz (also in `docs/review/n3/README.md`). The same list as text: `docs/review/n3/list.md`.
 - Before pictures: `docs/review/n3/before/`; after pictures: `docs/review/n3/after/` (the screens from the final build; asset pictures from the round that made each asset; motion strips from the message and last-look rounds).
 - Not reached tonight (the brief's step 6, "if there is time left"): the second age played through by real input, with what that would find (river villagers walking home to first-age cottages; the ford mattering on half of the towns), and a title page.
 - Next, when the owner has answered the page and said continue: read the answers against `build/review-n3/list.md` (the numbered list), and plan from the "no" answers, the page's section "What still looks wrong" and the list above.
