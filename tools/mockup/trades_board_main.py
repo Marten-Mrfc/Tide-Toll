@@ -30,6 +30,10 @@ def planned_frames(fr_none, fr_card, k, measures, tag):
     _, fits = trades_card(a, k, rail)
     measures[f"{tag} trades card lines (text px, room px)"] = fits
     b = fr_card.copy()
+    # Under the planned card: the same place from the frame with the card closed (30 frames later), so the old card's
+    # edge does not show through the planned card's 96 percent paper.
+    x0, y0 = k.U(16), k.U(16 + 336 + 8)
+    b.paste(fr_none.crop((x0, y0, x0 + rail, y0 + k.U(152))), (x0, y0))
     rect, fit2, caps = villager_card(b, k, rail, *VILLAGER)
     measures[f"{tag} villager card line 2 (text, px, room px)"] = fit2
     measures[f"{tag} trade caps (x, y, w, h)"] = caps
@@ -51,7 +55,7 @@ def label(img, xy, s, k, size=TITLE, colour=INK, kind="serif"):
 def states_panel(measures):
     """Stepper rest, hover, pressed, disabled at both scales (true size and 3x), the trade line's tooltip and a cap's."""
     k1, k7 = Kit(1.0), Kit(0.78)
-    P = Image.new("RGBA", (2240, 500), PAPER)
+    P = Image.new("RGBA", (2240, 600), PAPER)
     kb = Kit(1.0)
     label(P, (24, 14), "The stepper's states, a trade cap's, and the tooltips (true size; below each, the same at 3 x)", kb)
     x = 24
@@ -80,17 +84,17 @@ def states_panel(measures):
         measures[f"trade cap at {tag} (px)"] = (k.U(40), k.U(32))
         x = xx + 30
     # Tooltips at 1920 x 1080 (true size).
-    tooltip(P, k1, 24, 330 - 60, "Reapers", "4 villagers for 4 places at the fields. Work 20% faster and sell grain for "
+    tooltip(P, k1, 24, 420 - 60, "Reapers", "4 villagers for 4 places at the fields. Work 20% faster and sell grain for "
             "10% more. Trained 3 of 10.", [])
-    text(P, kb, (24, 250), "Trade line's tooltip, as written", "ui", CAPTION, MUTED)
-    tooltip(P, k1, 360, 330 - 60, "Reapers", "Work at the fields; 1 helping at the well now.",
+    text(P, kb, (24, 340), "Trade line's tooltip, as written", "ui", CAPTION, MUTED)
+    tooltip(P, k1, 360, 420 - 60, "Reapers", "Work at the fields; 1 helping at the well now.",
             [("Members", "4 for 4 places"), ("Bonus", "20% faster, grain 10% more"), ("Trained", "3 of 10")])
-    text(P, kb, (360, 250), "Best fix: the shop tip's facts", "ui", CAPTION, MUTED)
-    small_tip(P, k1, 700, 270, "Reaper: likes this work, +5%")
-    text(P, kb, (700, 250), "A trade cap's tooltip", "ui", CAPTION, MUTED)
-    tooltip(P, k7, 1010, 270, "Reapers", "4 villagers for 4 places at the fields. Work 20% faster and sell grain for "
+    text(P, kb, (360, 340), "Best fix: the shop tip's facts", "ui", CAPTION, MUTED)
+    small_tip(P, k1, 700, 360, "Reaper: likes this work, +5%")
+    text(P, kb, (700, 340), "A trade cap's tooltip", "ui", CAPTION, MUTED)
+    tooltip(P, k7, 1010, 360, "Reapers", "4 villagers for 4 places at the fields. Work 20% faster and sell grain for "
             "10% more. Trained 3 of 10.", [])
-    text(P, kb, (1010, 250), "Trade line's tooltip at 1280 x 720", "ui", CAPTION, MUTED)
+    text(P, kb, (1010, 340), "Trade line's tooltip at 1280 x 720", "ui", CAPTION, MUTED)
     # The 272 rail (interface size 150 percent at 1280 x 720: s 1.17), true size: what does not fit is dropped whole.
     k5 = Kit(1.17)
     tile = Image.new("RGBA", (k5.U(16) * 2 + k5.U(272), k5.U(16 + 336 + 8) + k5.U(156) + k5.U(16)), (127, 163, 91, 255))
@@ -98,8 +102,8 @@ def states_panel(measures):
                                                      ("trade-grain", "Reapers", "1 helping", 4), ("trade-flour", "Millers", "", 2)])
     measures["272 rail at 1280 x 720, 150 percent: trades card lines (text px, room px)"] = fits
     crop = tile.crop((0, k5.U(16 + 336), tile.width, tile.height))
-    P.alpha_composite(crop, (1370, 270))
-    text(P, kb, (1370, 250), "1280 x 720 at 150 percent (272 rail): the captions do not fit and are dropped", "ui", CAPTION, MUTED)
+    P.alpha_composite(crop, (1370, 360))
+    text(P, kb, (1370, 340), "1280 x 720 at 150 percent (272 rail): the captions do not fit and are dropped", "ui", CAPTION, MUTED)
     tile2 = Image.new("RGBA", tile.size, (127, 163, 91, 255))
     _, fit2, _ = villager_card(tile2, k5, k5.U(272), "Quenild the younger", "Lives near the market", "likes the millstone",
                                "Drawing water at the well", 107, "1,491", current=1, liked=3)
@@ -139,7 +143,7 @@ def main():
     Wb = 2 * half + 3 * gap
     rows_h = [70 + panels["1920x1080"][0][1].height + 50, panels["1280x720"][0][1].height + 50]
     states, card272 = states_panel(measures)
-    states.alpha_composite(card272, (1370 + card272.width + 24, 270))
+    states.alpha_composite(card272, (1370 + card272.width + 24, 360))
     Hb = 90 + sum(rows_h) + 60 + 1080 + 60 + states.height + 30
     B = Image.new("RGBA", (Wb, Hb), BG)
     d = ImageDraw.Draw(B)

@@ -1,0 +1,185 @@
+{
+ "1920x1080 trades card lines (text px, room px)": [
+  [
+   "Water carriers",
+   "",
+   105,
+   164
+  ],
+  [
+   "Reapers",
+   "1 helping",
+   59,
+   95
+  ],
+  [
+   "Reapers",
+   "",
+   61,
+   164
+  ],
+  [
+   "Millers",
+   "",
+   50,
+   164
+  ]
+ ],
+ "1920x1080 villager card line 2 (text, px, room px)": [
+  "Lives by the well lane \u00b7 likes the sickle",
+  248,
+  296
+ ],
+ "1920x1080 trade caps (x, y, w, h)": [
+  [
+   76,
+   464,
+   40,
+   32
+  ],
+  [
+   120,
+   464,
+   40,
+   32
+  ],
+  [
+   164,
+   464,
+   40,
+   32
+  ],
+  [
+   208,
+   464,
+   40,
+   32
+  ]
+ ],
+ "1920x1080 shop Train row": {
+  "name_w": 127,
+  "name_room": 150,
+  "line2_w": 215,
+  "line2_room": 266,
+  "card_bottom_after": 730,
+  "shop_max": 976
+ },
+ "1280x720 trades card lines (text px, room px)": [
+  [
+   "Water carriers",
+   "",
+   80,
+   128
+  ],
+  [
+   "Reapers",
+   "1 helping",
+   47,
+   75
+  ],
+  [
+   "Reapers",
+   "",
+   47,
+   128
+  ],
+  [
+   "Millers",
+   "",
+   38,
+   128
+  ]
+ ],
+ "1280x720 villager card line 2 (text, px, room px)": [
+  "Lives by the well lane \u00b7 likes the sickle",
+  198,
+  232
+ ],
+ "1280x720 trade caps (x, y, w, h)": [
+  [
+   58,
+   362,
+   31,
+   25
+  ],
+  [
+   92,
+   362,
+   31,
+   25
+  ],
+  [
+   126,
+   362,
+   31,
+   25
+  ],
+  [
+   160,
+   362,
+   31,
+   25
+  ]
+ ],
+ "1280x720 shop Train row": {
+  "name_w": 97,
+  "name_room": 117,
+  "line2_w": 172,
+  "line2_room": 208,
+  "card_bottom_after": 563,
+  "shop_max": 639
+ },
+ "stepper button at 1920 x 1080 (s 1.00) (px)": [
+  32,
+  24
+ ],
+ "trade cap at 1920 x 1080 (s 1.00) (px)": [
+  40,
+  32
+ ],
+ "stepper button at 1280 x 720 (s 0.78) (px)": [
+  25,
+  19
+ ],
+ "trade cap at 1280 x 720 (s 0.78) (px)": [
+  31,
+  25
+ ],
+ "272 rail at 1280 x 720, 150 percent: trades card lines (text px, room px)": [
+  [
+   "Water carriers",
+   "2 waiting",
+   72,
+   5
+  ],
+  [
+   "Water carriers",
+   "",
+   123,
+   137
+  ],
+  [
+   "Reapers",
+   "1 helping",
+   71,
+   56
+  ],
+  [
+   "Reapers",
+   "",
+   72,
+   137
+  ],
+  [
+   "Millers",
+   "",
+   59,
+   137
+  ]
+ ],
+ "272 rail at 1280 x 720, 150 percent: villager line 2 (text, px, room)": [
+  "Lives near the market \u00b7 likes the millstone",
+  328,
+  290
+ ]
+}
