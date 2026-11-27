@@ -48,6 +48,7 @@ public partial class AssetAudit : TownTestBase
         Main.Hud.Visible = false;
         // The map's own trees would stand in front of the subjects: hidden (trees are pictured as a group below).
         if (Main.MapOrigin.GetNodeOrNull<Node3D>("Trees") is { } trees) trees.Visible = false;
+        if (Main.MapOrigin.GetNodeOrNull<Node3D>("Life") is { } life) life.Visible = false;   // night 3 (LF): animals and birds
         await Frames(4);
         // The play zoom: the follow view of the starting town at 1920 x 1080, kept at the same metres per pixel.
         Main.Rig.UserMoved = false;

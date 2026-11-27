@@ -17,14 +17,25 @@ def grass(seed):
     img = T.base(S, "Meadow")
     # sunlit patches: second round uses 8 lattice cells (not 4) and a higher threshold, so the patches are smaller
     # and more numerous and no single big blob marks the tile repeat
-    T.blotch(img, "Bent grass", rng, 8, 0.66, rag=0.16)
-    T.blotch(img, "Cast-iron green", rng, 16, 0.80, rag=0.10, octaves=2)     # small shade under tufts
+    # (night 3, after the LF review: threshold 0.66 -> 0.70, about a third less pale area; every pixel stays on the
+    # palette, so a softer blotch means less of it, not a blend)
+    T.blotch(img, "Bent grass", rng, 8, 0.70, rag=0.16)
+    # (night 3, round 3, LF: the small Cast-iron green shade blotches read as holes in the meadow; dropped. The rng
+    # draw is kept so the rest of the tile stays as it was.)
+    _ = T.noise(S, 16, 16, rng, 2); _ = T.noise(S, 32, 32, rng, 2)
     T.grain(img, "Bent grass", rng, 0.035)                                    # paper tooth
     clump = T.noise(S, 8, 8, rng, 2)
     T.strokes(img, "Cast-iron green", rng, 900, length=(4, 8), width=(1.4, 2.0),
               angle=(-np.pi / 2, 0.6), density=np.clip(clump * 1.6 - 0.3, 0, 1))  # grass tufts, gathered
     T.dots(img, "Paper", rng, 28, radius=(0.9, 1.4))                          # wildflower specks
     T.dots(img, "Reed and thatch", rng, 22, radius=(0.9, 1.4))
+    # night 3, round 3 (LF): tufts of Bent grass and a few more small flowers in the palette's colours
+    T.strokes(img, "Bent grass", rng, 260, length=(3, 6), width=(1.2, 1.6), angle=(-np.pi / 2, 0.5),
+              density=np.clip(1.2 - clump * 1.4, 0, 1))
+    # (after the LF review: the flower specks twice the size, so they show at all)
+    T.dots(img, "Brick", rng, 14, radius=(1.8, 2.6))
+    T.dots(img, "Limewash", rng, 18, radius=(1.8, 2.6))
+    T.dots(img, "Reed and thatch", rng, 16, radius=(2.0, 3.0))
     return img
 
 

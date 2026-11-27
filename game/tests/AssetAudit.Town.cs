@@ -42,6 +42,9 @@ public partial class AssetAudit
     {
         _play = playSize;
         if (Main.MapOrigin.GetNodeOrNull<Node3D>("Trees") is { } trees) trees.Visible = true;
+        var life = Main.MapOrigin.GetNodeOrNull<TownLife>("Life");
+        if (life != null) life.Visible = true;
+        const string lifeFile = "game/scripts/town/TownLife.cs";
         const string roads = "game/scripts/town/TownGround.cs";
         // The first trail, as the town opens it.
         for (int r = 0; r < T.RoadCount; r++)
@@ -68,6 +71,24 @@ public partial class AssetAudit
             if (_taken.Add(view))
                 await ShootAt(view, "game/scripts/town (the whole first-age town)",
                     Cells(pl.WindowX + pl.WindowW / 2.0, pl.WindowY + pl.WindowH / 2.0), 45f);
+            // Night 3, round 3 (LF): a street of cottages with their gardens, the hens by their coop, the cat and the dog.
+            if (life != null && level == 8 && life.ShownGarden() is Vector3 gs && _taken.Add("life-street"))
+                await ShootAt("life-street", lifeFile + " (gardens)", gs, 16f);
+            if (life != null && level == 99)
+            {
+                if (life.Home(0) is Vector3 hs && _taken.Add("life-hens")) await ShootAt("life-hens", lifeFile, hs, 9f);
+                if (life.Home(3) is Vector3 cs && _taken.Add("life-cat")) await ShootAt("life-cat", lifeFile, cs, 8f);
+                if (life.Home(4) is Vector3 ds && _taken.Add("life-dog")) await ShootAt("life-dog", lifeFile, ds, 8f);
+                if (life.ShownGardenOfKind(7) is Vector3 bu && _taken.Add("life-market")) await ShootAt("life-market", lifeFile + " (bunting)", bu, 12f);
+                if (life.ShownGarden(3) is Vector3 g2 && _taken.Add("life-street-charter")) await ShootAt("life-street-charter", lifeFile + " (gardens)", g2, 16f);
+                // the flock held mid-lift (4.5 s of its 9 s wheel), then let go
+                if (life.Home(6) is Vector3 fl && _taken.Add("life-flock"))
+                {
+                    life.HoldFlock(4.5f);
+                    await ShootAt("life-flock", lifeFile + " (flock lifting)", fl + new Vector3(0, 6f, 6f), 14f);
+                    life.HoldFlock(-1f);
+                }
+            }
             // Night 3 (round 2, BK): a staked plot where the town puts it, and the charter stone beside the bell.
             for (int p = 0; p < pl.Plots.Length; p++)
             {
@@ -140,6 +161,13 @@ public partial class AssetAudit
             var fl = rp.Links[rp.LinkOf(RiverLinkKind.Ferry)];
             await ShootAt("town-view-ferry", river, Cells(fl.Px[0], fl.Py[0]), 40f);
         }
+
+        // Night 3, round 3 (LF): the pasture with its sheep, the river's ducks and heron.
+        var pasture = rp.PlotOf(RiverPlotKind.Pasture);
+        await ShootAt("life-pasture", river + " (sheep)", Cells(pasture.X + pasture.W / 2.0, pasture.Y + pasture.H / 2.0), 16f);
+        if (life != null && life.Home(2) is Vector3 he) await ShootAt("life-river", lifeFile + " (heron, reeds)", he, 10f);
+        if (life != null && life.Home(7) is Vector3 ro) await ShootAt("life-rocks", lifeFile + " (rocks, gull)", ro, 9f);
+        if (life != null && life.Home(1) is Vector3 du) await ShootAt("life-ducks", lifeFile + " (ducks)", du, 10f);
 
         // The book.
         await BookShots();
