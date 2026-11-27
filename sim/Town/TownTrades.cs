@@ -258,6 +258,11 @@ public sealed partial class Town
     private double TrainingWorth(double rate)
     {
         if (TrainingLockReason.Length > 0) return 0;
-        return 0;
+        double atTrade = 0;
+        for (int t = 1; t < TradeCount; t++) atTrade += S.TradeEarn[t];
+        double share = Math.Min(1, atTrade / Math.Max(1, CoinPerMinute)); // the share of income made at the members' own trades
+        double step = TownRules.TradeStep;
+        // Worth: what its goods fetch rises by step / (1 + worth bonus); work: about TrainingWorkShare of a trip is work.
+        return rate * share * (step / (1 + TradeWorthBonus) + TownRules.TrainingWorkShare * step / (1 + TradeWorkBonus));
     }
 }

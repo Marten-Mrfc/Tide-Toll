@@ -133,6 +133,9 @@ public class TownRulesV3Tests
         Assert.True(d.RewardRenown > 0);
         Assert.StartsWith(T.DriveName, t.DriveText);
         Assert.Contains(ev, e => e.Kind == TownEventKind.DriveAsked && e.Amount == d.Amount);
+        // n7 trades: this town has one villager, a water carrier, and the drive asks for its best good; as a player would,
+        // its trade is set to the drive's good (a lone carrier leans to water and leaves its trade only for 1.6 times the pay).
+        if ((int)d.Good <= 3 && t.TradeOpen((Trade)(int)d.Good)) t.SetVillagerTrade(0, (Trade)(int)d.Good);
         // Progress stays and renown comes in parts; it cannot be missed (no time limit).
         double renown = t.Renown;
         int steps = 0;
