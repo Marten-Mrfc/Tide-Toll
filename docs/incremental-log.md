@@ -63,7 +63,7 @@ The owner: "Okay start an agent that will research how to improve the villagers.
 | Opus | Bodies and picking: what "hitboxes" and "spreading" should mean and how to build them | `bodies-and-picking.md` | 11:35 |
 | Opus | Experiments in the real simulation: what villagers do today, in numbers; what roles do to the charter minute; the technical design (branch `wt/n7-roles`, not to be merged) | `sim-roles-experiments.md`, `plots/` | 11:40 |
 
-- Then the lead writes `docs/plans/n7/villager-roles.md`: one proposal in stages, with the decisions that are the owner's.
+- All six reported by 10:45 UTC. The lead's proposal: `docs/plans/n7/villager-roles.md` (sent to the owner at 10:50 with the plot `research/plots/jobs-seed1-today.png`). The numbers that decide it: more than three quarters of the villagers are on one job for 24 percent of the first age and 63 percent of the second; the wait a villager counts has two blind spots (the mill; the pasture and weaver); fixed roles make the first age 15 to 26 percent longer and no fixed split comes within 15 percent of today's rule; a soft role at a factor of 1.25 costs 5 percent. Proposed in three steps: (1) people you can point at who spread by themselves, (2) trades as a lean that give something back, assigned by count or on a card, (3) the second age. Seven decisions are the owner's; nothing is built before they answer. The experiments' code is on branch `wt/n7-roles` (not to be merged).
 
 ## Next request: the boats (27 November, from 10:14 UTC)
 
