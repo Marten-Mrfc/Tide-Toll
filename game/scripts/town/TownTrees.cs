@@ -6,7 +6,8 @@ namespace TideToll.Game;
 
 /// <summary>
 /// Trees on the meadow round the town, so the page is not bare: oaks, poplars, birches and hawthorn bushes on dry ground, willows near the
-/// river, never inside the first age's town window (with a margin) or on water. Placed from the seed by a fixed hash,
+/// river, never inside the first age's town window (with a margin), on water, or on ground either age's town uses
+/// (<see cref="TownSpace"/>). Placed from the seed by a fixed hash,
 /// so the same town always has the same trees. Five MultiMeshes, built once.
 /// </summary>
 public static class TownTrees
@@ -21,6 +22,7 @@ public static class TownTrees
         const int K = 5;
         var xf = new System.Collections.Generic.List<Transform3D>[K];
         for (int k = 0; k < K; k++) xf[k] = new();
+        for (int k = 0; k < 4; k++) TownLife.RockSpot(plan, k, out _, out _, out _);   // trees stay off the bank's rocks
         uint h = (uint)(plan.Seed * 2654435761u + 12345u);
         for (int tries = 0; tries < 2600; tries++)
         {
@@ -31,6 +33,9 @@ public static class TownTrees
             if (x >= plan.WindowX - 3 && x < plan.WindowX + plan.WindowW + 3 && y >= plan.WindowY - 3 && y < plan.WindowY + plan.WindowH + 3) continue;
             float dRiver = MathF.Abs(x + 0.5f - map.RiverX[y]) - (float)map.RiverHalfW;
             if (dRiver < 2.5f || map.Water[y * n + x] != 0) continue;
+            // Round 3 (track LF): never on a lane, road, landing, crossing's end, plot or queue spot of either age; the
+            // crown needs the cells round its trunk free too.
+            if (!TownSpace.FreeRect(plan, x - 1, y - 1, x + 2, y + 2) || TownSpace.Yard(plan, x, y) || TownSpace.KeptClear(plan, x, y)) continue;
             // Clumps: keep a tree only where low-frequency noise says "wood", and keep the river bank open-ish.
             float clump = map.Noise.Length == n * n ? map.Noise[y * n + x] : 0.5f;
             if (clump < 0.45f && fr > 0.12f) continue;

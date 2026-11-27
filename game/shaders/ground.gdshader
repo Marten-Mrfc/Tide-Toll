@@ -144,7 +144,11 @@ void fragment() {
 	float bare = smoothstep(height - 0.10, height + 0.10, worn);
 	// Round 6 (W5): a just-given trail is faint but plainly there: a narrow, mostly unbroken line of soil down its
 	// middle (broken only where tall tufts stand), so a new road reads at the normal view before it wears in.
-	float line_soil = smoothstep(0.15, 0.27, core) * smoothstep(0.22, 0.42, 0.55 * n2 + 0.30 * stroke + 0.15 * n1 + 0.12) * 0.85;
+	// Night 3, round 3 (LF): not one blurred line but a faint footpath: two thin ruts where the core crosses a narrow
+	// band on each side of the middle, grass showing between them; as the trail wears in, the band moves out and the
+	// middle goes to soil by the height blend above (the wear itself is the simulation's, untouched).
+	float rut = smoothstep(0.17, 0.205, core) * (1.0 - smoothstep(0.255, 0.29, core));
+	float line_soil = rut * smoothstep(0.18, 0.36, 0.55 * n2 + 0.30 * stroke + 0.15 * n1 + 0.12) * 0.8;
 	bare = max(bare, line_soil);
 	// The soil is light and mottled (trail earth lifted toward the paper), streaked along the walking direction.
 	vec3 earth = mix(two(g2, lp), paper.rgb, 0.16) * (0.92 + 0.10 * n2 + 0.06 * n1);

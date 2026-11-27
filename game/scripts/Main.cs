@@ -112,6 +112,7 @@ public partial class Main : Node3D
         Driver.Replaced += PlantTrees;
         Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
         Touches = new TownTouches(); MapOrigin.AddChild(Touches); Touches.Init(Driver);
+        var life = new TownLife(); MapOrigin.AddChild(life); life.Init(Driver);   // night 3 (asset track LF): animals, birds, gardens
         River = new RiverLayer(); MapOrigin.AddChild(River); River.Init(this);
         Boats = new RiverBoats(); MapOrigin.AddChild(Boats); Boats.Init(Driver);
         RiverSound = new RiverAudio(); AddChild(RiverSound); RiverSound.Init(Driver);

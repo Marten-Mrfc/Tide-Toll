@@ -62,7 +62,9 @@ def base(rng, earth="Packed earth", ridge="Trail earth"):
     head = outline(rng, SIZE / 2 * 0.98, amount=0.04)
     m.add_extrude((0, 0, 0), head, 0.04, "Bent grass")                                # headland
     poly = outline(rng, SIZE / 2 * 0.86, amount=0.06)
-    m.add_extrude((0, 0.04, 0), poly, 0.06, earth, cap_bottom=False)                   # ploughed earth
+    # night 3, round 3 (LF, lead's note 01:58): the slab's sides are Bent grass, not earth, so the field lies in a mown
+    # headland instead of reading as a raised wooden tray
+    m.add_extrude((0, 0.04, 0), poly, 0.06, "Bent grass", top=earth, cap_bottom=False)   # ploughed earth
     rows = []
     for z in ROW_Z:
         x0, x1 = span(poly, z)
@@ -100,7 +102,10 @@ def ripe():
     rng = random.Random(SEED + 1)
     m, rows, earth = base(rng, ridge=None)
     cut = ROW_Z[-2] - 0.8                                                             # front edge of the standing grain
-    poly = [(x, z) for x, z in outline(random.Random(SEED + 5), SIZE / 2 * 0.8, amount=0.05) if z < cut]
+    # night 3 (after the LF review): the grain fills the ploughed patch's own outline, so no thin earth ring shows round
+    # it (the rng draw of the old outline is kept so the rest stays as it was)
+    _ = outline(random.Random(SEED + 5), SIZE / 2 * 0.8, amount=0.05)
+    poly = [(x, z) for x, z in earth if z < cut]
     poly = hull2d(poly + [(span_x, cut) for span_x in (-6.2, 6.2)])
     m.add_extrude((0, 0.1, 0), poly, 0.32, "Reed and thatch", cap_bottom=False)
     # review r1: no ticks, no outlined heads; combed rows as 0.8 m bands standing 4 cm proud every 1.6 m (0.4 m bands were too busy), their
