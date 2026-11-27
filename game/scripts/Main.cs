@@ -207,7 +207,7 @@ public partial class Main : Node3D
     {
         Saver?.SaveNow();
         QuitRequests++;
-        if (!HoldQuit) GetTree().Quit();
+        if (!HoldQuit) CleanExit.Quit(GetTree()); // frees the scene and drains .NET's finalizers first (night 9)
     }
 
     /// <summary>The bounding box of every given plot and open road, in map-local metres.</summary>
