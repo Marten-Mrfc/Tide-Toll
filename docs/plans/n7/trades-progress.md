@@ -36,7 +36,8 @@ VillagerView.Trade, .TradeByPlayer, .Likes
 Town.TradeOfJob(JobKind j)              // static; wool and cloth jobs: None (their trades come with step 3)
 Town.TradeOfLeaning(Leaning l)          // static
 town.TradeWorkBonus, town.TradeWorthBonus   // fractions, Training included, without the like
-town.TradeEarnPerHead(Trade t)          // coin a head the trade's members earned lately (the figure the town fills by)   [rules commit]
+town.TradeEarnPerHead(Trade t)          // coin a minute a head of the trade's work lately (the figure the town fills by)   [rules commit 2d2bac4]
+town.TrainingStepBonus                  // what one more Training step adds to both bonuses (0.04 = +4 %; 0 after ten)      [second round, see below]
 
 town.SetTradeCount(Trade t, int n)      // yours from now on (Trade.None: the Helpers' count); false if nothing changed
 town.SetVillagerTrade(int id, Trade t)  // that villager is yours from now on
@@ -241,3 +242,52 @@ The single runs at the first age's edges move by a minute or more for small chan
 - The second age's members make 69-74 % of their trips at their trade (payback 69 %, target 70 %): wool and cloth have no trade until step 3.
 - The first age's herding is about today's (15-17 % against 15-22 %), not well under; the second age's is well under.
 - Parts 2 and 3 (interface, figures), `game-trades`, `game-layout`, pictures: the second builder's.
+
+## Second round (the lead's decisions, 27 November evening)
+
+### 1. The choice at level 4: `BoonWalk` cannot split it
+
+The payback bot's first choice (Wider lanes A, Stronger backs B) on seeds 1 to 10, `bands --first-only --set BoonWalk=w`:
+
+| BoonWalk | picks |
+| --- | --- |
+| 0.045 (today) | B 10 |
+| 0.042 | B 10 |
+| 0.040 | B 10 |
+| 0.039 | B 10 |
+| 0.038 | B 10 |
+| 0.037 | B 10 |
+| 0.0365 | B 10 |
+| 0.0364 | B 10 |
+| 0.03635 | A 10 |
+| 0.0363 | A 10 |
+| 0.0362 | A 10 |
+| 0.036 | A 10 |
+| 0.035 | A 10 |
+| 0.030 | A 10 |
+
+All ten seeds flip together between 0.03635 and 0.0364, which is where the backs' worth (rate x 0.55 x BoonWalk) meets the lanes' worth with no crowding (rate x 0.1 x 0.6 x (1 - 1/1.5), i.e. BoonWalk = 0.0364). With trades no seed has a crowded road at the moment of the choice, so the lanes' crowding term is 0 everywhere and nothing separates the seeds. **No value of `BoonWalk` between 3 and 4.5 percent makes the picks split; per the decision I stopped there.** `BoonWalk` is unchanged (0.045), the test still fails ("choice 0: side A 0, side B 10 of 10").
+
+### 2. The pin
+
+(a) The pin passes with only the trades added: at `ff77486` (same code as `2d2bac4`, the page only) `TownTradesPinTests`: `Passed!  - Failed:     0, Passed:     6, Skipped:     0, Total:     6`. (b) and (c) were not done: the constant did not change (above), so the pin was not recorded anew and still dates from `70922b8`.
+
+### 3. Re-centring the first age: not done (the pin is not free)
+
+Measured only, not shipped (it would change the trades-off run and so the pin, which the decision freed only for `BoonWalk`). `bands --set CharterMinutes=x`, everything else as shipped:
+
+| CharterMinutes | bands failing | ceiling (nearest run, margin) | floor (nearest run, margin) | requests average | saver last stretch / longest before |
+| --- | --- | --- | --- | --- | --- |
+| 9 | 0 | seed 3 cheapest 39.05, 2.4 % | seed 7 saver 25.14, 0.5 % | 4.7 % | 2.69 / 3.10 |
+| 9.5 | 0 | seed 3 cheapest 39.05, 2.4 % | seed 7 saver 25.14, 0.6 % | 3.0 % | 2.80 / 3.10 |
+| 10 (shipped) | 0 | seed 3 cheapest 39.39, 1.5 % | seed 7 saver 25.15, 0.6 % | 3.0 % | 2.91 / 3.10 |
+| 10.5 | 0 | seed 3 cheapest 39.39, 1.5 % | seed 7 saver 25.34, 1.4 % | 1.9 % | 3.08 / 3.10 |
+| 11 | 0 | seed 3 cheapest 39.74, 0.6 % | seed 7 saver 25.47, 1.9 % | 1.9 % | 3.20 / 3.10 (fails the last-gap test) |
+
+`CharterMinutes` hardly moves the floor's run (seed 7 saver 25.14 to 25.47 over 9 to 11: its charter is carried by the drive and its own purchases), so the best it offers is 9 (2.4 % / 0.5 %) or 10.5 (1.5 % / 1.4 %). If the pin is freed for it, 10.5 is the more even split; 9 gives the most room on the last-gap test.
+
+How fragile: the margins of the first age's bands are those of single runs that move by a minute for small changes; on seeds 11 to 30 (not in the tests) the main branch itself fails 4 bands and the trades 5.
+
+### 5. The Training tooltip's view
+
+Added `town.TrainingStepBonus` (what one more step adds to both bonuses, 0 after the tenth); the tooltip's percentages: `TradeWorkBonus`, `TradeWorthBonus` (now) and `TrainingStepBonus` (one more step). No rule changed.

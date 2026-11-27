@@ -238,6 +238,7 @@ public class TownTradesTests
         Assert.True(row.Worth > 0, "the bots' estimate knows the row");
         int load = items.FindIndex(i => i.Kind == ShopItemKind.Load);
         Assert.True(load < 0 || items.FindIndex(i => i.Kind == ShopItemKind.Training) == load + 1);
+        Assert.Equal(TownRules.TradeStep, t.TrainingStepBonus);
         for (int s = 0; s < TownRules.TrainingMax; s++)
         {
             double before = t.TrainingPrice;
@@ -247,6 +248,7 @@ public class TownTradesTests
             Assert.True(t.TrainingPrice > before || s + 1 == TownRules.TrainingMax);
         }
         Assert.False(t.BuyTraining());
+        Assert.Equal(0, t.TrainingStepBonus);
         t.ShopItems(items);
         row = items.Single(i => i.Kind == ShopItemKind.Training);
         Assert.True(row.Finished);

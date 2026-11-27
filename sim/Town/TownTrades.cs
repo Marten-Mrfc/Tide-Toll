@@ -224,6 +224,10 @@ public sealed partial class Town
     /// times TrainingGrowth ^ steps bought.</summary>
     public double TrainingPrice => Math.Ceiling(TownRules.TrainingMinutes * Math.Max(TownRules.TrainingRateMin, S.MaxCoinPerMinute) * Math.Pow(TownRules.TrainingGrowth, S.Training));
 
+    /// <summary>What one more Training step adds to both bonuses (TradeWorkBonus and TradeWorthBonus), as a fraction
+    /// (0.04 = +4 %); 0 when all ten steps are bought. For the row's tooltip.</summary>
+    public double TrainingStepBonus => S.Training >= TownRules.TrainingMax ? 0 : TownRules.TradeStep;
+
     /// <summary>"" when a Training step can be bought now (ignoring coin), else why not.</summary>
     public string TrainingLockReason
     {
