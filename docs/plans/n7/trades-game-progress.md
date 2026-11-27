@@ -88,3 +88,19 @@ From `docs/plans/n7/trades-game-review.md`:
 - 8 the crossfade's mid-frame: check it in play at 30 fps and at 150; if it flickers, fade the outgoing card faster (0.1 s) than the incoming. Not done.
 - 11 the hover rings are thin and few at 720 and at 150: scale ring radius and width with the view's zoom, a little ink in the colour so it shows on wheat. Not done.
 - The Helpers' caption "work where it pays best" fits nowhere: accepted as dropped (the Helpers line's tooltip says it).
+
+### Fix round results (under the lock, takes under 15 minutes)
+
+- game-motion, run 1 (19:22): 60 fps `FAIL: notes: frame 98 took 6.32 ms of CPU (gate 6)`; 30 fps `MOTION PASS impatient=ok pages-align=0.00px fps=30 transitions=13 alloc-max=6000B cpu-max=4.90ms`; 120 fps `FAIL: tab-keys-saving: frame 36 took 6.81 ms of CPU (gate 6)` (frame time, load 4-7). No allocation failure.
+- game-motion, run 2 (19:25): 60 `MOTION PASS ... fps=60 transitions=13 alloc-max=6000B cpu-max=1.74ms`; 30 `... cpu-max=2.64ms`; 120 `... cpu-max=4.33ms`.
+- game-motion, run 3 (19:47): 60 `alloc-max=6000B cpu-max=1.85ms`; 30 `cpu-max=1.57ms`; 120 `cpu-max=1.54ms`; all `MOTION PASS`.
+- game-trades: `TRADES PASS hintframe=2744B bytes=616 tags=3 tagstarts=0.05/0.53/1.05 fps=60 ... headstep=0.17 alphastep=0.17`; 30 `hintframe=2696B tagstarts=0.10/0.59/1.06`; 120 `hintframe=2848B tagstarts=0.03/0.53/1.03`; `TRADES RATES PASS` (with the cap's hand-back check, the hint's file check and the tags' spacing).
+- game-layout: `LAYOUT PASS ... states=36 canvases=8 checks=92063 failures=0 loud<=2 quiet<=3` (with the longest first hint in the line on every canvas).
+- game-people: `PEOPLE RATES PASS`.
+- The trial of a 15 percent larger kerchief and cap: **not kept** (`WearScale` stays 1, the models untouched). On the real streets (`trades-street-after*` against `trades-street-larger*`, levels 8, 13 and 15) the larger kerchiefs read a little bigger but also make the heads look swollen; not clearly better. game-ink was not rerun (nothing drawn changed).
+- The town's own mix in the frames: level 8: 8 carriers, 6 reapers, 0 millers; level 13: 6, 13, 2; level 15: 5, 14, 7.
+- The tooltip's "Work places 5 (the others are on the road)" wraps to a second line at 1280 x 720 at 150 (the tip box grows; never cut).
+
+### Pictures in the repository
+
+`docs/plans/n7/after/` (JPEG, quality 88): `board-beside-game-1920x1080`, `game-columns` (1920 x 1080 and 1280 x 720 at 150; **1280 x 720 at 100 was not retaken this round**), `trades-card-whole-1920x1080`, `trades-hint-whole-1920x1080` (the trades' hint in its place), `trades-tip-*`, `trades-hover(-whole)-1920x1080` (rings), `trades-count-strip-1920x1080`, `trades-cap-tip-1920x1080`, and the streets `trades-street-{before,after,larger}(-close)-1920x1080[-level8|-level15]` (no suffix: level 13).
