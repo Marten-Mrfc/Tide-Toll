@@ -133,7 +133,7 @@ public partial class MillWorks : Node3D
         DoorOpen = Mathf.MoveToward(DoorOpen, DoorWanted ? 1f : 0f, dt / DoorSeconds);
         LastDoorChange = MathF.Abs(DoorOpen - before);
         SailTarget = IdleRate + RatePerWorker * busy;
-        SailRate = Mathf.MoveToward(SailRate, SailTarget, dt * 0.8f);
+        SailRate = Mathf.MoveToward(SailRate, SailTarget, dt * RatePerWorker / WorkPlaces.MinEase);   // one worker more or less: over 0.15 s
         _sailAngle = (_sailAngle + dt * SailRate * _w.Pace) % (MathF.PI * 2f);
         if (_w.Buildings.MillSailsNode is { } sails) sails.Rotation = new Vector3(sails.Rotation.X, sails.Rotation.Y, _sailAngle);
         for (int i = 0; i < 3; i++)

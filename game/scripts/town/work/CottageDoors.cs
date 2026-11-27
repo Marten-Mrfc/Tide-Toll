@@ -77,7 +77,7 @@ public partial class CottageDoors : Node3D
     public Vector3 DoorAt(int plot)
     {
         int i = IndexOf(plot);
-        if (i < 0 || _shift[i] == null) { var p = _w.Town.Plan.Plots[plot]; return new Vector3((p.DoorX + 0.5f) * WorkPlaces.Cell, 0, (p.DoorY + 0.5f) * WorkPlaces.Cell); }
+        if (i < 0 || _shift[i] == null || !_shift[i]!.IsInsideTree()) { var p = _w.Town.Plan.Plots[plot]; return new Vector3((p.DoorX + 0.5f) * WorkPlaces.Cell, 0, (p.DoorY + 0.5f) * WorkPlaces.Cell); }
         var at = ToLocal(_shift[i]!.ToGlobal(DoorLocal(_w.Buildings.DrawnModel(plot)) + new Vector3(0, -0.3f, 0.5f)));
         return at;
     }
@@ -86,7 +86,7 @@ public partial class CottageDoors : Node3D
     public void CameHome(int plot, Good good)
     {
         int i = IndexOf(plot);
-        if (i < 0 || _shift[i] == null) return;
+        if (i < 0 || _shift[i] == null || !_shift[i]!.IsInsideTree()) return;
         _hold[i] = Math.Max(_hold[i], 1.2f);
         var at = ToLocal(_shift[i]!.ToGlobal(_smoke[i]));
         var c = new Color(Palette.Limewash.Lerp(Palette.FadedInk, 0.25f), 0.8f);

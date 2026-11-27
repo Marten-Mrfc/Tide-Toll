@@ -13,7 +13,7 @@ namespace TideToll.Game;
 /// </summary>
 public partial class StallTable : Node3D
 {
-    public const int Places = 8, Pool = 12;
+    public const int Places = 8, Pool = 40;
     public const float ArcSeconds = 0.45f, SellSeconds = 4.5f, LeaveSeconds = 0.4f, BoardScale = 1.5f;
     private const float TableY = 1.35f / BoardScale;
 
@@ -99,6 +99,12 @@ public partial class StallTable : Node3D
         }
         int slot = -1;
         for (int i = 0; i < Pool; i++) if (!_it[i].On) { slot = i; break; }
+        if (slot < 0)
+        {
+            // every node busy (deliveries faster than the table can sell, at the highest speeds): the one furthest gone
+            // from the table is given up for the new load
+            for (int i = 0; i < Pool; i++) if (_it[i].Age >= ArcSeconds + SellSeconds && (slot < 0 || _it[i].Age > _it[slot].Age)) slot = i;
+        }
         if (slot < 0 || place < 0) { Missed++; return; }
         _it[slot] = new Item { On = true, Place = place, Good = good, From = from, Age = 0f, Serial = ++_serial };
         var n = _nodes[slot]!;

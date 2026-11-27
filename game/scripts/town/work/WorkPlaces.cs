@@ -81,7 +81,8 @@ public partial class WorkPlaces : Node3D
 
     public override void _Process(double delta)
     {
-        Dt = (float)Math.Min(delta, 0.1);
+        // the places' clocks stand while the town is paused (the menu, a test's held frame)
+        Dt = Driver.Paused ? 0f : (float)Math.Min(delta, 0.1);
         if (DetectFromSim) Detect();
         Well.Step(Dt); Fields.Step(Dt); Mill.Step(Dt); Stall.Step(Dt); Doors.Step(Dt);
         _primed = true;

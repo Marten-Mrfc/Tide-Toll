@@ -9,8 +9,8 @@ namespace TideToll.Game;
 /// row is cut up to a front; behind the front the cut stretch lies as swath, then stubble, then shoots, then green, then
 /// gold again on a fixed clock of game time (<see cref="Ripe"/>). Each unit of work finished moves its row's front one
 /// piece on (and lays a stook where it passed; the stook before it is taken up by the sheaf carried off). Work spot s
-/// works row <see cref="RowOf"/>; there are at most four places at a field and always at least six rows, so the front
-/// and back rows are never worked: with the stretches ahead of the fronts, at least a third of the field is always gold.
+/// works row <see cref="RowOf"/>; there are at most four places at a field and always at least seven rows, so the front
+/// row and the two back rows are never worked: with the stretches ahead of the fronts, at least a third of the field is always gold.
 /// This keeps what the old one-piece field (always field-ripe) meant: a field never runs out and is always ready.
 /// Every piece is an instance of a shared mesh (one MultiMesh per row state, all fields together); a piece changing
 /// state shrinks into the ground as its new state grows (0.35 s), so nothing changes in one frame.
@@ -21,9 +21,12 @@ public partial class FieldRows : Node3D
     private static readonly string[] Models = { "work-row-ripe", "work-row-green", "work-row-shoots", "work-row-stubble", "work-row-swath", "work-row-edge" };
     private const int Kinds = 6;
     /// <summary>Game seconds after a cut at which a stretch turns from swath to stubble, to shoots, to green, to gold.</summary>
-    public const double Swath = 1.5, Stubble = 5, Shoots = 9, Ripe = 14;
+    public const double Swath = 2, Stubble = 7, Shoots = 13, Ripe = 22;
     public const float Piece = 2f, Pitch = 1.6f, Fade = 0.35f, StookScale = 1.5f;
     private const int MaxFields = 4, MaxRows = 8, MaxPieces = 10;
+    /// <summary>At least seven rows: with at most four places at a field (two and two extra hands) three rows, the front
+    /// one and the two at the back, are never worked, and they alone are over a third of the field.</summary>
+    public const int MinRows = 7;
 
     private WorkPlaces _w = null!;
     private readonly MultiMesh[] _mm = new MultiMesh[Kinds];
@@ -89,10 +92,10 @@ public partial class FieldRows : Node3D
     }
 
     /// <summary>The row worked from work spot <paramref name="slot"/>: second from the front first, then back across the
-    /// field; the front row and the back row are never worked.</summary>
+    /// field; the front row and the two back rows are never worked.</summary>
     public static int RowOf(int rows, int slot)
     {
-        int usable = Math.Max(1, rows - 2);
+        int usable = Math.Max(1, rows - 3);
         if (slot < 0) slot = 0;
         return rows - 2 - slot % usable;
     }
@@ -106,7 +109,7 @@ public partial class FieldRows : Node3D
         float fw = p.W * WorkPlaces.Cell, fh = p.H * WorkPlaces.Cell;
         f.Centre = new Vector3((p.X + p.W / 2f) * WorkPlaces.Cell, 0.09f, (p.Y + p.H / 2f) * WorkPlaces.Cell);
         float ux = fw * 0.96f * 0.88f / 2f - 0.5f, uz = fh * 0.96f * 0.88f / 2f - 0.55f;
-        f.Rows = Math.Clamp((int)(2f * uz / Pitch) + 1, 6, MaxRows);
+        f.Rows = Math.Clamp((int)(2f * uz / Pitch) + 1, MinRows, MaxRows);
         float pitch = Math.Min(Pitch, 2f * uz / Math.Max(1, f.Rows - 1));
         int n = Math.Clamp((int)(2f * ux / Piece), 4, MaxPieces);
         int wp = _w.WorkplaceOf(f.Plot);
@@ -278,6 +281,16 @@ public partial class FieldRows : Node3D
     {
         var f = Of(plot);
         return f == null || !f.Built || row >= f.Rows || !f.Active[row] ? -1 : f.Front[row];
+    }
+
+    /// <summary>A field just bought is still growing in (its first crop rising row by row, with the plot's pop).</summary>
+    public bool GrowingIn(int plot)
+    {
+        var f = Of(plot);
+        if (f == null || !f.Built) return false;
+        for (int r = 0; r < f.Rows; r++)
+            for (int k = 0; k < f.N[r]; k++) { int i = r * MaxPieces + k; if (f.Prev[i] == St.None && f.T[i] < 1f) return true; }
+        return false;
     }
 
     public int StepsAt(int plot) => Of(plot)?.Steps ?? 0;
