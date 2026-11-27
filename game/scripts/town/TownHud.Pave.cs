@@ -21,7 +21,7 @@ public partial class TownHud
     public int LitRoads { get; private set; }
     /// <summary>The road the last click in Pave mode acted on (-1 none), and the text the tip showed then (tests).</summary>
     public int LastPaveClickRoad { get; private set; } = -1;
-    public string HoverTipText => _hoverTip.Visible ? _hoverTip.Text : "";
+    public string HoverTipText => _hoverTip.Visible && _tipWant ? _hoverTip.Text : "";
     private MeshInstance3D _paveMesh = null!;
     private ImmediateMesh _paveIm = null!;
     private StandardMaterial3D _paveMat = null!;
@@ -79,7 +79,7 @@ public partial class TownHud
         {
             var t = _drv.Town;
             int sug = t.SuggestedPave();
-            Note(sug >= 0 && t.Coin < t.PavePrice(sug) ? $"Paving costs {Money(t.PavePrice(sug))} coin." : "No road is worn in enough to pave yet.");
+            Refuse(sug >= 0 && t.Coin < t.PavePrice(sug) ? $"Paving costs {Money(t.PavePrice(sug))} coin." : "No road is worn in enough to pave yet.");
             on = false;
         }
         if (on && ExtendMode) SetExtendMode(false);
@@ -224,8 +224,8 @@ public partial class TownHud
         if (PaveMode && !AnyPavable()) SetPaveMode(false);
         if (PaveMode && _pointer.X >= 0) HoverRoad = PaveTarget(_pointer); // the view may have moved under the pointer
         _paveMesh.Visible = PaveMode || ExtendMode;
-        _hoverTip.Visible = (PaveMode && HoverRoad >= 0) || (ExtendMode && HoverCottage >= 0);
-        if (!PaveMode && !ExtendMode) { _suggest.Visible = false; return; }
+        _tipWant = (PaveMode && HoverRoad >= 0) || (ExtendMode && HoverCottage >= 0);
+        if (!PaveMode && !ExtendMode) { _sugWant = false; return; }
         if (!PaveMode) { ExtendFrame(); return; }
         if (HoverRoad >= 0)
         {
@@ -236,8 +236,8 @@ public partial class TownHud
         }
         if (HoverRoad >= 0) _tipPlaced = _hoverTip.Position;
         int sug = t.SuggestedPave();
-        _suggest.Visible = sug >= 0 && Pavable(sug);
-        if (_suggest.Visible)
+        _sugWant = sug >= 0 && Pavable(sug);
+        if (_sugWant)
         {
             SetCoinText(_suggest, "Suggested: ", t.PavePrice(sug), "");
             _suggest.Position = RoadScreen(sug) - new Vector2(_suggest.Size.X / 2f, _suggest.Size.Y + UiKit.Px(_s, 10));

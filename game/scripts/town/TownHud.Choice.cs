@@ -139,7 +139,7 @@ public partial class TownHud
         _root.AddChild(_handLayer);
         // Under every card and page: markers belong to the map.
         _root.MoveChild(_handLayer, _floatLayer.GetIndex() + 1);
-        _handMarks.Clear();
+        _handMarks.Clear(); _handA.Clear();
     }
 
     /// <summary>Takes one side of the open choice (a click on its half of the card or its key).</summary>
@@ -165,7 +165,13 @@ public partial class TownHud
         var t = _drv.Town;
         // Shown over everything, the achievements page too (it starts below the card): a choice is never missed.
         bool show = t.ChoiceOpen;
-        _choice.Visible = show;
+        // Night 3, L2: it arrives and leaves like every large message (0.22 s, fade and 12 down from above).
+        // One large message at a time: a banner showing leaves first (it waits again), then the choice comes.
+        _choiceF.Want(show && (!_banner.Visible || _choiceF.On));
+        _choiceF.Step(dt);
+        bool vis = _choiceF.Value > 0f;
+        if (_choice.Visible != vis) _choice.Visible = vis;
+        if (vis) _choice.Modulate = new Color(1, 1, 1, _choiceF.Value);
         if (show)
         {
             var c = t.Choice;
@@ -183,7 +189,6 @@ public partial class TownHud
                     int w = WorthTenths(side == 0 ? c.AWorth : c.BWorth);
                     _boonWorth[side].Text = w > 0 ? WorthLine(w) + " now" : "";
                     _boonIcon[side].Texture = IconOr(BoonIcon(b), "ui-achievement");
-                    _boonBtn[side].TooltipText = Town.BoonText(b);
                 }
             }
             // Night 3: in the Message zone (TownHud.Zones.cs); no pulse of its own (the next round's motion).
@@ -198,9 +203,22 @@ public partial class TownHud
         var t = _drv.Town;
         var d = t.Drive;
         // The strip: the Ring in the next age button comes first; the drive takes the line otherwise.
-        bool show = d.Active && !_nextAge.Visible;
-        _drive.Visible = show;
-        if (!show) return;
+        bool flash = _driveMetFlash > 0f;
+        bool show = (d.Active || flash) && !_nextAgeF.On;
+        _driveF.Want(show && _fullA > 0.01f);
+        _driveF.Step(_msgDt);
+        _driveMetFlash = Math.Max(0f, _driveMetFlash - MessageQueue.Clock(_msgDt));
+        bool vis = _driveF.Value > 0f;
+        if (_drive.Visible != vis) _drive.Visible = vis;
+        if (vis) _drive.Modulate = new Color(1, 1, 1, _driveF.Value);
+        if (flash && !_driveDone.Text.StartsWith("Done"))
+        {
+            // Met (message-system section 2): the strip says it in its own place, in moss, for 1.6 s.
+            _driveDone.Text = "Done";
+            for (int i = 0; i < DriveParts; i++) _drivePips[i].Color = UiKit.Moss;
+            _driveSig = 0;
+        }
+        if (!show || flash) return;
         int sig = HashCode.Combine(d.Good, d.Amount, d.Delivered, (long)d.RenownGiven);
         if (sig != _driveSig)
         {
@@ -237,14 +255,26 @@ public partial class TownHud
                 l.MouseFilter = Control.MouseFilterEnum.Ignore;
                 _handLayer.AddChild(l);
                 _handMarks.Add(l);
+                _handA.Add(0f);
             }
-            var m = _handMarks[used++];
-            m.Visible = true;
-            if (m.GetMeta(HandMeta, -1).AsInt32() != w) { m.SetMeta(HandMeta, w); m.TooltipText = t.HandName(w); }
+            int mi = used++;
+            var m = _handMarks[mi];
+            // Night 3, L2: a tag arrives and leaves by an eased 0.15 s fade (never in one frame).
+            _handA[mi] = Math.Min(1f, _handA[mi] + _msgDt / TipTagSeconds);
+            float ha = BookMotion.Smoother(_handA[mi]);
+            if (!m.Visible) m.Visible = true;
+            m.Modulate = new Color(1, 1, 1, ha);
+            if (m.GetMeta(HandMeta, -1).AsInt32() != w) m.SetMeta(HandMeta, w);
             m.ResetSize();
             m.Position = at - new Vector2(m.Size.X / 2f, m.Size.Y + UiKit.Px(_s, 6));
         }
-        for (int i = used; i < _handMarks.Count; i++) _handMarks[i].Visible = false;
+        for (int i = used; i < _handMarks.Count; i++)
+        {
+            _handA[i] = Math.Max(0f, _handA[i] - _msgDt / TipTagSeconds);
+            float ha = BookMotion.Smoother(_handA[i]);
+            if (ha <= 0f) { if (_handMarks[i].Visible) _handMarks[i].Visible = false; }
+            else _handMarks[i].Modulate = new Color(1, 1, 1, ha);
+        }
     }
 
     /// <summary>Rules v3 events: the choice offered and taken, milestones, the drive, a hand on offer, a touch.</summary>
@@ -253,29 +283,27 @@ public partial class TownHud
         switch (e.Kind)
         {
             case TownEventKind.ChoiceOffered:
-                Note("A choice of two boons is open at the top.", true);
-                _main.Audio.Moment("request-asked");
+                // The choice card is the message (its level is in its heading); its sound plays as it opens.
+                _main.Audio.Large("level-reached");
                 return true;
             case TownEventKind.BoonChosen:
                 BoonMoments++;
-                Banner("A boon for good", $"{e.Text}. {Town.BoonText((Boon)e.Index)}");
-                _main.Audio.Moment("level-reached");
+                Note($"A boon for good: {e.Text}. {Town.BoonText((Boon)e.Index)}", true, NoteBuilding, "");
                 return true;
             case TownEventKind.Milestone:
                 Milestones++;
                 LastMilestone = e.Text ?? "";
                 _flourish = 1.2f;
-                Note($"Milestone! {LastMilestone}. A little extra on top.", true);
-                _main.Audio.Moment("gift-arrives");
+                Note($"Milestone! {LastMilestone}. A little extra on top.", true, NoteBuilding, "gift-arrives");
                 return true;
             case TownEventKind.DriveAsked:
-                Banner(Town.DriveName, $"One last push: send {Money(e.Amount)} {GoodName(e.Good)} for the charter. Every load counts.");
-                _main.Audio.Moment("request-asked");
+                Large(Town.DriveName, $"One last push: send {Money(e.Amount)} {GoodName(e.Good)} for the charter. Every load counts.", PrioDrive, BannerStay, "request-asked");
                 return true;
             case TownEventKind.DriveProgress: return true;
             case TownEventKind.DriveMet:
-                Note("The charter drive is met.", true);
-                _main.Audio.Moment("request-met");
+                // The strip says it (message-system section 2): no note.
+                DriveMetFlash();
+                _main.Audio.Large("request-met");
                 return true;
             case TownEventKind.TouchAdded:
                 _touchesSeen++;
@@ -287,6 +315,13 @@ public partial class TownHud
     }
 
     private int _touchesSeen;
+    private readonly System.Collections.Generic.List<float> _handA = new();
+    private readonly MessageFader _choiceF = new(LargeSeconds);
+    /// <summary>The choice card's eased opacity (tests).</summary>
+    public float ChoiceAlpha => _choiceF.Value;
+    private float _driveMetFlash;
+    private readonly MessageFader _driveF = new(LargeSeconds);
+    private void DriveMetFlash() => _driveMetFlash = 1.6f;
 
     public static string TouchNote(TouchKind k) => k switch
     {

@@ -27,7 +27,7 @@ public partial class TownHud
         {
             var t = _drv.Town;
             string why = t.ExtendLockReason;
-            Note(why.Length > 0 ? why + "." : t.Coin < t.ExtendPrice ? $"Extending costs {Money(t.ExtendPrice)} coin." : "No cottage can be extended now.");
+            Refuse(why.Length > 0 ? why + "." : t.Coin < t.ExtendPrice ? $"Extending costs {Money(t.ExtendPrice)} coin." : "No cottage can be extended now.");
             on = false;
         }
         if (on && PaveMode) SetPaveMode(false);
@@ -121,7 +121,7 @@ public partial class TownHud
         var t = _drv.Town;
         if (!AnyExtendable()) { SetExtendMode(false); return; }
         if (_pointer.X >= 0) HoverCottage = ExtendTarget(_pointer);
-        _hoverTip.Visible = HoverCottage >= 0;
+        _tipWant = HoverCottage >= 0;
         if (HoverCottage >= 0)
         {
             int room = t.CottageRoom(HoverCottage);
@@ -129,8 +129,8 @@ public partial class TownHud
             _hoverTip.Position = TipBeside(PlotScreenRect(t.Plan.Plots[HoverCottage]));
         }
         int sug = t.SuggestedExtend();
-        _suggest.Visible = sug >= 0 && Extendable(sug);
-        if (_suggest.Visible)
+        _sugWant = sug >= 0 && Extendable(sug);
+        if (_sugWant)
         {
             SetCoinText(_suggest, "Suggested: ", t.ExtendPrice, "");
             _suggest.Position = PlotScreen(sug) - new Vector2(_suggest.Size.X / 2f, _suggest.Size.Y + UiKit.Px(_s, 24));

@@ -5,7 +5,7 @@
 #   tools/ui-audit.sh [--res=1920x1080] [--scale=80|100|150] [--only=u01,u07] [--out=DIR] [--no-build]
 #   default DIR: build/n3/ui-audit/<res>-<scale>. Then: python3 tools/ui-audit-report.py DIR  (writes DIR/report.md)
 # Fails on any printed error/warning line (tools/godot-test.sh), a failed check, or no UIAUDIT PASS line.
-# Own profile folder (user://tests/uiaudit-pass/): the player's save and settings are never touched.
+# Own profile folder (user://tests/co-<checkout hash>/uiaudit-pass/): the player's save and settings are never touched.
 # Set DISPLAY_NUM=N to choose the xvfb display (two runs at once need different numbers).
 set -uo pipefail
 {

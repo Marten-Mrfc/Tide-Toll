@@ -33,6 +33,7 @@ public partial class TownHud
     public bool HintMarkerVisible => _marker != null && _marker.Visible && _markerOn;
     private bool _markerOn;
     private float _markerA;
+    public float HintMarkerAlpha => _markerA;
     private StandardMaterial3D? _markerMat;
     public bool RequestCardVisible => _req.Visible;
     public string RequestCardText => _req.Visible ? $"{_reqWho.Text} | {_reqAsk.Text} | {_reqDone.Text} | {_reqReward.Text}" : "";
@@ -44,12 +45,12 @@ public partial class TownHud
     private bool _reqLate, _reqTintDirty = true;
 
     /// <summary>Night 3 L1 fix: the bar shows the count; time only tints its text brick in the last quarter.</summary>
-    private void SetGoalBar(float count, float timeShare, Label timeText, Color? rest = null)
+    private void SetGoalBar(float count, float timeShare, Label timeText, Color? rest = null, bool canBeLate = true)
     {
         _reqTimeShare = timeShare;
         UiKit.SetBar(_reqBarBack, _reqBar, Math.Clamp(count, 0, 1));
         _reqBar.Color = UiKit.RiverBlue;
-        bool late = timeShare < 0.25f;
+        bool late = canBeLate && timeShare < 0.25f; // (waiting is not a fault: brick is for missed and trouble)
         if (late != _reqLate || _reqTintDirty)
         {
             _reqLate = late;
@@ -91,7 +92,7 @@ public partial class TownHud
             mat.NoDepthTest = true;
             mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
             _markerMat = mat;
-            _marker = new MeshInstance3D { Name = "HintMarker", Mesh = ThinRing(0.95f, 48), MaterialOverride = mat, Visible = false,
+            _marker = new MeshInstance3D { Name = "HintMarker", Mesh = ThinRing(0.975f, 64), MaterialOverride = mat, Visible = false,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
             _main.MapOrigin.AddChild(_marker);
         }
@@ -104,14 +105,17 @@ public partial class TownHud
         string who = e.Index >= 0 && e.Index < Town.RequestWho.Length ? Town.RequestWho[e.Index] : "Someone";
         switch (e.Kind)
         {
-            case TownEventKind.RequestAsked: Note($"{who} asks for {e.Amount} {GoodName(e.Good)}."); break;
+            case TownEventKind.RequestAsked: break; // the goal section says it
             case TownEventKind.RequestMet:
-                Note($"{who} is pleased: +{Money(e.Coin)} coin.", true);
                 _reqFlash = 1.6f; _reqMetCoin = (long)Math.Floor(e.Coin);
                 break;
-            case TownEventKind.RequestMissed: Note($"Too late for {Lower(who)}. Maybe next time."); _reqFlash = -1.6f; break;
+            case TownEventKind.RequestMissed: _reqFlash = -1.6f; break;
         }
     }
+
+    private readonly MessageFader _reqF = new(LargeSeconds);
+    /// <summary>The goal content's eased opacity (tests).</summary>
+    public float RequestAlpha => _reqF.Value;
 
     private void RequestFrame(float dt)
     {
@@ -124,9 +128,15 @@ public partial class TownHud
         }
         if (!r.Active && _reqFlash == 0 && RiverRequestFrame()) return;
         bool show = (r.Active || _reqFlash != 0) && _fullA > 0.01f;
-        _req.Visible = show;
+        // Night 3, L2: the goal's content arrives and leaves by an eased fade and 8 up (0.22 s), never in one frame;
+        // "Done: +N" (moss) and "Too late" (brick) stay in place for 1.6 s first.
+        _reqF.Want(show);
+        _reqF.Step(dt);
+        float ra = _reqF.Value;
+        bool vis = ra > 0f;
+        if (_req.Visible != vis) _req.Visible = vis;
+        if (vis) { _req.Modulate = new Color(1, 1, 1, ra); _req.Position = new Vector2(0, UiKit.U(_s, 8) * (1f - ra)); }
         if (!show) return;
-        _req.Modulate = _reqFlash < 0 ? new Color(1, 1, 1, Math.Clamp(-_reqFlash / 0.4f, 0, 1)) : Colors.White;
         if (r.Active)
         {
             int secs = (int)Math.Ceiling(r.SecondsLeft);
@@ -179,11 +189,11 @@ public partial class TownHud
             _hint.Text = h.Length > 0 ? h : "";
         }
         if (_marker == null) return;
-        bool on = _hintShown.Length > 0 && (_hintRoad >= 0 || _hintPlot >= 0) && _fullA > 0.01f && !PaveMode && !ExtendMode;
+        bool on = _hintShown.Length > 0 && (_hintRoad >= 0 || _hintPlot >= 0) && _fullA > 0.01f && !PaveMode && !ExtendMode && LineKindNow == LineKind.TownHint;
         _markerOn = on;
         _markerA = on ? Math.Min(1f, _markerA + dt / 0.4f) : Math.Max(0f, _markerA - dt / 0.4f);
         _marker.Visible = _markerA > 0f;
-        if (_markerMat != null && _markerMat.AlbedoColor.A != 0.9f * _markerA) _markerMat.AlbedoColor = new Color(UiKit.Wheat, 0.9f * _markerA);
+        if (_markerMat != null && _markerMat.AlbedoColor.A != 0.6f * _markerA) _markerMat.AlbedoColor = new Color(UiKit.Wheat, 0.6f * _markerA);
         if (!on) return;
         Vector3 at;
         if (_hintRoad >= 0)
@@ -194,7 +204,8 @@ public partial class TownHud
         }
         else at = PlotCentre(t.Plan.Plots[_hintPlot]) + new Vector3(0, 0.4f, 0);
         // Radius in metres: just outside the plot's corners (the old torus was 2.2 times this and read as a disc).
-        float size = (_hintPlot >= 0 ? Math.Max(t.Plan.Plots[_hintPlot].W, t.Plan.Plots[_hintPlot].H) * 0.75f : 1.2f) * TownGround.Cell;
+        // L2 (the L1 fixer's note): half the plot's diagonal hugs its corners; 0.75 of its longer side was larger than needed.
+        float size = (_hintPlot >= 0 ? 0.55f * MathF.Sqrt(t.Plan.Plots[_hintPlot].W * t.Plan.Plots[_hintPlot].W + t.Plan.Plots[_hintPlot].H * t.Plan.Plots[_hintPlot].H) : 1.2f) * TownGround.Cell;
         float pulse = 1f + 0.03f * MathF.Sin((float)_drv.AnimTime * 2f);
         _marker.Position = at;
         _marker.Scale = new Vector3(size * pulse, 1f, size * pulse);

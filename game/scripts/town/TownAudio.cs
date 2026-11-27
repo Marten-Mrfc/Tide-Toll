@@ -54,6 +54,7 @@ public partial class TownAudio : Node
         _world = Player("World", "Effects", CoinDb, 3);
         _ui = Player("Ui", "Interface", CoinDb, 3);
         _bellP = Player("BellP", "Effects", CoinDb, 3);
+        _largeP = Player("Large", "Effects", CoinDb, 2);
         _steps = Player("Steps", "Effects", -16, 3);
         var riverStream = GD.Load<AudioStream>("res://assets/audio/ambience/water-river-loop.ogg");
         if (riverStream is AudioStreamOggVorbis ogg) ogg.Loop = true;
@@ -77,6 +78,37 @@ public partial class TownAudio : Node
 
     /// <summary>Round 5: a moment's cue by its id in town-sounds.json (a boon, a milestone, the charter drive).</summary>
     public bool Moment(string id) => Cue(id, _ui, ref UiSounds);
+    /// <summary>
+    /// Night 3 (message-system section 3): a large sound (a level, a gift, a request met, the charter) on its own
+    /// player, at least <see cref="LargeGap"/> s after the last one: two never cut each other. Waits in a short queue.
+    /// </summary>
+    public void Large(string id)
+    {
+        if (_largeN < _largeQ.Length) _largeQ[_largeN++] = id;
+    }
+    public const double LargeGap = 0.6;
+    public int LargeSounds;
+    /// <summary>The least time between two large sounds so far (tests; large while fewer than two played).</summary>
+    public double LeastLargeGap { get; private set; } = 999;
+    private readonly string[] _largeQ = new string[4];
+    private int _largeN;
+    private double _lastLarge = -10;
+    private AudioStreamPlayer _largeP = null!;
+
+    private void LargeFrame()
+    {
+        if (_largeN == 0 || _now - _lastLarge < LargeGap) return;
+        string id = _largeQ[0];
+        for (int i = 1; i < _largeN; i++) _largeQ[i - 1] = _largeQ[i];
+        _largeN--;
+        if (!Cue(id, _largeP, ref LargeSounds)) return;
+        if (id == "level-reached" || id == "gift-arrives") Levels++;
+        else if (id == "charter-granted") Charters++;
+        else if (id == "request-met") Requests++;
+        if (_lastLarge > -10) LeastLargeGap = Math.Min(LeastLargeGap, _now - _lastLarge);
+        _lastLarge = _now;
+    }
+
     public void UiHover() => Cue("ui-hover", _ui, ref UiSounds);
     public void UiPress() => Cue("ui-press", _ui, ref UiSounds);
     public void UiTab() => Cue("ui-tab", _ui, ref UiSounds);
@@ -166,16 +198,15 @@ public partial class TownAudio : Node
                 case TownEventKind.Purchase: if (e.Item is not (ShopItemKind.Pave or ShopItemKind.Extend)) Cue("upgrade-bought", _ui, ref Purchases); break;
                 case TownEventKind.CottageExtended: Cue("cottage-extended", _world, ref Extends); break;
                 case TownEventKind.RequestAsked: Cue("request-asked", _fx, ref Requests); break;
-                case TownEventKind.RequestMet: Cue("request-met", _bellP, ref Requests); break;
+                case TownEventKind.RequestMet: Large("request-met"); break;
                 case TownEventKind.RequestMissed: Cue("request-missed", _fx, ref Requests); break;
                 case TownEventKind.RoadPaved: Cue(e.Surface == Surface.Cobbles ? "road-paved-cobbles" : "road-paved-gravel", _world, ref Paves); break;
-                case TownEventKind.LevelReached: if (e.Level > 1) Cue("level-reached", _bellP, ref Levels); break;
-                case TownEventKind.BuildingOpened: Cue("gift-arrives", _bellP, ref Levels); break;
-                case TownEventKind.AchievementUnlocked: Cue("achievement", _fx, ref Achievements); break;
-                case TownEventKind.Charter: Cue("charter-granted", _bellP, ref Charters); break;
+                // Night 3: a level, a building opened, an achievement and the charter sound when their message
+                // appears (TownHud.Messages.cs), not when the event fires.
                 case TownEventKind.BellRung: Play(_bellP, _bell, 3, CoinDb + 2f, ref Bells); break;
             }
         }
+        LargeFrame();
         // The peal when the next age is rung in: the four long bells, one every 0.7 s.
         if (_peal >= 0 && _now >= _pealAt)
         {

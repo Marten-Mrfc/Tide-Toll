@@ -8,7 +8,7 @@
 #   tools/tour.sh --no-build        skip the C# build
 #   tools/tour.sh --notes-only      keep the pictures; write shots.json's shows/wrong again from game/tests/TourNotes.cs
 # Fails (exit 1) on any printed error or warning line (tools/godot-test.sh), a failed check, or no TOUR PASS line.
-# Log: build/tour/tour.log. Uses its own profile folder (user://tests/tour-pass/): the player's save and settings are
+# Log: build/tour/tour.log. Uses its own profile folder (user://tests/co-<checkout hash>/tour-pass/): the player's save and settings are
 # never touched. Set GODOT=/path/to/godot to use a Godot binary not on PATH.
 set -uo pipefail
 # The body is one block so bash reads it whole first: editing this file while it runs cannot break a run.

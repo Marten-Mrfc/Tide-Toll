@@ -121,7 +121,7 @@ public partial class TownSaver : Node, ISaveActions
     {
         Failures++;
         _clock = 0;
-        if (!_failNoted && _main.Hud != null) { _failNoted = true; _main.Hud.Note(note, strong: true); }
+        if (!_failNoted && _main.Hud != null) { _failNoted = true; _main.Hud.Trouble(note); }
         return false;
     }
 
@@ -182,7 +182,7 @@ public partial class TownSaver : Node, ISaveActions
     {
         if (!HasSave) return false;
         bool ok = TryContinue(out string note);
-        if (!ok && note != "") { _main.NewTown(); _main.Hud.Note(note, strong: true); }
+        if (!ok && note != "") { _main.NewTown(); _main.Hud.Trouble(note); }
         return ok;
     }
 

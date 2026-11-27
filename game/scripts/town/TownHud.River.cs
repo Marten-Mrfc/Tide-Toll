@@ -176,10 +176,10 @@ public partial class TownHud
             case TownEventKind.BoatArrived:
                 if (e.Value > 0)
                     for (int i = 0; i < _drv.Town.BoatCount; i++)
-                        if (_drv.Town.Boat(i).Id == e.Index) { string s = _drv.Town.BoatRequestText(i); if (s.Length > 0) Note(s + ".", true); }
+                        if (_drv.Town.Boat(i).Id == e.Index) { string s = _drv.Town.BoatRequestText(i); if (s.Length > 0) Log(NoteLog, s + "."); }
                 break;
             case TownEventKind.Seal:
-                Banner("The borough seal", "The town is a borough. The second age is complete.");
+                Large("The borough seal", "The town is a borough. The second age is complete.", PrioMoment, BannerLongStay, "");
                 _agePageIn = AgePageDelay;
                 break;
         }
@@ -214,7 +214,7 @@ public partial class TownHud
             _reqTintDirty = true;
         }
         float k = (float)Math.Clamp(v.PatienceMax > 0 ? v.Patience / v.PatienceMax : 0, 0, 1);
-        SetGoalBar(v.Want > 0 ? Math.Min(v.Loaded, v.Want) / (float)v.Want : 0, k, _reqDone, UiKit.MutedNumber);
+        SetGoalBar(v.Want > 0 ? Math.Min(v.Loaded, v.Want) / (float)v.Want : 0, k, _reqDone, UiKit.MutedNumber, v.Phase == BoatPhase.Moored);
         return true;
     }
 

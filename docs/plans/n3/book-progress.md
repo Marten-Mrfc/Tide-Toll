@@ -72,3 +72,15 @@ Review: `l3-review.md`. What was changed (all in the checkout `build/wt/n3-book`
 - u17 retaken (`build/n3/ui-audit/l3-fix/u17.png`): no purse over "Dunstead"; compass cut, navigation over the folio,
   left page without margin: unchanged.
 - ./check started 02:12 UTC.
+- ./check (started 02:12): sim-build, sim-test, game-build, smoke, town, perf, playthrough, river, layout, book,
+  settings, menu passed; game-motion FAILED on a shape check (not the CPU gate): at 60 fps "esc-during-question:
+  lettering jumps 0.200 of its range in one frame at frame 18 (bound 0.2)", at 120 fps "lettering speed jumps 0.38 of
+  its top speed at frame 16 (bound 0.35)"; 30 fps MOTION PASS. game-motion alone at 02:34: stopped on the CPU gate at
+  all three rates (8.50, 14.16, 9.43 ms single frames, load from other checkouts), before that case.
+  The lettering's curves were not touched in this round (they come from the carry code); the case was probably never
+  reached before tonight because every run stopped on the CPU gate first. Next: esc-during-question's lettering carry.
+- u20/u25 retakes: the ui-audit run was stopped by its 30-minute limit before u20 (tour under load). The clash card's
+  rule is checked by game-settings (the card covers no row it names): passed.
+- Left: age leaf as a real turn with the age's text on it (TownHud.River, messages builder), the page stage's framing
+  (compass, folio, navigation, left margin), esc-twice overshoot, the settings-open ghost ribbons, the page block at the
+  cover, the book stage's centring, text size at 1280, key list scroll snapping, item 4, item 7.

@@ -235,7 +235,12 @@ public partial class TownTest : TownTestBase
         }
         bool banner = false;
         foreach (var n in Main.Hud.BannerLog) if (n.StartsWith($"Level {level}:")) banner = true;
-        Check(banner, $"level {level}: a banner says what arrived");
+        // Night 3, L2: a level that opens a choice says its gift as a note (the choice, headed with the level, is the
+        // large message: a decision is never delayed by a banner).
+        bool choiceLevel = T.ChoiceOpen && T.Choice.Level == level;
+        if (choiceLevel) foreach (var n in Main.Hud.NoteLog) if (n.StartsWith($"Level {level}:")) banner = true;
+        Check(banner, $"level {level}: a {(choiceLevel ? "note" : "banner")} says what arrived");
+        if (choiceLevel) Check(Main.Hud.ChoiceCardText.StartsWith($"Level {level}:"), $"level {level}: the choice's heading names the level ('{Main.Hud.ChoiceCardText}')");
         // Round 4 (A18): while the banner shows, it never covers the gift it announces.
         for (int f = 0; f < 30 && level == T.Level; f++)
         {
@@ -285,9 +290,15 @@ public partial class TownTest : TownTestBase
             _hintChecks++;
             if (road >= 0 || plot >= 0)
             {
-                Check(Main.Hud.HintMarkerVisible, $"the hint '{h}' has a marker");
-                Check(Main.Hud.HintMarkerRoad == road && Main.Hud.HintMarkerPlot == plot, $"the marker points where the hint says (road {road}, plot {plot})");
-                _markerChecks++;
+                // Night 3, L2: the ring shows only while the line shows the town's hint (a refusal, a mode's text or a
+                // first-minute hint take the line first, message-system section 1).
+                if (Main.Hud.LineKindNow == TownHud.LineKind.TownHint)
+                {
+                    Check(Main.Hud.HintMarkerVisible, $"the hint '{h}' has a marker");
+                    Check(Main.Hud.HintMarkerRoad == road && Main.Hud.HintMarkerPlot == plot, $"the marker points where the hint says (road {road}, plot {plot})");
+                    _markerChecks++;
+                }
+                else Check(!Main.Hud.HintMarkerVisible || Main.Hud.HintMarkerAlpha < 1f, $"the ring shows while the line says '{Main.Hud.LineText}' ({Main.Hud.LineKindNow})");
             }
         }
         else Check(shown.Length > 0, $"a hint is given ('{h}') but the line is empty");
@@ -317,7 +328,8 @@ public partial class TownTest : TownTestBase
         Check(Main.Hud.HoverTipText.Contains("Extend this cottage"), $"the tip names the price ({Main.Hud.HoverTipText})");
         // Round 6: the price tip sits beside the pointer, clear of the cottage, and no coin number shows in the mode.
         Check(!Main.Hud.HoverTipRect.Intersects(Main.Hud.HoverCottageRect), $"the price tip {Main.Hud.HoverTipRect} lies over the cottage {Main.Hud.HoverCottageRect}");
-        Check(Main.Hud.FloatersVisible == 0, "a coin number shows while Extend points at a cottage");
+        // Night 3, L2: the numbers fade out over 0.15 s when the mode starts (was: gone in that frame).
+        await Until(() => Main.Hud.FloatersVisible == 0, 30, "no coin number shows while Extend points at a cottage");
         int room = T.CottageRoom(p);
         await Click(at);
         Check(T.Extensions(p) == 1 && T.CottageRoom(p) == room + 1, "clicking the cottage extended it");

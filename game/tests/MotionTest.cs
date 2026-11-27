@@ -186,6 +186,9 @@ public partial class MotionTest : TownTestBase
         await Frames(30);
         var pivot0 = Main.Rig.PivotLocal; float size0 = Main.Rig.Camera.Size;
 
+        // A working run of the message part alone (--messages-only: never used by ./check, which runs everything).
+        if (Array.IndexOf(OS.GetCmdlineUserArgs(), "--messages-only") >= 0) { await Messages(); Summary(); return; }
+
         // ---- the staged transitions, each from rest
         await Record(() => TestInput.Key(Godot.Key.Escape));
         Analyse("pause", Kind.Close);
@@ -261,6 +264,7 @@ public partial class MotionTest : TownTestBase
         await Impatient(pivot0, size0);
         await HudPages();
         await PagesAlign();
+        await Messages();
         Summary();
     }
 }

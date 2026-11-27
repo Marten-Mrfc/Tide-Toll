@@ -22,6 +22,7 @@ public partial class TownHud
 
     public Button BellButton => _bell;
     public Button NextAgeButton => _nextAge;
+    private readonly MessageFader _nextAgeF = new(LargeSeconds);
     /// <summary>The bell's whole sentence (its tooltip; tests): "Ringing: 7 s left, then rests 40 s".</summary>
     public string BellTipText => _bellTip;
     public Button AgePageMark => _agePageMark;
@@ -117,7 +118,7 @@ public partial class TownHud
 
     private void RingBell()
     {
-        if (!_drv.Town.RingBell()) Note(_drv.Town.Level < 2 ? "The bell comes at level 2." : $"The bell is resting: {Math.Ceiling(_drv.Town.BellWait)} s.");
+        if (!_drv.Town.RingBell()) Refuse(_drv.Town.Level < 2 ? "The bell comes at level 2." : $"The bell is resting: {Math.Ceiling(_drv.Town.BellWait)} s.");
     }
 
     private void TimersFrame()
@@ -146,7 +147,12 @@ public partial class TownHud
             float k = t.BellRinging ? (float)(ringLeft / Math.Max(1.0, t.BellDuration)) : (float)(1.0 - t.BellWait / Math.Max(1.0, t.BellRest));
             UiKit.SetBar(_bellBar, _bellFill, k);
         }
-        _nextAge.Visible = t.CanRingNextAge && !t.NextAgeRung && !AgePageOpen;
+        // Night 3, L2: the strip's button arrives and leaves by an eased fade (0.22 s), never in one frame.
+        _nextAgeF.Want(t.CanRingNextAge && !t.NextAgeRung && !AgePageOpen);
+        _nextAgeF.Step(_msgDt);
+        bool nav = _nextAgeF.Value > 0f;
+        if (_nextAge.Visible != nav) _nextAge.Visible = nav;
+        if (nav) _nextAge.Modulate = new Color(1, 1, 1, _nextAgeF.Value);
         // Nav: keys and the count (text only on change).
         int got = _achGot; // counted once a frame by BookFrame (the count reads every achievement's value)
         int nsig = HashCode.Combine(got, Settings.GameInput.Version, _achRiver);
