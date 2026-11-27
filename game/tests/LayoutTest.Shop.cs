@@ -17,6 +17,10 @@ public partial class LayoutTest
         var hud = Main.Hud;
         hud.ForceCanvas(new Vector2(1920, 1080), 1f);
         await Frames(4);
+        // --shop-repeats=N (a working switch, not used by ./check): the switch there and back N times (default once).
+        int repeats = 1;
+        foreach (var arg in OS.GetCmdlineUserArgs()) if (arg.StartsWith("--shop-repeats=")) repeats = int.Parse(arg.Substring(15));
+        for (int rep = 0; rep < repeats; rep++)
         foreach (bool toCompact in new[] { !hud.CompactShop, hud.CompactShop })
         {
             // The clock starts at a frame boundary just before the switch is asked for: the frame that begins the switch
@@ -54,13 +58,16 @@ public partial class LayoutTest
                 if (!hud.ShopSwitching && frames > 2) break;
             }
             float ms = (float)(tEnd - t0);
-            string what = $"switch to {(toCompact ? "compact" : "tall")}: {frames} frames over {ms:0} ms, {between} with a height between, heights [{string.Join(",", heights)}], overlaps {overlaps}, backwards {backwards}";
+            float hudMs = hud.LastSwitchSeconds * 1000f;
+            string what = $"switch to {(toCompact ? "compact" : "tall")}: {frames} frames over {ms:0} ms (test's clock), slide {hudMs:0.0} ms in {hud.LastSwitchFrames} frames (the shop's clock), {between} with a height between, heights [{string.Join(",", heights)}], overlaps {overlaps}, backwards {backwards}";
             GD.Print("LAYOUT shop " + what);
             Notes.Add(what);
             Check(hud.CompactShop == toCompact && hud.ShownItems.Count > 0, $"the shop switched ({what})");
-            // It lasts the slide's time (0.2 s, real time) and shows heights between on the way, at any frame rate.
-            // (the last frame of the switch may end it up to one frame's time early)
-            Check(ms + gap >= TownHud.RowSlide * 1000 && between >= 1 && backwards == 0, $"the switch eases over the slide's time ({what})");
+            // It lasts the slide's time (0.2 s) on the clock the slide runs on (the frames' own times the shop advanced it
+            // by, from the frame it began in to the frame it ended in), at most one frame longer, and shows heights between
+            // on the way, at any frame rate. Fix round: was the test's own sum of frame times read one frame out of step
+            // with the shop (the test resumes before the shop's frame), so it read 189 to 200 ms for the same slide.
+            Check(hudMs >= TownHud.RowSlide * 1000 - 0.01f && hudMs <= TownHud.RowSlide * 1000 + gap + 0.01f && between >= 1 && backwards == 0, $"the switch eases over the slide's time ({what})");
             Check(overlaps == 0, $"no row overlaps the next during the switch ({what})");
         }
         hud.CompactForce = null;

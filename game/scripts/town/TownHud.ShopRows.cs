@@ -33,6 +33,11 @@ public partial class TownHud
     public float ShopLimit => Zones.ShopMaxHeight;
     public float TallPitch => UiKit.U(_s, ShopRow.TallUnits) + UiKit.U(_s, 4);
     public bool ShopSwitching => _kT >= 0;
+    /// <summary>The last tall/compact switch measured on the clock it runs on (the frames' own times it advanced by, from
+    /// the frame it began in to the frame it ended in) and its frames (tests).</summary>
+    public float LastSwitchSeconds { get; private set; } = -1f;
+    public int LastSwitchFrames { get; private set; }
+    private int _kFrames;
     public float ShopTallness => _shopK;
     public const float RowFade = 0.2f, RowSlide = 0.2f, RowHold = 1.5f, RowClickCalm = 0.3f, PulseSeconds = 0.4f, PulseGap = 0.5f;
     private Panel _shop = null!;
@@ -200,16 +205,17 @@ public partial class TownHud
         if (compact != _compactShop)
         {
             _compactShop = compact;
-            _kFrom = _shopK; _kTo = compact ? 0 : 1; _kT = 0;
+            _kFrom = _shopK; _kTo = compact ? 0 : 1; _kT = 0; _kFrames = 0;
         }
         // Follow-up 3a: the switch eases over the rows' slide: heights, places, line 2 and the key caps.
         bool switching = _kT >= 0;
         if (switching)
         {
             _kT += dt;
+            _kFrames++;
             float u = Math.Clamp(_kT / RowSlide, 0, 1);
             _shopK = _kFrom + (_kTo - _kFrom) * BookMotion.Smoother(u);
-            if (u >= 1) { _shopK = _kTo; _kT = -1; }
+            if (u >= 1) { LastSwitchSeconds = _kT; LastSwitchFrames = _kFrames; _shopK = _kTo; _kT = -1; }
             foreach (var r in _rows) r.Blend(_shopK);
         }
         float rowH = MathF.Round(compactH + (tallH - compactH) * _shopK), rowGap = compactGap + (tallGap - compactGap) * _shopK;
