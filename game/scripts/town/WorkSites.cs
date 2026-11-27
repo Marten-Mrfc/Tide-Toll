@@ -207,6 +207,25 @@ public static class WorkSites
         return best;
     }
 
+    /// <summary>n5 fix round: how far a line stands off the lane's middle, cells (a third of a cell), so those walking
+    /// the same lane pass beside it instead of merging with it.</summary>
+    public const float LineEdgeCells = 1f / 3f;
+
+    /// <summary>
+    /// Where one waiting <paramref name="dist"/> cells back along a workplace's line really stands (map cells): the
+    /// lane point (<see cref="LinePoint"/>) moved to the right-hand edge of the lane as one walks toward the place. The
+    /// whole line is moved aside by one heading, the lane's at the line's front (<paramref name="step"/>, the gap between
+    /// two in line, back from the door), so the gaps stay exactly as along the lane. <paramref name="heading"/> is the
+    /// lane point's own (back toward the front of the line). The one source for the drawing and the tests.
+    /// </summary>
+    public static void LineStand(Town t, int workplace, int road, float dist, float step, out float x, out float y, out float heading)
+    {
+        LinePoint(t, workplace, road, dist, out x, out y, out heading);
+        LinePoint(t, workplace, road, step, out _, out _, out float h);
+        x -= MathF.Sin(h) * LineEdgeCells;
+        y += MathF.Cos(h) * LineEdgeCells;
+    }
+
     /// <summary>
     /// A point <paramref name="dist"/> cells back along a workplace's line (from its door node, along
     /// <paramref name="road"/>, and on along the straightest open road at its far end when the line is longer than the

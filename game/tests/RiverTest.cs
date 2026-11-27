@@ -150,7 +150,8 @@ public partial class RiverTest : TownTestBase
                 // n5 (work you can watch): someone waiting at a first-age workplace (the well, a field, the mill) stands in
                 // its line along the lane, at its place in the queue, not on the simulation's queue spot (the equal check
                 // for the new look; game-work checks the line itself).
-                WorkSites.LinePoint(T, v.Workplace, Main.Villagers.LaneOf(v.Workplace), TownVillagers.LineStepCells(T.LoadLevel) * (1 + v.QueuePosition), out float lx, out float ly, out _);
+                float gap = TownVillagers.LineStepCells(T.LoadLevel);
+                WorkSites.LineStand(T, v.Workplace, Main.Villagers.LaneOf(v.Workplace), gap * (1 + v.QueuePosition), gap, out float lx, out float ly, out _);
                 at = new Vector2(lx, ly);
                 Check(Main.Villagers.InLine(i), $"villager {i} waiting at workplace {v.Workplace} drawn in its line");
             }
