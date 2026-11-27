@@ -214,3 +214,80 @@ So the retune stopped there, as the rule says. The constant stays in the code at
 - game-motion: `MOTION RATES PASS` (60 fps: `alloc-max=5672B cpu-max=3.10ms`; 30: 2.66 ms; 120: 3.30 ms).
 - game-work: `WORK RATES PASS` (60 fps: pairs=622, gap 1.98-2.30 m). game-work-places: `WORK PLACES PASS` at 60, 30 and 120 fps.
 - game-ink: `ASSET AUDIT PASS play1080=46.0 play640=20.4 walker=1.10 ...`.
+
+### Third follow-up: what ships, plainly
+
+**On:**
+- the mill's blind-spot fix, in the first age only (`TownRules.MillWaitCountsOnTheWay = true`);
+- names, the two counters, the views, the save, the pick, the card, the bodies.
+
+**Off:**
+- the mill's fix in the second age (`MillWaitCountsOnTheWayInSecondAge = false`);
+- the pasture and weaver fix (`SiteWaitCountsOnTheWay = false`);
+- the leaning (`LeanBonus = 0`; the card does not show the leaning);
+- the second-age level scale (`TownRulesRiver.LevelMinutesScale = 1`).
+
+**Herding measured for exactly this** (`people --seeds 1-10 --river`), first age, payback / cheapest bot:
+- before 26 % / 17 %, after 22 % / 16 %;
+- charter 29.70 to 29.30 min (payback), 36.75 to 36.71 min (cheapest);
+- purchases 185.8 to 185.9, 205.0 to 205.1.
+
+**Is the second age as before?**
+- **The second age's rules are.** With every switch off, the `people` figures are byte-identical to the "before" file, both ages, every seed and bot.
+- A second-age town saved by the old code, played on for 10 minutes by the payback bot, gives the same save as with every switch off: SHA-256 `C2A8E835...AAB8285`. Pinned in `TheSecondAgePlaysAsBeforeFromASavedTown`. With the mill's fix on in the second age it differs.
+- **The second-age figures of a whole run do not stay the same.** The first age now ends in a different town (another charter minute, other purchases), and the second age plays on from there. With the shipped switches, mean seal and coin a minute per bot:
+
+  | | before | shipped |
+  | --- | --- | --- |
+  | payback: seal / coin a minute | 25.93 min / 50,090 | 25.99 min / 46,238 |
+  | cheapest: seal / coin a minute | 26.55 min / 19,980 | 27.20 min / 20,798 |
+  | herding, second age (payback / cheapest) | 55 % / 46 % | 51 % / 45 % |
+
+**`sim.tests` with exactly this: 4 fail, 265 pass of 269** (one test is new). Per the rule, stopped here. All four are `TownRiverPacingTests`, each one run just past its band's edge:
+- `TheSecondAgeTakes20To35MinutesForTheBuyers`: seed 6, random affordable bot, 19.6 minutes (floor 20; 0.4 short).
+- `BoatsPayTollsBeforeTheSeal`: seed 6, random affordable bot, 2 tolls in 3.4 minutes (drawbridge-to-seal floor 3.5 minutes; 0.1 short).
+- `TheLandingEarnsAThirdOfAllCoinByTheMiddleOfTheAge`: seed 8, saver bot, landing share 0.33 (floor 1/3; under 0.01 short).
+- `NeverMoreThan60SecondsWithNothingAffordable`: seed 10, best payback first, 61 s with nothing affordable from minute 5.2 (limit 60; 1 s over).
+
+Any change to the first age moves which single second-age runs sit on these edges.
+
+**For the builder who retunes the second age** (everything measured here):
+- Which tests tipped, on which seed and bot, and by how much, under every setting tried:
+  - leaning 0.10 with both fixes: seed 7 saver charter 24.7 min, seed 10 payback 3.4 min from drawbridge to seal;
+  - setting (i): seed 8 random 19.4 min, and the toll steps on the same run;
+  - (ii): seed 2 payback 3.4 min, seed 10 payback 67 s with nothing affordable;
+  - (iii): seed 7 saver 24.7 min, seed 7 cheapest 3.4 min;
+  - (i) with the level scale 1.0023: seeds 6 and 8 random 19.9 and 19.4 min, seed 6 random 3.4 min;
+  - as shipped: the four above.
+- The levels cost minutes of the town's best coin a minute (`LevelRate`), so a town that earns less seals as soon. The random bot is the one most often at the 20-minute floor.
+- The switches above turn the second age's spreading back on: second-age herding 55 % to 41 % (payback) with both fixes.
+- `people --millfix 0|1|2 --sitefix 0|1 --lean x` measures any setting; `people --replay save --minutes n` compares rule sets from one saved town.
+
+**The shop's slide check** (`game/tests/LayoutTest.Shop.cs`):
+- Old measure: wall-clock milliseconds (`Time.GetTicksMsec`) from the frame before the switch to the last switching frame, plus the longest wall-clock gap between frames.
+- New measure: the sum of the frames' own times (`GetProcessDeltaTime`, the clock the slide runs on) over the same frames, plus the longest frame time.
+- Bound unchanged: the slide's 0.2 s, less up to one frame.
+- Why: on a busy machine the wall clock read 186 to 187 ms for a slide that runs 0.2 s of frame time.
+
+`claude/prototype-1` merged again (one commit of documents).
+
+**Check steps as shipped** (heavy steps under the lock, taken and given back per step):
+
+- simulation tests: **Failed 4, Passed 265** (the four listed above).
+- game-build: 0 errors.
+- game-smoke: `SMOKE PASS renderer=mobile game_s=30.0 coin=4 trips=1 uploads=74`.
+- game-town: `TOWN PASS faint=0.40 maxstep=0.021 worn=0.95 ...`.
+- game-save: `SAVE PASS autosave-clock=0.64/0.64s level 2 paved 1 villagers 4`.
+- game-layout, three runs, all `LAYOUT PASS ... failures=0`, the slide check passing. Slide times (to compact / to tall): 194 / 199 ms, 196 / 196 ms, 192 / 196 ms of frame time.
+- game-playthrough: `PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102`.
+- game-people: `PEOPLE RATES PASS`. At 60 fps: `picked=21/21 sidefails=0 follow=1.15m/0.00s flicker=0 villagerbytes=1 pickbytes=0`.
+- game-perf: `PERF PASS`.
+- game-river: `RIVER PASS ...`.
+- game-motion:
+  - First run: 60 fps `FAIL: choice: frame 820 took 7.81 ms of CPU (gate 6)` (the processor-time gate); 30 fps passed (`alloc-max=5672B cpu-max=1.52ms`); 120 fps passed (`cpu-max=4.36ms`).
+  - Rerun under the lock: `MOTION RATES PASS`, at 60 / 30 / 120 fps `alloc-max=5672B`, `cpu-max` 1.88 / 2.02 / 2.06 ms.
+- game-work: `WORK RATES PASS`.
+- game-work-places: `WORK PLACES PASS` at 60, 30 and 120 fps.
+- game-ink: `ASSET AUDIT PASS play1080=46.0 play640=20.4 walker=1.10 ...`.
+
+During the third layout run the lock folder was removed by someone else while I held it. My give-back found it gone ("rmdir: failed to remove ... No such file or directory"). The run itself finished normally.
