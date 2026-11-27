@@ -103,6 +103,16 @@ public partial class AssetAudit
             else await ShootAt(nm, river, mid, 26f, 1f);
         }
 
+        // Night 3, track RV: the whole river town at the seal (the play zoom over the landing's reach of river), and
+        // the ferry close in with its raft at a bank.
+        await Tide(true);
+        await ShootAt("town-view-river", river + " (the whole second-age town at the seal)", landing, 70f);
+        if (T.CrossingExists(RiverLinkKind.Ferry))
+        {
+            var fl = rp.Links[rp.LinkOf(RiverLinkKind.Ferry)];
+            await ShootAt("town-view-ferry", river, Cells(fl.Px[0], fl.Py[0]), 40f);
+        }
+
         // The book.
         await BookShots();
     }

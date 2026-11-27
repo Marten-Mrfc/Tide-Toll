@@ -242,14 +242,15 @@ PIVOT_Y = 4.1
 def crane_base():
     m = glb.Mesh()
     # cross-shaped sill on four stones, the post and four braces
-    for x, z in ((-1.3, 0), (1.3, 0), (0, -1.3), (0, 1.3)):
-        m.add_box((x, 0, z), (0.5, 0.2, 0.5), "Concrete")
-    m.add_box((0, 0.2, 0), (3.0, 0.26, 0.3), WOOD)
-    m.add_box((0, 0.2, 0), (0.3, 0.26, 3.0), WOOD)
-    m.add_box((0, 0.46, 0), (0.42, PIVOT_Y - 0.46, 0.42), WOOD)                         # post
+    # round n3 (track RV): a Concrete base 3 x 3 m, a stouter post and braces, a Thatch rope coil, a Brick counterweight
+    m.add_box((0, 0, 0), (3.0, 0.2, 3.0), "Concrete", top="Concrete")
+    m.add_box((0, 0.2, 0), (3.0, 0.26, 0.36), WOOD)
+    m.add_box((0, 0.2, 0), (0.36, 0.26, 3.0), WOOD)
+    m.add_box((0, 0.46, 0), (0.56, PIVOT_Y - 0.46, 0.56), WOOD)                         # post
+    m.add_frustum((1.0, 0.2, 1.0), 0.45, 0.38, 0.3, "Reed and thatch", segments=7)      # rope coil
     m.add_cylinder((0, PIVOT_Y, 0), 0.3, 0.14, "Packed earth", segments=6)              # bearing ring
     for x, z in ((1.3, 0), (-1.3, 0), (0, 1.3), (0, -1.3)):
-        beam(m, (x, 0.42, z), (x * 0.12, 2.3, z * 0.12), 0.2, 0.2, WOOD, ends=False)
+        beam(m, (x, 0.42, z), (x * 0.12, 2.3, z * 0.12), 0.28, 0.28, WOOD, ends=False)
     # treadwheel west of the post: diameter 2.6 on an axle along X, rims of 8 beams, 8 treads, crossed spokes
     wx0, wx1, wy, R = -2.2, -1.0, 1.55, 1.3
     pts = [(math.cos(2 * math.pi * (i + 0.5) / 8), math.sin(2 * math.pi * (i + 0.5) / 8)) for i in range(8)]
@@ -276,12 +277,18 @@ def crane_jib():
     """Jib about the pivot (node origin): arm along +Z, brace to the post, rope and a wool bale at the tip."""
     m = glb.Mesh()
     m.add_box((0, 0.0, -0.3), (0.34, 0.3, 0.9), WOOD, bottom=WOOD)                      # head block on the post
-    beam(m, (0, 0.2, -0.6), (0, 0.55, 3.2), 0.24, 0.24, WOOD)                           # arm
-    beam(m, (0, -1.3, 0.2), (0, 0.38, 1.9), 0.18, 0.18, WOOD)                           # brace
-    m.add_box((0, 0.3, 3.15), (0.3, 0.24, 0.3), "Packed earth", bottom="Packed earth")   # sheave block
-    tube(m, (0, 0.3, 3.15), (0, -2.4, 3.15), 0.05, "Reed and thatch", n=4, ends=False)   # rope down
-    m.add_box((0, -3.0, 3.15), (0.7, 0.6, 0.6), "Paper", bottom="Paper")                 # wool bale
-    m.add_box((0, -2.75, 3.15), (0.74, 0.1, 0.64), PLANK, bottom=PLANK)                  # its cord
+    beam(m, (0, 0.2, -1.3), (0, 0.6, 3.2), 0.36, 0.36, WOOD)                            # arm, 0.36 m
+    beam(m, (0, -1.3, 0.2), (0, 0.42, 1.9), 0.26, 0.26, WOOD)                           # brace
+    m.add_box((0, -0.25, -1.45), (0.8, 0.7, 0.7), "Brick", bottom="Brick")               # counterweight box
+    m.add_box((0, 0.45, -1.45), (0.84, 0.1, 0.74), "Soot brick", bottom="Soot brick")
+    m.add_box((0, 0.3, 3.15), (0.4, 0.34, 0.4), "Soot brick", bottom="Soot brick")       # sheave block
+    tube(m, (0, 0.3, 3.15), (0, -2.0, 3.15), 0.08, "Reed and thatch", n=4, ends=False)   # rope down
+    m.add_box((0, -2.15, 3.15), (0.3, 0.18, 0.3), "Ink", bottom="Ink")                  # hook block
+    # a tied sack on the hook: Limewash body, a Mud band, a gathered neck
+    m.add_frustum((0, -3.2, 3.15), 0.4, 0.46, 0.55, "Limewash", segments=6)
+    m.add_frustum((0, -2.65, 3.15), 0.46, 0.2, 0.3, "Limewash", segments=6)
+    m.add_cylinder((0, -2.97, 3.15), 0.47, 0.12, "Mud", segments=6, cap_top=False, cap_bottom=False)
+    m.add_cylinder((0, -2.36, 3.15), 0.16, 0.12, "Soot brick", segments=5)
     return m
 
 
@@ -334,25 +341,39 @@ def seal_stone():
 
 # ------------------------------------------------------------------ tide post
 def tide_post():
+    """Round n3 (track RV), after the review: a stubby gauge that reads from 70 m. 3.2 m above the mean water, 0.7 m
+    across, Brick and Limewash bands 0.5 m each with a Brick band at the top, a Cast-iron green cap, standing on a
+    Concrete (stone) plinth 1.5 m square. The pointer (node "Pointer", a Thatch flag 0.9 m wide on the river side) is
+    separate: the game slides it up and down the post with the tide (RiverLayer), so the post shows the water's level."""
     rng = random.Random(SEED + 1)
     m = glb.Mesh()
-    stone(m, rng, (0.1, -1.25, 0.05), 0.5, 0.25, n=6)                                    # footing on the bed
-    stone(m, rng, (-0.3, -1.25, -0.25), 0.35, 0.18, n=5)
-    y0, y1 = -1.2, 2.6
-    # painted bands every 0.5 m: Limewash and Soot brick, alternating
-    y = y0
-    i = 0
-    while y < 2.2 - 1e-6:
-        c = "Limewash" if i % 2 else "Soot brick"
-        m.add_box((0, y, 0), (0.3, 0.5, 0.3), c, bottom=False if i else c)
-        y += 0.5
-        i += 1
-    m.add_box((0, 2.2, 0), (0.3, y1 - 2.2 - 0.18, 0.3), "Packed earth", bottom=False)     # plain oak above the marks
-    m.add_frustum((0, y1 - 0.18, 0), 0.24, 0.08, 0.18, "Packed earth", segments=4, cap_bottom=False)   # cut point
-    for yy in (-1.0, 0.0, 1.0, 2.0):                                                      # collars at whole metres
-        m.add_box((0, yy - 0.05, 0), (0.42, 0.1, 0.42), WOOD, bottom=WOOD)
-    # a mooring ring on the south face, half a metre above the mean level
-    tube(m, (-0.14, 0.62, 0.2), (0.14, 0.62, 0.2), 0.08, "Cast-iron green", n=4)
+    stone(m, rng, (0.0, -0.9, 0.0), 0.95, 0.4, n=7)                                      # footing
+    m.add_box((0, -0.5, 0), (1.5, 0.5, 1.5), "Concrete", top="Concrete", bottom=False)      # stone plinth
+    m.add_box((0, 0.0, 0), (1.15, 0.14, 1.15), "Concrete", top="Paper", bottom=False)       # plinth's top step
+    y0, y1 = 0.14, 3.2
+    bands = int(round((y1 - y0) / 0.5))
+    h = (y1 - y0) / bands
+    for i in range(bands):                                    # Brick at the top and the bottom (bands is odd or not)
+        c = "Brick" if (bands - 1 - i) % 2 == 0 else "Limewash"
+        m.add_box((0, y0 + i * h, 0), (0.7, h, 0.7), c, bottom=False)
+    for i in range(1, bands):                                                             # collars at the marks
+        m.add_box((0, y0 + i * h - 0.04, 0), (0.8, 0.08, 0.8), "Soot brick", bottom="Soot brick")
+    m.add_box((0, y1, 0), (0.92, 0.14, 0.92), "Cast-iron green", bottom="Cast-iron green")   # cap
+    m.add_frustum((0, y1 + 0.14, 0), 0.6, 0.12, 0.5, "Cast-iron green", segments=4, cap_bottom=False, yaw=math.pi / 4)
+    return m
+
+
+def tide_pointer():
+    """The tide pointer: a Thatch flag 0.9 m wide on the river side (-Z), on a collar round the post, origin at its
+    middle; a Soot brick edge so the ink finds it against the Limewash bands."""
+    m = glb.Mesh()
+    m.add_box((0, -0.14, 0), (0.86, 0.28, 0.86), "Soot brick", bottom="Soot brick")         # collar
+    m.add_box((0, -0.22, -0.9), (0.9, 0.44, 0.9), "Reed and thatch", top="Reed and thatch", bottom="Reed and thatch")
+    m.add_poly([(-0.45, 0.22, -1.35), (0.45, 0.22, -1.35), (0, 0.22, -1.85)], "Reed and thatch")   # the point
+    m.add_poly([(-0.45, -0.22, -1.35), (0.45, -0.22, -1.35), (0, -0.22, -1.85)], "Reed and thatch", facing=(0, -1, 0))
+    for a, b in (((-0.45, -1.35), (0, -1.85)), ((0, -1.85), (0.45, -1.35))):
+        q = [(a[0], -0.22, a[1]), (b[0], -0.22, b[1]), (b[0], 0.22, b[1]), (a[0], 0.22, a[1])]
+        m._face(q, "Reed and thatch", (a[0] + b[0], 0, -1))
     return m
 
 
@@ -361,10 +382,10 @@ BUILDS = [
     ("sheep", [("Body", sheep_body()), ("Head", sheep_head(), None, NECK)], 150,
      "Far bank: sheep scattered in the pasture (nodes Body and Head, Head dips about its local X at the neck)"),
     ("weaver-cottage", weaver_cottage(), 560, "Near bank: weaver's cottage (Wool to Cloth; loom in the open lean-to)"),
-    ("crane", [("Base", crane_base()), ("Jib", crane_jib(), None, (0.0, PIVOT_Y, 0.0))], 500,
+    ("crane", [("Base", crane_base()), ("Jib", crane_jib(), None, (0.0, PIVOT_Y, 0.0))], 600,
      "Landing: treadwheel crane upgrade (nodes Base and Jib, Jib turns about its local Y at the post top)"),
     ("seal-stone", seal_stone(), 600, "Town green: borough seal stone, the seal in River blue (ends the second age)"),
-    ("tide-post", tide_post(), 200, "River: tide post in the shallows (painted level marks, water plane shows the tide)"),
+    ("tide-post", [("Post", tide_post()), ("Pointer", tide_pointer(), None, (0.0, 1.5, 0.0))], 250, "River: tide post at the landing, a stubby 3.2 m gauge, Brick and Limewash bands on a stone plinth, a Thatch flag pointer (node Pointer) the game slides with the tide"),
 ]
 
 if __name__ == "__main__":

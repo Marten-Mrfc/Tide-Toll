@@ -64,6 +64,8 @@ public partial class RiverLayer : Node3D
         _plan = null;
         _sheep.Clear(); _sheepHeads.Clear();
         _raft = _lift = _tidePost = _seal = null;
+        _dbBeam = _dbChains = _dbSignal = null;
+        _tidePointer = _crane = _craneJib = null;
         _wasSeal = _drv.Town.HasSeal;
         _sealT = 2f;
         _main.Ground?.Material.SetShaderParameter("tide_drop", 0f);
@@ -85,11 +87,20 @@ public partial class RiverLayer : Node3D
         double cx = rp.CourseX[row];
         float half = (float)_drv.Town.Plan.Map.RiverHalfW;
         float side = landing.X + landing.W / 2f < cx ? -1f : 1f;
-        _tidePost = Fit(ModelLib.Pick("tide-post", "fence-post"), 1.0f, 1.0f, 0f, 0.6f);
+        _tidePost = MakeTidePost();
         _tidePost.Name = "TidePost";
-        _tidePost.Position = new Vector3((float)(cx + side * (half - 0.6f)) * Cell, 0, (landing.Y - 0.6f) * Cell);
+        // Round n3 (RV), after the review: a stubby 3.2 m gauge on the bank's edge at the landing's upstream end (in the
+        // landing's pictures, never in a berth: boats lie in the water), its pointer turned toward the river; the crane at
+        // the other end on the bank.
+        float postZ = ClearOfBerths(rp, landing, out float craneZ);
+        _tidePost.Position = new Vector3((float)(cx + side * (half + 0.35f)) * Cell, 0, postZ * Cell);
+        _tidePost.Rotation = new Vector3(0, side * MathF.PI / 2f, 0);
         _tidePost.Visible = false;
         AddChild(_tidePost);
+        _craneSide = side;
+        MakeCrane(cx, half, side, craneZ);
+        // Round n3 (RV): reeds and stones along both banks.
+        AddChild(RiverBanks.Build(_drv.Town, rp));
     }
 
     /// <summary>A model scaled uniformly to fit w x d metres (its own x and z), turned by yaw, under a fresh node.</summary>
@@ -240,12 +251,20 @@ public partial class RiverLayer : Node3D
             case RiverLinkKind.Ford:
             {
                 string m = ModelLib.Pick("ford-stones", "fence-post");
+                // Round n3 (RV): a row of flat stepping stones one every 2 m, bowed gently downstream, so the ford reads
+                // as a line to walk across.
                 float len = (b - a).Length();
-                int k = Math.Max(2, (int)(len / 2.6f));
+                // After the review: larger stones (1.6 x 1.3 m) one every 1.6 m so they touch to the eye, and a trodden
+                // way on each bank running into the first and last stone (worn into the ground: TownGround.Lanes.cs).
+                int k = Math.Max(3, (int)MathF.Round(len / 1.6f));
+                var dir = (b - a) / Math.Max(0.01f, len);
+                var across = new Vector3(-dir.Z, 0, dir.X);
+                float yaw = MathF.Atan2(dir.X, dir.Z);
                 for (int i = 0; i <= k; i++)
                 {
-                    var st = Fit(m, 2.4f, 2.4f, i * 1.3f, 1f);
-                    st.Position = a.Lerp(b, i / (float)k);
+                    float u = i / (float)k;
+                    var st = Fit(m, 2.2f, 2.2f, yaw + 0.25f * MathF.Sin(i * 2.3f), 1f);
+                    st.Position = a.Lerp(b, u) + across * (MathF.Sin(u * MathF.PI) * 0.9f + 0.15f * MathF.Sin(i * 3.7f));
                     root.AddChild(st);
                 }
                 break;
@@ -253,39 +272,52 @@ public partial class RiverLayer : Node3D
             case RiverLinkKind.Ferry:
             {
                 string post = ModelLib.Pick("ferry-post", "fence-post");
-                var pa = Fit(post, 1.4f, 1.4f, 0f, 1f); pa.Position = a + (a - b).Normalized() * 0.8f; root.AddChild(pa);
-                var pb = Fit(post, 1.4f, 1.4f, MathF.PI, 1f); pb.Position = b + (b - a).Normalized() * 0.8f; root.AddChild(pb);
-                root.AddChild(Stretch(ModelLib.Pick("ferry-rope", "fence-wattle"), pa.Position, pb.Position, 0.25f, 1.6f));
-                _raft = Fit(ModelLib.Pick("ferry-raft", "rowboat"), 3.6f, 3.6f, 0f, 1f);
+                // Round n3 (RV): the posts at their own size (4.5 m, a painted cap and a flag), facing the river; the rope a
+                // dark line sagging between them (its sag is in metres: Stretch scales only its length).
+                var fd = (b - a).Normalized();
+                float fyaw = MathF.Atan2(-fd.X, -fd.Z);   // model -Z (the river side) toward the far bank
+                // After the review: the posts stand 1.5 m further up the banks, so a raft at rest is not under its post.
+                var pa = Fit(post, 2.4f, 2.4f, fyaw, 1f); pa.Position = a - fd * 2.3f; root.AddChild(pa);
+                var pb = Fit(post, 2.4f, 2.4f, fyaw + MathF.PI, 1f); pb.Position = b + fd * 2.3f; root.AddChild(pb);
+                root.AddChild(Stretch(ModelLib.Pick("ferry-rope", "fence-wattle"), pa.Position, pb.Position, 0.16f, 2.1f));
+                _raft = Fit(ModelLib.Pick("ferry-raft", "rowboat"), 3.9f, 5.6f, 0f, 1f);
                 _raft.Name = "Raft";
+                // The ferryman stands at the raft's back rail with his pole.
+                if (ModelLib.Has("villager"))
+                {
+                    var man = ModelLib.Instance("villager", "Ferryman");
+                    float vs = 1.1f * 1.0f / Math.Max(0.01f, _raft.GetNode<Node3D>("Body").Scale.X);
+                    man.Scale = Vector3.One * vs * 0.95f;
+                    man.Position = new Vector3(-0.9f, 0.35f, 1.6f);
+                    _raft.GetNode<Node3D>("Body").AddChild(man);
+                }
                 AddChild(_raft);
                 break;
             }
             case RiverLinkKind.Footbridge:
             {
+                // Round n3 (RV): the ends turn to face along the bridge (their ramp runs up from the bank to the deck).
                 string end = ModelLib.Pick("footbridge-end", "fence-post");
-                var ea = Fit(end, 2.4f, 2.4f, 0f, 1f); ea.Position = a; root.AddChild(ea);
-                var eb = Fit(end, 2.4f, 2.4f, MathF.PI, 1f); eb.Position = b; root.AddChild(eb);
-                root.AddChild(Stretch(ModelLib.Pick("footbridge-span", "fence-wattle"), a, b, 2.2f));
+                var fd = (b - a).Normalized();
+                float fyaw = MathF.Atan2(fd.X, fd.Z);
+                var ea = Fit(end, 2.84f, 2.84f, fyaw + MathF.PI, 1f); ea.Position = a - fd * 1.0f; root.AddChild(ea);
+                var eb = Fit(end, 2.84f, 2.84f, fyaw, 1f); eb.Position = b + fd * 1.0f; root.AddChild(eb);
+                root.AddChild(Stretch(ModelLib.Pick("footbridge-span", "fence-wattle"), a, b, 2.6f));
                 break;
             }
             case RiverLinkKind.Drawbridge:
             {
                 string end = ModelLib.Pick("drawbridge-end", "fence-post");
-                var ea = Fit(end, 3f, 3f, 0f, 1f); ea.Position = a; root.AddChild(ea);
-                var eb = Fit(end, 3f, 3f, MathF.PI, 1f); eb.Position = b; root.AddChild(eb);
                 var mid = a.Lerp(b, 0.5f);
+                var dd = (b - a).Normalized();
+                float s0 = Math.Clamp((mid - a).Length() / DbLeaf, 0.6f, 1.6f);
+                float dyaw = MathF.Atan2(-dd.X, -dd.Z);   // the end's ramp rises toward its -Z: toward the river
+                // Round n3 (RV): the near ramp stands behind the pier (which reaches 2 m onto the bank), turned to the bridge.
+                var ea = Fit(end, 4.6f, 4.6f, dyaw, 1f); ea.Position = a - dd * (2f * s0 + 1.1f); root.AddChild(ea);
+                var eb = Fit(end, 4.6f, 4.6f, dyaw + MathF.PI, 1f); eb.Position = b; root.AddChild(eb);
                 // The far half is fixed; the near half is the leaf, hinged at the near bank, lifted by the winch.
-                root.AddChild(Stretch(ModelLib.Pick("drawbridge-span", "footbridge-span"), mid, b, 3f));
-                _liftLen = (mid - a).Length();
-                var hinge = new Node3D { Name = "Hinge", Position = a };
-                var dir = (mid - a).Normalized();
-                hinge.Rotation = new Vector3(0, MathF.Atan2(-dir.Z, dir.X), 0); // local +X toward the far bank
-                _lift = new Node3D { Name = "Leaf" };
-                hinge.AddChild(_lift);
-                var leaf = Stretch(ModelLib.Pick("drawbridge-lift", "footbridge-span"), Vector3.Zero, new Vector3(_liftLen, 0, 0), 3f);
-                _lift.AddChild(leaf);
-                root.AddChild(hinge);
+                root.AddChild(Stretch(ModelLib.Pick("drawbridge-span", "footbridge-span"), mid, b, 3.6f));
+                MakeDrawbridge(root, a, mid);
                 var hut = Fit(ModelLib.Pick("keeper-hut", "cottage-01"), 3.2f, 3.2f, 0f, 1f);
                 hut.Position = a + new Vector3(0, 0, -4.5f) + (a - b).Normalized() * 3f;
                 root.AddChild(hut);
@@ -388,13 +420,14 @@ public partial class RiverLayer : Node3D
         if (_lift != null)
         {
             LiftShown = (float)t.DrawbridgeAngle;
-            _lift.Rotation = new Vector3(0, 0, LiftShown);
+            DrawbridgePose(LiftShown);
         }
         // The tide: the water's edge on the banks, eased a little so a load or a fast-forward does not jump.
         float drop = (float)(1.0 - t.TideLevel) * TideDropMetres;
         TideDropShown = instant ? drop : Mathf.MoveToward(TideDropShown, drop, dt * 6f);
         _main.Ground.Material.SetShaderParameter(TideDropS, TideDropShown);
         if (_tidePost != null) _tidePost.Visible = t.RiverPlotGiven(0);
+        LandingFrame(t, TideDropShown);
         // Sheep graze: heads dip and rise, each at its own pace.
         double at2 = _drv.AnimTime;
         for (int i = 0; i < _sheepHeads.Count; i++)
