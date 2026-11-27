@@ -19,7 +19,8 @@ namespace TideToll.Game;
 /// </summary>
 public partial class TownVillagers : Node3D
 {
-    public const int Capacity = 96;
+    /// <summary>n7: up to 200 villagers drawn (was 96; the second age can pass it).</summary>
+    public const int Capacity = 200;
     public const float Cell = TownGround.Cell;
     public const float SnapCells = 6f;
     public float WalkerScale = 1f;
@@ -112,6 +113,7 @@ public partial class TownVillagers : Node3D
         AddChild(_frames);
         AddChild(_carts);
         InitProps();
+        InitRings();
         for (int w = 0; w < _lane.Length; w++) _lane[w] = -1;
         drv.Replaced += Reset;
     }
@@ -160,6 +162,7 @@ public partial class TownVillagers : Node3D
     {
         Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); Array.Clear(_seenPose); Array.Clear(_inLine);
         Array.Clear(_fly); Array.Clear(_take); Array.Clear(_tip); Array.Fill(_lane, -1); _lastTick = -1;
+        HoverId = -1; SelectedId = -1; _hoverA = 0f; _selA = 0f;
     }
 
     /// <summary>Catch-up rate of a drawn villager, cells per second of frame time (delta, not frame count); beyond SnapCells it snaps.</summary>
@@ -198,7 +201,7 @@ public partial class TownVillagers : Node3D
             Transitions(t, i, v, fresh);
             // n5: those who wait stand in a line along the lane, workers at their work spots (WorkSites); drawing only.
             float face = HeadingYaw(v.Heading);
-            StandTarget(t, i, v, dt, ref tx, ref ty, ref face);
+            _stood[i] = StandTarget(t, i, v, dt, ref tx, ref ty, ref face);
             if (fresh) { _x[i] = tx; _y[i] = ty; _yaw[i] = face; }
             float dx = tx - _x[i], dy = ty - _y[i], d = MathF.Sqrt(dx * dx + dy * dy);
             if (d > SnapCells) { _x[i] = tx; _y[i] = ty; d = 0; }
@@ -215,7 +218,7 @@ public partial class TownVillagers : Node3D
             // Night 3: a walker leans into its step; standing, it straightens up (eased, so nothing snaps).
             _lean[i] += ((moving ? 1f : 0f) - _lean[i]) * Math.Min(1f, dt * 6f);
         }
-        Spread(t, n, dt);
+        if (OldSpread) SpreadRound6(t, n, dt); else Spread(t, n, dt);
         for (int i = 0; i < n; i++)
         {
             var v = t.Villager(i);
@@ -249,6 +252,7 @@ public partial class TownVillagers : Node3D
         int loads = 0;
         for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
         Drawn = n;
+        RingFrame(dt, n);
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
         MaxSideways = maxSide;

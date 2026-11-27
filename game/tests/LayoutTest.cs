@@ -43,6 +43,9 @@ public partial class LayoutTest : UiAudit
     private async Task CheckState(string id)
     {
         _states++;
+        // n7: the villager's card docked under the ledger in every state (its zone must fit beside everything else).
+        int keep = Main.Hud.SelectedVillager;
+        if (T.VillagerCount > 0) Main.Hud.Select(0);
         foreach (var (canvas, s, name) in Canvases)
         {
             Main.Hud.ForceCanvas(canvas, s);
@@ -52,6 +55,7 @@ public partial class LayoutTest : UiAudit
             _maxLoud = Math.Max(_maxLoud, loud); _maxQuiet = Math.Max(_maxQuiet, quiet);
         }
         Main.Hud.ForceCanvas(null);
+        Main.Hud.Select(keep);
         await Frames(2);
         GD.Print($"LAYOUT state {id} checked on {Canvases.Length} canvases");
     }
@@ -63,6 +67,7 @@ public partial class LayoutTest : UiAudit
         foreach (var (canvas, s, name) in Canvases)
         {
             Main.Hud.ForceCanvas(canvas, s);
+            if (T.VillagerCount > 0) Main.Hud.Select(0);
             await Frames(3);
             LayoutFixture.Apply(Main.Hud);
             await Frames(1);

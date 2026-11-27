@@ -11,8 +11,8 @@ public static partial class LayoutRules
     public delegate void FailFn(string rule, string id, string canvas, string what);
 
     /// <summary>Zones by node name under Hud/Root; pages, the tooltip, map tags and coin numbers are not zones.</summary>
-    private static readonly string[] ZoneNames = { "Ledger", "Slim", "Shop", "Bell", "Tide", "Achievements", "AgePage", "HomeMark", "PauseMark", "Banner", "Choice", "Line" };
-    private static readonly HashSet<string> NotChecked = new() { "Floaters", "HandMarks", "HoverTip", "Suggest", "Tooltip", "AchievementsPage", "FirstAgePage", "PageTurn", "Scrim" };
+    private static readonly string[] ZoneNames = { "Ledger", "Slim", "Shop", "Bell", "Tide", "Achievements", "AgePage", "HomeMark", "PauseMark", "Banner", "Choice", "Line", "Person" };
+    private static readonly HashSet<string> NotChecked = new() { "Floaters", "HandMarks", "HoverTip", "PersonTag", "Suggest", "Tooltip", "AchievementsPage", "FirstAgePage", "PageTurn", "Scrim" };
 
     private static bool Shows(Control c)
     {
@@ -32,6 +32,7 @@ public static partial class LayoutRules
         "Banner" => z.Banner,
         "Choice" => z.Message(HudZones.ChoiceMaxH),
         "Line" => z.Line,
+        "Person" => z.Person,
         _ => new Rect2(),
     };
 

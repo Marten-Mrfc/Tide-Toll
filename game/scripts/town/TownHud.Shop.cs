@@ -348,6 +348,7 @@ public partial class TownHud
         }
         PaveInput(e);
         ExtendInput(e);
+        PeopleInput(e);
     }
 
     /// <summary>The purchase whose own key this is: a row (offers take F, G, H in the order the rows show them), or a

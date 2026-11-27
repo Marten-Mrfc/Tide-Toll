@@ -169,6 +169,11 @@ if have_godot; then
   # delivery landing; nothing changing in one frame; tools, parked cart, bell; allocation (tools/work-check.sh).
   step game-work env GODOT="$GODOT" tools/work-check.sh
   note "$(grep -o 'WORK RATES PASS' "$LOGS/game-work.log" | head -1) $(grep -o 'pairs=[0-9]* gap=[0-9.-]*m' "$LOGS/work-60.log" | head -1)"
+  # n7, villagers as people: pointing at a villager (pick in a crowd, no flicker, off in the modes, over the interface and
+  # paused; the ring, the name tag, the card under the ledger) and bodies (lanes by direction, following distance,
+  # standing spots), nothing in one frame, allocation; at 60, 30 and 120 fps (tools/people-check.sh).
+  step game-people env GODOT="$GODOT" tools/people-check.sh
+  note "$(grep -o 'PEOPLE RATES PASS' "$LOGS/game-people.log" | head -1) $(grep -o 'picked=[0-9/]* shared=[0-9]* passpairs=[0-9]* sidefails=[0-9]*' "$LOGS/people-60.log" | head -1)"
   # Saving: the town at level 2+ with a paved road saved and the scene loaded again (same state, camera, runs on), a
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
@@ -189,7 +194,7 @@ if have_godot; then
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

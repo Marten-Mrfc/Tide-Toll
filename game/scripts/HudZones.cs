@@ -16,6 +16,8 @@ public readonly struct HudZones
     public const float BellW = 128, TimerH = 48, NavAchW = 112, NavBtn = 48;
     public const float BannerH = 96, ChoiceMaxH = 200, LineH = 40, TipW = 296, MessageMaxW = 560;
     public const float MiddleTop = 120, MiddleBottomGap = 64;
+    /// <summary>n7: the villager's card, docked in the left column under the ledger.</summary>
+    public const float PersonH = 124;
 
     public readonly Vector2 Canvas;
     public readonly float S;
@@ -39,6 +41,9 @@ public readonly struct HudZones
     public Rect2 Goal => FromLeft(Margin, Margin + PurseH + Gap, RailUnits, GoalH);
     public Rect2 Strip => FromLeft(Margin, Margin + PurseH + GoalH + 2 * Gap, RailUnits, StripH);
     public Rect2 Note => FromLeft(Margin, Margin + PurseH + GoalH + StripH + 3 * Gap, RailUnits, NoteH);
+
+    /// <summary>n7 (villagers as people): the card of the villager clicked on, under the ledger, the ledger's width.</summary>
+    public Rect2 Person => FromLeft(Margin, Margin + LedgerH + Gap, RailUnits, PersonH);
 
     // Timers.
     public Rect2 Bell => FromBottomLeft(Margin, 64, BellW, TimerH);

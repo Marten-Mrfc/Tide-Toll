@@ -25,6 +25,12 @@ public static class LayoutFixture
         ("Line/Box/Text", "Extend: click a lit cottage. Hold Shift to extend several. E or Esc to stop."),
         ("Bell/State", "rests 99 s"),
         ("Achievements/Count", "40 of 40"),
+        // n7: the villager's card (the longest name with a by-name, home, leaning, now and counts).
+        ("Person/Name", "Yolande of the brook 2"),
+        ("Person/Home", "Lives by the well lane"),
+        ("Person/Leaning", "A good hand at the harvest"),
+        ("Person/Now", "Carrying cloth to the landing"),
+        ("Person/Counts", "999 trips · earned     9,999,999"),
     };
 
     public static void Apply(TownHud hud)
