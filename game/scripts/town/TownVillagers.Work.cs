@@ -6,7 +6,7 @@ namespace TideToll.Game;
 
 /// <summary>
 /// Work you can watch (n5), B: the villager at work. A pose and a rhythm per job, never an act that needs seconds (work
-/// is short and gets shorter): at the well a rock forward and back with the crank; in a field bent about 30 degrees,
+/// is short and gets shorter): at the well a rock forward and back with the crank; in a field bent about 26 degrees (30 looked like lying down at the close view),
 /// swinging from side to side and stepping slowly along the row with a sickle (a scythe, with a wider swing, from the
 /// first Tools milestone); at the mill the grain sack tipped in at the door, then a slow sway on the step. As work ends
 /// (estimated from the work time the town would give, corrected by what was seen) the worker stoops; the goods come up
@@ -131,7 +131,7 @@ public partial class TownVillagers
         else if (k == 2)
         {
             bool scythe = ScytheAt(t.ToolsLevel);
-            p = 0.52f + 0.04f * MathF.Sin(_rh[i] * 2f); c = 0.92f; sw = (scythe ? 0.55f : 0.38f) * s;
+            p = 0.45f + 0.04f * MathF.Sin(_rh[i] * 2f); c = 0.92f; sw = (scythe ? 0.55f : 0.38f) * s;
             // Stepping slowly along the row with the cut.
             if (working) _fwd[i] = Math.Clamp(el / Math.Max(0.1f, dur), 0f, 1f) * 0.8f;
         }
@@ -143,7 +143,7 @@ public partial class TownVillagers
         if (!working || k != 2) _fwd[i] = Mathf.MoveToward(_fwd[i], 0f, dt * 1.2f);
         pitch = p * w; crouch = 1f + (c - 1f) * w; swing = sw * w; fwd = f * w + _fwd[i];
         float st = _stoop[i] * _stoop[i] * (3f - 2f * _stoop[i]);
-        pitch += (0.56f - pitch) * st;
+        pitch += (0.5f - pitch) * st;
         crouch += (0.89f - crouch) * st;
         // The market: a dip of the body as the load leaves the arms.
         if (_fly[i] > 0 && !_flyHome[i]) pitch += 0.3f * MathF.Sin(MathF.PI * (1f - _fly[i] / WorkSites.DropSeconds));

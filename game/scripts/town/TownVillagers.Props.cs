@@ -42,7 +42,7 @@ public partial class TownVillagers
     private void InitProps()
     {
         _sickles = ToolMulti(ModelLib.Has("villager-sickle") ? ModelLib.Mesh("villager-sickle") : ToolMesh(0.55f, 0.32f), "Sickles");
-        _scythes = ToolMulti(ModelLib.Has("villager-scythe") ? ModelLib.Mesh("villager-scythe") : ToolMesh(1.5f, 0.62f), "Scythes");
+        _scythes = ToolMulti(ModelLib.Has("villager-scythe") ? ModelLib.Mesh("villager-scythe") : ToolMesh(1.15f, 0.55f), "Scythes");
     }
 
     private MultiMeshInstance3D ToolMulti(Mesh mesh, string name)

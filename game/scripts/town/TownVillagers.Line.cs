@@ -63,6 +63,12 @@ public partial class TownVillagers
             int w = v.Workplace, pos = Math.Max(0, v.QueuePosition);
             float speed = (float)Math.Max(1, _drv.Speed);
             if (!_inLine[i] || _lineWp[i] != w) { _inLine[i] = true; _lineWp[i] = w; _qd[i] = pos; _qt[i] = pos; _qdelay[i] = 0; }
+            else if (pos < _qt[i] - 2)
+            {
+                // More than two places at once: the town ran ahead without frames (a fast-forward). The place is taken
+                // at once and the drawn villager follows it like any jump (the chase, or a snap beyond SnapCells).
+                _qd[i] = pos; _qt[i] = pos; _qdelay[i] = 0;
+            }
             else if (pos != _qt[i])
             {
                 // Moving up: front first, each place a little after the one ahead of it.
