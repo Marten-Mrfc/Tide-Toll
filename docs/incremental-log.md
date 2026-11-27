@@ -40,7 +40,7 @@ The owner approved everything open: the boats, the villager roles, the ink lines
 | Villagers at work, the places | `docs/plans/n5/work-build-sheet.md` | `build/wt/n5-places` (`wt/n5-places`) | 12:30 | building; told to merge the villagers' part and register `IWorkSite`s |
 | The boats, the quay, the crane | `docs/plans/n6/boats-build-sheet.md` | `build/wt/n6-boats-build` (`wt/n6-boats-build`) | 13:40 | started 10:55 |
 | Villagers as people (step 1 of roles) | `docs/plans/n7/people-build-sheet.md` | `build/wt/n7-people` (`wt/n7-people`) | 14:00 | started 10:55; the simulation part is committed first and may be merged early |
-| Ink lines and blur | research first: `docs/plans/n8/research/` | `build/wt/n8-ink` (`wt/n8-ink`, experiments) | 11:55 | research running; then the recommended option is built |
+| Ink lines and blur | `docs/plans/n8/research/ink-experiments.md` (the recommendation); the owner at 11:20: "Do the recommended" | `build/wt/n8-ink` (`wt/n8-ink`) | 13:15 | building since 11:21: two line weights in the shader (silhouettes in Ink, inner creases thin and in the darkened colour under them), thatch courses and other inner lines painted flat in the models, the width rule's rounding, the style sheet's Line section, a check step `game-ink`, a before-and-after board. Measured in the research: a cottage is 54 to 66 percent ink now and about 22 with the recommendation; nothing in the game scales or blurs the picture (the owner's picture was enlarged after the game drew it) |
 | Villager trades (steps 2 and 3) | to be written | | | after step 1 is merged |
 
 - Rules for builders sharing the machine: `docs/plans/builders-rules.md` (a heavy-run lock: the folder `build/locks/heavy`).
