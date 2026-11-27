@@ -26,7 +26,9 @@ public partial class AssetAudit
         Notes.Add($"now-work level={T.Level}");
         GetWindow().Size = new Vector2I(1280, 960);
         await Frames(6);
-        foreach (var (kind, name) in new[] { (PlotKind.Well, "well"), (PlotKind.Field, "field"), (PlotKind.Mill, "mill"), (PlotKind.Market, "market") })
+        // Night 5 (the places): the market and a cottage are photographed too (below), and a busy field three times, a
+        // few seconds of play apart (work-now-field-1..3), so its fronts, stooks and regrowth can be seen to move.
+        foreach (var (kind, name) in new[] { (PlotKind.Well, "well"), (PlotKind.Field, "field"), (PlotKind.Mill, "mill") })
         {
             int wp = OpenOf(kind);
             if (wp < 0)
@@ -46,9 +48,54 @@ public partial class AssetAudit
             var p = T.Plan.Plots[v.Plot];
             var frame = WorkFrame("work-" + name) ?? (Vector3.Zero, 14f);
             await NowShoot("work-now-" + name, Cells(p.X + p.W / 2.0, p.Y + p.H / 2.0), frame.size, 1.2f);
+            if (kind == PlotKind.Field)
+                for (int k = 1; k <= 3; k++)
+                {
+                    // the town plays on a few seconds (the bot acting), drawn every frame, then the same frames again
+                    for (int f = 0; f < 4; f++) { bot.Act(T); await Frames(1); }
+                    Notes.Add($"now-work field-{k}: busy={T.Workplace(w).Busy} steps={Main.Work.Fields.StepsAt(v.Plot)} gold={Main.Work.Fields.GoldShare(v.Plot):0.00}");
+                    await NowShoot("work-now-field-" + k, Cells(p.X + p.W / 2.0, p.Y + p.H / 2.0), frame.size, 1.2f);
+                }
         }
+        await MarketAndCottage(bot);
         GetWindow().Size = new Vector2I(640, 480);
         await Frames(6);
+    }
+
+    /// <summary>The market once loads stand on its table, and a cottage with its door open for one of its people.</summary>
+    private async Task MarketAndCottage(TownBot bot)
+    {
+        int market = -1;
+        for (int p = 0; p < T.Plan.Plots.Length; p++) if (T.Plan.Plots[p].Kind == PlotKind.Market) market = p;
+        if (market >= 0 && !Main.Buildings.PlotDrawn(market))
+        {
+            Main.Driver.RunBot(bot, t => Main.Buildings.PlotDrawn(market) || t.OfferBought(T.Plan.Plots[market].Offer), 40 * 60 * TownRules.TickHz);
+            await Frames(10);
+        }
+        if (market >= 0 && Main.Buildings.PlotDrawn(market))
+        {
+            for (int f = 0; f < 40 && Main.Work.Stall.OnTable < 3; f++) { bot.Act(T); await Frames(1); }
+            Notes.Add($"now-work market: on-table={Main.Work.Stall.OnTable} shown={Main.Work.Stall.Shown}");
+            var mp = T.Plan.Plots[market];
+            var mf = WorkFrame("work-market") ?? (Vector3.Zero, 12f);
+            await NowShoot("work-now-market", Cells(mp.X + mp.W / 2.0, mp.Y + mp.H / 2.0), mf.size, 1.2f);
+        }
+        else Notes.Add("now-work market: not built");
+        int cot = -1;
+        for (int f = 0; f < 60 && cot < 0; f++)
+        {
+            bot.Act(T);
+            await Frames(1);
+            for (int p = 0; p < T.Plan.Plots.Length; p++)
+                if (T.Plan.Plots[p].Kind == PlotKind.Cottage && Main.Work.Doors.OpenOf(p) > 0.8f) { cot = p; break; }
+        }
+        if (cot < 0) { Notes.Add("now-work cottage: no door seen open"); return; }
+        Main.Driver.SetPaused(true);
+        await Frames(2);
+        var cp = T.Plan.Plots[cot];
+        Notes.Add($"now-work cottage: plot {cot} door {Main.Work.Doors.OpenOf(cot):0.00}");
+        await NowShoot("work-now-cottage", Cells(cp.X + cp.W / 2.0, cp.Y + cp.H / 2.0), 12f, 1.2f);
+        Main.Driver.SetPaused(false);
     }
 
     private int OpenOf(PlotKind kind)

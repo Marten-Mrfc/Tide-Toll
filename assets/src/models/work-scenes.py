@@ -278,6 +278,43 @@ def sickle():
     return m
 
 
+def _crescent(m, x0, R, broad_max, sweep_deg, colour, cz=0.0, thick=0.06):
+    """A blade in the XZ plane springing from (x0, cz) forward (+Z) and curling back down (-X): broad in the middle,
+    a point at the tip. X is "up the handle" until the tool is stood up (tilt az = pi / 2)."""
+    segs, prev = 8, None
+    cx = x0 - R
+    for i in range(segs + 1):
+        t = i / segs
+        a = math.radians(sweep_deg * t)
+        broad = broad_max * math.sin(math.pi * min(1.0, t * 1.25)) + 0.025
+        o = (cx + R * math.cos(a), cz + R * math.sin(a))
+        inn = (cx + (R - broad) * math.cos(a), cz + (R - broad) * math.sin(a))
+        if prev:
+            m.add_extrude((0, -thick / 2, 0), [prev[0], o, inn, prev[1]], thick, colour, cap_bottom=True)
+        prev = (o, inn)
+
+
+def villager_sickle():
+    """The sickle in a villager's hand (TownVillagers.Props: the hand at the origin, the handle up +Y, the blade at its
+    top curving forward, +Z), in the villager model's frame (2.8 m figure): drawn large and pale so it reads at the
+    normal view, where the figure is about sixteen pixels tall."""
+    m = glb.Mesh()
+    tube(m, (-0.14, 0, 0), (0.5, 0, 0), 0.075, "Packed earth", n=6)                   # handle along X (stood up below)
+    m.add_frustum((0.46, -0.06, 0), 0.1, 0.1, 0.12, "Slate roof", segments=6, cap_bottom=True)    # ferrule
+    _crescent(m, 0.5, 0.36, 0.17, 170, "Concrete", cz=0.36)
+    return tilt(m, az=math.pi / 2)
+
+
+def villager_scythe():
+    """The scythe (from Tools step 5): a long snath up +Y from the hand with a grip half way, and a long pale blade at
+    its top swept forward (+Z) and round; same frame as the sickle."""
+    m = glb.Mesh()
+    tube(m, (-0.14, 0, 0), (1.2, 0, 0), 0.07, "Packed earth", n=6)                    # the snath
+    tube(m, (0.55, 0, 0), (0.55, 0, 0.26), 0.06, "Packed earth", n=5)                 # the second grip
+    _crescent(m, 1.22, 0.6, 0.15, 120, "Concrete", cz=0.6, thick=0.05)
+    return tilt(m, az=math.pi / 2)
+
+
 def scarecrow():
     rng = random.Random(SEED + 10)
     m = glb.Mesh()
@@ -487,6 +524,8 @@ ITEMS = [
     ("work-apron", apron, 80, None, "Mock-up n5: a stallholder's apron (villager body frame)"),
     ("work-crate", crate, 250, None, "Mock-up n5: a crate of turnips on the stall"),
     ("work-pot", pot, 100, None, "Mock-up n5: a clay pot on the stall"),
+    ("villager-sickle", villager_sickle, 200, None, "Work you can watch: the sickle in a reaper's hand (TownVillagers.Props)"),
+    ("villager-scythe", villager_scythe, 200, None, "Work you can watch: the scythe in a reaper's hand from Tools step 5 (TownVillagers.Props)"),
 ]
 
 want = set(sys.argv[1:])

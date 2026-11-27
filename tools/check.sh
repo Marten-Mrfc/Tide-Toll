@@ -173,6 +173,12 @@ if have_godot; then
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
   note "$(grep -o 'SAVE PASS.*' "$LOGS/game-save.log" | head -1 | sed 's/SAVE PASS //' | cut -c1-90)"
+  # Night 5, work you can watch (the places): a first age played in the running game and sampled every frame: a field
+  # never under a third gold and its fronts moving only with work finished there, the mill's sails faster with more at
+  # work, its door open exactly while it should be, every market delivery on the table, cottage doors opening for their
+  # people, nothing changed in one frame (also at 30 and 120 fps), no allocation by the places (tools/work-places-check.sh).
+  step game-work-places env GODOT="$GODOT" tools/work-places-check.sh
+  note "$(grep -o 'WORK PLACES PASS.*' "$LOGS/work-places-60.log" | head -1 | sed 's/WORK PLACES PASS //' | cut -c1-90)"
   if [ "$SHOT" = 0 ]; then
     skip screenshot "--no-screenshot"
   elif ! command -v xvfb-run >/dev/null 2>&1; then
@@ -189,7 +195,7 @@ if have_godot; then
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save game-work-places screenshot; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done
