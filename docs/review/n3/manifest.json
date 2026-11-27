@@ -1210,7 +1210,6 @@
        "or": []
       }
      ],
-     "pending": true,
      "needs": "docs/review/n3/after/ui/m-tooltip-shop.jpg"
     },
     {
@@ -1486,7 +1485,9 @@
         "build/n3/ui-audit/l1-1280x720-150/u35.png"
        ]
       }
-     ]
+     ],
+     "pending": true,
+     "needs": "not taken in the final run (it would replay a whole second age for one picture)"
     }
    ]
   },
@@ -3327,43 +3328,93 @@
    "items": [
     {
      "id": "F-1",
-     "pending": true,
-     "shows": "Filled in by the lead after reading the final pictures.",
-     "question": "Should this be fixed before anything new?",
-     "needs": "docs/review/n3/after/wrong/wrong-1.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "shows": "A duck on the river and the ducks as they are seen in play: at the normal view the animals are a few pixels and can hardly be found. A reviewer wrote: \"the town is not yet alive, because the animals are too small to see\".",
+     "question": "Should the animals be made big enough to see before anything new is added?",
      "pictures": [
       {
        "side": null,
-       "label": "The final build",
-       "path": "docs/review/n3/after/wrong/wrong-1.jpg"
+       "label": "In play",
+       "path": "docs/review/n3/after/assets/life-ducks-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/animal-duck-close.jpg"
       }
      ]
     },
     {
      "id": "F-2",
-     "pending": true,
-     "shows": "Filled in by the lead after reading the final pictures.",
-     "question": "Should this be fixed before anything new?",
-     "needs": "docs/review/n3/after/wrong/wrong-2.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "shows": "A villager carrying grain at the normal view and close up: the load is a few pixels in play and is told by its colour more than by its shape.",
+     "question": "Is it a problem for you that loads cannot be told apart by shape while you play?",
      "pictures": [
       {
        "side": null,
-       "label": "The final build",
-       "path": "docs/review/n3/after/wrong/wrong-2.jpg"
+       "label": "In play",
+       "path": "docs/review/n3/after/assets/villager-carrying-grain-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-grain-close.jpg"
       }
      ]
     },
     {
      "id": "F-3",
-     "pending": true,
-     "shows": "Filled in by the lead after reading the final pictures.",
-     "question": "Should this be fixed before anything new?",
-     "needs": "docs/review/n3/after/wrong/wrong-3.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "shows": "The gable-ended cottage: from above its thatch courses stand close together and the roof reads dark, the fault you named for the old extended cottage. Every roof is still the same thatch.",
+     "question": "Should the cottages get lighter roofs and a second roof colour?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In play",
+       "path": "docs/review/n3/after/assets/cottage-c2-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/cottage-c2-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "F-4",
+     "shows": "The age change in twelve frames: a leaf falls from the spine with the new age's title on it, covers the screen and lifts again. It reads as a leaf laid down and lifted, not as one page turning forward.",
+     "question": "Is this page turn good enough for the biggest moment of the age?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Twelve frames",
+       "path": "docs/review/n3/after/motion/age-page.png"
+      }
+     ]
+    },
+    {
+     "id": "F-5",
+     "shows": "The first minute: the ledger is mostly blank ruled paper while there is no request, drive or note, and the shop holds a few rows.",
+     "question": "Does the blank ledger paper look intended to you, like an account book?",
      "pictures": [
       {
        "side": null,
        "label": "The final build",
-       "path": "docs/review/n3/after/wrong/wrong-3.jpg"
+       "path": "docs/review/n3/after/ui/u01.jpg"
+      }
+     ]
+    },
+    {
+     "id": "F-6",
+     "shows": "Zoomed out to the page and zoomed out to the book: both now show the whole open book with margins, so the two stages look almost alike.",
+     "question": "Do you want the page stage back as a closer view of the map's page alone?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "The page stage",
+       "path": "docs/review/n3/after/ui/u17.jpg"
+      },
+      {
+       "side": null,
+       "label": "The book stage",
+       "path": "docs/review/n3/after/ui/u18.jpg"
       }
      ]
     }
