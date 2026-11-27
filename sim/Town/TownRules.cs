@@ -125,6 +125,10 @@ public static class TownRules
     public static double BellDuration = 8;
     public static double BellRest = 40;
 
+    // ---- Villagers as people (n7 step 1) ----
+    // A villager's own kind of work (Town.LeaningOf, from the seed and its number) counts this much more when it chooses a job.
+    public static double LeanBonus = 0.10;
+
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;
     public static double VillagerPerkCoin = 0.05;    // "Good neighbours": +5 % coin per perk

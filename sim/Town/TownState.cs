@@ -43,6 +43,9 @@ public sealed class VillagerState
     public double RDist;
     public int RHome = -1;         // river cottage plot (RiverPlan.Plots) when the villager lives by the river
     public double RStuckSince = -1; // time it began waiting at a crossing (-1 not waiting)
+    // n7 people: counters no rule reads (missing in an older save: 0). Name and leaning are not stored: Town.VillagerName, LeaningOf.
+    public int Trips;              // deliveries made
+    public double Earned;          // coin those deliveries paid
 }
 
 /// <summary>A place where villagers work: the well, a field, the mill. Places limit how many work at once; the rest queue.</summary>

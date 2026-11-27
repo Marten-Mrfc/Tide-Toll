@@ -22,6 +22,8 @@
     <!-- Toy golden data (written by golden/export.mjs) and its generator. -->
     <None Include="golden\toy-golden.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="golden\toy-golden-v2.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- n7 people: town saves written by the code before the counters existed (the migration test). -->
+    <None Include="Town\data\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

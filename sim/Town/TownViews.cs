@@ -18,6 +18,16 @@ public struct VillagerView
     public double Dist;              // distance along that road from its node A, cells
     public int Workplace;            // workplace aimed at, queued at or working at (-1 none)
     public int QueuePosition;        // 0 = next in line, -1 not queued
+    // n7 people (output only)
+    public int Dir;                  // +1 walking from the road's node A to B, -1 from B to A (when walking)
+    public int Stage;                // 0 to the first workplace, 1 to the second (flour), 2 to the delivery
+    public int Slot;                 // work spot taken at the workplace (-1 none)
+    public double WorkLeft;          // seconds of work left (when working)
+    public Leaning Leaning;          // the kind of work it leans toward (Town.VillagerName gives the name)
+    public int Trips;                // deliveries made
+    public double Earned;            // coin those deliveries paid
+    public int RiverHome;            // river cottage plot (RiverPlan.Plots) when it lives by the river, else -1
+    public bool OnRiver;             // walking or standing on the river plan (the second age)
 }
 
 public struct RoadView
@@ -105,6 +115,8 @@ public sealed partial class Town
             X = v.X, Y = v.Y, PrevX = v.PrevX, PrevY = v.PrevY, Heading = v.Heading,
             Road = v.Phase == VillagerPhase.Walking ? v.Road : -1, Dist = v.Dist, Workplace = v.Workplace,
             QueuePosition = v.Phase == VillagerPhase.Queued ? QueuePosition(v) : -1,
+            Dir = v.Dir, Stage = v.Stage, Slot = v.Slot, WorkLeft = v.WorkLeft, Leaning = LeaningOf(S.Seed, v.Id),
+            Trips = v.Trips, Earned = v.Earned, RiverHome = v.RHome, OnRiver = v.RMode != 0,
         };
     }
 

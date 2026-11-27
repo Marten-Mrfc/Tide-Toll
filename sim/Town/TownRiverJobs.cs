@@ -110,12 +110,26 @@ public sealed partial class Town
 
     private int SiteBusy(int site) => site == SitePasture ? R!.PastureBusy : R!.WeaverBusy;
     private int SitePlaces(int site) => site == SitePasture ? TownRulesRiver.PasturePlaces : TownRulesRiver.WeaverPlaces;
-    private double SiteWait(int site, VillagerState self)
+    internal double SiteWait(int site, VillagerState self)
     {
         int c = SiteBusy(site);
-        foreach (var o in S.Villagers) if (o != self && o.RMode != 0 && o.Phase == VillagerPhase.Queued && o.RSite == site) c++;
+        foreach (var o in S.Villagers)
+        {
+            if (o == self) continue;
+            if (o.RMode != 0 && o.Phase == VillagerPhase.Queued && o.RSite == site) c++;
+            else if (o.RSite != site && BoundForSite(o, site)) c++; // n7: those on their way there count too
+        }
         int over = c - SitePlaces(site) + 1;
         return over <= 0 ? 0 : over * (site == SitePasture ? TownRulesRiver.ShearTime : TownRulesRiver.WeaveTime) / ToolsFactor / SitePlaces(site);
+    }
+
+    /// <summary>True when the villager's itinerary still has work at <paramref name="site"/> ahead (not yet there).</summary>
+    private static bool BoundForSite(VillagerState o, int site)
+    {
+        if (o.Job is not (JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket)) return false;
+        int step = Op(OpWork, site);
+        for (int k = o.RPos; k < o.RLen; k++) if (o.RSteps[k] == step) return true;
+        return false;
     }
 
     /// <summary>Adds the river jobs to the choice. Wool and Cloth jobs have no first-age workplace (bestW = -1).</summary>
@@ -160,7 +174,7 @@ public sealed partial class Town
     private void RConsider(JobKind j, int wi, double seconds, ref double best, ref JobKind bestJob, ref int bestW, double load)
     {
         if (double.IsPositiveInfinity(seconds) || double.IsNaN(seconds)) return;
-        double rate = load * RiverJobValue(j) / Math.Max(0.1, seconds);
+        double rate = Leaned(j, load * RiverJobValue(j) / Math.Max(0.1, seconds));
         if (rate > best + 1e-12) { best = rate; bestJob = j; bestW = wi; }
     }
 
@@ -267,6 +281,7 @@ public sealed partial class Town
         }
         else coin = v.Amount * StorePrice(g) * CoinBonus;
         RiverEarn(coin, g);
+        v.Trips++; v.Earned += coin;
         r.Delivered[(int)g] += v.Amount;
         if ((int)g < S.Delivered.Length) S.Delivered[(int)g] += v.Amount;
         S.Trips++;
@@ -292,6 +307,7 @@ public sealed partial class Town
         r.EarnedMarket += coin;
         r.EarnedBy[(int)v.Carry] += coin;
         Earn(coin);
+        v.Trips++; v.Earned += coin;
         r.Delivered[(int)v.Carry] += v.Amount;
         S.Trips++;
         var nd = Plan.Nodes[v.Node];

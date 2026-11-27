@@ -157,6 +157,7 @@ public sealed partial class Town
     {
         double coin = v.Amount * JobValue(v.Job) * CoinBonus;
         Earn(coin, v.Carry);
+        v.Trips++; v.Earned += coin;
         if (S.ReqActive && v.Carry == S.ReqGood) RequestDelivered(v.Amount);
         if (S.DriveActive && v.Carry == S.DriveGood) DriveDelivered(v.Amount);
         S.Trips++;
@@ -168,15 +169,21 @@ public sealed partial class Town
     }
 
     /// <summary>Expected wait for a place at a workplace, counting who is working, queued or on the way there.</summary>
-    private double ExpectedWait(int wi, VillagerState self)
+    internal double ExpectedWait(int wi, VillagerState self)
     {
         var w = S.Workplaces[wi];
         int committed = w.Busy + w.QueueLen;
+        var kind = Plan.Plots[w.Plot].Kind;
+        bool mill = kind == PlotKind.Mill;
         foreach (var o in S.Villagers)
-            if (o != self && o.Workplace == wi && o.Phase == VillagerPhase.Walking) committed++;
+        {
+            if (o == self) continue;
+            if (o.Workplace == wi && o.Phase == VillagerPhase.Walking) committed++;
+            // n7: flour pickers still on their way to the field, or at it, are bound for the mill too.
+            else if (mill && o.Stage == 0 && o.Job is JobKind.Flour or JobKind.FlourBoat) committed++;
+        }
         int over = committed - w.Places + 1;
         if (over <= 0) return 0;
-        var kind = Plan.Plots[w.Plot].Kind;
         double work = WorkTime(kind);
         return over * work / ToolsFactor / w.Places;
     }
@@ -190,6 +197,7 @@ public sealed partial class Town
         int millNode = mill >= 0 ? Plan.Plots[S.Workplaces[mill].Plot].Node : -1;
         double best = 0; JobKind bestJob = JobKind.None; int bestW = -1;
         double load = LoadUnits * CoinBonus;
+        _choosing = LeaningOf(S.Seed, v.Id);
         for (int wi = 0; wi < S.Workplaces.Length; wi++)
         {
             var w = S.Workplaces[wi];
@@ -225,7 +233,7 @@ public sealed partial class Town
     private void Consider(JobKind j, int wi, double seconds, ref double best, ref JobKind bestJob, ref int bestW, double load)
     {
         if (double.IsPositiveInfinity(seconds)) return;
-        double rate = load * JobValue(j) / Math.Max(0.1, seconds);
+        double rate = Leaned(j, load * JobValue(j) / Math.Max(0.1, seconds));
         if (rate > best + 1e-12) { best = rate; bestJob = j; bestW = wi; }
     }
 
