@@ -114,7 +114,7 @@ public sealed partial class ShopRow
         Icon.Size = Icon.CustomMinimumSize = new Vector2(icon, icon);
         Icon.Position = tall ? new Vector2(U(6), U(8)) : new Vector2(U(8), (h - icon) / 2f);
         Key.Visible = tall && Key.Text.Length > 0;
-        _nameX = tall ? U(40) : U(36);
+        _nameX = tall ? U(NameX) : U(36);
         float lineY = tall ? U(7) : 0, lineH = tall ? U(26) : h;
         Name.Position = new Vector2(_nameX, lineY);
         Name.Size = new Vector2(NameBox(width, pillUnits, _s, tall), lineH);
@@ -137,9 +137,12 @@ public sealed partial class ShopRow
         Sig = int.MinValue; NameShown = ""; PriceShown = ""; Line2Shown = "\u0001"; StateSet = false; BandShown = -1;
     }
 
-    /// <summary>The name's box (pixels): from the name's start to the pill, less a gap of 8.</summary>
+    /// <summary>Where a tall row's name starts (sheet units: the icon is 6..30) and its least gap to the pill.</summary>
+    public const float NameX = 38, NameGap = 6;
+
+    /// <summary>The name's box (pixels): from the name's start to the pill, less a gap.</summary>
     public static float NameBox(float rowWidth, float pillUnits, float s, bool tall) =>
-        rowWidth - UiKit.U(s, tall ? 40 : 36) - UiKit.U(s, pillUnits) - UiKit.U(s, 6) - UiKit.U(s, 8);
+        rowWidth - UiKit.U(s, tall ? NameX : 36) - UiKit.U(s, pillUnits) - UiKit.U(s, 6) - UiKit.U(s, NameGap);
 
     /// <summary>The key cap under the icon, centred on it; line 2 starts after it when a long key name needs the room.</summary>
     public void PlaceKey()

@@ -123,10 +123,12 @@ public partial class TownTest
         await Frames(10);
         Check(!Main.Hud.AchievementsOpen && Main.Hud.HandMarkersShown >= 1, "the offer shows a marker on its workplace");
         var mark = Main.Hud.Mark(ShopItemKind.Hand, w);
-        Check(mark != null && Main.Hud.MarkText(mark).Contains(T.HandName(w)), "the offer has a row in the shop");
+        // Sheet v3: the row reads "Mill hand" (one name size for every row); the whole name is its tooltip's title.
+        Check(mark != null && Main.Hud.MarkText(mark).Contains(TownHud.HandRowName(T.HandName(w))), "the offer has a row in the shop");
         int hands = T.HandsBought(w);
         // Night 3: a row that moved in the last 0.3 s takes no click (layout sheet section 3): aim when it is still.
         int mi = -1; for (int i = 0; i < Main.Hud.Marks.Count; i++) if (Main.Hud.Marks[i] == mark) mi = i;
+        Check(mi >= 0 && Main.Hud.RowTipParts(mi).title == T.HandName(w), "the offer's tooltip names it whole");
         await Until(() => Main.Hud.RowCalm(mi), 120, "the hand's row comes to rest");
         var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
         await Click(markRect.GetCenter());

@@ -277,7 +277,7 @@ public partial class TownHud
         string key = FirstKey(ActionFor(it, ord));
         if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Tall; r.PlaceKey(); }
         bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
-        string name = RowName(it);
+        string name = RowLabel(it);
         int step = track && it.Level > 0 ? it.Level : 0;
         if (name != r.NameShown || step != r.StepShown)
         {
@@ -297,11 +297,13 @@ public partial class TownHud
         if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
         if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
         bool priced = it.Price > 0 && !double.IsInfinity(it.Price);
-        string price = st == ShopRow.PillState.On ? "On" : !priced ? "\u2013" : (it.Kind == ShopItemKind.Pave ? "from " : "") + PillPrice(it.Price);
+        bool centred = st == ShopRow.PillState.On || !priced;
+        string price = st == ShopRow.PillState.On ? "On" : !priced ? "\u2013" : PillPrice(it.Price);
+        if (!centred && it.Kind == ShopItemKind.Pave) (price, centred) = PaveFace(it.Price);
         if (price != r.PriceShown)
         {
             r.PriceShown = price;
-            r.SetPrice(price, st == ShopRow.PillState.On || !priced || it.Kind == ShopItemKind.Pave);
+            r.SetPrice(price, centred);
         }
     }
 

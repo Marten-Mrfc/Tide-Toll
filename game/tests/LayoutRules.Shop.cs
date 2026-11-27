@@ -48,7 +48,9 @@ public static partial class LayoutRules
             if (TownHud.TextWidth(r.Name) > r.Name.Size.X + 0.5f || r.Name.Text.EndsWith("…") || r.Name.TextOverrunBehavior != TextServer.OverrunBehavior.NoTrimming)
                 fail("S2-cut", id, canvas, $"row '{r.Name.Text}' name does not fit its box {r.Name.Size.X:0}");
             checks++;
-            if (Array.IndexOf(TownHud.RowNameCatalogue, r.Name.Text) < 0) fail("S2-catalogue", id, canvas, $"row name '{r.Name.Text}' is not in TownHud.RowNameCatalogue");
+            bool known = false;
+            foreach (var c in TownHud.RowNameCatalogue) if (hud.ShownName(c) == r.Name.Text) known = true;
+            if (!known) fail("S2-catalogue", id, canvas, $"row name '{r.Name.Text}' is not in TownHud.RowNameCatalogue");
             if (r.Tall)
             {
                 checks++;
@@ -182,10 +184,11 @@ public static partial class LayoutRules
         foreach (var n in TownHud.RowNameCatalogue)
         {
             checks++;
-            float w = UiKit.UiFont.GetStringSize(n, HorizontalAlignment.Left, -1, size).X;
-            if (w > box) fail("S2-catalogue", "fixture", canvas, $"'{n}' is {w:0} wide at {size} px in a box of {box:0}");
+            string shown = hud.ShownName(n);
+            float w = UiKit.UiFont.GetStringSize(shown, HorizontalAlignment.Left, -1, size).X;
+            if (w > box) fail("S2-catalogue", "fixture", canvas, $"'{shown}' is {w:0} wide at {size} px in a box of {box:0}");
         }
-        float l2 = hud.RowWidth - UiKit.U(z.S, 40) - UiKit.U(z.S, 8);
+        float l2 = hud.RowWidth - UiKit.U(z.S, ShopRow.NameX) - UiKit.U(z.S, 8);
         int cap = UiKit.Type(z.S, UiKit.Caption);
         var lines = new System.Collections.Generic.List<string>();
         foreach (ShopItemKind k in Enum.GetValues(typeof(ShopItemKind))) lines.Add(TownHud.DoesLine(k));

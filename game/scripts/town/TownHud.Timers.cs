@@ -91,7 +91,7 @@ public partial class TownHud
         b.MouseEntered += () => _main.Audio.UiHover();
         var ic = UiKit.IconRect(_s, IconOr(icon, standIn), 26);
         float side = UiKit.U(_s, 26);
-        ic.Position = new Vector2(slot == 0 ? UiKit.U(_s, 12) : MathF.Round((r.Size.X - side) / 2f), MathF.Round((r.Size.Y - side) / 2f));
+        ic.Position = new Vector2(slot == 0 ? UiKit.U(_s, 8) : MathF.Round((r.Size.X - side) / 2f), MathF.Round((r.Size.Y - side) / 2f));
         b.AddChild(ic);
         _root.AddChild(b);
         return b;
@@ -104,8 +104,8 @@ public partial class TownHud
         _achMark.Pressed += ToggleAchievements;
         _achCount = UiKit.Fixed(_s, UiKit.Body, UiKit.UiBold);
         _achCount.Name = "Count";
-        _achCount.Position = new Vector2(UiKit.U(_s, 46), 0);
-        _achCount.Size = new Vector2(_achMark.Size.X - UiKit.U(_s, 52), _achMark.Size.Y);
+        _achCount.Position = new Vector2(UiKit.U(_s, 39), 0);
+        _achCount.Size = new Vector2(_achMark.Size.X - UiKit.U(_s, 42), _achMark.Size.Y);
         _achMark.AddChild(_achCount);
         _agePageMark = NavButton("AgePage", 1, "nav-page", "ui-new-map");
         _agePageMark.Pressed += NextAgePressed;

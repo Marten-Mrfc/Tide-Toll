@@ -53,20 +53,23 @@ public static class LayoutFixture
         {
             if (n is not Button b || !b.Name.ToString().StartsWith("Row")) continue;
             var price = b.GetNodeOrNull<Label>("Pill/Price");
-            if (price != null && price.Visible)
+            ShopRow? row = null;
+            for (int i = 0; i < hud.ShownItems.Count; i++) if (hud.RowNode(i).Button == b) row = hud.RowNode(i);
+            if (price != null && row != null)
             {
-                // Sheet v3: the largest price a pill shows (whole up to 99,999, then "999k", "9.99M"), at body size in
-                // every row: it must fit as it is (was: set in caption when it did not fit).
-                bool from = b.Name == "Row3000"; // Pave: "from" and the cheapest road's price, centred
-                string widest = "";
+                // Sheet v3: the largest price a pill shows, at body size in every row, laid out as the row lays it out
+                // (Pave: "from" centred, or beside the coin when that does not fit). Was: set in caption when it did not fit.
+                int bodyPx = UiKit.Type(hud.UiScale, UiKit.Body);
+                double widest = 0; float best = -1;
                 foreach (double v in new[] { 99_999d, 999_999d, 9_999_999d, 99_999_999d })
                 {
-                    string t = hud.PillPrice(v);
-                    if (UiKit.TabBold.GetStringSize(t, HorizontalAlignment.Left, -1, UiKit.Type(hud.UiScale, UiKit.Body)).X > UiKit.TabBold.GetStringSize(widest, HorizontalAlignment.Left, -1, UiKit.Type(hud.UiScale, UiKit.Body)).X) widest = t;
+                    float w = UiKit.TabBold.GetStringSize(hud.PillPrice(v), HorizontalAlignment.Left, -1, bodyPx).X;
+                    if (w > best) { best = w; widest = v; }
                 }
-                price.Text = from ? "from " + widest : price.HorizontalAlignment == HorizontalAlignment.Right ? widest : price.Text;
+                var (text, centred) = b.Name == "Row3000" ? hud.PaveFace(widest) : (hud.PillPrice(widest), false);
+                row.SetPrice(text, centred);
                 price.AddThemeFontOverride("font", UiKit.TabBold);
-                price.AddThemeFontSizeOverride("font_size", UiKit.Type(hud.UiScale, UiKit.Body));
+                price.AddThemeFontSizeOverride("font_size", bodyPx);
             }
             var line2 = b.GetNodeOrNull<Label>("Line2");
             if (line2 != null && line2.Visible) line2.Text = "No room in the cottages";

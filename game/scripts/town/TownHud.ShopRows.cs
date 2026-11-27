@@ -307,11 +307,22 @@ public partial class TownHud
     /// body, else caption (sheet v3: decided once from the whole catalogue, never row by row).</summary>
     private int NameSizeFor(float rowWidth)
     {
-        int body = UiKit.Type(_s, UiKit.Body);
+        int body = UiKit.Type(_s, UiKit.Body), cap = UiKit.Type(_s, UiKit.Caption);
         float box = ShopRow.NameBox(rowWidth, PillUnits, _s, true);
-        foreach (var n in RowNameCatalogue)
-            if (UiKit.UiFont.GetStringSize(n, HorizontalAlignment.Left, -1, body).X > box) return UiKit.Type(_s, UiKit.Caption);
-        return body;
+        bool Fits(int size, bool shortNames)
+        {
+            foreach (var n in RowNameCatalogue)
+            {
+                string t = shortNames && ShortRowNames.TryGetValue(n, out var sh) ? sh : n;
+                if (UiKit.UiFont.GetStringSize(t, HorizontalAlignment.Left, -1, size).X > box) return false;
+            }
+            return true;
+        }
+        _shortNames = false;
+        if (Fits(body, false)) return body;
+        if (Fits(cap, false)) return cap;
+        _shortNames = true;
+        return cap;
     }
 
     /// <summary>"3 to buy", with the down mark when one of them is scrolled out of sight.</summary>

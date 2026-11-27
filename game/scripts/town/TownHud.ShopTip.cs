@@ -96,7 +96,7 @@ public partial class TownHud
         {
             string worth = WorthLine(w);
             double perSec = it.Worth / 60.0;
-            if (perSec > 0 && it.Price > 0 && !double.IsInfinity(it.Price)) worth += ", pays back in " + Math.Ceiling(it.Price / perSec).ToString(Inv) + " s";
+            if (perSec > 0 && it.Price > 0 && !double.IsInfinity(it.Price)) worth += ", pays back in " + Span(it.Price / perSec);
             _rtFacts.Add(("Worth", worth));
         }
         if (it.Price > 0 && !double.IsInfinity(it.Price)) _rtFacts.Add(("Price", (it.Kind == ShopItemKind.Pave ? "from " : "") + CoinMark + Money(it.Price)));
@@ -106,7 +106,7 @@ public partial class TownHud
             {
                 double need = Math.Max(1, it.Price - t.Coin), rate = t.CoinPerMinute / 60.0;
                 string shortBy = CoinMark + Money(need);
-                if (rate > 0) shortBy += ", about " + Math.Ceiling(need / rate).ToString(Inv) + " s";
+                if (rate > 0) shortBy += ", about " + Span(need / rate);
                 _rtFacts.Add(("Short", shortBy));
             }
             else if (it.Reason.Length > 0) _rtFacts.Add(("Why", it.Reason));
@@ -117,6 +117,15 @@ public partial class TownHud
         sb.Append(" | ").Append(_rtSentence);
         foreach (var (label, value) in _rtFacts) sb.Append(" | ").Append(label).Append(' ').Append(value);
         return sb.ToString();
+    }
+
+    /// <summary>"44 s", "18 min", "3 h": a time to wait, short enough not to wrap the fact's line.</summary>
+    private static string Span(double seconds)
+    {
+        double s = Math.Ceiling(seconds);
+        if (s < 120) return s.ToString(Inv) + "\u00A0s";
+        if (s < 7200) return Math.Ceiling(s / 60).ToString(Inv) + "\u00A0min";
+        return Math.Ceiling(s / 3600).ToString(Inv) + "\u00A0h";
     }
 
     /// <summary>Lays the card out for its parts and returns the tooltip's size.</summary>

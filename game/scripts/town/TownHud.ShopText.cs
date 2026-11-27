@@ -10,13 +10,24 @@ namespace TideToll.Game;
 public partial class TownHud
 {
     /// <summary>Sheet v3: a pill's price, the same way in every row: whole below <see cref="_pillShortFrom"/> (100,000
-    /// when "99,999" fits the pill at body size, else 10,000), then "123k", then "1.24M".</summary>
+    /// when "99,999" fits the pill at body size, else 10,000), then "123k", then "1.2M", "12M".</summary>
     public string PillPrice(double c)
     {
         c = Math.Floor(c);
         if (c < _pillShortFrom) return c.ToString("N0", Inv);
         if (c < 1_000_000) return Math.Floor(c / 1000).ToString(Inv) + "k";
-        return UiKit.Short(c);
+        // Never rounded up (9,999,999 reads 9.9M, not 10.00M).
+        if (c < 10_000_000) return (Math.Floor(c / 100_000) / 10).ToString("0.0", Inv) + "M";
+        return Math.Floor(c / 1_000_000).ToString(Inv) + "M";
+    }
+
+    /// <summary>Pave's pill: "from 12" centred without the coin sign when it fits the pill at body size, else the price
+    /// beside the coin as in every other row (sheet v3: a price is never set smaller).</summary>
+    public (string text, bool centred) PaveFace(double price)
+    {
+        string p = PillPrice(price), t = "from " + p;
+        float box = UiKit.U(_s, PillUnits) - UiKit.U(_s, 12);
+        return UiKit.TabBold.GetStringSize(t, HorizontalAlignment.Left, -1, UiKit.Type(_s, UiKit.Body)).X <= box ? (t, true) : (p, false);
     }
 
     private double _pillShortFrom = 100_000;
@@ -82,6 +93,21 @@ public partial class TownHud
     }
 
     private static readonly Dictionary<string, string> _handNames = new();
+
+    /// <summary>Shorter forms, used for the whole layout when a name of the catalogue would not fit even at caption (the
+    /// 272 rail): the tooltip's title keeps the whole name.</summary>
+    public static readonly Dictionary<string, string> ShortRowNames = new() { ["Better boat prices"] = "Boat prices" };
+    private bool _shortNames;
+
+    /// <summary>The name a row shows in this layout.</summary>
+    private string RowLabel(in ShopItem it)
+    {
+        string n = RowName(it);
+        return _shortNames && ShortRowNames.TryGetValue(n, out var sh) ? sh : n;
+    }
+
+    /// <summary>A catalogue name as rows of this layout show it (tests).</summary>
+    public string ShownName(string catalogueName) => _shortNames && ShortRowNames.TryGetValue(catalogueName, out var sh) ? sh : catalogueName;
 
     /// <summary>Every name a row can show (sheet v3: the name size is decided once from all of them; game-layout proves
     /// every shown row's name is here and that they all fit).</summary>
