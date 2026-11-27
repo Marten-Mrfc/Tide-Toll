@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One command for everything that can be verified automatically. Exits non-zero if any step fails.
 #   ./check                 sim build + fast tests (Release), Godot C# build, the town's headless smoke, game-town and the whole-age playthrough
-#                           (real input) and perf tests, the menus and the book's motion, screenshots at 1920x1080, ledger
+#                           (real input) and perf tests, the menus and the book's motion, screenshots at 1920x1080, the ink, the readout, ledger
 #   ./check --no-screenshot skip the rendered screenshot (no xvfb, or in a hurry)
 #   ./check --gate          also run the long statistical runs: gate tables, toy comparison, Category=Gate tests (~6 min)
 #   ./check --bench         also run the tick benchmark in Release (fails only above a generous budget)
@@ -208,8 +208,17 @@ if have_godot; then
   else
     skip game-ink "--no-screenshot or no xvfb-run"
   fi
+  if command -v xvfb-run >/dev/null 2>&1; then
+    # n10, the performance readout (F3, docs/plans/n10/perf-progress.md): shows and hides, remembered in settings.cfg,
+    # its numbers present and sane on the Mobile renderer, updated twice a second, its own cost a frame under 0.05 ms
+    # and 300 bytes, holding F3 writes perf-readout.csv, and the box clear of every zone at 1280 x 720 and 1920 x 1080.
+    step game-readout tools/godot-test.sh 'READOUT PASS' timeout 300 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/readout.tscn --quit-after 100000
+    note "$(grep -o 'READOUT PASS.*' "$LOGS/game-readout.log" | head -1 | sed 's/READOUT PASS //' | cut -c1-90)"
+  else
+    skip game-readout "no xvfb-run"
+  fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save game-work-places screenshot game-ink; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save game-work-places screenshot game-ink game-readout; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

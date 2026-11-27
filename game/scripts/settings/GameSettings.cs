@@ -65,6 +65,16 @@ public sealed class GameSettings
     public void ShowHintsAgain() { if (HintsSeen != 0) { HintsSeen = 0; Commit(KHints); } }
     public const string KHints = "hints_seen";
 
+    /// <summary>n10: the performance readout (F3) shows; not on the settings pages. Read first like the hints, no event.</summary>
+    public bool ShowReadout { get; private set; }
+    public void SetShowReadout(bool on)
+    {
+        Read();
+        if (ShowReadout == on) return;
+        ShowReadout = on;
+        Save();
+    }
+
     public GameSettings(string path = DefaultPath)
     {
         Path = path;
@@ -85,6 +95,7 @@ public sealed class GameSettings
         Array.Copy(v, _volume, v.Length);
         MuteWhenInactive = false;
         HintsSeen = 0;
+        ShowReadout = false;
         WindowMode = WindowMode.Windowed;
         Resolution = new Vector2I(1280, 720);
         Vsync = true;
@@ -188,7 +199,8 @@ public sealed class GameSettings
         sb.Append("coin_numbers=").Append(B(ShowCoinNumbers)).Append('\n');
         sb.Append("follow_town=").Append(B(FollowTown)).Append("\n\n[saving]\n");
         sb.Append("autosave_minutes=").Append(AutosaveMinutes).Append("\n\n[hints]\n");
-        sb.Append("hints_seen=").Append(HintsSeen).Append("\n\n[keys]\n");
+        sb.Append("hints_seen=").Append(HintsSeen).Append("\n\n[debug]\n");
+        sb.Append("readout=").Append(B(ShowReadout)).Append("\n\n[keys]\n");
         foreach (var a in GameInput.Actions)
         {
             var k = _keys[a.Name];
@@ -262,6 +274,9 @@ public sealed class GameSettings
                 return false;
             case "hints":
                 if (key == "hints_seen" && okInt && n >= 0 && n < 256) { HintsSeen = n; return true; }
+                return false;
+            case "debug":
+                if (key == "readout" && okBool) { ShowReadout = b; return true; }
                 return false;
             case "keys":
                 if (!_keys.ContainsKey(key)) return false;

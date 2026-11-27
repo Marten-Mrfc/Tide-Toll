@@ -94,6 +94,9 @@ public partial class TownDriver : Node
     public override void _Process(double delta)
     {
         AnimTime += delta;
+        // n10: the readout's clocks (only while it shows): the frame's first script, and the simulation's steps.
+        long t0 = PerfReadout.Timing ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+        if (t0 != 0) PerfReadout.FrameStart = t0;
         Events.Clear();
         if (Town == null) return;
         if (!Paused)
@@ -111,6 +114,7 @@ public partial class TownDriver : Node
             }
             _acc = Math.Min(_acc, MaxBacklogSteps * TownRules.Dt);
             StepsRun += steps;
+            if (t0 != 0) PerfReadout.SimTicks += System.Diagnostics.Stopwatch.GetTimestamp() - t0;
             Alpha = (float)Math.Clamp(_acc / TownRules.Dt, 0, 1);
         }
         Town.DrainEvents(Events);
