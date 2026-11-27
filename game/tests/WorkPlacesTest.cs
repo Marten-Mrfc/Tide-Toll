@@ -88,10 +88,23 @@ public partial class WorkPlacesTest : TownTestBase
         // After the charter the town plays on at speed 1 for at most two minutes more, until the mill has been seen with
         // one at work long enough to measure (at speed 16 a lone miller is a moment of a few frames).
         int slowFrames = 0;
+        // n7 trades: villagers have trades, and the town gives the mill few millers, so two seldom stand at the stones at
+        // once. Once the mill is open the millers' count is set as a player would set it (SetTradeCount), high enough that
+        // two work there at once; it is handed back to the town (SetTownFillsTrades on: every count the town's again) once
+        // the sails have been measured with two at work. The assertion below is unchanged.
+        bool millersSet = false, millersBack = false;
+        int millersSetTo = 0;
         while ((!T.HasCharter || (!_short && sailN[1] < 60 && slowFrames < 120 * _fps)) && frames < maxFrames)
         {
             if (T.HasCharter) { if (slowFrames++ == 0) Main.Driver.SetSpeed(1); }
             bot.Act(T);
+            if (!millersSet && T.TradeOpen(Trade.Flour))
+            {
+                millersSetTo = Math.Max(3, T.TradeInfo(Trade.Flour).Places + 1);
+                T.SetTradeCount(Trade.Flour, millersSetTo);
+                millersSet = true;
+            }
+            if (millersSet && !millersBack && sailN[2] >= 60) { T.SetTownFillsTrades(true); millersBack = true; }
             await Frames(1);
             frames++;
             var t = T;
@@ -193,7 +206,7 @@ public partial class WorkPlacesTest : TownTestBase
         if (!_short || doorFrames > 0) Check(doorFrames > 0 || _short, "the mill was never drawn");
         Check(doorBad == 0, $"the mill's door was not open exactly while it should be ({doorBad} frames)");
         string Sail(int k) => sailN[k] > 0 ? (sailSum[k] / sailN[k]).ToString("0.000") : "-";
-        Notes.Add($"sails={Sail(0)}/{Sail(1)}/{Sail(2)} frames={sailN[0]}/{sailN[1]}/{sailN[2]} raw={rawBusy[0]}/{rawBusy[1]}/{rawBusy[2]}");
+        Notes.Add($"sails={Sail(0)}/{Sail(1)}/{Sail(2)} frames={sailN[0]}/{sailN[1]}/{sailN[2]} raw={rawBusy[0]}/{rawBusy[1]}/{rawBusy[2]} millers-set={millersSetTo} handed-back={millersBack}");
         if (!_short)
         {
             Check(sailN[0] > 0 && sailN[1] > 0 && sailN[2] > 0, $"sails not seen with 0, 1 and 2 at work ({sailN[0]}, {sailN[1]}, {sailN[2]} frames)");
