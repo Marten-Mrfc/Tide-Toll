@@ -18,6 +18,12 @@ from common import glb, ledger, asset_path
 from _kit import beam
 
 THATCH, COURSE, RIDGE, PATCH = "Reed and thatch", "Trail earth", "Packed earth", "Packed earth"
+# Research n8 (ink lines): INK_COURSES=flat lays the courses as painted bands 1 cm proud (no step for the ink to find);
+# INK_COURSES=few keeps them proud but two on the main range, one on the others, 0.3 m wide.
+import os
+_IC = os.environ.get("INK_COURSES", "")
+PROUD = 0.01 if _IC == "flat" else 0.09
+CW = 0.3 if _IC == "few" else 0.2
 WALL, FRAME, PLINTH, PANE = "Limewash", "Mud", "Slate roof", "Mud"
 ACCENT = "Cast-iron green"
 EAVE = 0.4
@@ -60,20 +66,21 @@ def block(m, b):
     drop = EAVE * rh / half
     run, rise = we, rh + drop                              # one roof face: across v from the eave to the ridge
     fs = ((0.17, 0.37, 0.57, 0.77) if b.get("courses", 4) == 4 else (0.22, 0.47, 0.72)) if b.get("main") else (0.3, 0.62)
+    if _IC == "few": fs = (0.3, 0.62) if b.get("main") else (0.45,)
     for f in fs:                                          # thatch courses (four on the main range), on the slope, proud
-        y = h - drop + f * rise + 0.05
+        y = h - drop + f * rise + (0.012 if _IC == "flat" else 0.05)
         for s in (-1, 1):
             v = s * we * (1 - f)
             e = end_at(f) - 0.08
             nrm = T(0, run, s * rise)                      # the face's normal, in the frame's axes
             up = (nrm[0] - T(0, 0, 0)[0], nrm[1], nrm[2] - T(0, 0, 0)[2])
-            beam(m, T(-e, y, v), T(e, y, v), 0.2, 0.09, COURSE, up=up, ends=False)
+            beam(m, T(-e, y, v), T(e, y, v), CW, PROUD, COURSE, up=up, ends=False)
         if kind.startswith("hip") and b.get("main") and f < 0.5:   # and on the main range's two hipped ends
             for s in (-1, 1):
                 u = s * (end_at(f) + 0.1)
                 vv = we * (1 - f) - 0.25
                 if vv > 0.2:
-                    beam(m, T(u, y, -vv), T(u, y, vv), 0.2, 0.09, COURSE, ends=False)
+                    beam(m, T(u, y, -vv), T(u, y, vv), CW, PROUD, COURSE, ends=False)
     if b.get("patch"):                                     # a patch of older, darker thatch on the near face
         y = h - drop + 0.4 * rise + 0.08
         v = we * 0.6
