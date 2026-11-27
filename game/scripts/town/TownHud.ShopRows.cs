@@ -18,6 +18,22 @@ namespace TideToll.Game;
 public partial class TownHud
 {
     public const float FootUnits = 30;
+    /// <summary>Follow-up 3b: tall rows come back only when they would fit with this many rows to spare.</summary>
+    public const int TallSpareRows = 2;
+    private float _shopK = -1, _kFrom, _kTo, _kT = -1, _tallContent, _footA;
+    private bool _footWant;
+    private int _rowsBelow;
+    /// <summary>Frames in which the foot lay over a row (follow-up 1; tests: always 0), frames of the shop, frames of a
+    /// tall/compact switch.</summary>
+    public int FootOverRowFrames { get; private set; }
+    public int ShopFrames { get; private set; }
+    public int SwitchFrames { get; private set; }
+    /// <summary>Tall rows' content height and the card's limit (tests: the switch is sticky).</summary>
+    public float ShopTallContent => _tallContent;
+    public float ShopLimit => Zones.ShopMaxHeight;
+    public float TallPitch => UiKit.U(_s, 56) + UiKit.U(_s, 4);
+    public bool ShopSwitching => _kT >= 0;
+    public float ShopTallness => _shopK;
     public const float RowFade = 0.2f, RowSlide = 0.2f, RowHold = 1.5f, RowClickCalm = 0.3f, PulseSeconds = 0.4f, PulseGap = 0.5f;
     private Panel _shop = null!;
     private Control _shopBody = null!;
@@ -99,6 +115,7 @@ public partial class TownHud
         _shop.AddChild(_foot);
         _footSig = int.MinValue;
         _card.Reset();
+        _shopK = -1; _kT = -1; _footA = 0; _footWant = false;
         DecidePillShort();
         _nameSize = NameSizeFor(w - 2 * pad);
         _rows.Clear(); _rowOrder.Clear(); _shown.Clear(); _marks.Clear(); _pulseQueue.Clear();
@@ -143,6 +160,7 @@ public partial class TownHud
                 row.Button.MouseEntered += () => _main.Audio.UiHover();
                 row.Button.GuiInput += ShopGui;
                 row.Layout(Zones.Rail - UiKit.U(_s, 16), !_compactShop, PillUnits, _nameSize);
+                if (_shopK >= 0) row.Blend(_shopK);
                 row.Button.Modulate = new Color(1, 1, 1, 0);
                 _shopBody.AddChild(row.Button);
                 _rows.Add(row);
@@ -170,23 +188,39 @@ public partial class TownHud
         float pad = UiKit.U(_s, 8), headH = UiKit.U(_s, 28), gap = UiKit.U(_s, 4), top = pad + UiKit.U(_s, 36);
         int groups = 0;
         for (int g = 0; g < 5; g++) if (GroupHasAny(g)) groups++;
-        float footH = _foot.Visible ? UiKit.U(_s, FootUnits) : 0;
-        float Gap(float rowH) => rowH < UiKit.U(_s, 50) ? UiKit.U(_s, 2) : gap;
-        float Content(float rowH) => top + groups * headH + _rowOrder.Count * (rowH + Gap(rowH)) + footH + pad;
+        // Follow-up 1: the foot takes its room while it shows or is wanted (it fades in only once the edge has arrived).
+        float footH = _footWant || _footA > 0 ? UiKit.U(_s, FootUnits) : 0;
+        float tallH = UiKit.U(_s, 56), compactH = UiKit.U(_s, 40), tallGap = gap, compactGap = UiKit.U(_s, 2);
+        float Content(float rowH, float rowGap) => top + groups * headH + _rowOrder.Count * (rowH + rowGap) + footH + pad;
         float max = z.ShopMaxHeight;
-        bool compact = Content(UiKit.U(_s, 56)) > max;
-        _shopScrolls = compact && Content(UiKit.U(_s, 40)) > max;
+        // Follow-up 3b: sticky. Compact when tall rows do not fit; tall again only when they fit with two rows to spare.
+        _tallContent = Content(tallH, tallGap);
+        bool compact = CompactForce ?? (_compactShop ? _tallContent > max - TallSpareRows * (tallH + tallGap) : _tallContent > max);
+        if (_shopK < 0) { _shopK = compact ? 0 : 1; _kFrom = _kTo = _shopK; _kT = -1; foreach (var r in _rows) r.Blend(_shopK); }
         if (compact != _compactShop)
         {
             _compactShop = compact;
-            foreach (var r in _rows) r.Layout(z.Rail - UiKit.U(_s, 16), !compact, PillUnits, _nameSize);
+            _kFrom = _shopK; _kTo = compact ? 0 : 1; _kT = 0;
         }
-        float rowH = UiKit.U(_s, compact ? 40 : 56);
-        float content = Content(rowH);
+        // Follow-up 3a: the switch eases over the rows' slide: heights, places, line 2 and the key caps.
+        bool switching = _kT >= 0;
+        if (switching)
+        {
+            _kT += dt;
+            float u = Math.Clamp(_kT / RowSlide, 0, 1);
+            _shopK = _kFrom + (_kTo - _kFrom) * BookMotion.Smoother(u);
+            if (u >= 1) { _shopK = _kTo; _kT = -1; }
+            foreach (var r in _rows) r.Blend(_shopK);
+        }
+        float rowH = MathF.Round(compactH + (tallH - compactH) * _shopK), rowGap = compactGap + (tallGap - compactGap) * _shopK;
+        float Gap(float h) => rowGap;
+        float content = Content(rowH, rowGap);
+        _shopScrolls = compact && !switching && Content(compactH, compactGap) > max;
         // The card follows its rows: as tall as where they are now (a row that is still sliding up or fading out keeps
         // its place in the card), at most H - 104.
         // Sheet v3: the bottom edge (and the foot on it) eases with the rows' slide; it never cuts a row still showing.
-        _card.Aim(content, PointerOverShop() && _holdAge >= 0 && _holdAge <= RowHold);
+        if (switching) { _card.Y = _card.To = content; _card.T = -1; }
+        else _card.Aim(content, PointerOverShop() && _holdAge >= 0 && _holdAge <= RowHold);
         _card.Step(dt);
         float extent = _card.Y;
         foreach (var r in _rows) if (r.Y >= 0 && r.Alpha > 0.01f) extent = Math.Max(extent, top + r.Y + rowH + footH + pad);
@@ -235,6 +269,10 @@ public partial class TownHud
             _shopVisEnd = _scroll + end;
             _shopBody.Position = new Vector2(pad, top - _scroll);
         }
+        // Follow-up 6: rows out of sight below (said in the foot's place).
+        int below = 0;
+        if (_shopScrolls) foreach (var r in _rowOrder) if (r.Want + rowH > _shopVisEnd + 0.5f) below++;
+        _rowsBelow = below;
         // The pointer's hold: while it is over the shop, a change waits until it leaves or 1.5 s have passed since the
         // change, so the row under the pointer is the row the player aimed at.
         bool over = PointerOverShop();
@@ -246,7 +284,7 @@ public partial class TownHud
         {
             var ha = _headAnim[g];
             if (!ha.Wanted) continue;
-            if (ha.Y < -0.5f || ha.Alpha <= 0.01f) { ha.Y = ha.Want; ha.To = ha.Want; ha.T = -1; }
+            if (ha.Y < -0.5f || ha.Alpha <= 0.01f || switching) { ha.Y = ha.Want; ha.To = ha.Want; ha.T = -1; }
             else if (!hold && Math.Abs(ha.Want - ha.To) > 0.5f) { ha.From = ha.Y; ha.To = ha.Want; ha.T = 0; }
         }
         for (int g = 0; g < 5; g++)
@@ -262,14 +300,22 @@ public partial class TownHud
             head.Visible = ha.Alpha > 0.01f && (!_shopScrolls || (ha.Y >= _scroll - 0.5f && ha.Y + headH <= _shopVisEnd + 0.5f));
         }
         _foot.Position = new Vector2(pad, _shop.Size.Y - pad - footH);
+        // The foot fades in only once the card's edge and every row are at rest (so it never lies over a row), and
+        // fades out before its room is given back.
+        bool settled = !switching && _card.T < 0;
+        foreach (var r in _rows) if (r.SlideT >= 0 || (r.Leaving && r.Alpha > 0)) settled = false;
+        _footA = _footWant && (settled || _footA > 0) ? Math.Min(1, _footA + dt / RowFade) : Math.Max(0, _footA - dt / RowFade);
+        _foot.Modulate = new Color(1, 1, 1, _footA);
+        _foot.Visible = _footA > 0.01f;
         foreach (var r in _rowOrder)
         {
             float to = r.Want;
             if (r.Waiting) { r.Y = to; r.To = to; r.SlideT = -1; if (!hold) r.Waiting = false; }
-            else if (r.Y < -0.5f) { r.Y = to; r.To = to; r.SlideT = -1; }
+            else if (r.Y < -0.5f || switching) { r.Y = to; r.To = to; r.SlideT = -1; }
             else if (!hold && Math.Abs(to - r.To) > 0.5f) { r.From = r.Y; r.To = to; r.SlideT = 0; }
         }
         // Animate: slides and fades (Position and Modulate only).
+        bool footOver = false;
         for (int i = _rows.Count - 1; i >= 0; i--)
         {
             var r = _rows[i];
@@ -288,6 +334,7 @@ public partial class TownHud
             r.Button.Modulate = new Color(1, 1, 1, r.Alpha);
             // A scrolled shop shows whole rows only: one that is not wholly inside the card is not drawn.
             r.Button.Visible = r.Alpha > 0.01f && (!_shopScrolls || (r.Y >= _scroll - 0.5f && r.Y + rowH <= _shopVisEnd + 0.5f));
+            if (_foot.Visible && r.Button.Visible && r.Button.GetGlobalRect().Grow(-0.5f).Intersects(_foot.GetGlobalRect())) footOver = true;
             if (r.Leaving && r.Alpha <= 0f)
             {
                 _rows.RemoveAt(i);
@@ -295,6 +342,9 @@ public partial class TownHud
                 r.Button.QueueFree();
             }
         }
+        if (footOver) FootOverRowFrames++;
+        ShopFrames++;
+        if (switching) SwitchFrames++;
     }
 
     private bool PointerOverShop() => _shop.IsVisibleInTree() && _shop.GetGlobalRect().HasPoint(_shop.GetGlobalMousePosition());

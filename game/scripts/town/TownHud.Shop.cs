@@ -275,7 +275,7 @@ public partial class TownHud
         }
         // Each part is set only when it changed (the signature changes with every coin while saving up).
         string key = FirstKey(ActionFor(it, ord));
-        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Tall; r.PlaceKey(); }
+        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Line2.Visible; r.PlaceKey(); }
         bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
         string name = RowLabel(it);
         int step = track && it.Level > 0 ? it.Level : 0;

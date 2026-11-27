@@ -174,7 +174,7 @@ public partial class TownHud
             _rcLabel[k].Position = new Vector2(pad, y);
             _rcLabel[k].Size = new Vector2(lx - pad - UiKit.U(_s, 4), lineH);
             if (_rcValueShown[k] != value) { _rcValueShown[k] = value; WriteCoinText(_rcValue[k], value); }
-            float vh = Math.Max(lineH, f.GetMultilineStringSize(value.Replace(CoinMark.ToString(), "00"), HorizontalAlignment.Left, vw, fs).Y);
+            float vh = Math.Max(lineH, f.GetMultilineStringSize(value.Replace(CoinMark.ToString(), "00\u00A0"), HorizontalAlignment.Left, vw, fs).Y);
             _rcValue[k].Position = new Vector2(lx, y);
             _rcValue[k].Size = new Vector2(vw, vh + 2);
             vh = Math.Max(vh, _rcValue[k].GetContentHeight());
@@ -197,7 +197,8 @@ public partial class TownHud
         {
             if (i < text.Length && text[i] != CoinMark) continue;
             if (i > from) l.AddText(text.Substring(from, i - from));
-            if (i < text.Length) l.AddImage(coin, px, px, null, InlineAlignment.Center);
+            // Follow-up 5: about 4 units of air between the coin sign and the number, as in the pill (a no-break space).
+            if (i < text.Length) { l.AddImage(coin, px, px, null, InlineAlignment.Center); l.AddText("\u00A0"); }
             from = i + 1;
         }
     }

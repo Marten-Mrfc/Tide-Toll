@@ -68,7 +68,8 @@ public sealed partial class ShopRow
         _frameBlocked = PillBox(UiKit.Paper, 1, new Color(UiKit.Ink, 0.3f), "PillFrame");
         _frameNotYet.DrawCenter = false;
         _frameBlocked.DrawCenter = false;
-        Wash = new PillWash { Name = "Wash", Colour = UiKit.Wheat.Lerp(UiKit.Paper, 0.5f) };
+        // Follow-up 4: the wash at about 40 percent of wheat, so a muted price reads on both sides of its edge.
+        Wash = new PillWash { Name = "Wash", Colour = UiKit.Wheat.Lerp(UiKit.Paper, 0.6f) };
         Frame = new Panel { Name = "Frame", MouseFilter = Control.MouseFilterEnum.Ignore };
         Coin = UiKit.IconRect(s, TownHud.IconOr("ui-coin", "ui-coin"), 16);
         Coin.Name = "Coin";
@@ -105,28 +106,47 @@ public sealed partial class ShopRow
     /// the shop's (one size for every name, decided from the whole catalogue).</summary>
     public void Layout(float width, bool tall, float pillUnits, int nameSize)
     {
-        Tall = tall;
-        float h = U(tall ? 56 : 40), pw = U(pillUnits), ph = U(tall ? 32 : 28);
+        _width = width; _pillUnits = pillUnits;
+        if (nameSize != _nameSizeSet) { _nameSizeSet = nameSize; Name.AddThemeFontSizeOverride(TownHud.FontSizeName, nameSize); }
+        Blend(tall ? 1f : 0f);
+        Sig = int.MinValue; NameShown = ""; PriceShown = ""; Line2Shown = "\u0001"; StateSet = false;
+    }
+
+    private float _width, _pillUnits, _k = -1;
+    private int _nameSizeSet = -1;
+
+    /// <summary>Follow-up 3: the row between compact (0) and tall (1): heights and places in between, line 2 and the key
+    /// cap fading with k. The shop eases k over the rows' slide, so the switch never happens in one frame. No strings.</summary>
+    public void Blend(float k)
+    {
+        k = Math.Clamp(k, 0, 1);
+        if (k == _k) return;
+        _k = k;
+        Tall = k >= 0.5f;
+        float L(float compact, float tall) => compact + (tall - compact) * k;
+        float width = _width, h = MathF.Round(L(U(40), U(56))), pw = U(_pillUnits), ph = MathF.Round(L(U(28), U(32)));
         Button.Size = new Vector2(width, h);
         Band.Position = Vector2.Zero;
         Band.Size = Button.Size;
-        float icon = U(tall ? 24 : 20);
+        float icon = MathF.Round(L(U(20), U(24)));
         Icon.Size = Icon.CustomMinimumSize = new Vector2(icon, icon);
-        Icon.Position = tall ? new Vector2(U(6), U(8)) : new Vector2(U(8), (h - icon) / 2f);
-        Key.Visible = tall && Key.Text.Length > 0;
-        _nameX = tall ? U(NameX) : U(36);
-        float lineY = tall ? U(7) : 0, lineH = tall ? U(26) : h;
+        Icon.Position = new Vector2(MathF.Round(L(U(8), U(6))), MathF.Round(L((U(40) - U(20)) / 2f, U(8))));
+        Key.Visible = k > 0.01f && Key.Text.Length > 0;
+        Key.Modulate = new Color(1, 1, 1, k);
+        _nameX = MathF.Round(L(U(36), U(NameX)));
+        float lineY = MathF.Round(L(0, U(7))), lineH = MathF.Round(L(U(40), U(26)));
         Name.Position = new Vector2(_nameX, lineY);
-        Name.Size = new Vector2(NameBox(width, pillUnits, _s, tall), lineH);
-        Name.AddThemeFontSizeOverride(TownHud.FontSizeName, nameSize);
+        Name.Size = new Vector2(width - _nameX - pw - U(6) - U(NameGap), lineH);
         Step.Size = new Vector2(U(40), lineH);
-        Line2.Visible = tall;
-        Line2.Size = new Vector2(width - _nameX - U(8), U(20));
+        Line2.Visible = k > 0.01f;
+        Line2.Modulate = new Color(1, 1, 1, k);
         PlaceKey();
-        Pill.Position = new Vector2(width - pw - U(6), tall ? U(4) : (h - ph) / 2f);
+        Pill.Position = new Vector2(width - pw - U(6), MathF.Round(L((U(40) - U(28)) / 2f, U(4))));
         Pill.Size = new Vector2(pw, ph);
         Pill.PivotOffset = Pill.Size / 2f;
-        foreach (var box in new[] { _pillAfford, _pillPaper, _pillOn, _frameNotYet, _frameBlocked }) box.SetCornerRadiusAll((int)(ph / 2f));
+        int rad = (int)(ph / 2f);
+        _pillAfford.SetCornerRadiusAll(rad); _pillPaper.SetCornerRadiusAll(rad); _pillOn.SetCornerRadiusAll(rad);
+        _frameNotYet.SetCornerRadiusAll(rad); _frameBlocked.SetCornerRadiusAll(rad);
         Wash.Position = Vector2.Zero;
         Wash.Size = Pill.Size;
         Frame.Position = Vector2.Zero;
@@ -134,7 +154,7 @@ public sealed partial class ShopRow
         Coin.Position = new Vector2(U(9), (ph - U(16)) / 2f);
         PlacePrice();
         PlaceStep();
-        Sig = int.MinValue; NameShown = ""; PriceShown = ""; Line2Shown = "\u0001"; StateSet = false; BandShown = -1;
+        BandShown = -1;
     }
 
     /// <summary>Where a tall row's name starts (sheet units: the icon is 6..30) and its least gap to the pill.</summary>
@@ -149,10 +169,11 @@ public sealed partial class ShopRow
     {
         float capW = Math.Max(U(20), TownHud.TextWidth(Key) + U(8)), cx = Icon.Position.X + Icon.Size.X / 2f;
         float x = Math.Max(U(2), cx - capW / 2f);
-        Key.Position = new Vector2(x, U(32));
+        float ky = Button.Size.Y - U(24);
+        Key.Position = new Vector2(x, ky);
         Key.Size = new Vector2(capW, U(20));
         float l2 = Key.Visible ? Math.Max(_nameX, x + capW + U(6)) : _nameX;
-        Line2.Position = new Vector2(l2, U(32));
+        Line2.Position = new Vector2(l2, ky);
         Line2.Size = new Vector2(Button.Size.X - l2 - U(8), U(20));
     }
 

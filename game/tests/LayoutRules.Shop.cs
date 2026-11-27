@@ -82,6 +82,17 @@ public static partial class LayoutRules
             if (tip.title.Length == 0 || tip.sentence.Length == 0 || tip.facts.Length == 0 || tip.text.Contains("Key:"))
                 fail("S7-tip", id, canvas, $"row '{r.Name.Text}' tooltip: title '{tip.title}', sentence '{tip.sentence}', {tip.facts.Length} facts; '{tip.text}'");
         }
+        // S8 (follow-up 3b): the switch is sticky: never tall when tall rows do not fit, never compact when they fit with
+        // two rows to spare.
+        if (!hud.ShopSwitching && hud.CompactForce == null)
+        {
+            checks++;
+            bool ok = hud.CompactShop ? hud.ShopTallContent > hud.ShopLimit - TownHud.TallSpareRows * hud.TallPitch : hud.ShopTallContent <= hud.ShopLimit;
+            if (!ok) fail("S8-sticky", id, canvas, $"compact={hud.CompactShop} with tall content {hud.ShopTallContent:0} and limit {hud.ShopLimit:0}");
+        }
+        // S9 (follow-up 1): the foot has never lain over a row, in any frame so far.
+        checks++;
+        if (hud.FootOverRowFrames > 0) fail("S9-foot", id, canvas, $"the foot lay over a row in {hud.FootOverRowFrames} frames");
         // S3: headings only over rows, nothing on them but the name and a hairline; at most one foot line.
         for (int g = 0; g < 5; g++)
         {
