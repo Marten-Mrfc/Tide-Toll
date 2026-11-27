@@ -46,13 +46,14 @@ public partial class TradesTest : TownTestBase
         await Cards();
         await Figures();
         // The first three tags of the town's filling come one after another, about half a second apart.
-        if (_tagStart[0] >= 0 && _tagStart[1] >= 0)
-            for (int k = 1; k < TownHud.AutoTags && _tagStart[k] >= 0; k++)
-                Check(_tagStart[k] - _tagStart[k - 1] >= (long)(0.4f * _fps), $"tag {k} starts {(_tagStart[k] - _tagStart[k - 1]) / (float)_fps:0.00} s after tag {k - 1} (at least 0.4)");
+        var hud0 = Main.Hud;
+        for (int k = 1; k < TownHud.AutoTags; k++)
+            if (hud0.AutoTagStartedAt(k) >= 0 && hud0.AutoTagStartedAt(k - 1) >= 0)
+                Check(hud0.AutoTagStartedAt(k) - hud0.AutoTagStartedAt(k - 1) >= 0.4f, $"tag {k} starts {hud0.AutoTagStartedAt(k) - hud0.AutoTagStartedAt(k - 1):0.00} s after tag {k - 1} (at least 0.4)");
         Check(_helperHatFrames == 0, $"no Helper wears a hat or a hood ({_helperHatFrames} villager-frames; {string.Join("; ", _hatFails)})");
         Check(_worstHeadStep <= 0.5f, $"a head changes over several frames, never in one (largest scale step {_worstHeadStep:0.00})");
         Check(_worstAlphaStep <= 0.5f, $"cards and rings fade, never switch in one frame (largest step {_worstAlphaStep:0.00})");
-        Notes.Add($"tags={Main.Hud.AutoTagsGiven} tagstarts={string.Join("/", _tagStart)} fps={_fps} villagers={T.VillagerCount} headstep={_worstHeadStep:0.00} alphastep={_worstAlphaStep:0.00} frames={_frames}");
+        Notes.Add($"tags={Main.Hud.AutoTagsGiven} tagstarts={Main.Hud.AutoTagStartedAt(0):0.00}/{Main.Hud.AutoTagStartedAt(1):0.00}/{Main.Hud.AutoTagStartedAt(2):0.00} fps={_fps} villagers={T.VillagerCount} headstep={_worstHeadStep:0.00} alphastep={_worstAlphaStep:0.00} frames={_frames}");
     }
 
     /// <summary>Waits n frames, sampling each.</summary>

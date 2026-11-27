@@ -62,7 +62,7 @@ public partial class TownHud
             ic.Position = ((b.Size - new Vector2(UiKit.U(s, 24), UiKit.U(s, 24))) / 2f).Round();
             b.AddChild(ic);
             var fold = new TradeMark { Name = "Fold", Kind = TradeMark.Shape.Fold, Colour = UiKit.Ink, MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-            fold.Size = new Vector2(UiKit.U(s, 8), UiKit.U(s, 8));
+            fold.Size = new Vector2(UiKit.U(s, 10), UiKit.U(s, 10)); // review 7a: 10 units (8 was a speck at 720)
             fold.Position = new Vector2(b.Size.X - fold.Size.X, 0);
             b.AddChild(fold);
             _capFold[k] = fold;
@@ -169,6 +169,8 @@ public partial class TownHud
     private readonly Label?[] _autoTag = new Label?[AutoTags];
     private readonly int[] _autoWho = new int[AutoTags];
     private readonly Trade[] _autoTrade = new Trade[AutoTags];
+    private readonly float[] _autoStartedAt = { -1, -1, -1 };
+    private float _autoClock;
     private readonly float[] _autoAge = new float[AutoTags], _autoA = new float[AutoTags];
     private int _autoGiven;
     /// <summary>Seconds since the last tag was due to start (a tag that comes sooner waits for AutoTagGap).</summary>
@@ -198,12 +200,13 @@ public partial class TownHud
     }
 
     /// <summary>A new town: the first three tags again.</summary>
-    private void ResetTradeTags() { _autoGiven = 0; _sinceTag = 99f; for (int k = 0; k < AutoTags; k++) { _autoAge[k] = AutoTagSeconds; _autoWho[k] = -1; } }
+    private void ResetTradeTags() { _autoGiven = 0; _sinceTag = 99f; Array.Fill(_autoStartedAt, -1f); for (int k = 0; k < AutoTags; k++) { _autoAge[k] = AutoTagSeconds; _autoWho[k] = -1; } }
 
     private void AutoTagsFrame(float dt)
     {
         var v = _main.Villagers;
         _sinceTag += dt;
+        _autoClock += dt;
         for (int k = 0; k < AutoTags; k++)
         {
             var l = _autoTag[k];
@@ -212,6 +215,7 @@ public partial class TownHud
             bool want = _autoWho[k] >= 0 && _autoWho[k] < _drv.Town.VillagerCount && _autoAge[k] >= 0f && _autoAge[k] < AutoTagSeconds && PickingOnForCards && _autoWho[k] != _tagFor;
             _autoA[k] = Math.Clamp(_autoA[k] + (want ? dt : -dt) / 0.12f, 0f, 1f);
             bool show = _autoA[k] > 0.001f && _autoWho[k] >= 0;
+            if (show && _autoStartedAt[k] < 0) _autoStartedAt[k] = _autoClock;
             if (l.Visible != show) l.Visible = show;
             if (!show) continue;
             var tr = _drv.Town.Villager(_autoWho[k]).Trade;
@@ -249,4 +253,6 @@ public partial class TownHud
     public int AutoTagsGiven => _autoGiven;
     /// <summary>Seconds since tag k began to show (negative while it waits its turn; tests).</summary>
     public float AutoTagAge(int k) => _autoAge[k];
+    /// <summary>The interface's clock (seconds of frame time) when tag k first showed (-1 not yet; tests).</summary>
+    public float AutoTagStartedAt(int k) => _autoStartedAt[k];
 }

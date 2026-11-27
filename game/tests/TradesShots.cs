@@ -34,6 +34,20 @@ public partial class TradesShots : TownTestBase
         if (size != 100) { Settings.GameSettings.Current?.SetInterfaceSize(size); await Frames(10); }
         var bot = new TownBot(BotKind.Payback, 2);
         Main.Driver.SetPaused(true);
+        int streetLevel = 0;
+        foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--street=")) streetLevel = int.Parse(a.Substring(9));
+        if (streetLevel > 0)
+        {
+            // Fix round: the street alone, at a level of the town's own filling (no count set by hand).
+            Main.Driver.RunBot(bot, t => t.Level >= streetLevel && t.TradesShown, 20 * 60 * 60);
+            _tag += $"-level{T.Level}";
+            Main.Driver.SetSpeed(1);
+            Main.Driver.SetPaused(false);
+            await Frames(60);
+            await StreetShots();
+            Notes.Add($"street level={T.Level} carriers={T.TradeInfo(Trade.Water).Members} reapers={T.TradeInfo(Trade.Grain).Members} millers={T.TradeInfo(Trade.Flour).Members} helpers={T.Helpers}");
+            return;
+        }
         Main.Driver.RunBot(bot, t => t.VillagerCount >= 14 && t.TradeOpen(Trade.Flour), 20 * 60 * 40);
         Main.Driver.Advance(20);
         var t = T;
@@ -105,9 +119,18 @@ public partial class TradesShots : TownTestBase
         strip = Image.CreateEmpty(frames[0].GetWidth() * 4, frames[0].GetHeight() * 2, false, frames[0].GetFormat());
         for (int k = 0; k < frames.Length; k++) strip.BlitRect(frames[k], new Rect2I(Vector2I.Zero, frames[k].GetSize()), new Vector2I((k % 4) * frames[0].GetWidth(), (k / 4) * frames[0].GetHeight()));
         Save("trades-count-strip", strip);
+        await StreetShots();
+        Notes.Add($"dir={_dir} tag={_tag} villagers={n} who={who}");
+    }
+
+    /// <summary>A street at the play view: everyone a Helper, then the trades' heads, then the trial (larger kerchief and
+    /// cap), the same moment with the town held still.</summary>
+    private async Task StreetShots()
+    {
         // A street at the play view: everyone a Helper, then the trades' heads (the same moment, the town held still).
         Main.Driver.SetPaused(true);
         Park();
+        var vil = Main.Villagers; var t = T; int n = t.VillagerCount;
         var at = Busiest(vil);
         Main.Rig.UserMoved = true;
         Main.Rig.LookAt(at, 46f, instant: true);
@@ -128,7 +151,6 @@ public partial class TradesShots : TownTestBase
         Crop("trades-street-larger", Main.Rig.LocalToScreen(at), 960, 540);
         Crop("trades-street-larger-close", Main.Rig.LocalToScreen(at), 480, 270, 2);
         TownVillagers.WearScale = 1f;
-        Notes.Add($"dir={_dir} tag={_tag} villagers={n} who={who}");
     }
 
     private void Park() { Point(new Vector2(GetViewport().GetVisibleRect().Size.X * 0.6f, GetViewport().GetVisibleRect().Size.Y * 0.8f)); }

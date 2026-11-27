@@ -261,10 +261,11 @@ public partial class TownHud
     {
         var tv = t.TradeInfo(tr);
         var sb = new System.Text.StringBuilder(TradeSentences[(int)tr]);
+        // Fix round: worded so it cannot be read as members with nowhere to work (most members are on the road).
         sb.Append("\nMembers ").Append(tv.Members);
-        if (tr != Trade.None) sb.Append(" · places ").Append(tv.Places);
-        sb.Append("\nWaiting now ").Append(tv.Waiting);
-        if (tr != Trade.None) sb.Append(" · away now ").Append(tv.Away);
+        if (tr != Trade.None) sb.Append("\nWork places ").Append(tv.Places).Append(" (the others are on the road)");
+        if (tv.Waiting > 0) sb.Append("\nWaiting now ").Append(tv.Waiting);
+        if (tr != Trade.None && tv.Away > 0) sb.Append("\nAway now ").Append(tv.Away).Append(" (at another trade's work)");
         if (tr != Trade.None && (tv.WorkBonus > 0 || tv.WorthBonus > 0))
             sb.Append("\nBonus: work +").Append(Math.Round(tv.WorkBonus * 100)).Append("%, goods +").Append(Math.Round(tv.WorthBonus * 100)).Append('%');
         if (tv.ByPlayer) sb.Append("\nYou set this count. The town leaves it alone.");

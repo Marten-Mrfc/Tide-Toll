@@ -40,7 +40,7 @@ public partial class TradesTest
         Check(hud.TradeHovered == (int)Trade.Grain && vil.TradeRingsFor == (int)Trade.Grain && vil.TradeRingAlpha > 0.99f, $"hovering the Reapers' line rings them (hovered {hud.TradeHovered}, rings for {vil.TradeRingsFor}, {vil.TradeRingAlpha:0.00})");
         Check(vil.TradeRingsDrawn == Math.Min(reapers, vil.Drawn), $"every reaper ringed ({vil.TradeRingsDrawn} of {reapers})");
         await Run((int)(_fps * 0.5f));
-        Check(hud.TipText.StartsWith("Reapers bring in the grain.") && hud.TipText.Contains("Members " + reapers), $"the line's tooltip ('{hud.TipText}')");
+        Check(hud.TipText.StartsWith("Reapers bring in the grain.") && hud.TipText.Contains("Members " + reapers) && hud.TipText.Contains("Work places ") && hud.TipText.Contains("the others are on the road"), $"the line's tooltip ('{hud.TipText}')");
 
         // Plus: one more carrier, by a click near the hit area's corner (outside the drawn pill); a villager's head changes.
         var before = new Trade[T.VillagerCount];

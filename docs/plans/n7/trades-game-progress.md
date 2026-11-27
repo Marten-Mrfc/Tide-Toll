@@ -70,3 +70,21 @@ What I saw in them (18:58 run): the Trades card reads at all three sizes with no
 ## A lock mistake (18:43-18:47 UTC)
 
 My picture script for take B waited 8 minutes for the heavy-run lock and then, by a bug in the script (the wait loop fell through instead of stopping), started its runs **without the lock** at 18:43, beside the boats builder's strip run that held it. I stopped my runs at 18:47 by hand. The lock folder disappeared at 18:47:01: that may have been my script's last line (`rmdir`) removing the boats builder's lock, or that builder giving it back; I cannot tell which. Any timing check of the boats builder's between 18:43 and 18:47, or after 18:47 while it believed it held the lock, is worth one more run. The later takes wait strictly (no run without the lock).
+
+## Fix round (19:00-20:05 UTC)
+
+- **No file written in a frame of play because a hint was seen.** `GameSettings.SetHintSeen` keeps the bit in memory and sets `HintsUnsaved`; `SaveHintsIfChanged` (read the file, merge the bits, write) runs with the town's next save (`TownSaver.SaveNow`: the autosave, the pause's save, the quit; also when the town's save is refused because the save on disk could not be read). Any other `Save` clears the flag. Searched for other writers during play: every other setter (`SetVolume`, `SetFrameLimit`, `SetInterfaceSize`, `SetWindowMode`, `SetResolution`, `SetKey`, `RestoreDefaultKeys`, `SetAutosaveMinutes`, `ShowHintsAgain`) is called only from the settings pages (`SettingsPages.*`), and `SettingsRuntime` writes nothing; nothing else writes `settings.cfg` by itself during play. Test (game-trades): the frame the trades' hint appears in leaves `settings.cfg` unchanged and allocates under 8 KB; after `SaveNow` the file's `hints_seen` has the bit.
+- **The first three tags of the town's filling** come one after another, 0.5 s apart (`AutoTagGap`), and follow the map tags' rules: never cut by the window, never on a card (the map tags' card list, the Trades and villager cards), a kept map tag or within 40 px of a showing tooltip; none for a villager under the interface. A blocked tag fades out. Test: the tags start at least 0.4 s apart.
+- **The line holds its text on every canvas**: `TownHud.FitLine` measures the text when it changes (and the old text during a cross-fade) and grows the card upward from the zone's bottom edge for two lines. game-layout: the Line zone may be taller, bottom-aligned; the fixture's line text is the longer of the longest mode help and the longest first hint (the trades' hint, 87 characters), applied through `FitLineFor`.
+- **Counts**: the town's are in the captions' muted ink (`UiKit.Muted`, was `MutedNumber`), regular; yours ink bold; the Helpers' line by the same rule.
+- **The trade line's tooltip**: "Members 13", "Work places 5 (the others are on the road)", then "Waiting now" and "Away now (at another trade's work)" only when above 0.
+- **Honest pictures**: no count set by hand except in the count strip; the earlier first hints are marked seen so the line shows the trades' hint (`trades-hint-whole`); the street at two moments of the town's own filling (`--street=8`, `--street=15`).
+- **The kerchief and the cap 15 percent larger**: tried in the drawing (`TownVillagers.WearScale`, about the neck; the models untouched) with before-and-after frames on a real street (`trades-street-after*` against `trades-street-larger*`); decision below.
+
+## Left from the review (can wait)
+
+From `docs/plans/n7/trades-game-review.md`:
+- 7a the liked cap's fold: made 10 units in this round (it was a speck at 720). 7b the Helper cap's tooltip already reads "Helper: no trade, works where it pays best" (the frame showed the reaper's cap hovered).
+- 8 the crossfade's mid-frame: check it in play at 30 fps and at 150; if it flickers, fade the outgoing card faster (0.1 s) than the incoming. Not done.
+- 11 the hover rings are thin and few at 720 and at 150: scale ring radius and width with the view's zoom, a little ink in the colour so it shows on wheat. Not done.
+- The Helpers' caption "work where it pays best" fits nowhere: accepted as dropped (the Helpers line's tooltip says it).
