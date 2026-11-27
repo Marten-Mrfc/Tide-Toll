@@ -30,7 +30,7 @@ from _kit import beam, tube, loft, cap
 BLOCKED = "free asset sites blocked from the build container (checked 2026-11-25)"
 WOOD = "Mud"
 PLANK = "Trail earth"
-BUDGET = 150
+BUDGET = 250   # night 3: the style sheet allows a prop 250
 
 
 # ------------------------------------------------------------------ woodpile
@@ -64,17 +64,43 @@ def washing_line():
 
 # ------------------------------------------------------------------ flower bed
 def flower_bed():
+    """Night 3 (round 2, BK; fixed after the review): a raised bed edged with 0.25 m Concrete stones, dark soil,
+    three leaf cushions in Cast-iron green and Meadow, and twelve blossoms 0.35 m across in Brick, Reed and thatch and
+    Paper lying on the cushions, each with a raised centre. 2.2 x 1.2 m."""
+    import random
+    rng = random.Random(11)
     m = glb.Mesh()
-    W, D, h = 1.8, 1.0, 0.22
-    m.add_box((0, 0, 0), (W, h, D), {"default": PLANK, "+y": "Packed earth"}, bottom=False)
-    # clumps: a dark leaf mound with a flower-head cap
-    clumps = ((-0.6, -0.2, "Brick"), (-0.15, 0.2, "Paper"), (0.3, -0.18, "Reed and thatch"), (0.65, 0.2, "Brick"),
-              (-0.55, 0.25, "Reed and thatch"), (0.2, 0.28, "Brick"))
-    for i, (x, z, c) in enumerate(clumps):
-        r = 0.22 if i < 4 else 0.17
-        m.add_frustum((x, h, z), r, r * 0.8, 0.16, "Cast-iron green", segments=5, yaw=0.4 * i, cap_top=False,
-                      cap_bottom=False)
-        m.add_frustum((x, h + 0.16, z), r * 0.8, r * 0.45, 0.1, c, segments=5, yaw=0.4 * i, cap_bottom=False)
+    W, D, h = 2.2, 1.2, 0.25
+    m.add_box((0, 0, 0), (W - 0.2, h - 0.04, D - 0.2), {"default": "Mud", "+y": "Mud"}, bottom=False)   # soil
+    # edge stones: a ring of blocks, each a little different, standing 4 cm proud of the soil
+    xs = [-0.67, 0.0, 0.67]
+    for x in xs:
+        for sz in (-1, 1):
+            m.add_box((x + rng.uniform(-0.03, 0.03), 0, sz * (D / 2 - 0.08)), (0.64, h + rng.uniform(-0.03, 0.02), 0.18),
+                      "Concrete", bottom=False)
+    for sx in (-1, 1):
+        m.add_box((sx * (W / 2 - 0.08), 0, 0), (0.18, h, 0.66), "Concrete", bottom=False)
+    cushions = ((-0.6, -0.1, 0.42, "Cast-iron green"), (0.05, 0.1, 0.44, "Meadow"),
+                (0.64, -0.08, 0.4, "Cast-iron green"))
+    for x, z, r, c in cushions:
+        m.add_sphere((x, h, z), r, c, rings=2, segments=6, squash=0.45)
+    # night 3 (BK fix): blossoms 0.35 m across in Brick and Reed and thatch (a Paper one now and then), lying on top of
+    # the cushions, each with a raised centre (a low cone in the other colour) so it reads as a flower head
+    cols = ("Brick", "Reed and thatch", "Brick", "Paper")
+    k = 0
+    for x, z, r, _ in cushions:
+        for i in range(4):
+            a = 2 * math.pi * i / 4 + rng.uniform(-0.4, 0.4)
+            d = r * 0.5 if i else r * 0.1
+            bx, bz = x + math.cos(a) * d, z + math.sin(a) * d
+            top = h + r * 0.45 * math.sqrt(max(0.0, 1 - (d / r) ** 2)) + 0.03
+            ring = [(bx + 0.175 * math.cos(2 * math.pi * j / 5 + a), top, bz + 0.175 * math.sin(2 * math.pi * j / 5 + a))
+                    for j in range(5)]
+            col = cols[k % 4]
+            m.add_poly(ring, col)
+            m.add_cone((bx, top, bz), 0.07, 0.07, "Reed and thatch" if col != "Reed and thatch" else "Soot brick",
+                       segments=4, cap_bottom=False)
+            k += 1
     return m
 
 
@@ -82,30 +108,42 @@ def flower_bed():
 HEN_SCALE = 1.5
 
 
-def hen(m, pos, yaw, body):
+def hen(m, pos, yaw, body, tail="Soot brick"):
+    """Night 3 (BK fix): a hen you can name: a round body (0.5 m across once drawn 1.5x), a tail wedge cocked up
+    behind in a darker tone, a round head on a short neck, a Reed and thatch beak and a Brick comb and wattle."""
     h = glb.Mesh()
-    beam(h, (0, 0.32, -0.2), (0, 0.32, 0.12), 0.26, 0.3, body)               # body
-    beam(h, (0, 0.4, -0.2), (0, 0.58, -0.3), 0.18, 0.1, body, ends=False)     # tail up
-    h.add_box((0, 0.42, 0.16), (0.14, 0.2, 0.14), body, bottom=False)         # head and neck
-    h.add_box((0, 0.62, 0.15), (0.05, 0.08, 0.12), "Brick", bottom=False)    # comb
-    h.add_box((0, 0, -0.04), (0.08, 0.17, 0.06), "Reed and thatch")          # legs (one block)
+    h.add_sphere((0, 0.2, -0.02), 0.17, body, rings=2, segments=6, squash=0.85)         # body
+    beam(h, (0, 0.25, -0.12), (0, 0.38, -0.3), 0.14, 0.1, tail)                            # tail wedge, cocked up
+    h.add_sphere((0, 0.42, 0.14), 0.09, body, rings=2, segments=5)                      # head
+    h.add_cone((0, 0.41, 0.22), 0.04, 0.05, "Reed and thatch", segments=3, yaw=0.0)     # beak (points up; tiny)
+    h.add_box((0, 0.49, 0.13), (0.04, 0.07, 0.12), "Brick", bottom=False)               # comb
     h.tris = [(a * HEN_SCALE, b * HEN_SCALE, c * HEN_SCALE, col) for a, b, c, col in h.tris]   # drawn 1.5x, like sheep
     m.append(h, pos, yaw)
 
 
 def hen_coop():
+    """Night 3 (round 2, BK): a coop of Packed earth planks 1.6 x 1.2 m on short legs under a Thatch roof with a
+    ridge course, a ramp to its pop hole, a pen of four posts and a Trail earth rail in front, and two hens (Limewash and
+    golden Reed and thatch, tails cocked up, Brick combs) in the pen; the door is framed and the ramp wide. 2.0 x 2.4 m."""
     m = glb.Mesh()
-    z0 = -0.35
-    for sz in (-1, 1):                                                       # two skids under it
-        m.add_box((0, 0, z0 + sz * 0.4), (1.4, 0.35, 0.14), WOOD)
-    m.add_box((0, 0.35, z0), (1.3, 0.7, 1.0), "Packed earth", bottom="Packed earth")   # plank house
-    m.add_gable((0, 1.05, z0), 1.4, 1.0, 0.5, "Soot brick", gable=PLANK, overhang=0.12)  # roof, ridge along X
-    m.add_poly([(0.14, 0.45, z0 + 0.51), (0.46, 0.45, z0 + 0.51), (0.46, 0.88, z0 + 0.51), (0.14, 0.88, z0 + 0.51)],
-               WOOD, facing=(0, 0, 1))                   # pop hole
-    m.add_poly([(0.15, 0.46, z0 + 0.55), (0.45, 0.46, z0 + 0.55), (0.45, 0.02, z0 + 1.15),
-                (0.15, 0.02, z0 + 1.15)], PLANK, facing=(0, 1, 0.8))         # ramp
-    hen(m, (-0.5, 0, 0.55), 0.6, "Limewash")
-    hen(m, (0.55, 0, 0.75), -0.9, "Brick")
+    z0 = -0.55
+    for sz in (-1, 1):
+        m.add_box((0, 0, z0 + sz * 0.45), (1.4, 0.32, 0.14), WOOD)                          # skids
+    m.add_box((0, 0.32, z0), (1.5, 0.7, 1.1), "Packed earth", bottom="Mud")              # plank house
+    m.add_gable((0, 1.02, z0), 1.7, 1.1, 0.62, "Reed and thatch", gable="Packed earth", overhang=0.16)
+    m.add_box((0, 1.6, z0), (1.76, 0.1, 0.2), "Soot brick", bottom="Soot brick")         # ridge course
+    m.add_box((0.28, 0.36, z0 + 0.55), (0.56, 0.62, 0.06), "Soot brick", bottom=False)   # door frame, proud
+    m.add_poly([(0.06, 0.38, z0 + 0.59), (0.5, 0.38, z0 + 0.59), (0.5, 0.92, z0 + 0.59), (0.06, 0.92, z0 + 0.59)],
+               "Ink", facing=(0, 0, 1))                                                  # open door (0.44 x 0.54)
+    m.add_poly([(0.04, 0.38, z0 + 0.62), (0.52, 0.38, z0 + 0.62), (0.52, 0.02, z0 + 1.3),
+                (0.04, 0.02, z0 + 1.3)], PLANK, facing=(0, 1, 0.8))                       # ramp, wide
+    for x in (-0.9, 0.9):
+        m.add_box((x, 0, 1.15), (0.16, 0.8, 0.16), WOOD)                                  # pen posts
+    beam(m, (-0.9, 0.62, 1.15), (0.9, 0.62, 1.15), 0.1, 0.1, PLANK, ends=False)          # rail
+    beam(m, (-0.9, 0.62, 0.1), (-0.9, 0.62, 1.15), 0.1, 0.1, PLANK, ends=False)
+    beam(m, (0.9, 0.62, 0.1), (0.9, 0.62, 1.15), 0.1, 0.1, PLANK, ends=False)
+    for (x, z, yaw, c, tl) in ((-0.5, 0.55, 0.6, "Limewash", "Limewash"), (0.05, 0.98, -1.2, "Reed and thatch", "Packed earth")):
+        hen(m, (x, 0, z), yaw, c, tl)
     return m
 
 
@@ -185,56 +223,67 @@ def apple_tree():
 
 
 # ------------------------------------------------------------------ handcart
+def cart_wheel(m, x, yc, zc, r, t, n=12):
+    """A wheel standing on edge in the YZ plane at x: 12-sided rim (Packed earth tread, Packed earth faces), a
+    Soot brick felloe ring and an Ink hub on each face, so it reads round from the side and as a dark bar from above."""
+    s = 1 if x > 0 else -1
+    a = [(x - s * t / 2, yc + r * math.cos(2 * math.pi * (i + 0.5) / n), zc + r * math.sin(2 * math.pi * (i + 0.5) / n))
+         for i in range(n)]
+    b = [(x + s * t / 2, p[1], p[2]) for p in a]
+    loft(m, a, b, "Mud", centre=(x, yc, zc))                                       # tread
+    cap(m, b, "Packed earth", facing=(s, 0, 0))                                     # outer face
+    for k in (1,):                                                                  # one spoke bar across the hub
+        beam(m, (x + s * (t / 2 + 0.02), yc - r * 0.8 * k, zc - r * 0.35), (x + s * (t / 2 + 0.02), yc + r * 0.8 * k,
+             zc + r * 0.35), 0.06, 0.06, "Mud", ends=False)
+    hub = [(x + s * (t / 2 + 0.05), yc + 0.11 * math.cos(2 * math.pi * i / 6), zc + 0.11 * math.sin(2 * math.pi * i / 6))
+           for i in range(6)]
+    cap(m, hub, "Ink", facing=(s, 0, 0))
+
+
 def handcart():
+    """Night 3 (round 2, BK fix): a plank bed 0.8 x 1.2 m level on two round wheels 0.9 m across standing on edge
+    either side (12 sides, Ink hubs, crossed spokes), two handles 1 m long and 0.2 m thick running out to the south
+    (+Z) and resting on a prop leg, and a fat Limewash sack (0.6 m) tied twice with Reed and thatch cord. 1.3 x 2.4 m."""
     m = glb.Mesh()
-    # body tipped forward: back edge on the axle line (z = -0.3) at 0.75 m, shafts resting on the ground to the south
-    ax = -0.6
-    yb = 0.62
-    tilt = math.atan2(yb - 0.04, 1.75)                                          # body + shafts slope to the ground
-    g = glb.Mesh()
-    g.add_box((0, 0, 0), (1.0, 0.08, 1.2), PLANK, bottom=WOOD)                 # floor
-    g.add_box((0, 0.08, -0.56), (1.0, 0.3, 0.08), "Packed earth", bottom=False)    # tailboard
-    g.add_box((0, 0.08, 0.56), (1.0, 0.3, 0.08), "Packed earth", bottom=False)     # front board
-    for x in (-0.48, 0.48):
-        g.add_box((x, 0.08, 0), (0.08, 0.3, 1.2), "Packed earth", bottom=False)    # sides
-    for x in (-0.38, 0.38):                                                    # shafts out the front
-        beam(g, (x, -0.02, 0.4), (x, -0.02, 1.8), 0.09, 0.09, WOOD)
-    g.add_box((0.1, 0.08, -0.1), (0.5, 0.36, 0.4), "Paper", bottom=False)     # sack
-    # rotate g about X by -tilt (front down), then place
-    c, s = math.cos(tilt), math.sin(tilt)
-    for a, b, cc, col in g.tris:
-        pts = []
-        for p in (a, b, cc):
-            y, z = p[1], p[2]
-            pts.append((p[0], y * c - z * s + yb, y * s + z * c + ax))
-        m.tris.append((*[glb._v(p) for p in pts], col))
-    # wheels: 6-sided, on the axle, either side
-    for x in (-0.62, 0.62):
-        ring = [(x, yb - 0.08 + 0.48 * math.cos(a), ax + 0.48 * math.sin(a)) for a in
-                [2 * math.pi * (i + 0.5) / 6 for i in range(6)]]
-        ring2 = [(x + (0.08 if x > 0 else -0.08), p[1], p[2]) for p in ring]
-        loft(m, ring, ring2, WOOD, centre=(x, yb - 0.08, ax))
-        cap(m, ring2, "Packed earth", facing=(1 if x > 0 else -1, 0, 0))
-        cap(m, ring, "Packed earth", facing=(-1 if x > 0 else 1, 0, 0))
-    beam(m, (-0.62, yb - 0.08, ax), (0.62, yb - 0.08, ax), 0.08, 0.08, WOOD, ends=False)   # axle
+    R, yb, T = 0.45, 0.5, 0.1
+    m.add_box((0, yb, 0), (0.8, 0.08, 1.2), PLANK, bottom=WOOD)                       # bed floor
+    for z in (-0.56, 0.56):
+        m.add_box((0, yb + 0.08, z), (0.8, 0.28, 0.08), "Packed earth", bottom=False)  # tail and front boards
+    for x in (-0.36, 0.36):
+        m.add_box((x, yb + 0.08, 0), (0.08, 0.32, 1.2), "Packed earth", bottom=False)  # sides
+    for x in (-0.3, 0.3):
+        beam(m, (x, yb - 0.02, 0.3), (x, yb + 0.02, 1.55), 0.2, 0.14, WOOD)          # handles, 0.2 m thick
+    m.add_box((0, 0, 0.5), (0.5, yb, 0.1), WOOD)                                       # prop leg under the front
+    m.add_box((0, yb + 0.08, -0.1), (0.62, 0.5, 0.62), "Limewash", bottom=False)       # sack
+    m.add_frustum((0, yb + 0.58, -0.1), 0.3, 0.1, 0.18, "Limewash", segments=6, cap_bottom=False)   # its neck
+    for y in (yb + 0.25, yb + 0.6):
+        m.add_box((0, y, -0.1), (0.66 if y < yb + 0.5 else 0.3, 0.07, 0.66 if y < yb + 0.5 else 0.3),
+                  "Reed and thatch", bottom=False)                                     # two ties
+    for x in (-0.47, 0.47):
+        cart_wheel(m, x, R, 0.0, R, T)
+    beam(m, (-0.45, R, 0), (0.45, R, 0), 0.08, 0.08, WOOD, ends=False)                 # axle
     return m
 
 
 # ------------------------------------------------------------------ signpost
 def signpost():
+    """Night 3 (round 2, BK): a stout post (0.28 m) on a stone, a Packed earth cap, two arms 1.2 m long and 0.32 m deep
+    pointing different ways with Brick painted tips, and a Thatch lantern hung from a bracket."""
     m = glb.Mesh()
-    m.add_frustum((0, 0, 0), 0.3, 0.24, 0.16, "Concrete", segments=5)          # stone at the foot
-    m.add_box((0, 0, 0), (0.16, 2.3, 0.16), WOOD)                              # post
-    m.add_frustum((0, 2.3, 0), 0.14, 0.0, 0.16, "Packed earth", segments=4)    # cap
-    # two arms: flat boards with a pointed end, at different heights and directions
-    for y, yaw, c in ((1.95, 0.35, PLANK), (1.6, math.pi - 0.6, "Limewash")):
+    m.add_frustum((0, 0, 0), 0.42, 0.32, 0.2, "Concrete", segments=5)          # stone at the foot
+    m.add_box((0, 0, 0), (0.28, 2.5, 0.28), WOOD)                              # post
+    m.add_frustum((0, 2.5, 0), 0.24, 0.0, 0.24, "Packed earth", segments=4)    # cap
+    for y, yaw, c in ((2.1, 0.35, PLANK), (1.65, math.pi - 0.6, "Limewash")):
         a = glb.Mesh()
-        a.add_extrude((0, 0, 0), [(0.06, -0.05), (0.85, -0.05), (1.05, 0.0), (0.85, 0.05), (0.06, 0.05)], 0.26, c)
-        # stand the board up: extrude goes along Y; it is a flat board in X-Y, thickness 0.1 along Z
+        a.add_extrude((0, 0, 0), [(0.1, -0.1), (1.0, -0.1), (1.2, 0.0), (1.0, 0.1), (0.1, 0.1)], 0.32, c)
+        a.add_extrude((0, 0, 0), [(1.0, -0.11), (1.21, 0.0), (1.0, 0.11)], 0.33, "Brick")   # painted tip
         for p0, p1, p2, col in a.tris:
-            m.tris.append((*[glb._v((p[0] * math.cos(yaw), y + p[1] - 0.13, -p[0] * math.sin(yaw)))
+            m.tris.append((*[glb._v((p[0] * math.cos(yaw), y + p[1] - 0.16, -p[0] * math.sin(yaw)))
                              + glb._v((p[2] * math.sin(yaw), 0, p[2] * math.cos(yaw)))
                              for p in (p0, p1, p2)], col))
+    beam(m, (0, 1.3, 0.14), (0, 1.3, 0.6), 0.08, 0.08, WOOD)                   # lantern bracket
+    m.add_box((0, 0.88, 0.56), (0.24, 0.3, 0.24), "Reed and thatch", bottom="Soot brick")   # lantern
+    m.add_frustum((0, 1.18, 0.56), 0.18, 0.04, 0.12, "Soot brick", segments=4)
     return m
 
 
@@ -242,7 +291,7 @@ BUILDS = [
     ("prop-woodpile", woodpile, "Town dressing: woodpile with a chopping block"),
     ("prop-washing-line", washing_line, "Town dressing: washing line with three cloths"),
     ("prop-flower-bed", flower_bed, "Town dressing: flower bed"),
-    ("prop-hen-coop", hen_coop, "Town dressing: hen coop with two hens"),
+    ("prop-hen-coop", hen_coop, "Town dressing: thatched hen coop with a pen and three hens"),
     ("prop-bench", bench, "Town dressing: bench"),
     ("prop-beehives", beehives, "Town dressing: three straw skeps on a stand"),
     ("prop-haystack", haystack, "Town dressing: haystack"),

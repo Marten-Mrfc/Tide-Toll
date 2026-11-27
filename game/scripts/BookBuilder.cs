@@ -12,7 +12,7 @@ namespace TideToll.Game;
 /// The map's north-west corner is "Book/RightPage/MapOrigin"; everything on the map hangs under it.
 /// The left page is the chapter page; its words are drawn by the interface (ChapterPage) over the paper.
 /// </summary>
-public static class BookBuilder
+public static partial class BookBuilder
 {
     public const float MapSize = 256f;      // 128 cells x 2 m
     public const float PageWidth = 300f;    // x
@@ -32,16 +32,17 @@ public static class BookBuilder
     {
         var table = new Node3D { Name = "Table" };
         parent.AddChild(table);
-        AddBox(table, "Top", new Vector3(1600, 10, 1000), new Vector3(0, -PageThickness - 4 - 5, 0), Palette.Mud);
-        // Plank seams, so the table reads as wood rather than a flat brown field.
-        for (int i = -5; i <= 5; i++)
-            AddBox(table, $"Seam{i + 5}", new Vector3(1600, 0.4f, 1.2f), new Vector3(0, -PageThickness - 4 + 0.05f, i * 90f + 20f), Palette.Mud.Darkened(0.25f));
-        AddInkwell(table, new Vector3(-420, -PageThickness - 4, -140));
+        // Night 3: a wooden table in the palette's earth tones (a generated plank texture with grain, knots, butt joints
+        // and soft wear: assets/src/2d/book-desk.py), and the small things of a writing desk at the edges of the view.
+        var top = AddBox(table, "Top", new Vector3(1600, 10, 1000), new Vector3(0, -PageThickness - 4 - 5, 0), Palette.Mud);
+        top.MaterialOverride = TableMaterial();
+        AddDeskThings(table, -PageThickness - 4);
 
         var book = new Node3D { Name = "Book" };
         parent.AddChild(book);
         var cover = CoverSize;
-        AddBox(book, "Cover", new Vector3(cover.X, 4, cover.Y), new Vector3(0, -PageThickness - 2, 0), Palette.SootBrick);
+        var binding = AddBox(book, "Cover", new Vector3(cover.X, 4, cover.Y), new Vector3(0, -PageThickness - 2, 0), Palette.SootBrick);
+        binding.MaterialOverride = LeatherMaterial(new Vector2(cover.X, cover.Y));
 
         var left = AddPage(book, "LeftPage", -1);
         var right = AddPage(book, "RightPage", +1);
@@ -111,8 +112,8 @@ public static class BookBuilder
 
     private static float Shade(float d)
     {
-        float t = Mathf.Clamp(d / (GutterCurve * 1.6f), 0f, 1f);
-        return Mathf.Lerp(0.74f, 1f, Mathf.SmoothStep(0f, 1f, t));
+        float t = Mathf.Clamp(d / (GutterCurve * 2.2f), 0f, 1f);
+        return Mathf.Lerp(0.64f, 1f, Mathf.SmoothStep(0f, 1f, t));
     }
 
     /// <summary>
@@ -210,30 +211,6 @@ public static class BookBuilder
         AddLabel(page, "CompassN", "N", at + new Vector3(0, 0, -r - 4f), 700, Palette.Ink, UiKit.Serif);
     }
 
-    private static void AddRibbon(Node3D book)
-    {
-        AddBox(book, "Ribbon", new Vector3(9, 0.4f, 120), new Vector3(0, -GutterSag + 0.2f, PageDepth / 2f + 20f), Palette.Brick);
-    }
-
-    private static void AddInkwell(Node3D table, Vector3 at)
-    {
-        var well = new MeshInstance3D
-        {
-            Name = "Inkwell",
-            Mesh = new CylinderMesh { TopRadius = 22, BottomRadius = 26, Height = 24, RadialSegments = 16 },
-            Position = at + new Vector3(0, 12, 0),
-            MaterialOverride = Palette.Matte(Palette.CastIronGreen),
-        };
-        table.AddChild(well);
-        well.AddChild(new MeshInstance3D
-        {
-            Name = "Ink",
-            Mesh = new CylinderMesh { TopRadius = 10, BottomRadius = 10, Height = 1, RadialSegments = 16 },
-            Position = new Vector3(0, 12.2f, 0),
-            MaterialOverride = Palette.Matte(Palette.Ink),
-        });
-    }
-
     public static MeshInstance3D AddBox(Node3D parent, string name, Vector3 size, Vector3 pos, Color c)
     {
         var m = new MeshInstance3D { Name = name, Mesh = new BoxMesh { Size = size }, Position = pos, MaterialOverride = Palette.Matte(c) };
@@ -270,6 +247,11 @@ public static class BookBuilder
         // Round 4: not for Alegreya: the variable font's overlapping contours leave stray marks in a distance field
         // ("2:" after digits, dots over letters), so it is printed from a plain 100 px atlas with mipmaps.
         bool plain = font == UiKit.Serif;
+        // Night 3: print on the page is set in the page's own inks (PageInk, PageInkSoft): the faded ink of the
+        // interface read far too pale on paper (the summary's "Done" column). A thin outline in the same colour gives
+        // the small serif print one more pixel of stroke, so it holds at the book view.
+        if (c == Palette.Ink) c = PageInk;
+        else if (c == Palette.FadedInk) c = PageInkSoft;
         var l = new Label3D
         {
             Name = name,
@@ -281,7 +263,8 @@ public static class BookBuilder
             FontSize = 100,
             PixelSize = size100 / 10000f,
             Modulate = c,
-            OutlineSize = 0,
+            OutlineSize = plain && size100 <= 760 ? 3 : 0,
+            OutlineModulate = c,
             Shaded = false,
             DoubleSided = false,
         };

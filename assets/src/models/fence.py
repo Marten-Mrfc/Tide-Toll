@@ -12,33 +12,39 @@ from common import glb, ledger, asset_path
 from _kit import beam
 
 POST = "Mud"
+STAKE = "Packed earth"
 
 
-def post(m, x, h=1.0, s=0.22):
-    m.add_box((x, 0, 0), (s, h - 0.12, s), POST)
-    m.add_frustum((x, h - 0.12, 0), s * 0.72, s * 0.3, 0.12, POST, segments=4, cap_bottom=False)  # trimmed top
+def post(m, x, h=1.0, s=0.22, colour=POST):
+    m.add_box((x, 0, 0), (s, h - 0.12, s), colour)
+    m.add_frustum((x, h - 0.12, 0), s * 0.72, s * 0.3, 0.12, colour, segments=4, cap_bottom=False)  # trimmed top
 
 
 def wattle():
+    """Night 3 (round 2, BK fix): five upright withies 0.18 m thick (Trail earth, 0.12 m of air between them) woven
+    over and under three horizontal Packed earth rails between two Mud posts: the withies stand straight, one in
+    front of the rails and the next behind them (after the pictures: bent withies read as dangling zigzags), so it
+    reads as a woven hurdle with the light through it and not as a crumpled strip or a gate. 1.1 m."""
     m = glb.Mesh()
     for x in (-1.0, 1.0):
-        post(m, x)
-    # woven panel: 3 bands x 3 sections in a checker, each section pushed to the front or the back of the stakes,
-    # so the ink pass and the two wood tones draw the over-and-under weave
-    for i, y in enumerate((0.1, 0.37, 0.64)):
-        for j, x in enumerate((-0.6, 0.0, 0.6)):
-            k = (i + j) % 2
-            col = "Trail earth" if k else "Packed earth"
-            sides = {"+z": col, "-z": col, "+y": col}
-            if i == 0:
-                sides["-y"] = col
-            m.add_box((x, y, 0.04 if k else -0.04), (0.62, 0.27, 0.12), sides)
+        post(m, x, h=1.12, s=0.22, colour=POST)
+    for y in (0.3, 0.62, 0.94):
+        beam(m, (-0.92, y, 0), (0.92, y, 0), 0.1, 0.1, STAKE, ends=False)              # rails
+    for i, x in enumerate((-0.6, -0.3, 0.0, 0.3, 0.6)):
+        s = 0.075 if i % 2 == 0 else -0.075                                            # in front, behind, in front...
+        beam(m, (x, 0.0, s), (x, 1.04, s), 0.18, 0.1, "Trail earth", ends=True)
     return m
 
 
 def corner_post():
+    """Night 3 (round 2, BK fix): a 0.22 m Mud post leaning 4 degrees on a 0.3 m Packed earth foot, with a 0.3 m
+    square Paper cap (a fresh-cut board), so the post shows as a pale dot from above and is not mistaken for the
+    wattle's end."""
     m = glb.Mesh()
-    post(m, 0.0, h=1.1, s=0.26)
+    lean = 0.07
+    m.add_box((0, 0, 0), (0.32, 0.16, 0.32), STAKE)                                    # foot
+    beam(m, (0, 0.1, 0), (lean, 1.0, 0), 0.22, 0.22, POST)
+    m.add_box((lean, 1.0, 0), (0.32, 0.09, 0.32), "Paper", bottom=POST)                # cap
     return m
 
 
@@ -57,7 +63,7 @@ def gate():
     return m
 
 
-for name, make, budget, used in (("fence-wattle", wattle, 100, "Hamlet: fence, straight 2 m segment (woven wattle)"),
+for name, make, budget, used in (("fence-wattle", wattle, 150, "Hamlet: fence, straight 2 m segment (woven wattle)"),
                                  ("fence-post", corner_post, 100, "Hamlet: fence, corner or end post"),
                                  ("fence-gate", gate, 150, "Hamlet: gate (hurdle gate, 2 m)")):
     out = asset_path(f"models/{name}.glb")

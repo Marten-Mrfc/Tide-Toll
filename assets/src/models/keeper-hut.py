@@ -33,12 +33,18 @@ for pos, size in (((0.75, 1.0, WZ / 2 + 0.05), (0.55, 0.5, 0.12)), ((-WX / 2 - 0
 # steep thatch roof, ridge along X, limewashed gables
 m.add_gable((0, WH, 0), WX + 0.5, WZ, 1.6, "thatch", gable=WALL, overhang=0.35)
 m.add_box((0, WH + 1.55, 0), (WX + 0.55, 0.14, 0.3), DARK, bottom=False)          # ridge cap
-# bell-cote on the ridge: two posts, a small slate roof, the bell hanging between
-for x in (-0.38, 0.38):
+# bell-cote on the ridge at the east gable end (night 3 fix: it no longer sits over the chimney): two posts, a small
+# slate roof, the bell hanging between
+BX = WX / 2 - 0.05
+for x in (BX - 0.3, BX + 0.3):
     m.add_box((x, WH + 1.45, 0), (0.14, 0.95, 0.14), DARK, bottom=False)
-m.add_gable((0, WH + 2.4, 0), 1.1, 0.75, 0.35, "Slate roof", gable=DARK, ridge_axis="z", overhang=0.05)
-m.add_frustum((0, WH + 1.75, 0), 0.26, 0.15, 0.42, "Cast-iron green", segments=7, cap_bottom=True)
-beam(m, (-0.38, WH + 2.25, 0), (0.38, WH + 2.25, 0), 0.1, 0.1, DARK)               # bell yoke
+m.add_gable((BX, WH + 2.4, 0), 0.78, 0.6, 0.3, "Slate roof", gable=DARK, ridge_axis="z", overhang=0.04)
+# night 3 (round 2, BK): a real chimney, a 0.6 m stone stack at the west end with a Soot brick cap, so the bell-cote
+# no longer reads as an oversized chimney box
+m.add_box((-WX / 2 + 0.45, WH, -0.55), (0.6, 2.35, 0.6), "Concrete", bottom=False)
+m.add_box((-WX / 2 + 0.45, WH + 2.35, -0.55), (0.72, 0.14, 0.72), "Soot brick", bottom="Soot brick")
+m.add_frustum((BX, WH + 1.75, 0), 0.22, 0.13, 0.42, "Cast-iron green", segments=7, cap_bottom=True)
+beam(m, (BX - 0.3, WH + 2.25, 0), (BX + 0.3, WH + 2.25, 0), 0.1, 0.1, DARK)         # bell yoke
 # lantern on a bracket by the door
 beam(m, (0.95, 1.95, WZ / 2), (0.95, 1.95, WZ / 2 + 0.6), 0.1, 0.12, DARK)
 m.add_box((0.95, 1.38, WZ / 2 + 0.55), (0.3, 0.42, 0.3), "Reed and thatch", bottom=DARK)   # lit glass

@@ -138,16 +138,25 @@ public partial class TownBuildings : Node3D
             // the green (the model's origin is not at its foot), set well clear of the frame toward the view, and the
             // pale stone set on every one of the model's own surfaces as well as the override, unshaded-bright enough
             // that the grass light cannot turn it green.
-            float want = Math.Max(4f, 0.55f * Math.Min(fw, fh));
+            // Night 3 fix (BK review): 15 percent larger, the civic mark of the first age beside the bell frame.
+            float want = Math.Max(4.6f, 0.63f * Math.Min(fw, fh));
             float cs = want / Math.Max(0.1f, Math.Max(sa.Size.X, sa.Size.Z)) / s;
             _charter.Scale = Vector3.One * cs;
-            _charter.Position = new Vector3(fw * 0.36f / s, -sa.Position.Y * cs, fh * 0.36f / s);
+            // Night 3 (round 2, BK): the corner is chosen on the map, not in the green's turned frame (with the door yaw
+            // the "front" corner could lie behind the bell frame): the south-east corner, toward the camera, at the
+            // green's front edge; the stone turned so its carved face and Brick seal face the camera (+Z on the map).
+            // Night 3 fix: further east (0.42 of the width, was 0.32), so its paved patch clears the green's bench.
+            var onMap = new Vector3(fw * 0.42f, 0, fh * 0.46f) / s;
+            var local = onMap.Rotated(Vector3.Up, -yaw);
+            _charter.Position = new Vector3(local.X, -sa.Position.Y * cs, local.Z);
+            _charter.Rotation = new Vector3(0, -yaw, 0);
             // Round 6: pale dressed stone, so it stands out from the grass (it read green-grey before).
+            // Night 3 (round 2, BK): no more pale override: the reworked model (3.4 m Concrete stone, a raised Brick seal
+            // with Paper ribbons, on a paved patch in a trodden ring) carries its own colours, so the seal shows red.
+            // The stand-in (a well, if the model is missing) still gets the pale stone.
             if (_charter is GeometryInstance3D cg)
             {
-                cg.MaterialOverride = PaleStone;
-                if (_charter is MeshInstance3D cm && cm.Mesh != null)
-                    for (int si = 0; si < cm.Mesh.GetSurfaceCount(); si++) cm.SetSurfaceOverrideMaterial(si, PaleStone);
+                if (stone != "charter-stone") cg.MaterialOverride = PaleStone;
                 cg.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
             }
             _charter.Visible = false;
@@ -172,10 +181,20 @@ public partial class TownBuildings : Node3D
         string model = ModelLib.Pick("plot-stakes", "fence-post");
         var root = new Node3D { Name = $"Stakes{p.Id}", Position = Centre(p) };
         var m = ModelLib.Instance(model, "Model");
-        var aabb = ModelLib.Mesh(model).GetAabb();
-        m.Scale = new Vector3(p.W * Cell / Math.Max(0.1f, aabb.Size.X) * 0.9f, 1f, p.H * Cell / Math.Max(0.1f, aabb.Size.Z) * 0.9f);
-        // Round 4: pale new-cut stakes, not the model's dark wood, so a staked plot reads as marked out, not built.
-        m.MaterialOverride = PaleStakes;
+        if (model == "plot-stakes" && ModelLib.HasPart(model, "stake-nw"))
+        {
+            // Night 3 (round 2, BK): the stakes are fitted to the plot without stretching them (each stake at its corner,
+            // each rope scaled along its own side only), in the model's own colours (pale stakes, Paper caps, a Limewash
+            // rope, a Brick pennant) and with the model's soft ink: half the hard ink's weight, not a heavy black yard.
+            m.Mesh = FittedStakes(p.W * Cell * 0.9f, p.H * Cell * 0.9f);
+            m.MaterialOverride = m.Mesh.SurfaceGetMaterial(0);
+        }
+        else
+        {
+            var aabb = ModelLib.Mesh(model).GetAabb();
+            m.Scale = new Vector3(p.W * Cell / Math.Max(0.1f, aabb.Size.X) * 0.9f, 1f, p.H * Cell / Math.Max(0.1f, aabb.Size.Z) * 0.9f);
+            m.MaterialOverride = PaleStakes;
+        }
         root.AddChild(m);
         // Round 3: a small label says what will stand here, so a staked plot never reads as an editor's box.
         var label = new Label3D
@@ -187,6 +206,40 @@ public partial class TownBuildings : Node3D
         };
         root.AddChild(label);
         return root;
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<Vector2, ArrayMesh> Fitted = new();
+
+    /// <summary>plot-stakes' parts placed for a plot of w x d metres: stakes at the corners, ropes scaled along their side.</summary>
+    private static ArrayMesh FittedStakes(float w, float d)
+    {
+        var key = new Vector2(w, d);
+        if (Fitted.TryGetValue(key, out var have)) return have;
+        const string model = "plot-stakes";
+        float hx = w / 2f, hz = d / 2f;
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        Material? mat = null;
+        void Put(string node, Vector3 at, Vector3 scale)
+        {
+            var part = ModelLib.Part(model, node);
+            mat ??= part.SurfaceGetMaterial(0);
+            st.AppendFrom(part, 0, new Transform3D(Basis.Identity.Scaled(scale), at));
+        }
+        Put("stake-nw", new Vector3(-hx, 0, -hz), Vector3.One);
+        Put("stake-ne", new Vector3(hx, 0, -hz), Vector3.One);
+        Put("stake-sw", new Vector3(-hx, 0, hz), Vector3.One);
+        Put("stake-se", new Vector3(hx, 0, hz), Vector3.One);
+        var o = ModelLib.PartOrigin(model, "stake-ne");     // the model's own half sizes (4 x 3 m)
+        float sx = hx / Math.Max(0.1f, Math.Abs(o.X)), sz = hz / Math.Max(0.1f, Math.Abs(o.Z));
+        Put("cord-n", new Vector3(0, 0, -hz), new Vector3(sx, 1, 1));
+        Put("cord-s", new Vector3(0, 0, hz), new Vector3(sx, 1, 1));
+        Put("cord-w", new Vector3(-hx, 0, 0), new Vector3(1, 1, sz));
+        Put("cord-e", new Vector3(hx, 0, 0), new Vector3(1, 1, sz));
+        var mesh = st.Commit();
+        if (mat != null) mesh.SurfaceSetMaterial(0, mat);
+        Fitted[key] = mesh;
+        return mesh;
     }
 
     /// <summary>The words on a staked plot: what will stand there and when.</summary>
@@ -339,7 +392,12 @@ public partial class TownBuildings : Node3D
     private Vector3 _charterBase, _charterScale = Vector3.One;
     /// <summary>The charter stone's size across on the map in metres (tests: large enough to see).</summary>
     /// <summary>Whether the charter stone is drawn in pale stone (tests).</summary>
-    public bool CharterPale => _charter is GeometryInstance3D g && g.MaterialOverride == PaleStone;
+    /// <summary>The charter stone is pale dressed stone, light against the grass (tests): the stand-in under the pale override,
+    /// the model in its own Concrete stone (lighter than Meadow) with nothing laid over it that would hide its Brick seal.</summary>
+    public bool CharterPale => _charter is MeshInstance3D g && (g.MaterialOverride == PaleStone
+        || (g.MaterialOverride == null && g.Mesh != null && ModelLib.Has("charter-stone") && ModelStone.Luminance > Palette.Meadow.Luminance));
+    /// <summary>The charter-stone model's stone (Concrete in assets/src/models/town.py).</summary>
+    private static readonly Color ModelStone = Color.FromHtml("#A9A69C");
     public float CharterSize => _charter == null ? 0f : _charterScale.X * ((Node3D)_charter.GetParent()).Scale.X * Math.Max(ModelLib.Mesh(ModelLib.Pick("charter-stone", "well")).GetAabb().Size.X, ModelLib.Mesh(ModelLib.Pick("charter-stone", "well")).GetAabb().Size.Z);
     /// <summary>The charter stone is still coming down (tests and screenshots).</summary>
     public bool CharterArriving => _charter != null && _charter.Visible && _charterT < 1.4f;

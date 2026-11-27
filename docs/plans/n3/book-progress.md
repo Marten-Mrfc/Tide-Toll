@@ -25,6 +25,11 @@ Checkout: `/home/user/tide-toll/build/wt/n3-book` (branch wt/n3-book). Resume fr
 - `Main.SetZoomLimits`: the zoom's outer end is the settings spread's view (`PauseMenu.SpreadView`): `Rig.MaxSize` and `Rig.OuterCentre` (CameraRig: the outer-zoom settle and FrameBook use it). game-book passes unchanged.
 - Not done: the Page stage's compass/folio and the slim purse over the page title (TownHud rule untouched).
 
+## Pictures (01:18)
+- Strips build/motion (third run): STRIPS PASS; paper 0.4/0.5 of 255; table 0.0. tab-forward reads as a leaf (front squeezed, back ruled, new page clean under it). esc-twice: the camera keeps moving outward after the second Esc, then comes back (a visible overshoot to the page).
+- ui-audit 1920 (`build/n3/ui-audit/l3-wip`): u18 and u41 book stage: one place, margins >= 66, navigation under the book, no purse. u21 settings with margins, ribbons inside. u25 clash card lay over "Restore defaults" (fixed after the picture: the card also keeps clear of the page's buttons; not retaken). u17/u40 page stage: compass cut at the top, purse over the left page title, navigation over the folio: NOT fixed. u19 caught the book still closing (tour wait under load), u20 not made.
+- Pivot check (MotionTest.Checks): the speed-change check of the camera pivot uses the pivot's vector (its distance from the first frame bends where a turned-round path passes near that point: click-settings-on-lettering failed on that artefact).
+
 ## Tour
 - `UiAudit.Book.cs`: pauses again before the settings states if the u20 question's Esc resumed the game (the layout fixer's proposed fix).
 

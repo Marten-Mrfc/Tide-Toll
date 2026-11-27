@@ -69,7 +69,15 @@ public partial class AssetAudit : TownTestBase
             await Shoot(s, playSize, walker);
             made++;
         }
-        if (!_noTown) await TownShots(playSize);
+        // Night 3: when only book subjects are asked for, the book is pictured at once on the new town (it needs no
+        // played town), instead of after the bot's whole run to the seal.
+        if (!_noTown && _only != null && _only.Count > 0 && System.Linq.Enumerable.All(_only, n => n.StartsWith("book-")))
+        {
+            _play = playSize;
+            await Frames(30);
+            await BookShots();
+        }
+        else if (!_noTown) await TownShots(playSize);
         System.IO.File.WriteAllLines(System.IO.Path.Combine(_dir, _only == null ? "models.jsonl" : "models-only.jsonl"), _lines);
         Notes.Add($"made={made} dir={_dir}");
     }
