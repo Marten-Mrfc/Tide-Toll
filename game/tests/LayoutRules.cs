@@ -32,7 +32,7 @@ public static partial class LayoutRules
         "Banner" => z.Banner,
         "Choice" => z.Message(HudZones.ChoiceMaxH),
         "Line" => z.Line,
-        "Person" => z.Person,
+        "Person" => new Rect2(z.Person.Position, z.Person.Size.X, Math.Min(c.Size.Y, z.Person.Size.Y)), // n7: the card hugs its lines inside its zone (as the shop)
         _ => new Rect2(),
     };
 

@@ -220,7 +220,7 @@ public static class TownRiverPlanner
             var pl = new List<int>(); var ll = new List<int>();
             foreach (var p in rp.Plots) if (p.Level == num) pl.Add(p.Id);
             foreach (var l in rp.Links) if (l.Level == num) ll.Add(l.Id);
-            levels[i] = new RiverLevelDef { Number = num, Gift = TownRulesRiver.LevelGift[i], RenownAbove = TownRulesRiver.LevelRenown[i], Plots = pl.ToArray(), Links = ll.ToArray() };
+            levels[i] = new RiverLevelDef { Number = num, Gift = TownRulesRiver.LevelGift[i], RenownAbove = TownRulesRiver.LevelRenown[i] * TownRulesRiver.LevelMinutesScale, Plots = pl.ToArray(), Links = ll.ToArray() };
         }
         rp.Levels = levels;
         return rp;

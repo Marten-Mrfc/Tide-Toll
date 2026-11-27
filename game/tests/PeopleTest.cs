@@ -103,7 +103,9 @@ public partial class PeopleTest : TownTestBase
         await Frames(_fps / 2);
         Check(hud.SelectedVillager == who && hud.PersonCardVisible, $"a click selects villager {who} and docks its card (selected {hud.SelectedVillager})");
         var z = new HudZones(GetViewport().GetVisibleRect().Size, hud.UiScale);
-        Check(Near(hud.PersonCardRect, z.Person), $"the card in its zone under the ledger ({hud.PersonCardRect} vs {z.Person})");
+        var cr = hud.PersonCardRect;
+        Check(Near(new Rect2(cr.Position, cr.Size.X, z.Person.Size.Y), z.Person) && cr.Size.Y <= z.Person.Size.Y + 1, $"the card in its zone under the ledger ({cr} vs {z.Person})");
+        Check(cr.End.Y - hud.PersonLastLineBottom <= UiKit.U(hud.UiScale, 16), $"the card hugs its lines (foot {cr.End.Y - hud.PersonLastLineBottom:0} px of paper)");
         string card = hud.PersonCardText;
         Check(card.StartsWith(T.VillagerName(who) + "|") && card.Contains("Lives ") && card.Contains("A good hand") == T.LeaningCounts && card.Contains("trip"), $"the card says who it is ({card})");
         Check(vil.SelectedRingAlpha > 0.99f, $"the selected villager keeps its ring ({vil.SelectedRingAlpha:0.00})");

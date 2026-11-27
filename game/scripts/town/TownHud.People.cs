@@ -22,6 +22,8 @@ public partial class TownHud
     public bool PersonCardVisible => _person.Visible && _personF.On;
     public Rect2 PersonCardRect => _person.Visible ? _person.GetGlobalRect() : new Rect2();
     public string PersonCardText => _person.Visible ? $"{_pName.Text}|{_pHome.Text}|{(_pLean.Visible ? _pLean.Text + "|" : "")}{_pNow.Text}|{_pCount.Text}" : "";
+    /// <summary>The bottom of the card's last line on screen (tests: the card hugs its lines).</summary>
+    public float PersonLastLineBottom => _pCount.GetGlobalRect().End.Y;
     /// <summary>The close cross on the card (tests click it).</summary>
     public Button PersonClose => _pClose;
     /// <summary>The hit radius on screen now, canvas pixels.</summary>
@@ -182,6 +184,8 @@ public partial class TownHud
             float y = lean ? 71 : 52;
             _pNow.Position = new Vector2(_pNow.Position.X, UiKit.U(_s, y));
             _pCount.Position = new Vector2(_pCount.Position.X, UiKit.U(_s, y + 21));
+            // The card hugs its lines inside its zone (the zone stays HudZones.PersonH; one line less, 19 less paper).
+            _person.Size = new Vector2(_person.Size.X, UiKit.U(_s, lean ? HudZones.PersonH : HudZones.PersonH - 19));
         }
         int sig = HashCode.Combine(v.Phase, v.Job, v.Carry, v.Stage, v.QueuePosition, v.Workplace, v.OnRiver);
         if (sig != _cardSig) { _cardSig = sig; _pNow.Text = NowWords(t, v); }
