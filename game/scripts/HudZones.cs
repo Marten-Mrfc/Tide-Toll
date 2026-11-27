@@ -16,8 +16,9 @@ public readonly struct HudZones
     public const float BellW = 128, TimerH = 48, NavAchW = 112, NavBtn = 48;
     public const float BannerH = 96, ChoiceMaxH = 200, LineH = 40, TipW = 296, MessageMaxW = 560;
     public const float MiddleTop = 120, MiddleBottomGap = 64;
-    /// <summary>n7: the villager's card, docked in the left column under the ledger.</summary>
-    public const float PersonH = 124;
+    /// <summary>n7: the villager's card, docked in the left column under the ledger; n7 trades: the Trades card shares
+    /// the zone (both 156 high, crossfading).</summary>
+    public const float PersonH = 156;
 
     public readonly Vector2 Canvas;
     public readonly float S;

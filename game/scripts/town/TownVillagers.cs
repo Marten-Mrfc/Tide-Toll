@@ -100,6 +100,7 @@ public partial class TownVillagers : Node3D
         AddChild(_carts);
         InitProps();
         InitRings();
+        InitTradeRings();
         for (int w = 0; w < _lane.Length; w++) _lane[w] = -1;
         drv.Replaced += Reset;
     }
@@ -242,6 +243,7 @@ public partial class TownVillagers : Node3D
         for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
         Drawn = n;
         RingFrame(dt, n);
+        TradeRingFrame(t, dt, n);
         LoadsDrawn = loads;
         MaxStepCells = maxStep;
         MaxSideways = maxSide;

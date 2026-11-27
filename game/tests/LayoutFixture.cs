@@ -27,8 +27,19 @@ public static class LayoutFixture
         ("Achievements/Count", "40 of 40"),
         // n7: the villager's card (the longest name with a by-name, home, leaning, now and counts).
         ("Person/Name", "Yolande of the brook 2"),
-        ("Person/Home", "Lives by the well lane"),
-        ("Person/Leaning", "A good hand at the harvest"),
+        // n7 trades: line 2 is the like and the home; the home is dropped whole by the card when it does not fit, so the
+        // longest text the card can show alone is the longest like (or the longest home with no like). The leaning line
+        // is gone (its label stays hidden).
+        ("Person/Home", "Likes carrying water"),
+        ("Person/Trade", " · Carrier"),
+        ("Person/TradeLabel", "Trade"),
+        // The Trades card: the longest names and a two-figure count in every line.
+        ("Trades/Heading", "Trades"),
+        ("Trades/Switch/Caption", "Town fills trades"),
+        ("Trades/LineCarriers/Name", "Carriers"), ("Trades/LineCarriers/Count", "99"),
+        ("Trades/LineReapers/Name", "Reapers"), ("Trades/LineReapers/Count", "99"),
+        ("Trades/LineMillers/Name", "Millers"), ("Trades/LineMillers/Count", "99"),
+        ("Trades/LineHelpers/Name", "Helpers"), ("Trades/LineHelpers/Count", "99"),
         ("Person/Now", "Carrying cloth to the landing"),
         ("Person/Counts", "999 trips · earned     9,999,999"),
     };

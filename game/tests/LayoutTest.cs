@@ -43,9 +43,11 @@ public partial class LayoutTest : UiAudit
     private async Task CheckState(string id)
     {
         _states++;
-        // n7: the villager's card docked under the ledger in every state (its zone must fit beside everything else).
+        // n7: the villager's card docked under the ledger (its zone must fit beside everything else); n7 trades: every
+        // other state the Trades card in the same zone instead (shown from the first field on), so both meet every canvas.
         int keep = Main.Hud.SelectedVillager;
-        if (T.VillagerCount > 0) Main.Hud.Select(0);
+        bool tradesCard = _states % 2 == 0 && T.TradesShown;
+        if (T.VillagerCount > 0) Main.Hud.Select(tradesCard ? -1 : 0);
         foreach (var (canvas, s, name) in Canvases)
         {
             Main.Hud.ForceCanvas(canvas, s);
@@ -64,16 +66,21 @@ public partial class LayoutTest : UiAudit
     {
         await ShopSamples();
         // Rule 3 with the longest real text of every kind (LayoutFixture), on every canvas.
+        // n7 trades: once with the villager's card and once with the Trades card (they share the zone).
         foreach (var (canvas, s, name) in Canvases)
-        {
-            Main.Hud.ForceCanvas(canvas, s);
-            if (T.VillagerCount > 0) Main.Hud.Select(0);
-            await Frames(3);
-            LayoutFixture.Apply(Main.Hud);
-            await Frames(1);
-            LayoutRules.CheckFit(Main.Hud, new HudZones(canvas, s), "fixture", name, Fail, ref _checks);
-            LayoutRules.CheckCatalogue(Main.Hud, new HudZones(canvas, s), name, Fail, ref _checks);
-        }
+            for (int card = 0; card < 2; card++)
+            {
+                Main.Hud.Select(-1);
+                Main.Hud.ForceCanvas(null);
+                await Frames(1);
+                if (T.VillagerCount > 0 && card == 0) Main.Hud.Select(0);
+                Main.Hud.ForceCanvas(canvas, s);
+                await Frames(3);
+                LayoutFixture.Apply(Main.Hud);
+                await Frames(1);
+                LayoutRules.CheckFit(Main.Hud, new HudZones(canvas, s), card == 0 ? "fixture" : "fixture-trades", name, Fail, ref _checks);
+                if (card == 0) LayoutRules.CheckCatalogue(Main.Hud, new HudZones(canvas, s), name, Fail, ref _checks);
+            }
         Main.Hud.ForceCanvas(null);
         await Frames(2);
         GD.Print($"LAYOUT budget (rule 5, a failure above its limits): most loud {_maxLoud} (limit 3), most quiet {_maxQuiet} (limit 4); worst: {_budgetNote}");

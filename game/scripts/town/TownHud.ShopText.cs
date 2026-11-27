@@ -124,7 +124,7 @@ public partial class TownHud
         "Villager", "Pace", "Basket", "Yoke", "Handcart", "Pave a road", "Extend a cottage", "Second bucket", "Market stall",
         "Second field", "Mill", "Tools", "Water price", "Grain price", "Flour price", "Louder bell", "Regulars",
         "Well hand", "Field hand", "Mill hand", "The ferry", "A second berth", "Crane", "Better boat prices", "Wool price",
-        "Cloth price", "A bigger raft", "A faster rope", "A higher toll", "A faster winch",
+        "Cloth price", "A bigger raft", "A faster rope", "A higher toll", "A faster winch", "Training",
     };
 
     /// <summary>Round 5: the simulation's worth (coin a minute) as shown: tenths below 10, whole numbers above.</summary>
@@ -159,10 +159,21 @@ public partial class TownHud
         ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
         ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
         ShopItemKind.Regulars => RegularsHelp,
-        ShopItemKind.Training => "Every villager works faster at its own trade and its goods fetch more.",
+        ShopItemKind.Training => TrainingHelp,
         ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
         _ => "A building for the town, placed on its plot by the town.",
     };
+
+    /// <summary>The Training row's tooltip: what one step does, its numbers read from the simulation.</summary>
+    public static string TrainingHelp
+    {
+        get
+        {
+            double p = Math.Round(TownRules.TradeStep * 100);
+            return p > 0 ? $"Every villager works {p}% faster at its own trade and its goods fetch {p}% more."
+                : "Every villager works faster at its own trade and its goods fetch more.";
+        }
+    }
 
     public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 }

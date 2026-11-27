@@ -38,9 +38,13 @@ public partial class TradesTest : TownTestBase
         Main.Driver.Advance(20);
         Main.Driver.SetSpeed(1);
         Main.Driver.SetPaused(false);
+        // The counts set through the calls (as the town would fill them), then handed back to the town: nobody is set
+        // one by one, so the stepper can move anyone.
+        T.SetTradeCount(Trade.Water, 3); T.SetTradeCount(Trade.Grain, 4); T.SetTradeCount(Trade.Flour, 2);
+        T.SetTownFillsTrades(false); T.SetTownFillsTrades(true);
         await Frames(_fps);
-        await Figures();
         await Cards();
+        await Figures();
         Check(_helperHatFrames == 0, $"no Helper wears a hat or a hood ({_helperHatFrames} villager-frames; {string.Join("; ", _hatFails)})");
         Check(_worstHeadStep <= 0.5f, $"a head changes over several frames, never in one (largest scale step {_worstHeadStep:0.00})");
         Check(_worstAlphaStep <= 0.5f, $"cards and rings fade, never switch in one frame (largest step {_worstAlphaStep:0.00})");
@@ -91,9 +95,14 @@ public partial class TradesTest : TownTestBase
         Check(shownOld >= 1, "the old head shrinks before the new one grows");
     }
 
+    private ulong _sampledAt;
     private void Sample()
     {
         _frames++;
+        // A step is measured between two frames in a row only (Click and other waits run frames unsampled).
+        ulong f = Engine.GetProcessFrames();
+        if (f != _sampledAt + 1) { _tradesA0 = _personA0 = _ringA0 = -1; }
+        _sampledAt = f;
         var vil = Main.Villagers;
         var t = T;
         _worstHeadStep = Math.Max(_worstHeadStep, vil.MaxHeadStep);
@@ -111,9 +120,13 @@ public partial class TradesTest : TownTestBase
         SampleCards();
     }
 
-    private static void Step(ref float last, float now, ref float worst)
+    private void Step(ref float last, float now, ref float worst, string what)
     {
-        if (last >= 0) worst = Math.Max(worst, Math.Abs(now - last));
+        if (last >= 0 && Math.Abs(now - last) > worst)
+        {
+            worst = Math.Abs(now - last);
+            if (worst > 0.3f) GD.Print($"TRADES step: {what} {last:0.00} -> {now:0.00} at frame {_frames}");
+        }
         last = now;
     }
 }

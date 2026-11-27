@@ -17,9 +17,12 @@ public partial class TownHud
         "You can afford your first upgrade. Click it in the shop, or press its key.",
         "Each level gives the town something new. The purse shows what comes next.",
         "Scroll the wheel down to zoom out: the town is a page in a book.",
+        // n7 trades: once, when the Trades card first shows.
+        "Every villager has a trade. Change them on the card at the left, or leave it to the town.",
     };
     /// <summary>Each hint's longest stay, seconds (0: until done).</summary>
-    public static readonly float[] FirstHintMax = { 12f, 0f, 6f, 8f };
+    public static readonly float[] FirstHintMax = { 12f, 0f, 6f, 8f, 10f };
+    public static string TradesHint => FirstHints[4];
     public const float FirstHintLeast = 4f;
     /// <summary>The scroll hint's text (tests count it in the note log: at most once).</summary>
     public static string ScrollHint => FirstHints[3];
@@ -27,7 +30,7 @@ public partial class TownHud
     private string _firstHint = "";
     private int _firstNow = -1, _firstShownMask;
     private float _firstAge;
-    private bool _firstCoin, _firstBought, _firstLevel, _firstZoomed;
+    private bool _tradeTouched, _firstCoin, _firstBought, _firstLevel, _firstZoomed;
     private double _firstLevelAt = -1;
     /// <summary>Hint 3 is given up once the first level banner has been gone this long (game seconds).</summary>
     public const double FirstLevelHintWindow = 60;
@@ -45,6 +48,7 @@ public partial class TownHud
     {
         if (e.Kind == TownEventKind.Delivery) _firstCoin = true;
         else if (e.Kind == TownEventKind.Purchase) _firstBought = true;
+        else if (e.Kind == TownEventKind.TradeChanged && e.Level == 1) _tradeTouched = true;
     }
 
     /// <summary>One frame: ends the hint showing when it is done, else starts the next one whose moment has come.</summary>
@@ -61,6 +65,7 @@ public partial class TownHud
                 0 => _firstCoin,
                 1 => _firstBought,
                 3 => _firstZoomed,
+                4 => _tradeTouched,
                 _ => false,
             };
             float max = FirstHintMax[_firstNow];
@@ -79,6 +84,7 @@ public partial class TownHud
                 1 => !_firstBought && AnyAffordable(),
                 2 => _firstLevel && !_large.Showing && _large.Waiting == 0 && t.Time - _firstLevelAt <= FirstLevelHintWindow,
                 3 => t.Time >= ScrollHintAt && !_firstZoomed,
+                4 => _tradesF.On && _tradesF.Value >= 1f,
                 _ => false,
             };
             if (i == 3 && _firstZoomed) { _firstShownMask |= 1 << 3; continue; } // found it alone: no hint needed

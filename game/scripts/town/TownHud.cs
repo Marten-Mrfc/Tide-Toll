@@ -252,7 +252,7 @@ public partial class TownHud : CanvasLayer
         if (!Visible) return false;
         if (Over(_ledger, p) || Over(_lineCard, p) || Over(_banner, p) || Over(_shop, p) || Over(_bell, p)
             || Over(_slim, p) || Over(_achMark, p) || Over(PauseMark, p) || Over(_home, p) || Over(_agePageMark, p)
-            || Over(_choice, p) || Over(_tide, p) || Over(_person, p))
+            || Over(_choice, p) || Over(_tide, p) || Over(_person, p) || Over(_trades, p))
             return true;
         return false;
     }
@@ -266,6 +266,7 @@ public partial class TownHud : CanvasLayer
     {
         var t = _drv.Town;
         FirstEvent(e);
+        TradesEvent(e);
         if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.BoatArrived or TownEventKind.BoatLeft) TagsChanged();
         switch (e.Kind)
         {
@@ -318,6 +319,7 @@ public partial class TownHud : CanvasLayer
         _perksSeen.Clear();
         ClearMessages();
         Select(-1); HoverVillager = -1;
+        ResetTradeTags(); _tradeTouched = false;
         _hintShown = ""; _hintAge = 0; _hintRoad = -1; _hintPlot = -1; _reqFlash = 0;
         _markerOn = false; _markerA = 0f;
         if (_marker != null && IsInstanceValid(_marker)) _marker.Visible = false;
