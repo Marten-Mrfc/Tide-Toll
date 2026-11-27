@@ -2,6 +2,14 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 00:20 UTC, for asset track BK's fixer: the closed cover is NOT blank in the game
+
+Your reviewer's must-fix 3 says the closed book's front is "a blank red field" and asks for a gilt device or title plate. In the game the cover carries the title "Tide & Toll", the town's name and the menu (Resume, Settings, New town, Quit), drawn by the pause menu as lettering inside the gilt rules; the asset audit hides the interface, so its picture shows the board without them. **Do not put a title, a plate or a device in the middle of the board, and do not move the gilt rules.** Raise the contrast of the tooling, the corners, the clasp and the spine as much as you like: decoration belongs to the border, the corners and the spine. If you want to see the real cover, take `tools/ui-audit.sh --only=u19 --out=/home/user/tide-toll/build/n3/assets-audit/r2-bk-cover` and read it.
+
+## 00:20 UTC, for asset track RV's fixer
+
+Your reviewer's must-fix 8 (a willow on the path in front of the landing; the crane's jib across a cottage roof; load heaps burying the crane's foot) is about where things stand, in files you do not own. Leave it: the next asset round owns `TownTrees.cs` and will keep trees off lanes, landings and crossings. Say in your final answer where exactly the crane and the willow stand (plot or coordinates in the default town, seed 1), so that the next builder can find them.
+
 ## 22:50 UTC, for the L1 fixer: the settings test's failure is not yours, but please make it deterministic
 
 `game-settings` prints SETTINGS PASS and then fails on thousands of lines "ERROR: Leaked unsafe reference to object: InputEventKey ..." at exit. The lead ran it on the unchanged game (`build/wt/n3-before`) at 22:45 UTC with the machine loaded: the same failure. On a quiet machine this morning it passed. So it is a matter of timing at shutdown (managed objects not yet released when the engine exits), made visible by load, and it will fail every builder's check tonight. Please harden the tests' common exit path (`TownTestBase`, or wherever the test scenes quit): release what the test itself created (key events it made for rebinding) and let pending finalizers run before quitting. This must not hide a real leak: say in your answer exactly what you changed and why a true leak would still fail. Do the same check for `game-motion`'s CPU gate only by rerunning it alone when the machine is quiet; do not touch its bound.
