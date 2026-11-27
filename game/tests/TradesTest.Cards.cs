@@ -106,6 +106,10 @@ public partial class TradesTest
         await Run(_fps / 2);
         Check(T.Villager(who).Trade == to && T.Villager(who).TradeByPlayer && hud.TradeCapCurrent(to), $"a click on a cap sets the trade ({T.Villager(who).Trade})");
         Check(hud.PersonCardText.StartsWith(title + (to == Trade.Water ? "Carrier" : "Reaper")), $"the title follows ('{hud.PersonCardText}')");
+        // A click on its current cap hands it back to the town (the trade stays until the town moves it).
+        await Click(hud.TradeCapRect(to).GetCenter());
+        await Run(_fps / 4);
+        Check(!T.Villager(who).TradeByPlayer, "a click on the current cap gives the villager back to the town");
         var likes = T.Villager(who).Likes;
         if (likes != Trade.None) Check(hud.TradeCapLiked(likes), "the liked cap carries the fold");
         hud.Select(-1);

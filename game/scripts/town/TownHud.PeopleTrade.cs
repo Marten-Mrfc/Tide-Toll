@@ -66,7 +66,15 @@ public partial class TownHud
             fold.Position = new Vector2(b.Size.X - fold.Size.X, 0);
             b.AddChild(fold);
             _capFold[k] = fold;
-            b.Pressed += () => { if (SelectedVillager >= 0 && _personF.On) _drv.Town.SetVillagerTrade(SelectedVillager, tr); };
+            // A click sets the trade (the villager is yours from then on); a click on its current cap hands it back to the town.
+            b.Pressed += () =>
+            {
+                if (SelectedVillager < 0 || !_personF.On) return;
+                var t = _drv.Town;
+                var v = t.Villager(SelectedVillager);
+                if (v.Trade == tr && v.TradeByPlayer) t.GiveVillagerBackToTown(SelectedVillager);
+                else t.SetVillagerTrade(SelectedVillager, tr);
+            };
             _person.AddChild(b);
             _caps[k] = b;
             _capLook[k] = -1;
@@ -146,10 +154,12 @@ public partial class TownHud
             var v = t.Villager(SelectedVillager);
             var tr = TradeOrder[k];
             string name = TradeTitle[(int)tr];
-            if (tr == Trade.None) return v.Trade == tr ? "Helper: no trade, works where it pays best" : "Helper: no trade, works where it pays best. Click to make it one";
             int likes = (int)Math.Round(TownRules.TradeLikes * 100);
-            string s = name + (v.Likes == tr ? (likes > 0 ? $": likes this work, +{likes}%" : ": likes this work") : "");
-            return v.Trade == tr ? s + " (now)" : s;
+            string s = tr == Trade.None ? "Helper: no trade, works where it pays best"
+                : name + (v.Likes == tr ? (likes > 0 ? $": likes this work, +{likes}%" : ": likes this work") : "");
+            if (v.Trade != tr) return s;
+            // Its current cap: yours, or the town's.
+            return v.TradeByPlayer ? s + ". Set by you: click to give it back to the town" : s + ". The town's choice";
         }
         return null;
     }

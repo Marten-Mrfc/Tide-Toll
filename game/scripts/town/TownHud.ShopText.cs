@@ -159,21 +159,20 @@ public partial class TownHud
         ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
         ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
         ShopItemKind.Regulars => RegularsHelp,
-        ShopItemKind.Training => TrainingHelp,
+        ShopItemKind.Training => TrainingHelp(TrainingStep),
         ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
         _ => "A building for the town, placed on its plot by the town.",
     };
 
-    /// <summary>The Training row's tooltip: what one step does, its numbers read from the simulation.</summary>
-    public static string TrainingHelp
+    /// <summary>The Training row's tooltip: what one more step does (Town.TrainingStepBonus, read when the tip is made).</summary>
+    public static string TrainingHelp(double step)
     {
-        get
-        {
-            double p = Math.Round(TownRules.TradeStep * 100);
-            return p > 0 ? $"Every villager works {p}% faster at its own trade and its goods fetch {p}% more."
-                : "Every villager works faster at its own trade and its goods fetch more.";
-        }
+        double p = Math.Round(step * 100);
+        return p > 0 ? $"Every villager works {p}% faster at its own trade and its goods fetch {p}% more."
+            : "Every villager works faster at its own trade and its goods fetch more.";
     }
+    /// <summary>Set by the shop tip before it makes the sentence (Tooltip is static).</summary>
+    private static double TrainingStep;
 
     public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 }
