@@ -20,7 +20,10 @@ public partial class CottageDoors : Node3D
     private MeshInstance3D?[] _dark = Array.Empty<MeshInstance3D?>();
     private Vector3[] _door = Array.Empty<Vector3>(), _smoke = Array.Empty<Vector3>();
     private float[] _open = Array.Empty<float>(), _hold = Array.Empty<float>();
-    private StandardMaterial3D? _inside;   // not static: a Resource held past the scene is finalized after the engine is gone
+    // made once for the process (static; see WellWorks), one leaf mesh per door colour
+    private static StandardMaterial3D? _inside;
+    private static BoxMesh? _insideBox;
+    private static readonly System.Collections.Generic.Dictionary<Material, BoxMesh> Leaves = new();
 
     public int Puffs { get; private set; }
     public float LastLargestChange { get; private set; }
@@ -63,10 +66,12 @@ public partial class CottageDoors : Node3D
         var d = DoorLocal(model);
         Material? accent = (shift.GetNodeOrNull("Accent") as GeometryInstance3D)?.MaterialOverride;
         _inside ??= new StandardMaterial3D { AlbedoColor = Palette.Ink.Lerp(Palette.Mud, 0.35f), Roughness = 1f, SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled };
-        _dark[i] = new MeshInstance3D { Name = "Inside", Mesh = new BoxMesh { Size = new Vector3(0.92f, 1.82f, 0.04f), Material = _inside }, Position = d + new Vector3(0, 0.93f, 0.16f), Visible = false };
+        _dark[i] = new MeshInstance3D { Name = "Inside", Mesh = _insideBox ??= new BoxMesh { Size = new Vector3(0.92f, 1.82f, 0.04f), Material = _inside }, Position = d + new Vector3(0, 0.93f, 0.16f), Visible = false };
         shift.AddChild(_dark[i]);
         var hinge = new Node3D { Name = "DoorLeaf", Position = d + new Vector3(-0.5f, 0f, 0.2f) };
-        hinge.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.98f, 1.88f, 0.1f), Material = accent ?? _inside }, Position = new Vector3(0.49f, 0.95f, 0) });
+        var colour = accent ?? _inside;
+        if (!Leaves.TryGetValue(colour, out var leaf)) Leaves[colour] = leaf = new BoxMesh { Size = new Vector3(0.98f, 1.88f, 0.1f), Material = colour };
+        hinge.AddChild(new MeshInstance3D { Mesh = leaf, Position = new Vector3(0.49f, 0.95f, 0) });
         shift.AddChild(hinge);
         _leaf[i] = hinge;
         if (shift.GetNodeOrNull<Node3D>("Smoke") is { } sm) _smoke[i] = sm.Position; else _smoke[i] = new Vector3(0, 6f, 0);

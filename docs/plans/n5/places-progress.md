@@ -194,3 +194,30 @@ doorway, step, sacks and flour puffs now on the east flank in full view (normal 
 windlass's end beside the roof, pale-topped blue pails; the field lighter, rows slimmer, cut rows pale straw. Still
 wrong: the well's roof still covers the far rim; the market's coin is smaller but still a disc above the far side of
 the table; the cottage door is unchanged (small at the normal view).
+
+### The quit-time error in game-save ("Handle is not initialized"), 12:20 to 12:40 UTC
+
+- **What it is:** every failing run shows the same stack: `GodotObject.Finalize` -> `Dispose(false)` ->
+  `godotsharp_internal_refcounted_disposed` -> `ScriptManagerBridge.SetGodotObjectPtr` -> "Handle is not initialized".
+  A Resource's C# wrapper (a mesh, a material, a MultiMesh) that nothing holds any more is finalized by .NET on its
+  own finalizer thread, at a time the GC chooses; when that happens while the engine is freeing the scene at quit,
+  the object's handle is already gone. It always comes after `SAVE PASS` is printed, so the test itself passes; the
+  error is in teardown.
+- **The places' share, fixed:** the places made such wrappers per scene (the crank's and door's box meshes and
+  materials, the puffs' meshes, materials and MultiMeshes, the field rows' MultiMeshes), and dropped them with the
+  old scene on every reload. They are now made once for the process and kept in static fields (`WellWorks`,
+  `CottageDoors`, `WorkPuffs`, `FieldRows`); a new scene takes them over. Static objects are never finalized while
+  the process runs (.NET does not run finalizers at exit), so the places no longer leave any wrapper to the
+  finalizer. The site table is emptied as the places leave the tree (`WorkPlaces._ExitTree`).
+- **Tried and dropped:** releasing the places' resources explicitly (`Dispose`) when the places are freed made it
+  worse (8 failures in 20; a second kind of error, `SwapGCHandleForType` in `PackedScene.Instantiate`, as the
+  next scene was made). Reverted.
+- **Counts with the fix (exact commands of tools/check.sh):** `game-save` 20 runs: 17 clean, 3 with the same 4 lines
+  (runs 5, 10, 14); before the fix the rate was the same (4 of 20 in the first count, 1 of 6 in another). `game-menu`
+  5 runs: 5 clean, 0 error lines.
+- **Not solved:** the remaining failures come from the same finalizer race with wrappers made per scene elsewhere:
+  the villagers (`TownVillagers.cs`: the head, shadow and body MultiMeshes, the dyed ShaderMaterial; `Props.cs`: the
+  tool MultiMeshes and the stand-in's material), and other layers that build meshes in code. The places no longer
+  contribute. The lasting fix is one rule for the whole game: no Resource made in code per scene; made once per
+  process (static cache, as `ModelLib` already does for models), or released explicitly by its owner before the
+  scene goes, everywhere at once. That reaches files that belong to other builders; it was not done in this round.
