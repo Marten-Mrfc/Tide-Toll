@@ -467,3 +467,18 @@ Unchanged in the end: it passed with only trades added (`ff77486` and every comm
 - `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   299, Skipped:     0, Total:   300` (`NeitherSideOfAChoiceIsAMistake`: "choice 1: mean charter A 29.80 min, B 29.06 min; sooner A 3, B 7 of 10; choice 2: mean charter A 29.44 min, B 28.75 min; sooner A 3, B 7 of 10"). With 0.235 it was 298 of 300 (that test on choice 2, and `TheLastGapIsNoLongerThanTheOnesBeforeIt`: "Saver: last gap 3.04 min > longest of the three before 2.97 min").
 - `bands --bell`, both ages: no band fails; every margin as in the round-1 band table (identical output).
 - game-playthrough: no constant changed in the end, so it reads as before, `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107` (also run under the lock at 18:26 with 0.235: the same line).
+
+## Fifth round: the bound on the means (the lead's decision)
+
+`NeitherSideOfAChoiceIsAMistake`, clause (a) is now **the two means differ by at most 5 percent**; clause (b) stays (neither side sooner on more than 8 of 10 seeds). History: the 2 percent was first set by the lead; choices 1 and 2 measured 2.54 and 2.42 percent with the sides sooner on 3 / 7 seeds. The standard error of the mean of the paired per-seed differences (A minus B, seeds 1-10, from the forced-pick tables above):
+
+| choice | mean difference | sd of differences | standard error | as share of the age |
+| --- | --- | --- | --- | --- |
+| 0 | +0.14 min | 1.44 min | 0.45 min | 1.54 % |
+| 1 | +0.74 min | 1.47 min | 0.46 min | 1.58 % |
+| 2 | +0.70 min | 1.22 min | 0.39 min | 1.33 % |
+| 3 | -0.36 min | 0.81 min | 0.26 min | 0.86 % |
+
+None is under 0.8 percent, so the bound was changed: 2 percent was within about one and a half standard errors (it could not tell a real disadvantage from noise); 5 percent is more than three standard errors for every choice. The old assertion never bounded the means; clause (b) is its outcome form. The same is written in the test's comment. No constant changed (`BoonWellWork` 0.2, `BoonWalk` 0.045, `CharterMinutes` 10; the pin on its `70922b8` hashes).
+
+Result lines (fifth round): `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Passed!  - Failed:     0, Passed:   300, Skipped:     0, Total:   300`. `bands --bell`, both ages: no band fails; identical to the round-1 band table.
