@@ -24,7 +24,7 @@ villagers' share of "How it is judged"). `sim/` is not changed; the play-through
 - Done: moving up one step is eased and front first: the place that moved starts at once, each place behind it `RippleSeconds` (0.14 s at 1x) later, at walking pace along the lane, slowing over the last third of a step. A jump of more than two places at once (only after a fast-forward) is taken at once and followed by the chase like any jump.
 - Done: the handcart is kept in the line (pushed ahead, the wider step); the pack frame on the back.
 - Checked: never inside a building or a field's crop (game-work). Not handled: two lines on one lane (does not happen in the first age's plan; not checked).
-- Known: someone who arrives along the lane walks to the door node and back to their place (the simulation puts them at the node first); someone who arrives by another road walks over to the line's lane.
+- Done: someone coming along the lane to a line stops at its tail (drawn only) instead of walking past the line to the door and back; someone who arrives by another road walks over to the line's lane (the chase).
 
 ## B. The villager at work
 
@@ -75,13 +75,49 @@ Replaced (one):
 
 ## Check results
 
-(filled in below by the last run)
+`./check --no-screenshot` on the final code (10:46 UTC), every step with the commands in `tools/check.sh`:
+
+| Step | Result |
+| --- | --- |
+| sim-build, sim-test | PASS (258 passed) |
+| game-build | PASS |
+| game-smoke | PASS `renderer=mobile game_s=30.0 coin=4 trips=1 uploads=75` |
+| game-town | PASS `maxstep=0.008 ... level=6` |
+| game-perf | PASS `1x: mean 0.584 8x: mean 0.734 ms`; bytes/frame 544 (1x, gate 1536) and 724 (8x, gate 6144) in the earlier run |
+| game-playthrough | PASS `charter=33.9min buys=201` |
+| game-river | PASS |
+| game-layout | PASS |
+| game-book, game-settings, game-menu | PASS |
+| game-motion | PASS `MOTION RATES PASS alloc-max=5672B cpu-max=1.93ms` |
+| game-work | PASS `WORK RATES PASS`; at 60 fps `pairs=538 gap=1.98-2.30m faced=1586 deliveries=451 poserate=10.2 bytes=581 villagerbytes=0`, at 30 and 120 fps the same checks pass |
+| game-save | PASS |
+| ledger | PASS |
+
+The screenshot step was not run (it takes 25 minutes; nothing in it changed but the villagers).
 
 ## The strips
 
 `build/n5/strips-before/` and `build/n5/strips-after/` (frames and full sheets), JPEG copies in
 `docs/plans/n5/strips/before/` and `docs/plans/n5/strips/after/` (`work-water`, `work-reap`, `work-mill`,
 `work-market`, `work-home`). Both runs follow the same villagers at the same moments (the town is deterministic).
+
+What reads now, beside the "before" ones at full size: the field's line runs along the lane a step apart, all facing
+the field, where before it was a knot of ten; reapers are bent with the scythe out, the cart parked by the row; at the
+well the worker leans into the windlass with the pack frame stood beside, and walks off with the yoke.
+
+What still does not read (for the reviewer and the places' builder):
+
+- The mill's door faces away from the camera in this town, so the work at the door, the sack going in and the flour
+  sack coming off the step are hidden behind the tower; only the line and the flour on the shoulder leaving show.
+- The market's arc is short and small at the normal view; the table point is a guess until the stall's table is a
+  place (`GoodsAt`).
+- The line still looks doubled in places where others walk the same lane (people leaving with grain pass along it
+  in their lane of the road).
+- At the 4-way junction by the well the line is one or two people at a time (Tools 12 make the well fast), so the
+  well's strip shows little line; the normal view there is busy.
+- The stand-in scythe is a dark stroke under the ink outline; it reads as a tool only close up.
+- The reaping lean was 30 degrees; the close strip read it as lying down, so it is 26 now (stoop 29).
+- The "close" view is limited by the camera's least size, so it is only about three times nearer than normal.
 
 ## What the places' builder needs to know about `WorkSites.cs`
 
