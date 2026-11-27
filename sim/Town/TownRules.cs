@@ -129,14 +129,16 @@ public static class TownRules
     // A villager's own kind of work (Town.LeaningOf, from the seed and its number) counts this much more when it chooses a job.
     // Built, off (0) until the ages are retuned (see docs/plans/n7/people-progress.md); step 2 gives it meaning as a trade.
     public static double LeanBonus = 0;
-    // n7: the blind spots of the expected wait: built, off until the ages are retuned (see docs/plans/n7/people-progress.md,
-    // "What ships in step 1": what each does to herding and which pacing tests each tips). Off: exactly as the main branch.
+    // n7: the blind spots of the expected wait (docs/plans/n7/people-progress.md, "What ships in step 1"). n7 retune: all three
+    // switched on (were off), with the second age's level rule replaced and its pacing retuned (TownRulesRiver, levels;
+    // docs/plans/n7/retune-progress.md). Herding (more than three quarters of the villagers on one job), payback / cheapest
+    // bot, seeds 1-10: first age 26 / 17 % to 22 / 16 %, second age 55 / 46 % to the figures in retune-progress.md.
     // The mill's wait counts flour pickers still at or on the way to the field, in the first age (no river age yet) ...
-    public static bool MillWaitCountsOnTheWay = false;
+    public static bool MillWaitCountsOnTheWay = true;
     // ... and in the second age.
-    public static bool MillWaitCountsOnTheWayInSecondAge = false;
+    public static bool MillWaitCountsOnTheWayInSecondAge = true;
     // The pasture's and the weaver's waits count those on their way there.
-    public static bool SiteWaitCountsOnTheWay = false;
+    public static bool SiteWaitCountsOnTheWay = true;
 
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;

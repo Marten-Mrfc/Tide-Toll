@@ -63,7 +63,7 @@ public sealed class RiverLevelDef
 {
     public int Number;           // town level (17..28)
     public string Gift = "";
-    public double RenownAbove;   // minutes of the ring-time coin rate above the renown held at the ring (Town.RiverLevelRenown gives renown)
+    public double RenownAbove;   // minutes of the ring-time coin rate above the renown held at the ring, on the fixed curve (TownRulesRiver.LevelCurve; Town.RiverLevelRenown gives renown)
     public int[] Plots = Array.Empty<int>();
     public int[] Links = Array.Empty<int>();
 }
@@ -220,7 +220,7 @@ public static class TownRiverPlanner
             var pl = new List<int>(); var ll = new List<int>();
             foreach (var p in rp.Plots) if (p.Level == num) pl.Add(p.Id);
             foreach (var l in rp.Links) if (l.Level == num) ll.Add(l.Id);
-            levels[i] = new RiverLevelDef { Number = num, Gift = TownRulesRiver.LevelGift[i], RenownAbove = TownRulesRiver.LevelRenown[i] * TownRulesRiver.LevelMinutesScale, Plots = pl.ToArray(), Links = ll.ToArray() };
+            levels[i] = new RiverLevelDef { Number = num, Gift = TownRulesRiver.LevelGift[i], RenownAbove = TownRulesRiver.LevelCurve(i), Plots = pl.ToArray(), Links = ll.ToArray() };
         }
         rp.Levels = levels;
         return rp;

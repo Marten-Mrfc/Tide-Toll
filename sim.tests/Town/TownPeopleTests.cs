@@ -95,7 +95,7 @@ public class TownPeopleTests
         Assert.Equal(TownRules.LeanBonus > 0, t.LeaningCounts);
     }
 
-    /// <summary>Blind spot 1, behind its switch (off as shipped): with it on, flour pickers on their way to the field (or at
+    /// <summary>Blind spot 1, behind its switch (on as shipped since the n7 retune): with it on, flour pickers on their way to the field (or at
     /// it) count in the mill's wait; with it off they do not (the main branch's rule).</summary>
     [Theory]
     [InlineData(true)]
@@ -125,7 +125,7 @@ public class TownPeopleTests
         Assert.True(seen >= 10, $"only {seen} moments with flour pickers at the field");
     }
 
-    /// <summary>Blind spot 2, behind its switch (off as shipped): with it on, those on their way to the pasture or the
+    /// <summary>Blind spot 2, behind its switch (on as shipped since the n7 retune): with it on, those on their way to the pasture or the
     /// weaver count in its wait; with it off they do not.</summary>
     [Theory]
     [InlineData(true)]
@@ -176,12 +176,12 @@ public class TownPeopleTests
     [Fact]
     public void FewerSpellsOfTheWholeTownOnOneJob()
     {
-        // With both fixes switched on for these towns (they ship off).
+        // n7 retune: the town as shipped (both fixes on); was: both switched on for these towns while they shipped off.
         int samples = 0, herd = 0;
         var byJob = new int[16];
         for (int seed = 1; seed <= 3; seed++)
         {
-            var t = new T(seed) { WaitFixesHere = true };
+            var t = new T(seed);
             var bot = new TownBot(BotKind.Payback, seed) { PlayOn = true };
             for (long k = 0; k < 120L * 60 * TownRules.TickHz && !t.HasSeal; k++)
             {
@@ -229,20 +229,34 @@ public class TownPeopleTests
         Assert.Equal(TownSave.Save(t), TownSave.Save(u));
     }
 
-    /// <summary>What ships in step 1: the second age plays exactly as before. A saved second-age town (written by the code
-    /// before n7) played on 10 minutes by the payback bot gives the same save as with every n7 switch off (the hash below
-    /// was printed with them off: `people --replay ... --minutes 10 --millfix 0`).</summary>
+    /// <summary>n7 retune: what ships. The three blind-spot fixes are on and the leaning off (it waits for trades); a
+    /// second-age town saved by the code before n7 loads and plays on under the new level rule: the levels it had fixed keep
+    /// their renown, it reaches further levels within 10 minutes, and from then on it saves and loads exactly.
+    /// (Replaces TheSecondAgePlaysAsBeforeFromASavedTown, which pinned the save's hash with every switch off.)</summary>
     [Fact]
-    public void TheSecondAgePlaysAsBeforeFromASavedTown()
+    public void TheSwitchesAreOnAndAnOldSecondAgeSavePlaysOn()
     {
-        Assert.False(TownRules.MillWaitCountsOnTheWay);
-        Assert.False(TownRules.MillWaitCountsOnTheWayInSecondAge);
-        Assert.False(TownRules.SiteWaitCountsOnTheWay);
+        Assert.True(TownRules.MillWaitCountsOnTheWay);
+        Assert.True(TownRules.MillWaitCountsOnTheWayInSecondAge);
+        Assert.True(TownRules.SiteWaitCountsOnTheWay);
         Assert.Equal(0, TownRules.LeanBonus);
         var t = TownSave.Load(Data("town-v3-seed3-river6min.json"));
+        var r = t.S.River!;
+        Assert.True(r.EaseFrom < 0); // written before the retune
+        int reached = r.Reached, level = t.Level;
+        var fixedAt = r.LevelAt.Take(reached + 1).ToArray();
+        Assert.True(fixedAt.All(x => x > 0));
+        double next = t.RiverLevelRenown(level + 1);
+        t.Step();
+        Assert.Equal(level, t.Level); // no jump on loading: the ease starts when the town is played on
+        Assert.Equal(next, t.RiverLevelRenown(level + 1));
         var bot = new TownBot(BotKind.Payback, 3) { PlayOn = true };
         for (long k = 0; k < 10L * 60 * TownRules.TickHz; k++) { t.Step(); bot.Act(t); }
-        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TownSave.Save(t)));
-        Assert.Equal("C2A8E8351FA55DF94E3D8EB4B13F8082CA217FD37149BE761FC76F452AAB8285", Convert.ToHexString(hash));
+        Assert.Equal(fixedAt, r.LevelAt.Take(reached + 1).ToArray());
+        Assert.True(t.Level > level, $"still level {t.Level}");
+        string again = TownSave.Save(t);
+        var u = TownSave.Load(again);
+        for (int k = 0; k < 60 * TownRules.TickHz; k++) { t.Step(); u.Step(); }
+        Assert.Equal(TownSave.Save(t), TownSave.Save(u));
     }
 }

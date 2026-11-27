@@ -2,6 +2,8 @@
 
 ## What ships in step 1 (final, the lead's decision)
 
+> **Since the retune** (`docs/plans/n7/retune-progress.md`): the three blind-spot fixes are **on**, `LeanBonus` stays 0, and the second age's level rule is replaced (fixed at the ring, easing with time). The play-through still reads `charter=33.9min buys=201`. The test `TheSecondAgePlaysAsBeforeFromASavedTown` below was replaced by `TheSwitchesAreOnAndAnOldSecondAgeSavePlaysOn`.
+
 **The simulation plays exactly as the main branch does.** Every behaviour switch is off. The `people` output is identical to the "before" file for every seed and both bots in both ages, the play-through reads `charter=33.9min buys=201`, and `sim.tests` passes 271 of 271.
 
 **In:**
