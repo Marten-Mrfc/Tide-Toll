@@ -163,3 +163,10 @@ screenshot: still running at 02:40.
 - The boon tooltip over the other boon (d-u45) and the cut tooltip texts (c-u42): `HudZones.TipRect` / `TownHud.Tip.cs`.
 - u43 (the bell's tooltip) not pictured; the second-age states u30 to u35 not pictured.
 - The coin sign in the goal's reward lines; the achievement's icon in its note; a third request waiting (builder's list); the lit band of Pave/Extend.
+
+## Rate fix and medals (two-fix builder, 04:00 UTC)
+
+- `MessageQueue.Step` keeps the queue's own timeline: a phase (arrival, stay, leave, gap) that ends inside a frame hands the rest of that frame to the next phase, so the next message is due from when the one before was due to end. Before, each of the four ends lost up to a frame (a row of six notes: 20.400 s at 30 fps, 20.117 s at 120; now 20.133 / 20.100, queue alone).
+- `MotionTest.Messages.cs`: "at rest" now means both queues in `Phase.Idle` (past the gap); before, the next case began inside the last one's gap by a rate-dependent amount (note-clicked's dismiss then fell 0.35 s into the hold at 120 fps, 0.47 s at 30). `--cpu-info` now also applies to the message part.
+- msg-* lengths at 30 / 60 / 120 fps after the fix: banner 3.667 / 3.650 / 3.642, notes 11.133 / 11.117 / 11.100, crowd 19.967 / 19.967 / 19.950, note-clicked 4.600 / 4.617 / 4.608, line 3.700 / 3.700 / 3.692, busiest 22.533 / 22.517 / 22.500.
+- An achievement's note shows its medal (`TownHud.NoteMedal`, `_noteIcon`) at the left of the text; the achievements page draws each medal at the left of its cell (`TownHud.AchIcon`), dimmed until done.

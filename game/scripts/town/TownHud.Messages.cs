@@ -164,15 +164,24 @@ public partial class TownHud
             var c = _notes.Current;
             _noteSeq = c.Seq;
             _noteLabel.AddThemeFontOverride("font", c.Strong ? UiKit.UiBold : UiKit.UiFont);
+            // An achievement's note carries its medal at the left of the text (the text moves over by the medal).
+            var medal = c.Priority == NoteAchievement ? NoteMedal(c.Text) : null;
+            _noteIcon.Texture = medal;
+            _noteShift = medal != null ? UiKit.U(_s, 24 + 8) : 0;
+            _noteLabel.Size = new Vector2(_noteW - _noteShift, _noteLabel.Size.Y);
             _noteLabel.Text = FitLines(_noteLabel, c.Text, 2);
         }
         float na = _notes.Showing ? _notes.Alpha : 0f;
         bool non = na > 0f;
         if (_noteLabel.Visible != non) _noteLabel.Visible = non;
+        bool ion = non && _noteShift > 0;
+        if (_noteIcon.Visible != ion) _noteIcon.Visible = ion;
         if (non)
         {
-            _noteLabel.Position = new Vector2(_notePad - UiKit.U(_s, 8) * (1f - na), _noteLabel.Position.Y);
+            float x = _notePad - UiKit.U(_s, 8) * (1f - na);
+            _noteLabel.Position = new Vector2(x + _noteShift, _noteLabel.Position.Y);
             _noteLabel.Modulate = new Color(1, 1, 1, na);
+            if (ion) { _noteIcon.Position = new Vector2(x, _noteLabel.Position.Y + UiKit.U(_s, 2)); _noteIcon.Modulate = _noteLabel.Modulate; }
         }
         _noteAge = _notes.Showing ? 0f : -1f;
     }
@@ -200,7 +209,17 @@ public partial class TownHud
     }
 
     private StyleBox _accentBox = null!, _troubleBox = null!;
-    private float _notePad;
+    private float _notePad, _noteW, _noteShift;
+    private TextureRect _noteIcon = null!;
+
+    /// <summary>The medal of the achievement a note "Achievement: Name." is about (either age), or null.</summary>
+    private Texture2D? NoteMedal(string text)
+    {
+        var t = _drv.Town;
+        for (int i = 0; i < t.AchievementCount; i++) { var a = t.Achievement(i); if (text == "Achievement: " + a.Name + ".") return AchIcon(a, false); }
+        for (int i = 0; i < t.RiverAchievementCount; i++) { var a = t.RiverAchievement(i); if (text == "Achievement: " + a.Name + ".") return AchIcon(a, true); }
+        return null;
+    }
 
     /// <summary>Banners and notes are clicked away; the next one follows.</summary>
     private void WireMessageClicks()
@@ -211,6 +230,12 @@ public partial class TownHud
         _banner.GuiInput += e => { if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { _large.Dismiss(); _banner.AcceptEvent(); } };
         _noteBox.GuiInput += e => { if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _notes.Showing) { _notes.Dismiss(); _noteBox.AcceptEvent(); } };
         _notePad = _noteLabel.Position.X;
+        _noteW = _noteLabel.Size.X;
+        _noteShift = 0f;
+        _noteIcon = UiKit.IconRect(_s, null, 24);
+        _noteIcon.Name = "NoteMedal";
+        _noteIcon.Visible = false;
+        _noteBox.AddChild(_noteIcon);
         _largeSeq = _noteSeq = -1;
     }
 }

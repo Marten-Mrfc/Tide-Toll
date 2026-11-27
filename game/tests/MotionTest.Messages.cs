@@ -49,7 +49,9 @@ public partial class MotionTest
     private bool MsgIdle()
     {
         var h = Main.Hud;
-        return !h.LargeQueue.Showing && h.LargeQueue.Waiting == 0 && !h.NoteQueue.Showing && h.NoteQueue.Waiting == 0
+        // At rest means past the gap too (Phase.Idle): a case that began inside the last one's gap began later, by the
+        // gap's real time left over, the fewer frames the rest took (its dismiss at a fixed time then fell elsewhere).
+        return h.LargeQueue.Now == MessageQueue.Phase.Idle && h.LargeQueue.Waiting == 0 && h.NoteQueue.Now == MessageQueue.Phase.Idle && h.NoteQueue.Waiting == 0
             && (h.LineAlpha <= 0f || h.LineAlpha >= 1f) && !h.LineCrossing && h.RefusalText.Length == 0 && (h.ChoiceAlpha <= 0f || h.ChoiceAlpha >= 1f)
             && (h.RequestAlpha <= 0f || h.RequestAlpha >= 1f);
     }
@@ -105,7 +107,9 @@ public partial class MotionTest
         for (int i = 1; i < _ms.Count; i++)
         {
             Check(_ms[i].Alloc <= AllocGate, $"{name}: frame {i} allocated {_ms[i].Alloc} B (gate {AllocGate})");
-            Check(_ms[i].Cpu <= CpuGate, $"{name}: frame {i} took {_ms[i].Cpu:0.00} ms of CPU (gate {CpuGate})");
+            // --cpu-info (working switch, never used by ./check): printed, not fatal, as in the book's cases.
+            if (_cpuInfo && _ms[i].Cpu > CpuGate) { _cpuOver++; GD.Print($"MOTION CPU over the gate: {name}: frame {i} took {_ms[i].Cpu:0.00} ms (gate {CpuGate})"); }
+            else Check(_ms[i].Cpu <= CpuGate, $"{name}: frame {i} took {_ms[i].Cpu:0.00} ms of CPU (gate {CpuGate})");
         }
         GD.Print($"MOTION the message {name}: {moving} moving frames, largest step {peak:0.000} (bound {bound:0.000})");
         return peak;
@@ -198,6 +202,7 @@ public partial class MotionTest
         MsgChannel("note-clicked", s => s.Note, s => s.VNote, TownHud.NoteInSeconds);
         var hk = Holds(s => s.Note);
         Check(hk.Count == 2 && hk[0] < 1f, $"note-clicked: holds {string.Join(", ", hk)}");
+        GD.Print($"MOTION the message note-clicked: holds {string.Join(", ", hk)} s");
         MsgEnd("msg-note-clicked", $"holds={hk.Count}");
 
         // ---- the line: a refusal (2.5 s), a second one cross-fades over it, then the card leaves

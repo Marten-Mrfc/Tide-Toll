@@ -22,6 +22,8 @@ public partial class TownHud
     // Round 5: the page shows the age the town is in (the river's 16 in the second age, with the first age's count).
     private readonly Label[] _achDesc = new Label[32];
     private readonly Control[] _achCell = new Control[32];
+    // Night 3: each achievement's medal (assets/icons/ach-*.svg) at the left of its cell, dimmed until done.
+    private readonly TextureRect[] _achIcon = new TextureRect[32];
     private int _achBuiltCount;
     private bool _achRiver;
     private static AchievementView Ach(Town t, bool river, int i) => river ? t.RiverAchievement(i) : t.Achievement(i);
@@ -40,8 +42,20 @@ public partial class TownHud
             var a = Ach(t, _achRiver, i);
             _achName[i].Text = a.Name;
             _achDesc[i].Text = a.Description;
+            _achIcon[i].Texture = AchIcon(a, _achRiver);
         }
         _achShown = -1;
+    }
+    /// <summary>
+    /// The medal of an achievement: first age "ach-" + its Id with "_" as "-"; the river "ach-" + its name in lower case,
+    /// apostrophes dropped, spaces as "-". The plain achievement mark stands in for a missing file.
+    /// </summary>
+    public static Texture2D? AchIcon(in AchievementView a, bool river)
+    {
+        string key = river
+            ? a.Name.ToLowerInvariant().Replace("'", "").Replace("\u2019", "").Replace(' ', '-')
+            : (a.Id ?? "").Replace('_', '-');
+        return IconOr("ach-" + key, "ui-achievement");
     }
     private Button _achMark = null!, _achClose = null!, _ageClose = null!;
     private int _achShown = -1, _achSig = -1;
@@ -88,31 +102,39 @@ public partial class TownHud
         grid.AddThemeConstantOverride("v_separation", UiKit.U(_s, 6));
         col.AddChild(grid);
         int n = Math.Min(_drv.Town.AchievementCount, _achName.Length);
+        int gap = UiKit.U(_s, 8);
+        float textW = cellW - UiKit.U(_s, 24) - gap;
         for (int i = 0; i < n; i++)
         {
             var a = _drv.Town.Achievement(i);
-            var cell = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(cellW, 0) };
+            var outer = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(cellW, 0) };
+            outer.AddThemeConstantOverride("separation", gap);
+            _achIcon[i] = UiKit.IconRect(_s, null, 24);
+            _achIcon[i].SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+            outer.AddChild(_achIcon[i]);
+            var cell = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(textW, 0), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            outer.AddChild(cell);
             cell.AddThemeConstantOverride("separation", 0);
             var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             _achName[i] = PlayText(a.Name, UiKit.Body, UiKit.UiBold);
             _achName[i].SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             _achName[i].ClipText = true; _achName[i].TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-            _achName[i].CustomMinimumSize = new Vector2(cellW * 0.6f, 0);
+            _achName[i].CustomMinimumSize = new Vector2(textW * 0.6f, 0);
             _achState[i] = PlayText("", UiKit.Caption, UiKit.UiFont, UiKit.MutedNumber);
             row.AddChild(_achName[i]);
             row.AddChild(_achState[i]);
             cell.AddChild(row);
             var desc = PlayText(a.Description, UiKit.Caption, UiKit.UiFont, UiKit.Muted);
             desc.ClipText = true; desc.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-            desc.CustomMinimumSize = new Vector2(cellW, 0);
+            desc.CustomMinimumSize = new Vector2(textW, 0);
             cell.AddChild(desc);
             _achDesc[i] = desc;
-            _achCell[i] = cell;
+            _achCell[i] = outer;
             var back = UiKit.Bar(_s, UiKit.RiverBlue, out _achFill[i]);
             back.CustomMinimumSize = new Vector2(0, UiKit.U(_s, 8));
             _achBack[i] = back;
             cell.AddChild(back);
-            grid.AddChild(cell);
+            grid.AddChild(outer);
         }
         _achBuiltCount = n;
         AchAge(_drv.Town);
@@ -278,6 +300,7 @@ public partial class TownHud
             string st = AchievementState(a);
             if (_achState[i].Text != st) _achState[i].Text = st;
             _achName[i].Modulate = a.Unlocked ? Colors.White : new Color(1, 1, 1, 0.75f);
+            _achIcon[i].Modulate = a.Unlocked ? Colors.White : new Color(1, 1, 1, 0.3f);
             var sz = _achBack[i].Size;
             float k = (float)Math.Clamp(a.Unlocked ? 1 : a.Progress, 0, 1);
             _achFill[i].Position = Vector2.One;

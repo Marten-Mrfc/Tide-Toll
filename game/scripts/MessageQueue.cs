@@ -141,33 +141,58 @@ public sealed class MessageQueue
                 else _wait[i] = w;
             }
         }
-        switch (Now)
+        // The queue keeps its own timeline: a phase that ends inside this frame hands the rest of the frame to the next
+        // one (the next message is due from the moment the one before was due to end, not from the frame that noticed).
+        // Otherwise each end lost up to a frame and a row of messages took longer the lower the frame rate.
+        float t = step;
+        for (int pass = 0; pass < 8; pass++)
         {
-            case Phase.Idle:
-                if (canShow && _wait.Count > 0) Begin();
-                break;
-            case Phase.In:
-                if (!canShow) { Back(); break; }
-                _m.Advance(dt);
-                _alpha = _m.Ease(0f, _m.Length);
-                if (!_m.Running) { Now = Phase.Hold; _held = 0f; _alpha = 1f; }
-                break;
-            case Phase.Hold:
-                if (!canShow) { Back(); break; }
-                _held += step;
-                if (Stale != null && !Current.UntilClicked && Stale(Current)) { Leave(); break; }
-                _lastStay = Current.UntilClicked ? 0f : _wait.Count >= CrowdAt ? Math.Min(Current.Stay, CrowdStay) : Current.Stay;
-                if (!Current.UntilClicked && _held >= _lastStay) Leave();
-                break;
-            case Phase.Out:
-                _m.Advance(dt);
-                _alpha = 1f - _m.Ease(0f, _m.Length);
-                if (!_m.Running) { _alpha = 0f; Now = Phase.Gap; _gap = 0f; }
-                break;
-            case Phase.Gap:
-                _gap += step;
-                if (_gap >= GapSeconds) { Now = Phase.Idle; if (canShow && _wait.Count > 0) Begin(); }
-                break;
+            switch (Now)
+            {
+                case Phase.Idle:
+                    if (canShow && _wait.Count > 0) Begin();
+                    return;
+                case Phase.In:
+                {
+                    if (!canShow) { Back(); return; }
+                    float left = _m.Length - _m.Time;
+                    _m.Advance(t);
+                    _alpha = _m.Ease(0f, _m.Length);
+                    if (_m.Running) return;
+                    Now = Phase.Hold; _held = 0f; _alpha = 1f;
+                    t = Math.Max(0f, t - left);
+                    break;
+                }
+                case Phase.Hold:
+                    if (!canShow) { Back(); return; }
+                    _held += t;
+                    if (Stale != null && !Current.UntilClicked && Stale(Current)) { Leave(); return; }
+                    _lastStay = Current.UntilClicked ? 0f : _wait.Count >= CrowdAt ? Math.Min(Current.Stay, CrowdStay) : Current.Stay;
+                    if (Current.UntilClicked || _held < _lastStay) return;
+                    t = _held - _lastStay;
+                    _held = _lastStay;
+                    Leave();
+                    break;
+                case Phase.Out:
+                {
+                    float left = _m.Length - _m.Time;
+                    _m.Advance(t);
+                    _alpha = 1f - _m.Ease(0f, _m.Length);
+                    if (_m.Running) return;
+                    _alpha = 0f; Now = Phase.Gap; _gap = 0f;
+                    t = Math.Max(0f, t - left);
+                    break;
+                }
+                case Phase.Gap:
+                    _gap += t;
+                    if (_gap < GapSeconds) return;
+                    t = _gap - GapSeconds;
+                    Now = Phase.Idle;
+                    if (!(canShow && _wait.Count > 0)) return;
+                    Begin();
+                    if (Now != Phase.In) return;
+                    break;
+            }
         }
     }
 
