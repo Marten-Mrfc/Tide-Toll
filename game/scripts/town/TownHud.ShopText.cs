@@ -68,7 +68,7 @@ public partial class TownHud
         ShopItemKind.Value or ShopItemKind.RiverValue => "A better price",
         ShopItemKind.BellTrack => "A longer ring",
         ShopItemKind.Regulars => "Pays more",
-        ShopItemKind.Training => "Better at their trades",
+        ShopItemKind.Training => "Better at trades",
         ShopItemKind.Hand => "Another worker",
         ShopItemKind.Ferry => "Any tide",
         ShopItemKind.Berth => "Two berths",

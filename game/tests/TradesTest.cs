@@ -48,7 +48,7 @@ public partial class TradesTest : TownTestBase
         Check(_helperHatFrames == 0, $"no Helper wears a hat or a hood ({_helperHatFrames} villager-frames; {string.Join("; ", _hatFails)})");
         Check(_worstHeadStep <= 0.5f, $"a head changes over several frames, never in one (largest scale step {_worstHeadStep:0.00})");
         Check(_worstAlphaStep <= 0.5f, $"cards and rings fade, never switch in one frame (largest step {_worstAlphaStep:0.00})");
-        Notes.Add($"fps={_fps} villagers={T.VillagerCount} headstep={_worstHeadStep:0.00} alphastep={_worstAlphaStep:0.00} frames={_frames}");
+        Notes.Add($"tags={Main.Hud.AutoTagsGiven} fps={_fps} villagers={T.VillagerCount} headstep={_worstHeadStep:0.00} alphastep={_worstAlphaStep:0.00} frames={_frames}");
     }
 
     /// <summary>Waits n frames, sampling each.</summary>
@@ -101,7 +101,7 @@ public partial class TradesTest : TownTestBase
         _frames++;
         // A step is measured between two frames in a row only (Click and other waits run frames unsampled).
         ulong f = Engine.GetProcessFrames();
-        if (f != _sampledAt + 1) { _tradesA0 = _personA0 = _ringA0 = -1; }
+        if (f != _sampledAt + 1) { _tradesA0 = _personA0 = _ringA0 = -1; Array.Fill(_autoA0, -1f); }
         _sampledAt = f;
         var vil = Main.Villagers;
         var t = T;

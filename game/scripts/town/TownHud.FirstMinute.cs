@@ -84,7 +84,7 @@ public partial class TownHud
                 1 => !_firstBought && AnyAffordable(),
                 2 => _firstLevel && !_large.Showing && _large.Waiting == 0 && t.Time - _firstLevelAt <= FirstLevelHintWindow,
                 3 => t.Time >= ScrollHintAt && !_firstZoomed,
-                4 => _tradesF.On && _tradesF.Value >= 1f,
+                4 => _tradesF.On && _tradesF.Value >= 1f && !_large.Showing && _large.Waiting == 0, // not over a banner (as hint 3)
                 _ => false,
             };
             if (i == 3 && _firstZoomed) { _firstShownMask |= 1 << 3; continue; } // found it alone: no hint needed

@@ -114,6 +114,10 @@ public partial class TradesTest
         // The Training row buys (a real click on its row).
         await TrainingBuys();
 
+        // The one-time hint, in the hints' own place (the line), once the card has shown.
+        for (int k = 0; k < _fps * 12 && (hud.FirstHintsShown & (1 << 4)) == 0; k++) await Run(1);
+        Check((hud.FirstHintsShown & (1 << 4)) != 0, $"the trades' hint shows once the card has shown (hints shown {hud.FirstHintsShown}, now {hud.FirstHintNow})");
+
         // Bytes per frame with the card shown and a line hovered.
         line = hud.TradeLineRect(Trade.Water);
         TestInput.Motion(line.GetCenter()); Input.WarpMouse(line.GetCenter());
@@ -152,7 +156,10 @@ public partial class TradesTest
         Step(ref _tradesA0, hud.TradesCardAlpha, ref _worstAlphaStep, "trades card");
         Step(ref _personA0, hud.PersonCardAlpha, ref _worstAlphaStep, "villager card");
         Step(ref _ringA0, vil.TradeRingAlpha, ref _worstAlphaStep, "trade rings");
+        for (int k = 0; k < TownHud.AutoTags; k++) Step(ref _autoA0[k], hud.AutoTagAlpha(k), ref _worstAlphaStep, "trade tag");
     }
+
+    private readonly float[] _autoA0 = { -1, -1, -1 };
 
     private static bool Size(Rect2 r, float w, float h, float s) => Math.Abs(r.Size.X - UiKit.U(s, w)) <= 1 && Math.Abs(r.Size.Y - UiKit.U(s, h)) <= 1;
     private static bool Near(Vector2 a, Vector2 b) => a.DistanceTo(b) <= 1.5f;

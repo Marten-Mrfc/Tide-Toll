@@ -38,16 +38,17 @@ public partial class TradesShots : TownTestBase
         Main.Driver.Advance(20);
         var t = T;
         int n = t.VillagerCount;
-        // The mix the town would give (the rules are not on this branch yet): carriers, reapers, millers; one Helper.
-        for (int i = 0; i < n; i++) t.SetVillagerTrade(i, i == n - 1 ? Trade.None : (Trade)(1 + i % 3));
-        t.SetTradeCount(Trade.Grain, t.TradeInfo(Trade.Grain).Members); // one count set by you: ink and bold
+        // The town fills the trades (its rules); then one count set by you (ink and bold) and one Helper made by you.
+        Main.Driver.Advance(10);
+        t.SetTradeCount(Trade.Grain, t.TradeInfo(Trade.Grain).Members);
+        t.SetTradeCount(Trade.None, 1);
         Main.Driver.SetSpeed(1);
         Main.Driver.SetPaused(false);
-        await Frames(90);
+        await Frames(30);
         var hud = Main.Hud; var vil = Main.Villagers;
         Main.Driver.SetPaused(true);
         Park();
-        await Frames(30);
+        await Frames(16);
         Check(hud.TradesCardAlpha > 0.99f, $"the Trades card shows ({hud.TradesCardAlpha:0.00})");
         Save("trades-card-whole", Shot());
         Column("trades-card");
@@ -57,11 +58,11 @@ public partial class TradesShots : TownTestBase
         await Frames(8);
         Save("trades-hover-whole", Shot());
         Column("trades-hover");
-        await Frames(40);
+        await Frames(26);
         Column("trades-tip", 2);
         // The plus's states: hovered.
         Point(hud.TradePlusHit(Trade.Water).GetCenter());
-        await Frames(40);
+        await Frames(26);
         Column("trades-plus-hover", 2);
         // The villager's card with the caps; a cap's tooltip.
         int who = Clearest(vil);
@@ -73,7 +74,7 @@ public partial class TradesShots : TownTestBase
         Column("trades-villager");
         var likes = t.Villager(who).Likes;
         Point(hud.TradeCapRect(likes == Trade.None ? Trade.Grain : likes).GetCenter());
-        await Frames(40);
+        await Frames(26);
         Column("trades-cap-tip", 2);
         // The crossfade, mid way.
         hud.Select(-1);
@@ -106,11 +107,11 @@ public partial class TradesShots : TownTestBase
         var keep = new Trade[n];
         for (int i = 0; i < n; i++) keep[i] = t.Villager(i).Trade;
         for (int i = 0; i < n; i++) t.SetVillagerTrade(i, Trade.None);
-        await Frames(40);
+        await Frames(26);
         Crop("trades-street-before", Main.Rig.LocalToScreen(at), 960, 540);
         Crop("trades-street-before-close", Main.Rig.LocalToScreen(at), 480, 270, 2);
         for (int i = 0; i < n; i++) t.SetVillagerTrade(i, keep[i]);
-        await Frames(40);
+        await Frames(26);
         Crop("trades-street-after", Main.Rig.LocalToScreen(at), 960, 540);
         Crop("trades-street-after-close", Main.Rig.LocalToScreen(at), 480, 270, 2);
         Notes.Add($"dir={_dir} tag={_tag} villagers={n} who={who}");
