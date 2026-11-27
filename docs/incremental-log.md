@@ -31,6 +31,15 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: the boats (27 November, from 10:14 UTC)
+
+The owner, while villagers at work is being built: "okay next start work on the boats. I want the animation of them going through the river to be better and the dock + crane to work better. Work out a design etc. like this can be done a lot better design wise but also like use wise as the boats move terrible through the river"
+
+- What happens now, read from the code: `docs/plans/n6/boats-design.md`, first section. The worst: a boat's place across the river is the middle of the map row it is in, so it jumps sideways in every bend and its bow flicks; on leaving it jumps from the quay to mid-river and turns about in one tick; waiting boats lie on the line the next boat sails along; the crane swings on a clock, loading nothing.
+- The design: the same file (a smooth course in two lanes, waiting at mooring posts, coming alongside and going away as manoeuvres, a quay with a yard and a sign per berth, a crane that does the loading). Rules, prices and timing stay; the simulation's position along the river stays the truth.
+- The pictures: a builder in `build/wt/n6-boats` (branch `wt/n6-boats`), due 11:45 UTC: `docs/plans/n6/mockup/boats-journey-now-and-planned.png` (the real track from the simulation beside the designed course) and `landing-now-and-planned.png` (a real frame beside a staged quay, yard, signs and crane). Notes `docs/plans/n6/mockup/notes.md` there.
+- Building it waits for the owner's yes and for a free machine (two builders are at work on the villagers and the places until about 12:30 UTC).
+
 ## Next request: villagers at work (27 November, from 08:50 UTC)
 
 The owner, while the right side was being finished: "Next spend time on interaction. I mean the villagers their interactions with the buildings, fields etc. Right now this looks super basic. This can be improved I think. Create a good idea like you did earlier with the screenshot of the Early: Now, Early: planned."
