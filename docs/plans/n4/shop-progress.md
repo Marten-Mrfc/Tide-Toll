@@ -138,3 +138,67 @@ What I still see:
   as in view for the pointer, so those states are not made there (as u42 already was; u48 prints "no blocked row yet").
   The rules S1 to S7 still run on every other state.
 - At 1280x720 at 150 the shop scrolls (Regulars below); whole rows only, as before.
+
+## Follow-up (after the merge `cd393b2`, with the plain-zero font)
+
+The lead's six points and the review's addendum A to H, in code:
+
+1. **The foot never lies over a row.** The foot fades in (0.2 s) only once the card's edge and every row are at rest,
+   and fades out before its room is given back (`TownHud.ShopRows.cs`, `_footWant`/`_footA`). The shop counts every
+   frame in which the foot's rectangle meets a showing row (`FootOverRowFrames`); rule S9 holds it at 0 on every state,
+   and `LayoutTest.Shop.cs` samples every frame while a forced foot arrives and leaves.
+2. **"Later:", not "Next:".** "Later: Basket at level 3 · +1 more"; when the lock is not a level, the name alone
+   ("Later: Extend a cottage"), on both rails (G: the level whenever the simulation's reason gives it). The sheet says so.
+3. **The tall/compact switch eases and is sticky.** The shop eases a tallness k over 0.2 s; every row blends its
+   heights and places (`ShopRow.Blend`), line 2 and the key caps fade, the card's edge and the headings follow. Compact
+   when tall rows do not fit; tall again only with two rows to spare (`TallSpareRows`). Rule S8 checks the stickiness on
+   every state; `LayoutTest.Shop.cs` forces the switch both ways and samples every frame (heights between, no overlap).
+4. / A. **The wash** is wheat at 30 percent, its leading edge fading out over 8 units in four slices, every slice
+   clipped from the capsule (`PillWash`, Sutherland-Hodgman against two vertical lines).
+5. **Tooltip facts**: a no-break space (about 4 units) between the coin sign and the number.
+6. **Rows out of sight below**: the foot's place says "2 more below ↓" while it applies. Not done: "N more above"
+   under the header.
+- B. **A pill never changes its rectangle**: the pulse is a lightening of the fill (`SelfModulate`, 0.4 s); S4 now
+  checks that every pill has the same width and right edge and none is scaled.
+- C. **Line 2 ends 8 before the pill** (`ShopRow.Line2Width`); texts rewritten to fit ("Cottages are full", "No worn
+  road", "Click a cottage", "More villagers", "Faster walking", "Bigger loads", "One more room", "Pays more",
+  "Another worker", "Any tide", "Two berths", "Bigger raft"); a worth that does not fit takes "+1,299 a min". The
+  catalogue check measures every line-2 text against that width.
+- D. **Tall rows 48 with 4 between** (pitch 52): icon on line 1, key cap under it. The sheet's numbers changed.
+- E. **Hover 9 percent, pressed 18 percent**, the pill one step darker (0.88) while pressed.
+- F. **The tooltip card stands 8 from the sheet** (placed from the sheet's edge, not the row's); "Pays back" has its
+  own fact line (label column 76).
+- H. **The shop's hairlines** (headings, foot, tooltip) are `UiKit.Ruling`, the ledger's ruled-line colour, 1 px.
+
+Earlier in this round game-layout found that a freshly built shop at 1280x720@150 began with a needless switch (rows
+outside the card for three frames); the first layout now takes its state without easing.
+
+Tests added in this round: S8 (sticky switch), S9 (foot never over a row, counted every frame), S4 extended (every
+pill the same width and right edge, none scaled), `game/tests/LayoutTest.Shop.cs` (every frame of a forced switch
+both ways: the height moves one way along the curve, over the slide's 0.2 s real time, never two rows overlapping;
+every frame of a forced foot arriving and leaving). Its first form counted "at least 3 frames with a height between",
+which failed under load at 5 frames for 0.2 s (frames of 40 to 70 ms); it was replaced, before it ever passed, by the
+time-based form: the clock now starts at the frame before the switch is asked for (the first switching frame counts
+its time from there) and the bound is the slide's 0.2 s, less at most one frame at the end.
+
+Check steps after the addendum (machine load 8 to 27 from other work; `uptime` noted):
+
+| Step | Result |
+| --- | --- |
+| game-build | pass |
+| game-town | `TOWN PASS faint=0.40 maxstep=0.165 worn=0.95 ...` |
+| game-playthrough | `PLAY PASS charter=33.9min buys=201` (unchanged) |
+| game-river | `RIVER PASS` |
+| game-perf | `PERF PASS` (means 1.58 / 1.07 ms at load 20+, were 0.46 / 0.52 quiet; bytes/frame 537 / 738 / 1225 / 1579, all under their gates) |
+| game-layout | `LAYOUT PASS` with `switch to compact: 29 frames over 193 ms ... overlaps 0, backwards 0`, `switch to tall: 30 frames over 200 ms`, `foot in: 60 frames`, `foot out: 31 frames` |
+| game-motion | FAIL four times, each time on one frame's CPU in a different settings/pause transition (8.96 ms "tab-saving-keys", 6.40 "click-while-closing", 9.31 "notes", 8.92 "pause"; gate 6) at load 8 to 27; 60 fps passed in two of them (cpu-max 5.44 ms). Before this round it passed at 5.42 ms. Not yet seen to pass on a quiet machine: to be re-run quiet. |
+
+Pictures (worktree, not committed): `build/n4/g-1080/` (u03 u05 u08 u13 u42 u46 u47; u32 see below),
+`build/n4/g-1080-150/u13.png`, `build/n4/g-720/u13.png`, `build/n4/g-720-150/u13.png`. Seen: tall rows 48, line 2
+ends before the pills ("Cottages are full"), the wash light with a soft edge ("2,108" reads on both sides at 100 and
+150), every pill the same width (the Regulars pulse at 150 is lighter, not larger), hover and pressed told apart with
+the pill darker when pressed, the card 8 from the sheet with "Pays back" on its own line, "Later: Basket at level 3 ·
++1 more", "1 more below ↓" at 1280x720@150, rulings as faint as the ledger's.
+
+Left: "N more above" under the header (point 6, second half). The tooltip sentences still say "Click a lit road" /
+"Click a lit cottage" (only line 2 was shortened).
