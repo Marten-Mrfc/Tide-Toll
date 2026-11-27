@@ -20,7 +20,7 @@ public sealed partial class Town
         _rp ??= TownRiverPlanner.Build(Plan);
         var r = new RiverState
         {
-            StartTime = Time, RenownBase = S.Renown, RenownScale = Math.Max(TownRulesRiver.LevelRateMin, S.MaxCoinPerMinute),
+            StartTime = Time, EaseFrom = Time, RenownBase = S.Renown, RenownScale = Math.Max(TownRulesRiver.LevelRateMin, S.MaxCoinPerMinute),
             PlotGiven = new bool[_rp.Plots.Length], LinkOpen = new bool[_rp.Links.Length],
             Boats = new BoatState[TownRulesRiver.MaxBoats],
             NextBoatAt = Time + TownRulesRiver.FirstBoatAfter,
@@ -32,27 +32,39 @@ public sealed partial class Town
     }
 
     /// <summary>Renown needed for town level n (also the second age's levels, 17 to 28, once it is rung in).</summary>
-    /// Green pass: each level's renown is fixed when the level before it is reached, in minutes of the town's best coin rate
-    /// by then (River.LevelAt), so a town whose income grows fast in the age does not race through its later levels. Levels
-    /// not fixed yet are estimated from the last fixed one at today's best rate.
+    /// n7 retune: every second-age level costs renown on a fixed curve (TownRulesRiver.LevelCurve: the level minutes, growing by
+    /// LevelGrowth a level) times the town's best coin rate at the ring (RenownScale). Nothing the town earns after the ring
+    /// changes a level's cost, so earning more never makes the age longer and earning less never makes it shorter. Above the
+    /// renown at the ring, every level's renown eases by LevelEase a minute from the ring (River.EaseFrom), the same for every
+    /// town, so the age's length follows a town's income only by its logarithm: a town whose income grows slowly is not held
+    /// far past the others, and one that grows fast is not let through far sooner. (Was, from
+    /// the green pass: each level fixed at the level before in minutes of the town's best rate by then, so a poorer town sealed
+    /// as soon or sooner.) River.LevelAt still holds each level's renown, fixed when the level before is reached: a save from
+    /// before keeps the levels it had fixed and the rest follow the curve from the last one.
     public double RiverLevelRenown(int n)
     {
         if (n <= Plan.MaxLevel) return LevelRenownOf(n);
+        double full = RiverLevelRenownFull(n);
+        var r = R!;
+        if (TownRulesRiver.LevelEase <= 0 || r.EaseFrom < 0) return full;
+        return r.RenownBase + Math.Round((full - r.RenownBase) * Math.Exp(-TownRulesRiver.LevelEase * Math.Max(0, Time - r.EaseFrom) / 60));
+    }
+
+    private double RiverLevelRenownFull(int n)
+    {
         var r = R!; var lv = RiverPlan!.Levels;
         int i = n - Plan.MaxLevel - 1;
         if (r.LevelAt.Length != lv.Length || r.LevelAt[0] <= 0) return r.RenownBase + Math.Round(r.RenownScale * lv[i].RenownAbove);
         if (r.LevelAt[i] > 0) return r.LevelAt[i];
         int k = i; while (r.LevelAt[k] <= 0) k--;
-        return r.LevelAt[k] + Math.Round(LevelRate * (lv[i].RenownAbove - lv[k].RenownAbove));
+        return r.LevelAt[k] + Math.Round(r.RenownScale * (lv[i].RenownAbove - lv[k].RenownAbove));
     }
-
-    private double LevelRate => Math.Max(Math.Max(TownRulesRiver.LevelRateMin, R!.RenownScale), S.MaxCoinPerMinute);
 
     private void FixNextRiverLevel()
     {
         var r = R!; var lv = RiverPlan!.Levels;
         if (r.Reached < 1 || r.Reached >= lv.Length || r.LevelAt[r.Reached] > 0) return;
-        r.LevelAt[r.Reached] = r.LevelAt[r.Reached - 1] + Math.Round(LevelRate * (lv[r.Reached].RenownAbove - lv[r.Reached - 1].RenownAbove));
+        r.LevelAt[r.Reached] = r.LevelAt[r.Reached - 1] + Math.Round(r.RenownScale * (lv[r.Reached].RenownAbove - lv[r.Reached - 1].RenownAbove));
     }
 
     private void CheckRiverLevels()
@@ -124,7 +136,13 @@ public sealed partial class Town
         StepBoats();
         StepFerry();
         StepDrawbridge();
-        if (S.Tick % TownRules.TickHz == 0) CheckRiverAchievements();
+        if (S.Tick % TownRules.TickHz == 0)
+        {
+            // n7 retune: the levels' renown eases with time (RiverLevelRenown), so look once a second as well as on each purchase.
+            if (r.EaseFrom < 0) r.EaseFrom = Time; // a save from before the retune: the ease starts when it is played on
+            if (TownRulesRiver.LevelEase > 0 && !r.Seal) CheckRiverLevels();
+            CheckRiverAchievements();
+        }
     }
 
     /// <summary>Whether a crossing of this kind is built and working (the ferry: given and bought).</summary>

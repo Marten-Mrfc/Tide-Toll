@@ -7,7 +7,7 @@ using TideToll.Sim.Town;
 namespace TideToll.Tools;
 
 /// <summary>
-/// people [--seeds 1-6] [--bot payback|cheapest|all] [--river] [--max 120] [--lean 0.10]
+/// people [--seeds 1-6] [--bot payback|cheapest|random|saver|all|four] [--set Name=v] [--river] [--max 120] [--lean 0.10]
 /// Villagers as people (n7 step 1): plays each seed with a bot to the charter (and with --river on to the seal) and prints,
 /// per age, the minute, the purchases, coin a minute and the herding: the share of time (sampled every 10 s, 4 or more
 /// villagers) with more than three quarters of the villagers on one job.
@@ -44,12 +44,13 @@ public static class PeopleCommand
             Console.WriteLine($"REPLAY {rf} {mins} min: {Convert.ToHexString(hash)}");
             return 0;
         }
-        if (o.TryGetValue("lean", out var ln)) TownRules.LeanBonus = double.Parse(ln, Inv);
-        if (o.TryGetValue("sitefix", out var sf)) TownRules.SiteWaitCountsOnTheWay = sf != "0";
-        if (o.TryGetValue("millfix", out var mf)) { TownRules.MillWaitCountsOnTheWay = mf != "0"; TownRules.MillWaitCountsOnTheWayInSecondAge = mf == "2"; }
+        BandsCommand.Apply(o); // --lean, --sitefix, --millfix, --set (n7 retune)
         var bots = new List<BotKind>();
         if (which is "all" or "payback") bots.Add(BotKind.Payback);
         if (which is "all" or "cheapest") bots.Add(BotKind.Cheapest);
+        if (which is "four" or "random") bots.Add(BotKind.Random);
+        if (which is "four" or "saver") bots.Add(BotKind.Saver);
+        if (which == "four") { bots.Insert(0, BotKind.Cheapest); bots.Insert(0, BotKind.Payback); }
         var rows = new Row[(z - a + 1) * bots.Count];
         System.Threading.Tasks.Parallel.For(0, rows.Length, i => rows[i] = Play(a + i / bots.Count, bots[i % bots.Count], river, max));
         Console.WriteLine("seed | bot | charter min | buys | herd 1st | seal min | buys 2nd | coin/min 2nd | herd 2nd");

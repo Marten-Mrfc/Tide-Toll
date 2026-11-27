@@ -29,10 +29,14 @@ public sealed class RiverState
 {
     public double StartTime;
     public double RenownBase;            // renown held when the age was rung in
-    public double RenownScale = 1;       // renown per level-minute (TownRulesRiver.LevelRenown): the best coin rate at the ring
+    public double RenownScale = 1;       // renown per level-minute (TownRulesRiver.LevelCurve): the best coin rate at the ring
+    // n7 retune: when the levels' renown starts to ease (TownRulesRiver.LevelEase): the ring; -1 in a save from before the
+    // retune, set when it is first played on (so such a town does not jump levels when it is loaded).
+    public double EaseFrom = -1;
     public int Reached;                  // river levels reached (0..12)
-    // Green pass: renown of each river level, set when the level before it is reached: the renown of that level plus the
-    // minutes between the two (TownRulesRiver.LevelRenown) times the town's best coin rate then. 0: not set yet (a version 3
+    // Renown of each river level before the ease, set when the level before it is reached: the renown of that level plus the
+    // curve's minutes between the two (TownRulesRiver.LevelCurve) times RenownScale (n7 retune; from the green pass to the
+    // retune it was times the town's best coin rate then, and a save from then keeps the values it had set). 0: not set yet (a version 3
     // save from before the green pass has none set and keeps the ring-time scale for every level).
     public double[] LevelAt = new double[12];
     public bool Seal;

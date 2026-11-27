@@ -7,16 +7,39 @@ namespace TideToll.Sim.Town;
 public static class TownRulesRiver
 {
     // ---- Levels ----
-    // Renown above the renown held at the ring, in minutes of the town's best coin rate by then (TownState.MaxCoinPerMinute,
-    // at least LevelRateMin), so a big town and a small one both take about the same time over the age.
-    public static double[] LevelRenown = { 0, 0.39, 0.89, 1.53, 2.44, 3.90, 5.12, 6.98, 9.22, 12.17, 14.00, 20.24 };   // river polish: level 22 (the ferry) 3.65 to 3.90 (a real stretch of the ford alone), level 27 (the drawbridge) 15.82 to 14.00 (boats pay tolls before the seal); green pass: x0.64 of rules v3's (each level now fixed at the level before, at the best rate then)
+    // n7 retune, the level-cost rule (docs/plans/n7/retune-progress.md). A level's renown above the renown held at the ring is
+    // RenownScale (the town's best coin rate at the ring, at least LevelRateMin) times LevelCurve(i), a fixed curve: each step
+    // of LevelRenown times LevelGrowth to the power of the levels before it, all times LevelMinutesScale; that renown above the
+    // ring then eases by LevelEase a minute from the ring (Town.RiverLevelRenown). Nothing earned after the ring moves a level,
+    // so earning more never makes the age longer and earning less never makes it shorter. Was (green pass to n7): each level
+    // fixed at the level before in minutes of the town's best rate by then, so a poorer town sealed as soon or sooner.
+    // Level minutes at the ring-time rate. n7 retune: level 27 (the drawbridge) 14.00 to 13.00: the ease lowers the seal's
+    // renown by about a quarter while the town works through the last stretch, which shortened the drawbridge-to-seal stretch
+    // (mean 6.5 to 5.3 minutes) and with it the tolls' payback (all runs 1.07 to 0.91, under its floor of 1); 13.00 gives the
+    // stretch back (mean 6.5 minutes, payback 1.16). Earlier: river polish: level 22 (the ferry) 3.65 to 3.90 (a real stretch
+    // of the ford alone), level 27 15.82 to 14.00 (boats pay tolls before the seal); green pass: x0.64 of rules v3's.
+    public static double[] LevelRenown = { 0, 0.39, 0.89, 1.53, 2.44, 3.90, 5.12, 6.98, 9.22, 12.17, 13.00, 20.24 };
     public static double LevelRateMin = 2000;
-    // n7 people: built, off (1) until the ages are retuned (see docs/plans/n7/people-progress.md). Every level's minutes above (LevelRenown) times this. Was 1 (no scale). With the
-    // blind-spot fixes and no leaning (setting (i)) the mean seal minutes over seeds 1-10 went payback 25.93 -> 25.64,
-    // cheapest 26.55 -> 26.72; restoring the two means together asks 52.48 / 52.36 = 1.0023, which gave payback 25.88 and
-    // cheapest 26.81 but still left the random bot short (seed 8 19.4 min, seed 6 19.9 min of the 20 floor), so the retune
-    // was stopped (the lead's rule) and this stays 1 until step 2 retunes the second age.
-    public static double LevelMinutesScale = 1;
+    // n7 retune: 1.4 (new). Stands for the town's income growing through the age, which the old rule followed level by level
+    // (the best rate when each level was reached was 1.0, 1.01, 1.14, 1.51, 1.96, 2.14, 2.39, 2.80, 3.36, 4.57 and 5.61 times
+    // the rate at the ring, mean of the four bots on seeds 1-10: about x1.19 a level). With the ease below (levels about 2.4
+    // minutes apart: x0.87 a level) 1.4 gives about x1.21 a level, the old rule's mean growth.
+    public static double LevelGrowth = 1.4;
+    // n7 retune: 0.06 a minute (new). The fixed curve alone passes each run's own income growth straight into its seal minute:
+    // at the growth that restores the mean, the buyers sealed from 17.6 to 40.2 minutes after the ring, a wider spread than the
+    // 20-35 band. Easing the levels with time makes the seal minute follow the log of a town's income rather than the income
+    // itself: buyers 21.0 to 31.4 minutes. 0.03 still left 17.8 to 29.1 (with a too short last stretch); 0.07 thinned the floor.
+    public static double LevelEase = 0.06;
+    // n7 retune: 1.05 (was 1, added unused by the people builder): brings the mean seal minute back with growth and ease as
+    // above (0.9 gave 23.5 / 26.9 payback / cheapest; 1.05 gives 25.1 / 27.6 against 25.9 / 26.6 before).
+    public static double LevelMinutesScale = 1.05;
+    /// <summary>Minutes of the ring-time rate above the renown at the ring for river level i (0..11), before the ease.</summary>
+    public static double LevelCurve(int i)
+    {
+        double sum = 0, g = 1;
+        for (int j = 1; j <= i; j++) { sum += (LevelRenown[j] - LevelRenown[j - 1]) * g; g *= LevelGrowth; }
+        return sum * LevelMinutesScale;
+    }
     public static string[] LevelGift =
     {
         "The landing and its road",
