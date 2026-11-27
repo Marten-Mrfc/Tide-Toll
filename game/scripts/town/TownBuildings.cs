@@ -18,6 +18,13 @@ public partial class TownBuildings : Node3D
 
     private TownDriver _drv = null!;
     private Node3D?[] _built = Array.Empty<Node3D?>();
+    private Node3D?[] _bodies = Array.Empty<Node3D?>();
+    /// <summary>Night 5: the node drawn for a plot (null when none) and its Body (the model turned to the door and scaled),
+    /// where the work places (WorkPlaces) hang their pieces.</summary>
+    public Node3D? BuiltRoot(int p) => p >= 0 && p < _built.Length ? _built[p] : null;
+    public Node3D? BuiltBody(int p) => p >= 0 && p < _bodies.Length && _built[p] != null ? _bodies[p] : null;
+    /// <summary>The mill's sails (null when the mill is not drawn); WorkPlaces' MillWorks turns them with the work.</summary>
+    public Node3D? MillSailsNode => _sails;
     private Node3D?[] _stakes = Array.Empty<Node3D?>();
     private float[] _pop = Array.Empty<float>();
     private int[] _ext = Array.Empty<int>();
@@ -48,7 +55,8 @@ public partial class TownBuildings : Node3D
         // Night 3: the cottage's own variant and size (see CottageModel); without the plan, the variant from the id.
         PlotKind.Cottage => CottageModel(id, extensions),
         PlotKind.Well => "well",
-        PlotKind.Field => "field-ripe",
+        // Night 5: the field's bed; its rows are drawn by FieldRows (WorkPlaces) and answer to the work.
+        PlotKind.Field => ModelLib.Pick("work-field-bed", "field-ripe"),
         PlotKind.Market => "market-stall",
         PlotKind.Mill => ModelLib.Pick("mill", "market-stall"),
         PlotKind.BellGreen => ModelLib.Pick("bell-post", "well"),
@@ -71,6 +79,7 @@ public partial class TownBuildings : Node3D
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
         var plots = _drv.Town.Plan.Plots;
         _built = new Node3D?[plots.Length];
+        _bodies = new Node3D?[plots.Length];
         _stakes = new Node3D?[plots.Length];
         _pop = new float[plots.Length];
         _ext = new int[plots.Length];
@@ -104,6 +113,7 @@ public partial class TownBuildings : Node3D
         float ax = Math.Max(0.1f, side ? aabb.Size.Z : aabb.Size.X), az = Math.Max(0.1f, side ? aabb.Size.X : aabb.Size.Z);
         var body = new Node3D { Name = "Body", Rotation = new Vector3(0, yaw, 0) };
         root.AddChild(body);
+        _bodies[p.Id] = body;
         // Night 3: every size is its own model (no widening, no lean-tos added here).
         if (p.Kind == PlotKind.Cottage) return MakeCottage(p, root, body, ext, fw, fh);
         if (p.Kind == PlotKind.Field)
@@ -358,15 +368,9 @@ public partial class TownBuildings : Node3D
             if (k >= 1f) _extraPop[o] = 0; else popping++;
         }
         Popping = popping;
-        // The mill's sails turn while it works; the bell swings while the town hurries.
-        bool millWorks = false;
-        var plots = t.Plan.Plots;
-        for (int i = 0; i < plots.Length; i++) if (plots[i].Kind == PlotKind.Mill && t.PlotWorking(i)) millWorks = true;
-        if (_sails != null && millWorks)
-        {
-            _sailAngle = (_sailAngle + dt * 1.2f * (float)Math.Min(_drv.Speed, 4)) % (MathF.PI * 2f);
-            _sails.Rotation = new Vector3(0, 0, _sailAngle);
-        }
+        // Night 5: the mill's sails are turned by WorkPlaces (MillWorks), faster the more are at work. The bell swings
+        // while the town hurries.
+        _sailAngle = _sails != null ? _sails.Rotation.Z : 0f;
         _pealLeft = Math.Max(0f, _pealLeft - dt);
         float swingTarget = t.BellRinging || _pealLeft > 0 ? 1f : 0f;
         _bellSwing = Mathf.MoveToward(_bellSwing, swingTarget, dt * 3f);
