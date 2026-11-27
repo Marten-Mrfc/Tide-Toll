@@ -112,15 +112,19 @@ public partial class TownTest
         int w = -1;
         // n7 trades: villagers have trades, and the town spreads them so that no line of two lasts the thirty seconds the
         // offer asks (TownRules.HandQueueSeconds). The line is staged by the player's own means: most of the town made
-        // carriers (SetTradeCount), so the well keeps a line; once a hand is offered every count is handed back to the
+        // millers (SetTradeCount), so the mill keeps a line; once a hand is offered every count is handed back to the
         // town (SetTownFillsTrades on). The rule and every assertion are unchanged.
-        T.SetTradeCount(Trade.Water, Math.Max(1, T.VillagerCount - 2));
+        // (Carriers at the well were tried first: a trip to the well is long and short at the well, so its line seldom
+        // held; the mill's work is long, so most of the town as millers keeps a line there.)
+        T.SetTradeCount(Trade.Flour, Math.Max(1, T.VillagerCount - 2));
+        int staged = T.TradeInfo(Trade.Flour).Members;
         Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);
         T.SetTownFillsTrades(true);
         for (int i = 0; i < T.WorkplaceCount && w < 0; i++) if (T.HandOffered(i)) w = i;
         var wps = new System.Text.StringBuilder();
         for (int i = 0; i < T.WorkplaceCount; i++) { var v = T.Workplace(i); wps.Append($" [{i} open {v.Open} places {v.Places} busy {v.Busy} queue {v.QueueLength} hands {T.HandsBought(i)} offered {T.HandOffered(i)}]"); }
-        Check(w >= 0, $"a hand is offered at a queued workplace (level {T.Level}, time {T.Time:0}, workplaces{wps})");
+        Notes.Add($"staged-millers={staged}");
+        Check(w >= 0, $"a hand is offered at a queued workplace (millers staged {staged}; level {T.Level}, time {T.Time:0}, workplaces{wps})");
         for (int k = 0; k < 200 && T.Coin < T.HandPrice(w); k++) Main.Driver.Advance(10);
         // Markers belong to the map and hide under an open page: close the achievements page first if the play left it open.
         if (Main.Hud.AchievementsOpen) await Key(Godot.Key.Tab);
