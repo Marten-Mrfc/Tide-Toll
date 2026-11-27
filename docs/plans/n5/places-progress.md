@@ -49,7 +49,7 @@ All new code is under `game/scripts/town/work/`; one node, `WorkPlaces`, is adde
 | game-playthrough | PASS `charter=33.9min buys=201` |
 | game-river | PASS |
 | game-layout | PASS (the first run after the join failed S1-keycap on shop rows in u13, interface code this branch does not touch; the rerun passed unchanged) |
-| game-motion | **FAIL on CPU time only**, a different transition each run (`pause: frame 2 took 7.21 ms`, `resume: frame 55 8.44 ms`, `esc-during-open: frame 5 8.74 ms`; gate 6 ms) with the load average at 18 to 26 on 4 cores. The same test run at the same moment in the villagers' checkout (no places) failed the same way (`tab-display-sound: frame 11 took 8.80 ms`). It passed before the merge on a quieter machine only once the load fell; not believed until rerun quiet. |
+| game-motion | **FAIL on CPU time only**, a different transition each run (`pause: frame 2 took 7.21 ms`, `resume: frame 55 8.44 ms`, `esc-during-open: frame 5 8.74 ms`; gate 6 ms) with the load average at 18 to 26 on 4 cores. The same test run at the same moment in the villagers' checkout (no places) failed the same way (`tab-display-sound: frame 11 took 8.80 ms`). It has not yet passed in this branch: to be rerun on a quiet machine before it is believed either way. |
 | game-save | PASS `autosave-clock=0.65/0.65s level 2 paved 1 villagers 4` |
 | game-work | PASS `WORK RATES PASS pairs=535 gap=1.98-2.30m` |
 | game-work-places | PASS at 60, 30 and 120 fps (60: `field-gold-min=0.45 drawn=0.41 front-bad=0 door-bad=0/3122 sails=0.280/0.800/1.639 market=1607 table=1606 missed=0 late=0 cottage-bad=0 one-frame piece=0.071 bucket=0.048 door=0.028 cottage=0.037 bound=0.111 alloc-frames=23 hoist-at-tools=12 rope-at-tools=5`) |
