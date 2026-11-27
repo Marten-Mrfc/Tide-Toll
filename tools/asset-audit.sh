@@ -68,6 +68,7 @@ EOF
   fi
 fi
 skip flat || python3 tools/asset-audit/flat.py "$OUT" || echo "audit: flat pictures failed"
+skip flat || python3 tools/asset-audit/icon_sheets.py "$OUT" || echo "audit: icon sheets failed"   # icons grouped by kind (night 3)
 skip sounds || python3 tools/asset-audit/sounds.py "$OUT" || echo "audit: sound pictures failed"
 skip sheets || python3 tools/asset-audit/index.py "$OUT" ${JPEG:+--jpeg="$JPEG"} || { echo "AUDIT FAIL: index"; exit 1; }
 echo "audit: $OUT"
