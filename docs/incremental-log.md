@@ -31,6 +31,25 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: research on villagers, roles and "hitboxes" (27 November, from 10:27 UTC)
+
+The owner: "Okay start an agent that will research how to improve the villagers. They don't have hitboxes and they don't spread well. Like they all start doing the same task. That is not the idea. I would like each villager to have a role and that it can be assigned. Like I would like to add that as a full system. Please do some research into it with opus, sonnet and haiku agents"
+
+- Research only; nothing is built before the owner decides. This one may change how the game plays (the owner asks for a new system).
+- What the code does today: each idle villager takes the job paying most coin per second, counting the walk, the expected wait and the work (`sim/Town/TownJobs.cs`, `ChooseJob`); there are no roles; a villager cannot be pointed at; overlapping figures are pushed apart in the drawing only.
+- Six researchers, each writing one file in `docs/plans/n7/research/`:
+
+| Who | Question | File | Due (UTC) |
+| --- | --- | --- | --- |
+| Haiku | The map of today's code: how work is chosen, what is saved, what can be clicked, which tests pin it | `code-map.md` | 10:50 |
+| Haiku | Godot lookups: picking one of many instances, avoidance, highlighting | `engine-notes.md` | 10:55 |
+| Sonnet | How other games give workers roles (incremental and colony games), the patterns, what fits here | `games-survey.md` | 11:10 |
+| Sonnet | Three or four complete designs for this game, criticised, with a recommendation and the owner's open questions | `design-options.md` | 11:15 |
+| Opus | Bodies and picking: what "hitboxes" and "spreading" should mean and how to build them | `bodies-and-picking.md` | 11:35 |
+| Opus | Experiments in the real simulation: what villagers do today, in numbers; what roles do to the charter minute; the technical design (branch `wt/n7-roles`, not to be merged) | `sim-roles-experiments.md`, `plots/` | 11:40 |
+
+- Then the lead writes `docs/plans/n7/villager-roles.md`: one proposal in stages, with the decisions that are the owner's.
+
 ## Next request: the boats (27 November, from 10:14 UTC)
 
 The owner, while villagers at work is being built: "okay next start work on the boats. I want the animation of them going through the river to be better and the dock + crane to work better. Work out a design etc. like this can be done a lot better design wise but also like use wise as the boats move terrible through the river"
