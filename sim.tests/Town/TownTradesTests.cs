@@ -365,4 +365,58 @@ public class TownTradesTests
         Assert.True(carriers <= alone * 1.15, $"careless {carriers / 60:F2} min against {alone / 60:F2}");
         Assert.True(idle < 0.01, $"idle {idle:P1}");
     }
+
+    /// <summary>CanRaiseTrade / CanLowerTrade say exactly whether SetTradeCount up or down by one would move anyone.</summary>
+    [Fact]
+    public void CanRaiseAndLowerSayWhatSetTradeCountWouldDo()
+    {
+        var t = PlayUntil(7, x => x.TradeOpen(Trade.Grain) && x.VillagerCount >= 6);
+        for (int k = 0; k < TownRules.TickHz * 2; k++) t.Step();
+        t.SetOpenCard(0);
+        foreach (var tr in new[] { Trade.None, Trade.Water, Trade.Grain, Trade.Flour })
+            for (int dir = -1; dir <= 1; dir += 2)
+            {
+                var copy = TownSave.Load(TownSave.Save(t));
+                copy.SetOpenCard(0);
+                bool can = dir > 0 ? copy.CanRaiseTrade(tr) : copy.CanLowerTrade(tr);
+                int before = copy.TradeInfo(tr).Members;
+                if (copy.TradeOpen(tr) || tr == Trade.None) copy.SetTradeCount(tr, before + dir);
+                Assert.Equal(can, copy.TradeInfo(tr).Members != before);
+            }
+        // Nobody to lower in an empty trade; nobody to raise when every other villager is set on its card.
+        var u = TownSave.Load(TownSave.Save(t));
+        for (int i = 0; i < u.VillagerCount; i++) u.SetVillagerTrade(i, Trade.Water);
+        Assert.False(u.CanRaiseTrade(Trade.Grain));
+        Assert.False(u.CanLowerTrade(Trade.Grain));
+        Assert.True(u.CanLowerTrade(Trade.Water));
+        Assert.False(u.CanRaiseTrade(Trade.Flour) && !u.TradeOpen(Trade.Flour));
+        long a0 = GC.GetAllocatedBytesForCurrentThread();
+        bool x = u.CanRaiseTrade(Trade.Water) | u.CanLowerTrade(Trade.Grain);
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - a0);
+    }
+
+    /// <summary>GiveVillagerBackToTown clears the mark, emits nothing, and the town may then move the villager.</summary>
+    [Fact]
+    public void AVillagerGivenBackIsTheTownsAgain()
+    {
+        var t = PlayUntil(8, x => x.TradeOpen(Trade.Grain) && x.VillagerCount >= 6);
+        for (int k = 0; k < TownRules.TickHz * 2; k++) t.Step();
+        var ev = new List<TownEvent>();
+        Assert.True(t.SetVillagerTrade(0, Trade.Water));
+        Assert.True(t.S.Villagers[0].TradeByPlayer);
+        t.DrainEvents(ev);
+        Assert.True(t.GiveVillagerBackToTown(0));
+        Assert.False(t.S.Villagers[0].TradeByPlayer);
+        Assert.Equal(Trade.Water, t.S.Villagers[0].Trade);
+        Assert.Empty(t.PendingEvents);
+        Assert.False(t.GiveVillagerBackToTown(0));
+        Assert.False(t.GiveVillagerBackToTown(999));
+        // The town may move it again: a count raised elsewhere may take it now.
+        Assert.True(t.SetVillagerTrade(0, Trade.Water));
+        t.GiveVillagerBackToTown(0);
+        for (int i = 1; i < t.VillagerCount; i++) t.SetVillagerTrade(i, Trade.Water);
+        Assert.True(t.CanRaiseTrade(Trade.Grain) || t.TradeInfo(Trade.Water).Members < 2);
+        t.SetTradeCount(Trade.Grain, t.TradeInfo(Trade.Grain).Members + 1);
+        Assert.Equal(Trade.Grain, t.S.Villagers[0].Trade);
+    }
 }

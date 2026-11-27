@@ -150,6 +150,30 @@ public sealed partial class Town
         return true;
     }
 
+    /// <summary>Whether SetTradeCount(t, members + 1) would move anyone now (by the same rule: a Helper not set on its card,
+    /// else a member of the largest town-decided trade that keeps one; never the open card's). No allocation.</summary>
+    public bool CanRaiseTrade(Trade t)
+    {
+        if ((int)t >= TradeCount || (t != Trade.None && !TradeOpen(t))) return false;
+        return TradeMembers(t) < S.Villagers.Length && PickIntoTrade(t) != null;
+    }
+
+    /// <summary>Whether SetTradeCount(t, members - 1) would move anyone now (a member that is not the open card's). No allocation.</summary>
+    public bool CanLowerTrade(Trade t)
+    {
+        if ((int)t >= TradeCount || (t != Trade.None && !TradeOpen(t))) return false;
+        return PickOutOfTrade(t) != null;
+    }
+
+    /// <summary>Clears villager <paramref name="id"/>'s "set by the player" mark: the town may move it again. Emits nothing
+    /// (a TradeChanged comes only if the town then moves it). False if it was not set.</summary>
+    public bool GiveVillagerBackToTown(int id)
+    {
+        if (id < 0 || id >= S.Villagers.Length || !S.Villagers[id].TradeByPlayer) return false;
+        S.Villagers[id].TradeByPlayer = false;
+        return true;
+    }
+
     /// <summary>On: every trade's count is the town's again (villagers set one by one stay set). Off: the town leaves the
     /// trades as they are. False if nothing changed.</summary>
     public bool SetTownFillsTrades(bool on)

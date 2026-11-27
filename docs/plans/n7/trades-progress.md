@@ -38,6 +38,9 @@ Town.TradeOfLeaning(Leaning l)          // static
 town.TradeWorkBonus, town.TradeWorthBonus   // fractions, Training included, without the like
 town.TradeEarnPerHead(Trade t)          // coin a minute a head of the trade's work lately (the figure the town fills by)   [rules commit 2d2bac4]
 town.TrainingStepBonus                  // what one more Training step adds to both bonuses (0.04 = +4 %; 0 after ten)      [ba55341]
+town.CanRaiseTrade(Trade t)             // would SetTradeCount(t, members + 1) move anyone now (the same rule)              [two calls commit]
+town.CanLowerTrade(Trade t)             // would SetTradeCount(t, members - 1) move anyone now                                 [two calls commit]
+town.GiveVillagerBackToTown(int id)     // clears the "set by the player" mark; emits nothing; false if not set             [two calls commit]
 
 town.SetTradeCount(Trade t, int n)      // yours from now on (Trade.None: the Helpers' count); false if nothing changed
 town.SetVillagerTrade(int id, Trade t)  // that villager is yours from now on
