@@ -6,7 +6,7 @@ The log of the night before (the incremental rebuild, rounds 1 to 7b) is kept in
 
 The owner played the final build `e02da4e` and wrote: "Now fix the right ui. This still looks bugged and awful." No workflow this time: two builders and a reviewer, started by the lead one by one.
 
-- What is wrong, and the new design: `docs/plans/n4/shop-sheet-v3.md` (eleven faults seen in the final build's pictures; the shop, its tooltip and the navigation buttons redrawn), with the mock-up in `docs/plans/n4/mockup/`. The owner was sent the mock-up at 07:35.
+- What is wrong, and the new design: `docs/plans/n4/shop-sheet-v3.md` (eleven faults seen in the final build's pictures; the shop, its tooltip and the navigation buttons redrawn), with the mock-up in `docs/plans/n4/mockup/`. The owner was sent the mock-up at 07:30.
 - The slashed zero of the interface font: `docs/plans/n4/font-brief.md`, prototype `docs/plans/n4/zero-prototype.py`.
 - Builders (worktrees on local branches, never pushed): the shop in `build/wt/n4-shop` (branch `wt/n4-shop`, progress `docs/plans/n4/shop-progress.md` there, deadline 09:30 UTC); the font in `build/wt/n4-font` (branch `wt/n4-font`, progress `docs/plans/n4/font-progress.md`, deadline 08:40 UTC).
 - Then: the lead merges both, takes the pictures again, has them read by a reviewer who did not build them, has the findings fixed, runs the whole check on a clean copy, pushes a finished commit and waits for the Windows build.
