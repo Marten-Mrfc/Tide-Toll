@@ -205,10 +205,14 @@ Searched `game/scripts` for `FileAccess.Open`, `Save()`, `SetHintSeen`, `File.*`
   The matrix says render scale is the biggest single lever (50 percent: 0.37 of the time); the outline one would gain
   little by these numbers (the ink pass is within the noise here). Needs: the two rows, the store keys, the applier
   (`Viewport.Scaling3DScale`, `InkOutline` `max_step`), settings-test rows, a picture check at 85 and 70 percent.
-- **The wins in the forbidden files**: the shop list built each frame (`TownHud.Shop.cs`), the villager pick each
-  frame (`TownVillagers.Pick.cs`, `TownHud.People.cs`), the bodies pass's test-only measures (`TownVillagers.Spread.cs`),
-  the label layout's per-frame card rectangles (Q11, partly in `TownHud.Labels.cs` but its cards list names forbidden
-  owners' controls). Each needs only its owner's file; none changes the look.
+- **The wins in the files that were the trades builders'** (free from 19:56): done here are Q10 (the villagers'
+  test-only measures) and Q9 (the achievement count, which was never forbidden). Not done: the shop list built each
+  frame (Q8, `TownHud.Shop.cs` `ShopFrame`: `Town.ShopItems` and a signature per row each frame; it could be built
+  only when the tick, the floored coin, a mode, the pointer over the shop or `GameInput.Version` change, but the row
+  fill reads the coin every frame, so it needs care and the shop's layout checks S1 to S7 after it), the villager
+  pick each frame (Q13, `TownVillagers.Pick.cs`: villagers move every frame, so the saving is only while the pointer
+  is off the map, where `PeopleFrame` already returns), the label layout's card rectangles each frame (Q11). None
+  changes the look.
 - **Q1 for the boats and the river**: `RiverBoats.cs` and `RiverLayer.cs` are forbidden, so their `Label3D`s are
   still found by `FindChildren` twice a second; the buildings' (all of the first age's tags) now come from a list.
   Needs: `RiverBoats.Build` and `RiverLayer.MakePlot` to add their words to a list as `TownBuildings.Words` does.
