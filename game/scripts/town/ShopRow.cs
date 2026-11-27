@@ -49,8 +49,8 @@ public sealed partial class ShopRow
         Button = new Button { Text = "", ClipContents = true, MouseFilter = Control.MouseFilterEnum.Stop };
         UiKit.StyleRow(Button, s);
         Band = new Panel { Name = "Band", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-        _bandHover = BandBox(0.07f);
-        _bandPressed = BandBox(0.14f);
+        _bandHover = BandBox(0.09f);
+        _bandPressed = BandBox(0.18f);
         Key = UiKit.KeyCap(s);
         Icon = UiKit.IconRect(s, null);
         Name = UiKit.Fixed(s, UiKit.Body);
@@ -69,7 +69,7 @@ public sealed partial class ShopRow
         _frameNotYet.DrawCenter = false;
         _frameBlocked.DrawCenter = false;
         // Follow-up 4: the wash at about 40 percent of wheat, so a muted price reads on both sides of its edge.
-        Wash = new PillWash { Name = "Wash", Colour = UiKit.Wheat.Lerp(UiKit.Paper, 0.6f) };
+        Wash = new PillWash { Name = "Wash", Colour = UiKit.Wheat.Lerp(UiKit.Paper, 0.7f), Fade = U(8) };
         Frame = new Panel { Name = "Frame", MouseFilter = Control.MouseFilterEnum.Ignore };
         Coin = UiKit.IconRect(s, TownHud.IconOr("ui-coin", "ui-coin"), 16);
         Coin.Name = "Coin";
@@ -124,24 +124,24 @@ public sealed partial class ShopRow
         _k = k;
         Tall = k >= 0.5f;
         float L(float compact, float tall) => compact + (tall - compact) * k;
-        float width = _width, h = MathF.Round(L(U(40), U(56))), pw = U(_pillUnits), ph = MathF.Round(L(U(28), U(32)));
+        float width = _width, h = MathF.Round(L(U(40), U(TallUnits))), pw = U(_pillUnits), ph = MathF.Round(L(U(28), U(32)));
         Button.Size = new Vector2(width, h);
         Band.Position = Vector2.Zero;
         Band.Size = Button.Size;
         float icon = MathF.Round(L(U(20), U(24)));
         Icon.Size = Icon.CustomMinimumSize = new Vector2(icon, icon);
-        Icon.Position = new Vector2(MathF.Round(L(U(8), U(6))), MathF.Round(L((U(40) - U(20)) / 2f, U(8))));
+        Icon.Position = new Vector2(MathF.Round(L(U(8), U(6))), MathF.Round(L((U(40) - U(20)) / 2f, U(4))));
         Key.Visible = k > 0.01f && Key.Text.Length > 0;
         Key.Modulate = new Color(1, 1, 1, k);
         _nameX = MathF.Round(L(U(36), U(NameX)));
-        float lineY = MathF.Round(L(0, U(7))), lineH = MathF.Round(L(U(40), U(26)));
+        float lineY = MathF.Round(L(0, U(4))), lineH = MathF.Round(L(U(40), U(24)));
         Name.Position = new Vector2(_nameX, lineY);
         Name.Size = new Vector2(width - _nameX - pw - U(6) - U(NameGap), lineH);
         Step.Size = new Vector2(U(40), lineH);
         Line2.Visible = k > 0.01f;
         Line2.Modulate = new Color(1, 1, 1, k);
         PlaceKey();
-        Pill.Position = new Vector2(width - pw - U(6), MathF.Round(L((U(40) - U(28)) / 2f, U(4))));
+        Pill.Position = new Vector2(width - pw - U(6), MathF.Round(L((U(40) - U(28)) / 2f, U(0))));
         Pill.Size = new Vector2(pw, ph);
         Pill.PivotOffset = Pill.Size / 2f;
         int rad = (int)(ph / 2f);
@@ -157,6 +157,13 @@ public sealed partial class ShopRow
         BandShown = -1;
     }
 
+    /// <summary>Addendum D: a tall row is 48 (with 4 between, a pitch of 52).</summary>
+    public const float TallUnits = 48;
+
+    /// <summary>Line 2's width (pixels) from the name's start: it ends at least 8 before the pill.</summary>
+    public static float Line2Width(float rowWidth, float pillUnits, float s) =>
+        rowWidth - UiKit.U(s, 6) - UiKit.U(s, pillUnits) - UiKit.U(s, 8) - UiKit.U(s, NameX);
+
     /// <summary>Where a tall row's name starts (sheet units: the icon is 6..30) and its least gap to the pill.</summary>
     public const float NameX = 38, NameGap = 6;
 
@@ -169,12 +176,13 @@ public sealed partial class ShopRow
     {
         float capW = Math.Max(U(20), TownHud.TextWidth(Key) + U(8)), cx = Icon.Position.X + Icon.Size.X / 2f;
         float x = Math.Max(U(2), cx - capW / 2f);
-        float ky = Button.Size.Y - U(24);
+        float ky = Button.Size.Y - U(20);
         Key.Position = new Vector2(x, ky);
-        Key.Size = new Vector2(capW, U(20));
+        Key.Size = new Vector2(capW, U(18));
         float l2 = Key.Visible ? Math.Max(_nameX, x + capW + U(6)) : _nameX;
         Line2.Position = new Vector2(l2, ky);
-        Line2.Size = new Vector2(Button.Size.X - l2 - U(8), U(20));
+        // Addendum C: line 2 ends at least 8 before the pill's left edge.
+        Line2.Size = new Vector2(Line2Width(Button.Size.X, _pillUnits, _s) - (l2 - _nameX), U(18));
     }
 
     /// <summary>The step number just after the name, dropped whole if it does not fit. The name is never resized.</summary>
@@ -230,6 +238,15 @@ public sealed partial class ShopRow
         Wash.SetK(k);
     }
 
+    /// <summary>Addendum B and E: the pill's fill tone: one step darker while pressed; lighter for a moment when the
+    /// row has just become affordable (never a change of size).</summary>
+    public float Light;
+    public void Tone()
+    {
+        float k = (BandShown == 2 ? 0.88f : 1f) * (1f + Light);
+        Pill.SelfModulate = new Color(k, k, k, 1);
+    }
+
     /// <summary>The band: hover (ink 7), pressed (ink 14, content 1 down), none when blocked or not under the pointer.</summary>
     public void SetBand(bool over, bool pressed)
     {
@@ -239,65 +256,78 @@ public sealed partial class ShopRow
         BandShown = want;
         Band.Visible = want > 0;
         if (want > 0) Band.AddThemeStyleboxOverride("panel", want == 2 ? _bandPressed : _bandHover);
+        Tone();
         float dy = (want == 2 ? U(1) : 0) - (was == 2 ? U(1) : 0);
         if (dy == 0) return;
         foreach (var c in new Control[] { Key, Icon, Name, Step, Line2, Pill }) c.Position += new Vector2(0, dy);
     }
 }
 
-/// <summary>Sheet v3: the "not yet" pill's wash, the part of the pill's capsule left of k of its width, as one polygon
-/// (so nothing is drawn outside the outline). Its points are made only when k changes, into a buffer kept per size.</summary>
+/// <summary>The "not yet" pill's wash: the part of the pill's capsule left of k of its width, as convex polygons clipped
+/// from the capsule (so nothing is drawn outside the outline); its leading edge fades out over <see cref="Fade"/> pixels
+/// in a few slices (addendum A). Points are made only when k changes, into buffers kept per size.</summary>
 public partial class PillWash : Control
 {
     public Color Colour = Colors.Wheat;
+    public float Fade = 8;
     public float K { get; private set; } = -1;
-    private const int Arc = 10;
-    private readonly Vector2[] _buf = new Vector2[4 * Arc + 8];
-    private Vector2[] _poly = Array.Empty<Vector2>();
+    private const int Arc = 10, Slices = 4;
+    private readonly Vector2[] _outline = new Vector2[2 * Arc + 2];
+    private readonly Vector2[] _a = new Vector2[64], _b = new Vector2[64];
     private readonly System.Collections.Generic.Dictionary<int, Vector2[]> _bySize = new();
+    private readonly System.Collections.Generic.List<Vector2> _all = new();
 
     public PillWash() { MouseFilter = MouseFilterEnum.Ignore; Resized += () => { K = -1; QueueRedraw(); }; }
 
     public void SetK(float k) { if (k == K) return; K = k; QueueRedraw(); }
 
-    /// <summary>The wash's points (tests: every one lies inside the capsule).</summary>
-    public ReadOnlySpan<Vector2> Points => _poly;
+    /// <summary>Every point of the wash as last drawn (tests: every one lies inside the capsule).</summary>
+    public System.Collections.Generic.List<Vector2> Points => _all;
 
     public override void _Draw()
     {
+        _all.Clear();
         float w = Size.X, h = Size.Y, r = h / 2f, c = Math.Clamp(K, 0, 1) * w;
-        if (c < 0.5f || w <= 0 || h <= 0) { _poly = Array.Empty<Vector2>(); return; }
+        if (c < 0.5f || w <= 0 || h <= 0) return;
+        // The capsule's outline: the left half circle, then the right one.
         int n = 0;
-        // Left end: the arc of x <= c (all of it once c passes r).
-        float a0 = c >= r ? MathF.PI / 2f : MathF.Acos(Math.Clamp((c - r) / r, -1, 1));
-        for (int i = 0; i <= Arc; i++)
+        for (int i = 0; i <= Arc; i++) { float a = MathF.PI / 2f + MathF.PI * i / Arc; _outline[n++] = new Vector2(r + r * MathF.Cos(a), r - r * MathF.Sin(a)); }
+        for (int i = 0; i <= Arc; i++) { float a = -MathF.PI / 2f + MathF.PI * i / Arc; _outline[n++] = new Vector2(w - r + r * MathF.Cos(a), r - r * MathF.Sin(a)); }
+        float f = Math.Min(Fade, c), solid = c - f;
+        if (solid > 0.25f) Slice(0, solid, Colour);
+        for (int i = 0; i < Slices; i++)
         {
-            float a = a0 + (2 * MathF.PI - 2 * a0) * i / Arc;
-            _buf[n++] = new Vector2(r + r * MathF.Cos(a), r - r * MathF.Sin(a));
+            float x0 = solid + f * i / Slices, x1 = solid + f * (i + 1) / Slices;
+            Slice(x0, x1, new Color(Colour, 1f - (i + 0.5f) / Slices));
         }
-        if (c > r)
+    }
+
+    /// <summary>The capsule between x0 and x1 (Sutherland-Hodgman against two vertical lines), drawn in one colour.</summary>
+    private void Slice(float x0, float x1, Color col)
+    {
+        int n = Clip(_outline, _outline.Length, _a, x0, true);
+        n = Clip(_a, n, _b, x1, false);
+        if (n < 3) return;
+        if (!_bySize.TryGetValue(n, out var poly)) _bySize[n] = poly = new Vector2[n];
+        Array.Copy(_b, poly, n);
+        for (int i = 0; i < n; i++) _all.Add(poly[i]);
+        DrawColoredPolygon(poly, col);
+    }
+
+    private static int Clip(Vector2[] src, int n, Vector2[] dst, float x, bool keepRight)
+    {
+        int m = 0;
+        for (int i = 0; i < n; i++)
         {
-            float right = w - r;
-            if (c <= right) { _buf[n++] = new Vector2(c, h); _buf[n++] = new Vector2(c, 0); }
-            else
+            var p = src[i]; var q = src[(i + 1) % n];
+            bool pin = keepRight ? p.X >= x : p.X <= x, qin = keepRight ? q.X >= x : q.X <= x;
+            if (pin && m < dst.Length) dst[m++] = p;
+            if (pin != qin && m < dst.Length)
             {
-                // Right end: from the bottom up to x = c, the straight cut, and back over the top.
-                float b = MathF.Acos(Math.Clamp((c - right) / r, -1, 1));
-                for (int i = 0; i <= Arc; i++)
-                {
-                    float a = -MathF.PI / 2f + (MathF.PI / 2f - b) * i / Arc;
-                    _buf[n++] = new Vector2(right + r * MathF.Cos(a), r - r * MathF.Sin(a));
-                }
-                for (int i = b < 0.001f ? 1 : 0; i <= Arc; i++)
-                {
-                    float a = b + (MathF.PI / 2f - b) * i / Arc;
-                    _buf[n++] = new Vector2(right + r * MathF.Cos(a), r - r * MathF.Sin(a));
-                }
+                float t = (x - p.X) / (q.X - p.X);
+                dst[m++] = new Vector2(x, p.Y + (q.Y - p.Y) * t);
             }
         }
-        if (!_bySize.TryGetValue(n, out var poly)) _bySize[n] = poly = new Vector2[n];
-        Array.Copy(_buf, poly, n);
-        _poly = poly;
-        DrawColoredPolygon(poly, Colour);
+        return m;
     }
 }

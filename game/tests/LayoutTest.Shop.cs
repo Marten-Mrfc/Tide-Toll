@@ -22,7 +22,7 @@ public partial class LayoutTest
             hud.CompactForce = toCompact;
             var heights = new HashSet<int>();
             int frames = 0, overlaps = 0, between = 0;
-            float lo = 40, hi = 56;
+            float lo = 40, hi = ShopRow.TallUnits;
             while (frames < 400)
             {
                 await Frames(1);

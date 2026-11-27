@@ -72,7 +72,7 @@ public static class LayoutFixture
                 price.AddThemeFontSizeOverride("font_size", bodyPx);
             }
             var line2 = b.GetNodeOrNull<Label>("Line2");
-            if (line2 != null && line2.Visible) line2.Text = "No room in the cottages";
+            if (line2 != null && line2.Visible) line2.Text = "Cottages are full";
         }
     }
 }

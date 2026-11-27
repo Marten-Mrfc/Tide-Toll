@@ -93,6 +93,19 @@ public static partial class LayoutRules
         // S9 (follow-up 1): the foot has never lain over a row, in any frame so far.
         checks++;
         if (hud.FootOverRowFrames > 0) fail("S9-foot", id, canvas, $"the foot lay over a row in {hud.FootOverRowFrames} frames");
+        // S4 (addendum B): every pill has the same width and right edge as every other in this layout, and none is scaled.
+        Rect2? first = null;
+        for (int i = 0; i < n; i++)
+        {
+            var r = hud.RowNode(i);
+            if (r.Leaving || !r.Button.Visible || r.Alpha < 0.99f) continue;
+            var pr = r.Pill.GetGlobalRect();
+            checks++;
+            if (r.Pill.Scale != Vector2.One) fail("S4-size", id, canvas, $"row '{r.Name.Text}' pill is scaled {r.Pill.Scale}");
+            first ??= pr;
+            if (Math.Abs(pr.Size.X - first.Value.Size.X) > 0.5f || Math.Abs(pr.End.X - first.Value.End.X) > 0.5f)
+                fail("S4-size", id, canvas, $"row '{r.Name.Text}' pill {pr} differs from the others {first.Value}");
+        }
         // S3: headings only over rows, nothing on them but the name and a hairline; at most one foot line.
         for (int g = 0; g < 5; g++)
         {
@@ -199,11 +212,11 @@ public static partial class LayoutRules
             float w = UiKit.UiFont.GetStringSize(shown, HorizontalAlignment.Left, -1, size).X;
             if (w > box) fail("S2-catalogue", "fixture", canvas, $"'{shown}' is {w:0} wide at {size} px in a box of {box:0}");
         }
-        float l2 = hud.RowWidth - UiKit.U(z.S, ShopRow.NameX) - UiKit.U(z.S, 8);
+        float l2 = ShopRow.Line2Width(hud.RowWidth, hud.PillWidthUnits, z.S);
         int cap = UiKit.Type(z.S, UiKit.Caption);
         var lines = new System.Collections.Generic.List<string>();
         foreach (ShopItemKind k in Enum.GetValues(typeof(ShopItemKind))) lines.Add(TownHud.DoesLine(k));
-        foreach (var t in new[] { "No room: wait for a cottage", "No worn-in road to pave", "Click a lit road", "Click a lit cottage", TownHud.WorthLine(999_990) })
+        foreach (var t in new[] { "No room: wait for a cottage", "No worn-in road to pave", "Click a road", "Click a cottage", TownHud.WorthShort(999_990) })
             lines.Add(TownHud.BlockedLine(t));
         foreach (var t in lines)
         {

@@ -31,7 +31,7 @@ public partial class TownHud
     /// <summary>Tall rows' content height and the card's limit (tests: the switch is sticky).</summary>
     public float ShopTallContent => _tallContent;
     public float ShopLimit => Zones.ShopMaxHeight;
-    public float TallPitch => UiKit.U(_s, 56) + UiKit.U(_s, 4);
+    public float TallPitch => UiKit.U(_s, ShopRow.TallUnits) + UiKit.U(_s, 4);
     public bool ShopSwitching => _kT >= 0;
     public float ShopTallness => _shopK;
     public const float RowFade = 0.2f, RowSlide = 0.2f, RowHold = 1.5f, RowClickCalm = 0.3f, PulseSeconds = 0.4f, PulseGap = 0.5f;
@@ -90,7 +90,7 @@ public partial class TownHud
             float nameW = TextWidth(_groupName[g]) + 2;
             _groupName[g].Size = new Vector2(nameW, head.Size.Y);
             // The hairline: ink at 16 percent from the name to the right edge (sheet v3), and nothing else on the line.
-            var rule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
+            var rule = new ColorRect { Name = "Rule", Color = UiKit.Ruling, MouseFilter = Control.MouseFilterEnum.Ignore };
             float rx = UiKit.U(_s, 6) + nameW + UiKit.U(_s, 8);
             rule.Position = new Vector2(rx, MathF.Round(head.Size.Y / 2f + UiKit.U(_s, 2)));
             rule.Size = new Vector2(head.Size.X - rx - UiKit.U(_s, 6), Math.Max(1, UiKit.U(_s, 1)));
@@ -103,7 +103,7 @@ public partial class TownHud
         // The foot: one caption line under a hairline, at the card's bottom (it moves with the bottom edge).
         _foot = new Control { Name = "Foot", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         _foot.Size = new Vector2(w - 2 * pad, UiKit.U(_s, FootUnits));
-        var footRule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        var footRule = new ColorRect { Name = "Rule", Color = UiKit.Ruling, MouseFilter = Control.MouseFilterEnum.Ignore };
         footRule.Position = new Vector2(UiKit.U(_s, 6), 0);
         footRule.Size = new Vector2(_foot.Size.X - UiKit.U(_s, 12), Math.Max(1, UiKit.U(_s, 1)));
         _foot.AddChild(footRule);
@@ -190,13 +190,13 @@ public partial class TownHud
         for (int g = 0; g < 5; g++) if (GroupHasAny(g)) groups++;
         // Follow-up 1: the foot takes its room while it shows or is wanted (it fades in only once the edge has arrived).
         float footH = _footWant || _footA > 0 ? UiKit.U(_s, FootUnits) : 0;
-        float tallH = UiKit.U(_s, 56), compactH = UiKit.U(_s, 40), tallGap = gap, compactGap = UiKit.U(_s, 2);
+        float tallH = UiKit.U(_s, ShopRow.TallUnits), compactH = UiKit.U(_s, 40), tallGap = gap, compactGap = UiKit.U(_s, 2);
         float Content(float rowH, float rowGap) => top + groups * headH + _rowOrder.Count * (rowH + rowGap) + footH + pad;
         float max = z.ShopMaxHeight;
         // Follow-up 3b: sticky. Compact when tall rows do not fit; tall again only when they fit with two rows to spare.
         _tallContent = Content(tallH, tallGap);
         bool compact = CompactForce ?? (_compactShop ? _tallContent > max - TallSpareRows * (tallH + tallGap) : _tallContent > max);
-        if (_shopK < 0) { _shopK = compact ? 0 : 1; _kFrom = _kTo = _shopK; _kT = -1; foreach (var r in _rows) r.Blend(_shopK); }
+        if (_shopK < 0) { _compactShop = compact; _shopK = compact ? 0 : 1; _kFrom = _kTo = _shopK; _kT = -1; foreach (var r in _rows) r.Blend(_shopK); }
         if (compact != _compactShop)
         {
             _compactShop = compact;
@@ -215,7 +215,7 @@ public partial class TownHud
         float rowH = MathF.Round(compactH + (tallH - compactH) * _shopK), rowGap = compactGap + (tallGap - compactGap) * _shopK;
         float Gap(float h) => rowGap;
         float content = Content(rowH, rowGap);
-        _shopScrolls = compact && !switching && Content(compactH, compactGap) > max;
+        _shopScrolls = compact && Content(compactH, compactGap) > max;
         // The card follows its rows: as tall as where they are now (a row that is still sliding up or fading out keeps
         // its place in the card), at most H - 104.
         // Sheet v3: the bottom edge (and the foot on it) eases with the rows' slide; it never cuts a row still showing.
@@ -426,9 +426,10 @@ public partial class TownHud
             {
                 r.Pulse += dt;
                 float u = Math.Clamp(r.Pulse / PulseSeconds, 0, 1);
-                float k = 1f + 0.08f * MathF.Sin(MathF.PI * u);
-                r.Pill.Scale = new Vector2(k, k);
-                if (u >= 1) { r.Pulse = -1; r.Pill.Scale = Vector2.One; }
+                // Addendum B: a short lightening of the fill, never a change of size.
+                r.Light = u >= 1 ? 0f : 0.18f * MathF.Sin(MathF.PI * u);
+                r.Tone();
+                if (u >= 1) r.Pulse = -1;
             }
         }
         if (_pulseGap > 0 || _pulseQueue.Count == 0) return;

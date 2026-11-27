@@ -128,7 +128,10 @@ public partial class TownHud
             else
             {
                 var avoid = _choice.Visible ? _choice.GetGlobalRect() : _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
-                r = Zones.TipRect(owner.GetGlobalRect(), size, side, avoid);
+                // Addendum F: a row's card stands 8 away from the sheet, not from the row inside it.
+                var o = owner.GetGlobalRect();
+                if (row >= 0) { var sh = _shop.GetGlobalRect(); o = new Rect2(sh.Position.X, o.Position.Y, o.End.X - sh.Position.X, o.Size.Y); }
+                r = Zones.TipRect(o, size, side, avoid);
             }
             _tip.Position = r.Position;
             _tip.Size = r.Size;

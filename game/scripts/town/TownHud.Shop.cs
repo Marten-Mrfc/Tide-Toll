@@ -290,10 +290,12 @@ public partial class TownHud
         // it does); how far the coin has come is the pill's wash, the number is in the tooltip.
         string line = st switch
         {
-            ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a lit road" : "Click a lit cottage",
+            ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a road" : "Click a cottage",
             ShopRow.PillState.Blocked => BlockedLine(it.Reason),
             _ => worth > 0 ? WorthLine(worth) : DoesLine(it.Kind),
         };
+        // Addendum C: a worth that does not fit before the pill takes its short form ("+1,299 a min").
+        if (worth > 0 && st is not (ShopRow.PillState.On or ShopRow.PillState.Blocked) && TextWidth(r.Line2, line) > r.Line2.Size.X) line = WorthShort(worth);
         if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
         if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
         bool priced = it.Price > 0 && !double.IsInfinity(it.Price);
