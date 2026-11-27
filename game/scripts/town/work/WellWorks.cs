@@ -27,9 +27,12 @@ public partial class WellWorks : Node3D
     private readonly float[] _h = new float[2], _rise = new float[2], _tip = { 1f, 1f };
     private float _crankA, _pailS, _pailHold = -1f, _second;
     private bool _pailOn;
-    private static readonly Vector3[] PailPos = { new(-1.25f / BoardScale, 1.72f / BoardScale, 0.95f / BoardScale), new(-0.55f / BoardScale, 1.72f / BoardScale, 1.55f / BoardScale) };
+    // The pails stand on the rim on the side toward the view (the map's south), whichever way the well is turned, so
+    // they read at the normal view; the bucket tips over that rim too (set in Attach from the Body's turn).
+    private readonly Vector3[] PailPos = new Vector3[2];
+    private Vector3 _toView = Vector3.Back;
     private static readonly float[] PailYaw = { 0.4f, 1.2f };
-    private static StandardMaterial3D? _wood;
+    private StandardMaterial3D? _wood;   // not static: a Resource held past the scene is finalized after the engine is gone
 
     /// <summary>The wet ground's state, 0 dry to 1 soaked (tests), the bucket's drawn height share, pails shown, tips started.</summary>
     public float Wet { get; private set; }
@@ -63,6 +66,13 @@ public partial class WellWorks : Node3D
     private void Attach(Node3D body)
     {
         _body = body;
+        float yaw = body.Rotation.Y;
+        _toView = new Vector3(-MathF.Sin(yaw), 0, MathF.Cos(yaw));
+        for (int i = 0; i < 2; i++)
+        {
+            var d = _toView.Rotated(Vector3.Up, i == 0 ? -0.55f : 0.45f);
+            PailPos[i] = d * 0.86f + new Vector3(0, 1.72f / BoardScale, 0);
+        }
         var holder = new Node3D { Name = "Work" };
         body.AddChild(holder);
         float k = 1f / BoardScale;
@@ -92,9 +102,9 @@ public partial class WellWorks : Node3D
         _rise[b] = 0f;
         _pailOn = true; _pailHold = -1f;
         Wet = Math.Min(1f, Wet + 0.12f);
-        var at = _w.OnPlot(_plot, new Vector3(b == 0 ? 0.15f : -0.35f, 1.05f, 0.55f));
+        var at = _w.OnPlot(_plot, new Vector3(b == 0 ? 0.15f : -0.35f, 1.05f, 0) + _toView * 0.55f);
         _w.Puffs.Ring(at, 0.25f, 0.9f, 0.7f, new Color(Palette.Limewash.Lerp(Palette.River, 0.3f), 1f));
-        _w.Puffs.Ring(_w.OnPlot(_plot, new Vector3(0, 0.03f, 1.1f)), 0.4f, 1.2f, 0.9f, new Color(Palette.River, 0.8f), 0.15f);
+        _w.Puffs.Ring(_w.OnPlot(_plot, new Vector3(0, 0.03f, 0) + _toView * 1.1f), 0.4f, 1.2f, 0.9f, new Color(Palette.River, 0.8f), 0.15f);
     }
 
     /// <summary>The full pails were taken up by the one leaving.</summary>
@@ -154,9 +164,11 @@ public partial class WellWorks : Node3D
             float swing = MathF.Sin(MathF.PI * _tip[b]);
             float y = Low + (High - Low) * WorkPlaces.Smooth(_h[b]);
             float x = b == 0 ? (SecondRope ? 0.35f : 0.05f) : -0.4f;
-            var pos = new Vector3(x, y + swing * 0.12f, swing * 0.55f);
+            var pos = new Vector3(x, y + swing * 0.12f, 0) + _toView * (swing * 0.55f);
             bk.Position = pos;
-            bk.Rotation = new Vector3(swing * 1.0f, 0.3f + b * 1.4f, 0);
+            // tips over the near rim: turned about the axis across the swing
+            var axis = new Vector3(_toView.Z, 0, -_toView.X);
+            bk.Basis = new Basis(axis, swing * 1.0f) * new Basis(Vector3.Up, 0.3f + b * 1.4f);
             bk.Scale = Vector3.One * bs * Math.Max(0.001f, show);
             if (_rope[b] is { } rope)
             {
@@ -164,7 +176,7 @@ public partial class WellWorks : Node3D
                 float sy = Math.Max(0.02f, (Drum - top) / 1.25f);
                 rope.Visible = bk.Visible;
                 rope.Scale = new Vector3(bs * show, sy, bs * show);
-                rope.Position = new Vector3(x, top - 0.85f * sy, pos.Z * 0.6f);
+                rope.Position = new Vector3(pos.X * 0.6f + x * 0.4f, top - 0.85f * sy, pos.Z * 0.6f);
             }
         }
         if (_crank != null) _crank.Rotation = new Vector3(_crankA, 0, 0);
@@ -178,7 +190,7 @@ public partial class WellWorks : Node3D
         if (_wet != null)
         {
             // darker and wider with use; trodden earth only when dry (translucent: the ink draws no hard line round it)
-            _wet.Transparency = Math.Clamp(0.85f - 0.8f * Wet, 0.05f, 0.95f);
+            _wet.Transparency = Math.Clamp(0.6f - 0.6f * Wet, 0f, 0.95f);
             float s = (0.8f + 0.25f * Wet) * k;
             _wet.Scale = new Vector3(s, k, s);
         }

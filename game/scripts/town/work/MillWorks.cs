@@ -102,7 +102,7 @@ public partial class MillWorks : Node3D
         for (int i = 0; i < 4; i++)
         {
             var at = _w.OnPlot(_plot, new Vector3(0.1f + i * 0.35f, 2.6f + i * 0.25f, _front + 0.35f + i * 0.2f));
-            _w.Puffs.Puff(at, new Vector3(0.25f, 0.55f, 0.2f), 0.9f - i * 0.12f, 1.1f, c, i * 0.08f);
+            _w.Puffs.Puff(at, new Vector3(0.3f, 1.2f, 0.25f), 0.95f - i * 0.12f, 1.5f, c, i * 0.08f);   // rising clear of the door
         }
     }
 

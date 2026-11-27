@@ -185,7 +185,8 @@ public partial class WorkPlaces : Node3D
     }
 
     /// <summary>The work spot (the simulation's Slot) a villager standing at x, y (cells) at a workplace is on.</summary>
-    private static int SlotOf(Town t, int wp, double x, double y)
+    /// (VillagerView carries no Slot: the simulation puts a worker exactly on Town.WorkSpot(plot, Slot).)
+    public static int SlotOf(Town t, int wp, double x, double y)
     {
         var w = t.Workplace(wp);
         int best = 0;

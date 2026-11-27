@@ -20,7 +20,7 @@ public partial class CottageDoors : Node3D
     private MeshInstance3D?[] _dark = Array.Empty<MeshInstance3D?>();
     private Vector3[] _door = Array.Empty<Vector3>(), _smoke = Array.Empty<Vector3>();
     private float[] _open = Array.Empty<float>(), _hold = Array.Empty<float>();
-    private static StandardMaterial3D? _inside;
+    private StandardMaterial3D? _inside;   // not static: a Resource held past the scene is finalized after the engine is gone
 
     public int Puffs { get; private set; }
     public float LastLargestChange { get; private set; }
