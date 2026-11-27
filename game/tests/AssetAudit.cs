@@ -24,7 +24,7 @@ public partial class AssetAudit : TownTestBase
 
     private string _dir = "";
     private HashSet<string>? _only;
-    private bool _noTown;
+    private bool _noTown, _nowWork;
     private Vector2 _spot = new(104, 24);
     private readonly List<string> _lines = new();
 
@@ -37,6 +37,7 @@ public partial class AssetAudit : TownTestBase
         {
             if (a.StartsWith("--out-dir=")) _dir = a[10..];
             else if (a == "--no-town") _noTown = true;
+            else if (a == "--now-work") _nowWork = true;   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
             {
@@ -72,7 +73,8 @@ public partial class AssetAudit : TownTestBase
         }
         // Night 3: when only book subjects are asked for, the book is pictured at once on the new town (it needs no
         // played town), instead of after the bot's whole run to the seal.
-        if (!_noTown && _only != null && _only.Count > 0 && System.Linq.Enumerable.All(_only, n => n.StartsWith("book-")))
+        if (_nowWork) await NowWorkShots(playSize);
+        else if (!_noTown && _only != null && _only.Count > 0 && System.Linq.Enumerable.All(_only, n => n.StartsWith("book-")))
         {
             _play = playSize;
             await Frames(30);
@@ -142,6 +144,7 @@ public partial class AssetAudit : TownTestBase
             return n;
         }, false));
         list.Add(new Subject("trees-group", "code: game/scripts/town/TownTrees.cs (tree-oak, -poplar, -willow, -birch, -hawthorn)", TreeGroup, true));
+        AddWorkSubjects(list, walker);   // night 5: the "work you can watch" mock-up (AssetAudit.Work.cs)
         list.Add(new Subject("wood-and-field", "code: the five tree kinds beside the three field states, with a villager", WoodAndField, true));
         return list;
     }
@@ -277,6 +280,8 @@ public partial class AssetAudit : TownTestBase
         var c = box.GetCenter();
         // The street is wider than the play view: drawn 20 percent further out so its five cottages show whole.
         float normal = s.Name == "street" ? playSize * 1.2f : playSize;
+        var wf = WorkFrame(s.Name);   // night 5: the mock-up's tableaux have a framing of their own
+        if (wf != null) c = wf.Value.c;
         Main.Rig.Place(Centre(at + new Vector3(c.X, 0, c.Z), c.Y, normal, 0f), normal);
         await Snap(s.Name + "-normal");
 
@@ -291,12 +296,15 @@ public partial class AssetAudit : TownTestBase
         float depth = size.X * sy + size.Z * cy;
         float tall = depth * MathF.Sin(p) + size.Y * MathF.Cos(p);
         float close = Math.Max(1.2f, Math.Max(tall, across * 480f / 640f) * 1.15f);
+        if (wf != null) { close = wf.Value.size; GetWindow().Size = new Vector2I(1280, 960); await Frames(6); }
         Main.Rig.Place(Centre(at + new Vector3(c.X, 0, c.Z), c.Y, close, yaw), close);
         await Snap(s.Name + "-close");
+        if (wf != null) { GetWindow().Size = new Vector2I(640, 480); await Frames(6); }
 
         Main.Rig.Yaw.Rotation = Vector3.Zero;
         subject.QueueFree();
         buddy?.QueueFree();
+        WorkCleanup();
         await Frames(1);
     }
 
@@ -316,7 +324,7 @@ public partial class AssetAudit : TownTestBase
         await Frames(4);
         if (MathF.Abs(Main.Rig.Camera.Size - size) > 0.01f) Notes.Add($"{name}: view moved ({size:0.0} -> {Main.Rig.Camera.Size:0.0})");
         var img = GetViewport().GetTexture().GetImage();
-        if (img.GetSize() != new Vector2I(640, 480)) img.Resize(640, 480, Image.Interpolation.Lanczos);
+        if (img.GetSize() != new Vector2I(640, 480) && !name.StartsWith("work-")) img.Resize(640, 480, Image.Interpolation.Lanczos);
         img.SavePng(System.IO.Path.Combine(_dir, name + ".png"));
     }
 }
