@@ -63,11 +63,11 @@ def pasture():
     rng = random.Random(SEED)
     m = glb.Mesh()
     S, E = 16.0, 7.6                     # slab size; fence line half-size
-    m.add_box((0, 0, 0), (S, 0.06, S), "Meadow")
+    m.add_box((0, 0, 0), (S, 0.06, S), {"default": "Meadow", "+y": "Bent grass"})   # night 3 fix: lighter, grazed
     # worn patches: by the trough, the gate path and the hay rack
     for cx, cz, rx, rz in ((-5.6, 0.6, 1.6, 2.4), (0.0, 5.6, 1.3, 2.0), (2.5, -5.8, 2.2, 1.2)):
         m.add_poly([(cx + rx * math.cos(a), 0.07, cz + rz * math.sin(a)) for a in
-                    [2 * math.pi * (i + 0.5) / 7 for i in range(7)]][::-1], "Bent grass")
+                    [2 * math.pi * (i + 0.5) / 7 for i in range(7)]][::-1], "Meadow")   # night 3: greener tufted
     m.add_poly([(-0.8, 0.075, 7.95), (0.8, 0.075, 7.95), (0.7, 0.075, 4.2), (-0.7, 0.075, 4.2)], "Trail earth")
     # wattle fence: sections of 2.533 m (6 per side), alternate tones pushed to the front or the back, like
     # fence-wattle.glb but one band high; posts at the corners and every second joint
@@ -113,9 +113,28 @@ def pasture():
         beam(m, (x, 0.06, -6.6), (x, 1.0, -6.6), 0.16, 0.16, WOOD)
     m.add_gable((2.5, 0.55, -6.6), 2.8, 0.9, -0.45, PLANK, gable=PLANK, ridge_axis="x")      # inverted V (trough of slats)
     m.add_gable((2.5, 0.55, -6.6), 2.6, 0.8, 0.45, "Reed and thatch", gable="Reed and thatch")  # hay heaped in it
+    # night 3 (round 2, BK): a field shelter 3 x 2 m in the north-west corner: three posts a side, a Thatch lean-to roof
+    # with a ridge course, open to the south, a little straw under it
+    sx0, sz0 = -4.6, -5.6
+    for dx in (-1.4, 0.0, 1.4):
+        m.add_box((sx0 + dx, 0.06, sz0 - 0.9), (0.2, 1.7, 0.2), WOOD)
+        m.add_box((sx0 + dx, 0.06, sz0 + 0.9), (0.2, 1.25, 0.2), WOOD)
+    m.add_poly([(sx0 - 1.7, 1.86, sz0 - 1.15), (sx0 + 1.7, 1.86, sz0 - 1.15), (sx0 + 1.7, 1.25, sz0 + 1.2),
+                (sx0 - 1.7, 1.25, sz0 + 1.2)], "Reed and thatch", facing=(0, 1, 0.4))
+    # night 3 fix: three thatch courses across the slope (Trail earth bands standing 0.06 m proud), so the roof reads as
+    # thatch and not as a flat orange board, and a ridge roll along the top
+    for f in (0.25, 0.5, 0.75):
+        y = 1.86 + (1.25 - 1.86) * f + 0.05
+        z = sz0 - 1.15 + 2.35 * f
+        beam(m, (sx0 - 1.7, y, z), (sx0 + 1.7, y, z), 0.14, 0.08, PLANK, ends=False)
+    tube(m, (sx0 - 1.75, 1.9, sz0 - 1.12), (sx0 + 1.75, 1.9, sz0 - 1.12), 0.12, "Reed and thatch", n=5)
+    m.add_box((sx0, 1.06 + 0.06, sz0 + 1.2), (3.4, 0.14, 0.12), "Soot brick", bottom="Soot brick")   # eaves course
+    m.add_box((sx0, 1.7, sz0 - 1.1), (3.4, 0.2, 0.2), "Packed earth", bottom="Packed earth")       # back plate
+    m.add_poly([(sx0 - 1.2, 0.08, sz0 - 0.7), (sx0 + 1.2, 0.08, sz0 - 0.7), (sx0 + 1.0, 0.08, sz0 + 0.6),
+                (sx0 - 1.0, 0.08, sz0 + 0.6)][::-1], "Reed and thatch")
     # grass tufts (low 5-sided cones, darker green), seeded positions away from the fence and the furniture
     tufts = 0
-    while tufts < 9:
+    while tufts < 4:                       # night 3 fix: four, not nine (they read as grey blobs)
         x, z = rng.uniform(-6.6, 6.6), rng.uniform(-6.6, 6.6)
         if (x < -5.2 and abs(z) < 2.2) or (z < -5.4 and 0.6 < x < 4.4) or (abs(x) < 1.4 and z > 3.8):
             continue
@@ -131,29 +150,31 @@ NECK = (0.0, 0.78, 0.5)
 
 
 def sheep_body():
+    """Night 3 (round 2, BK fix): one rounded fleece of seven Limewash lumps (two pairs on the flanks, three along the back), drawn
+    with the soft ink,
+    with a Paper lump on top where the sun falls, on four Soot brick legs 0.15 m thick and 0.35 m long, so from
+    above a sheep is a white cloud and from the side a woolly body on thin dark legs. 1.1 m long before the game's
+    scale."""
     m = glb.Mesh()
-    for x in (-0.24, 0.24):                          # legs
-        for z in (-0.4, 0.34):
-            m.add_box((x, 0, z), (0.14, 0.42, 0.14), WOOD)
-    # fleece: a squashed 8-sided body, wider than tall, with a lighter domed back
-    ring0 = [(0.42 * math.cos(a), 0.36, 0.72 * math.sin(a)) for a in [2 * math.pi * (i + 0.5) / 8 for i in range(8)]]
-    ring1 = [(0.55 * math.cos(a), 0.62, 0.84 * math.sin(a)) for a in [2 * math.pi * (i + 0.5) / 8 for i in range(8)]]
-    ring2 = [(0.42 * math.cos(a), 0.98, 0.7 * math.sin(a)) for a in [2 * math.pi * (i + 0.5) / 8 for i in range(8)]]
-    loft(m, ring0, ring1, "Limewash", centre=(0, 0.6, 0))
-    loft(m, ring1, ring2, "Limewash", centre=(0, 0.6, 0))
-    cap(m, ring2, "Paper")
-    cap(m, ring0, "Limewash", facing=(0, -1, 0))
-    m.add_box((0, 0.66, -0.86), (0.2, 0.2, 0.14), "Limewash", bottom="Limewash")   # tail
+    for x in (-0.15, 0.15):                          # thin dark legs
+        for z in (-0.3, 0.28):
+            m.add_frustum((x, 0, z), 0.1, 0.08, 0.44, "Soot brick", segments=4, cap_top=False, cap_bottom=False)
+    # (night 3 fix, after the pictures: rounder lumps and the soft ink, so the fleece is not a heap of
+    # inked pyramids)
+    lumps = [(sx * 0.15, z) for z in (-0.26, 0.26) for sx in (-1, 1)] + [(0.0, -0.4), (0.0, 0.0), (0.0, 0.38)]
+    for x, z in lumps:
+        m.add_sphere((x, 0.66, z), 0.27, "Limewash", rings=2, segments=6, squash=0.8)
+    m.add_sphere((0, 0.8, 0.0), 0.3, "Paper", rings=2, segments=5, squash=0.6)        # sunlit top
     return m
 
 
 def sheep_head():
-    """Head below and in front of the neck pivot (node origin)."""
+    """Head below and in front of the neck pivot (node origin): a small Soot brick face (0.35 m long), two small ear
+    tabs (the fleece's chest lump covers the poll)."""
     m = glb.Mesh()
-    beam(m, (0, 0.02, -0.05), (0, -0.14, 0.5), 0.36, 0.38, WOOD)                 # head, long face forward and down
-    m.add_box((0, 0.1, 0.02), (0.38, 0.12, 0.24), "Limewash", bottom="Limewash")  # fleece cap
-    for sx in (-1, 1):                                                         # ears
-        beam(m, (sx * 0.15, 0.04, 0.04), (sx * 0.36, -0.02, 0.0), 0.14, 0.06, WOOD)
+    beam(m, (0, 0.0, -0.02), (0, -0.14, 0.32), 0.2, 0.22, "Soot brick")          # face, forward and down
+    for sx in (-1, 1):                                                         # ear tabs
+        beam(m, (sx * 0.09, 0.02, 0.02), (sx * 0.22, -0.03, 0.0), 0.1, 0.05, "Soot brick", ends=False)
     return m
 
 
@@ -357,9 +378,9 @@ def tide_post():
 
 
 BUILDS = [
-    ("pasture", pasture(), 500, "Far bank: sheep pasture (fenced, gate in the south side, trough, hay rack)"),
-    ("sheep", [("Body", sheep_body()), ("Head", sheep_head(), None, NECK)], 150,
-     "Far bank: sheep scattered in the pasture (nodes Body and Head, Head dips about its local X at the neck)"),
+    ("pasture", pasture(), 700, "Far bank: sheep pasture (fenced, gate in the south side, trough, hay rack, thatched field shelter)"),
+    ("sheep", [("Body", sheep_body()), ("Head", sheep_head(), None, NECK)], 250,
+     "Far bank: fluffy sheep scattered in the pasture (nodes Body and Head, Head dips about its local X at the neck)"),
     ("weaver-cottage", weaver_cottage(), 560, "Near bank: weaver's cottage (Wool to Cloth; loom in the open lean-to)"),
     ("crane", [("Base", crane_base()), ("Jib", crane_jib(), None, (0.0, PIVOT_Y, 0.0))], 500,
      "Landing: treadwheel crane upgrade (nodes Base and Jib, Jib turns about its local Y at the post top)"),
@@ -376,7 +397,7 @@ if __name__ == "__main__":
             for p in parts:
                 print(f"  {name}/{p[0]}: {p[1].tri_count()} tris")
         out = asset_path(f"models/{name}.glb")
-        print(glb.report(out, glb.write_glb(out, parts, max_tris=budget, ink="soft" if name == "pasture" else None)))
+        print(glb.report(out, glb.write_glb(out, parts, max_tris=budget, ink="soft" if name in ("pasture", "sheep") else None)))
         ledger.add("models", out, kind="model", generator=__file__,
                    seed=SEED if name in ("pasture", "seal-stone", "tide-post") else None,
                    note=BLOCKED, used_in=used, verified=True)

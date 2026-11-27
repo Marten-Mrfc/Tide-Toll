@@ -68,7 +68,35 @@ public partial class AssetAudit
             if (_taken.Add(view))
                 await ShootAt(view, "game/scripts/town (the whole first-age town)",
                     Cells(pl.WindowX + pl.WindowW / 2.0, pl.WindowY + pl.WindowH / 2.0), 45f);
+            // Night 3 (round 2, BK): a staked plot where the town puts it, and the charter stone beside the bell.
+            for (int p = 0; p < pl.Plots.Length; p++)
+            {
+                if (!Main.Buildings.PlotStaked(p) || !_taken.Add("town-plot-stakes")) continue;
+                var sp = pl.Plots[p];
+                await ShootAt("town-plot-stakes", "game/scripts/town/TownBuildings.cs (MakeStakes)", Cells(sp.X + sp.W / 2.0, sp.Y + sp.H / 2.0), 16f);
+                break;
+            }
+            // Night 3 (BK fixer): the town's touches (TownTouches: flower bed, signpost, coop, cart...) where the town put
+            // them, so the props are judged in place: the first and the last shown, at the charter stop.
+            if (level == 99 && Main.Touches.Shown > 0)
+            {
+                int last = Main.Touches.Shown - 1;
+                foreach (var (name, i) in new[] { ("town-touches-first", 0), ("town-touches-last", last) })
+                    if (Main.Touches.Item(i) is Node3D it && _taken.Add(name))
+                        await ShootAt(name, "game/scripts/town/TownTouches.cs", it.Position, 10f);
+            }
+            if (Main.Buildings.CharterShown && _taken.Add("town-charter-stone"))
+            {
+                await Frames(120); // the stone comes down and settles
+                for (int p = 0; p < pl.Plots.Length; p++)
+                    if (pl.Plots[p].Kind == PlotKind.BellGreen)
+                    {
+                        var g = pl.Plots[p];
+                        await ShootAt("town-charter-stone", "game/scripts/town/TownBuildings.cs (charter stone)", Cells(g.X + g.W / 2.0, g.Y + g.H / 2.0), 16f);
+                    }
+            }
         }
+        if (_only != null && System.Linq.Enumerable.All(_only, n => _taken.Contains(n))) return;
         bot.PlayOn = true; // the bot rings in the second age itself
         Main.Driver.RunBot(bot, t => t.HasSeal, 600 * 60 * TownRules.TickHz);
         await Frames(30);
@@ -196,6 +224,32 @@ public partial class AssetAudit
             Main.Rig.Place(inv * bc, bs.X * 0.8f);
             await Snap("book-open-close");
             Main.Rig.Yaw.Rotation = Vector3.Zero;
+        }
+        if (Want("book-desk"))
+        {
+            // Night 3: the whole table round the open book (its edges and the desk things), and the ink pot close up.
+            _lines.Add(new JsonObject { ["name"] = "book-desk", ["file"] = "code: game/scripts/BookBuilder.Desk.cs", ["triangles"] = null, ["size_m"] = null }.ToJsonString());
+            Main.Rig.Yaw.Rotation = Vector3.Zero;
+            Main.Rig.Place(inv * bc, bs.Y * 1.5f);
+            await Snap("book-desk-normal");
+            Main.Rig.Yaw.Rotation = new Vector3(0, Mathf.DegToRad(35f), 0);
+            Main.Rig.Place(inv * (bc + new Vector3(-300f, 0, -225f)), 170f);
+            await Snap("book-desk-close");
+            Main.Rig.Place(inv * (bc + new Vector3(330f, 0, -150f)), 220f);
+            await Snap("book-desk-right-close");
+            Main.Rig.Place(inv * (bc + new Vector3(330f, 0, 190f)), 170f);
+            await Snap("book-desk-seal-close");
+            Main.Rig.Yaw.Rotation = Vector3.Zero;
+        }
+        if (Want("book-print"))
+        {
+            // Night 3: the summary's print at the pixel density of the game's book view at 1920 x 1080 (u18).
+            _lines.Add(new JsonObject { ["name"] = "book-print", ["file"] = "code: game/scripts/BookBuilder.cs (AddLabel)", ["triangles"] = null, ["size_m"] = null }.ToJsonString());
+            Main.Rig.Yaw.Rotation = Vector3.Zero;
+            Main.Rig.Place(inv * (bc + new Vector3(-160f, 0, 40f)), 170f);
+            await Snap("book-print-normal");
+            Main.Rig.Place(inv * (bc + new Vector3(-200f, 0, -40f)), 70f);
+            await Snap("book-print-close");
         }
         var left = Main.GetNodeOrNull<Node3D>("Book/LeftPage");
         if (left != null) await ShootAt("book-paper", book, inv * (left.GlobalPosition + new Vector3(bs.X * 0.12f, 0, bs.Y * 0.3f)), 8f, 0f, 60f);

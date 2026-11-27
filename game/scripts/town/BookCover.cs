@@ -69,7 +69,7 @@ public partial class BookCover : Node3D
         var board = new MeshInstance3D
         {
             Name = "Board", Mesh = new BoxMesh { Size = new Vector3(size.X, 4f, size.Y) },
-            Position = new Vector3(-size.X / 2f, basePos.Y - HingeY, 0), MaterialOverride = Palette.Matte(Leather),
+            Position = new Vector3(-size.X / 2f, basePos.Y - HingeY, 0), MaterialOverride = BookBuilder.LeatherMaterial(size),
         };
         _hinge.AddChild(board);
         // Gilt rules tooled into the board's outer face (its underside while the book lies open, inside the table there;
@@ -80,6 +80,7 @@ public partial class BookCover : Node3D
         AddRule(board, gilt, new Vector3(size.X - 2 * inset, 0.2f, w), new Vector3(0, y, size.Y / 2f - inset));
         AddRule(board, gilt, new Vector3(w, 0.2f, size.Y - 2 * inset), new Vector3(-(size.X / 2f - inset), y, 0));
         AddRule(board, gilt, new Vector3(w, 0.2f, size.Y - 2 * inset), new Vector3(size.X / 2f - inset, y, 0));
+        BookCoverDress.Dress(board, size);
         Apply();
     }
 

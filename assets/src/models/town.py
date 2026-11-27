@@ -8,7 +8,8 @@
 #   bell-post       the town bell in a timber frame with a little thatch roof, 4 x 2 m (2 x 1 cells), 3.6 m high.
 #                   Nodes: "Frame" and "Bell" (node origin = the hanger under the crossbeam at (0, 2.72, 0); the bell
 #                   hangs below it and swings about the node's local X axis, so the game rocks Bell.rotation.x).
-#   plot-stakes     four stakes and a cord around a cottage plot, 8 x 6 m (4 x 3 cells). Every piece is its own
+#   plot-stakes     (night 3, round 2: slim pale stakes with Paper caps, a Brick pennant, a sagging Limewash rope,
+#                   every node soft ink) four stakes and a cord around a cottage plot, 8 x 6 m (4 x 3 cells). Every piece is its own
 #                   node so the game can fit any plot without stretching the stakes: "stake-nw", "stake-ne",
 #                   "stake-sw", "stake-se" (node origin = the stake's foot, translated to the corner (+-4, 0, +-3));
 #                   "cord-n" and "cord-s" run along X, "cord-w" and "cord-e" along Z (node origin = the middle of the
@@ -81,32 +82,51 @@ PX, PZ = 4.0, 3.0
 CORD_Y = 0.55
 
 
-def stake(tag=False):
+def stake(tag=False, pennant=False):
+    """Night 3 (round 2, track BK): a slim new-cut stake (pale Trail earth) with a Paper cap, tilted a touch, a Limewash
+    lashing where the rope meets it; drawn with the soft ink (half the hard ink's weight), so a staked plot reads
+    as marked out on the map, not as a heavy black yard. The north-west stake flies a small Brick pennant."""
     m = glb.Mesh()
-    m.add_box((0, 0, 0), (0.3, 0.85, 0.3), "Packed earth", top="Trail earth")
-    m.add_frustum((0, 0.85, 0), 0.2, 0.07, 0.22, "Trail earth", segments=4, cap_bottom=False)   # cut point
-    m.add_cylinder((0, 0, 0), 0.36, 0.06, "Trail earth", segments=5)                    # trodden earth at the foot
-    m.add_box((0, CORD_Y - 0.08, 0), (0.36, 0.16, 0.36), "Limewash", bottom="Limewash")  # cord lashing
+    lean = 0.04
+    beam(m, (0, 0, 0), (lean, 1.06, lean * 0.5), 0.2, 0.2, "Trail earth")
+    # night 3 (BK fix): 1.2 m tall with a 0.3 m Brick cap, so the four corners show as red dots from afar
+    m.add_box((lean, 1.06, lean * 0.5), (0.3, 0.14, 0.3), "Brick", bottom="Brick")    # painted cap
+    m.add_box((lean * 0.6, CORD_Y - 0.06, 0), (0.26, 0.12, 0.26), "Limewash", bottom="Limewash")  # lashing
+    if pennant:
+        m.add_poly([(lean, 1.06, 0.02), (lean, 0.6, 0.02), (lean + 0.85, 0.86, 0.06)], "Brick", facing=(0, 0, 1))
+        m.add_poly([(lean, 1.06, -0.02), (lean, 0.6, -0.02), (lean + 0.85, 0.86, -0.02)], "Brick", facing=(0, 0, -1))
     if tag:
-        m.add_box((0.15, 0.62, 0.2), (0.06, 0.4, 0.4), "Brick", bottom="Brick")          # red cloth tag
+        m.add_box((0.12, 0.62, 0.14), (0.05, 0.28, 0.26), "Brick", bottom="Brick")       # cloth tag
     return m
 
 
 def cord(axis):
-    """Cord between two stakes along X (8 m) or Z (6 m), centred on the node origin."""
+    """The pale rope between two stakes along X (8 m) or Z (6 m), centred on the node origin. Night 3 (round 2, BK):
+    from each stake's lashing the rope runs down to the ground within 0.7 m and lies along the ground between them as
+    a flat Limewash line 0.16 m wide: a line lying flat makes no depth edge, so the ink pass draws no black frame
+    round the plot (a rope in the air was inked on both sides: "a prison yard"); it reads as a paper-white survey line."""
     m = glb.Mesh()
-    a, b = ((-PX, CORD_Y, 0), (PX, CORD_Y, 0)) if axis == "x" else ((0, CORD_Y, -PZ), (0, CORD_Y, PZ))
-    beam(m, a, b, 0.12, 0.12, "Limewash")
+    L = PX if axis == "x" else PZ
+    def at(t, y, o=0.0):
+        return (t, y, o) if axis == "x" else (o, y, t)
+    # night 3 (BK fix): two tones, so it holds at the page distance: a Limewash line 0.2 m wide on an Ink band 0.3 m
+    # wide (0.05 m of ink each side); both lie flat on the ground, so the ink pass still draws no frame
+    w, e = 0.1, 0.15
+    m.add_poly([at(-L + 0.6, 0.02, -e), at(L - 0.6, 0.02, -e), at(L - 0.6, 0.02, e), at(-L + 0.6, 0.02, e)], "Ink")
+    m.add_poly([at(-L + 0.6, 0.035, -w), at(L - 0.6, 0.035, -w), at(L - 0.6, 0.035, w), at(-L + 0.6, 0.035, w)],
+               "Limewash")
+    for sgn in (-1, 1):
+        beam(m, at(sgn * (L - 0.05), CORD_Y - 0.04), at(sgn * (L - 0.65), 0.04), 0.08, 0.08, "Limewash", ends=False)
     return m
 
 
 def plot_parts():
-    parts = [("stake-nw", stake(), None, (-PX, 0, -PZ)), ("stake-ne", stake(), None, (PX, 0, -PZ)),
-             ("stake-sw", stake(tag=True), None, (-PX, 0, PZ)), ("stake-se", stake(), None, (PX, 0, PZ))]
+    parts = [("stake-nw", stake(pennant=True), "soft", (-PX, 0, -PZ)), ("stake-ne", stake(), "soft", (PX, 0, -PZ)),
+             ("stake-sw", stake(tag=True), "soft", (-PX, 0, PZ)), ("stake-se", stake(), "soft", (PX, 0, PZ))]
     # cords: full side length in the local frame, centred on the side
     for name, axis, t in (("cord-n", "x", (0, 0, -PZ)), ("cord-s", "x", (0, 0, PZ)),
                           ("cord-w", "z", (-PX, 0, 0)), ("cord-e", "z", (PX, 0, 0))):
-        parts.append((name, cord(axis), None, t))
+        parts.append((name, cord(axis), "soft", t))
     return parts
 
 
