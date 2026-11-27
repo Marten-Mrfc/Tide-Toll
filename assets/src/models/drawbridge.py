@@ -37,6 +37,13 @@
 #                     degrees to lift it (open to walkers, the default while the leaf is down).
 # A row for a 6 m river (3 cells) whose banks are at z = -4 and z = +2: lift at 0, end at z = +5, far end (turned)
 # at z = -5. The pier stands on the near bank.
+# Round n3 (track RV, 2026-11-26): dark timber instead of white so it stands out from the grass: Soot brick rails
+# and balance beam, Packed earth planks, Paper caps on the rail posts; the thin white gantry posts are now two stout
+# Soot brick towers 1.1 x 1.1 m with Slate pyramid caps (a gatehouse) carrying the beam's pivot; a Brick
+# counterweight; heavier chains. The barrier and the signal keep their Brick and Limewash bands. The game now
+# uses the parts (RiverLayer.Drawbridge.cs): frame fixed, leaf and beam turning, chains following the beam tip.
+# After the review: the towers 0.9 m square topping out at 5 m (the beam pivot 3.6 m above the deck), and the leaf one
+# Packed earth slab on both faces with Packed earth rails, so the raised leaf reads apart from the Soot brick frame.
 import sys, pathlib, math; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import glb, ledger, asset_path
@@ -46,14 +53,15 @@ BLOCKED = "free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg
 DECK, PLANK_T = 0.9, 0.16
 HZ = 2.0                 # hinge z (pier from HZ to HZ + 2, leaf from HZ - 6 to HZ)
 LEAF = 6.0               # the leaf spans a whole 3-cell river, so the open channel is about 4.4 m wide
-H = 5.0                  # beam pivot height above the deck
+H = 3.6                  # beam pivot height above the deck (after the review: towers top out at 5 m)
 BACK = 4.0               # back arm of the balance beam (counterweight end)
 OPEN_DEG = 80
 HALF_W = 2.0             # deck half width
 RAIL_X, RAIL_H = 1.82, 1.1
 POST_X = 2.35
 CHAIN_X = 1.95
-WHITE, PLANK, WOOD, DARK, IRON = "Limewash", "Trail earth", "Packed earth", "Mud", "Cast-iron green"
+WHITE, PLANK, WOOD, DARK, IRON = "Soot brick", "Packed earth", "Packed earth", "Mud", "Ink"
+BAND = "Limewash"
 
 
 def rails(m, z0, z1, y0, y1, posts=None, colour=WHITE, x=RAIL_X):
@@ -63,9 +71,10 @@ def rails(m, z0, z1, y0, y1, posts=None, colour=WHITE, x=RAIL_X):
         xx = sx * x
         for z in posts:
             y = y0 + (y1 - y0) * (z - z0) / (z1 - z0)
-            m.add_box((xx, y - 0.05, z), (0.18, RAIL_H + 0.05, 0.18), colour, bottom=False)
-        beam(m, (xx, y0 + RAIL_H - 0.07, z0), (xx, y1 + RAIL_H - 0.07, z1), 0.15, 0.15, colour)
-        beam(m, (xx, y0 + 0.55, z0), (xx, y1 + 0.55, z1), 0.11, 0.11, colour)
+            m.add_box((xx, y - 0.05, z), (0.24, RAIL_H + 0.05, 0.24), colour, bottom=False)
+            m.add_box((xx, y + RAIL_H, z), (0.3, 0.1, 0.3), "Paper", bottom="Paper")
+        beam(m, (xx, y0 + RAIL_H - 0.1, z0), (xx, y1 + RAIL_H - 0.1, z1), 0.2, 0.2, colour)
+        beam(m, (xx, y0 + 0.55, z0), (xx, y1 + 0.55, z1), 0.14, 0.14, colour)
 
 
 def deck(m, z0, z1, y=DECK, under=WOOD):
@@ -92,19 +101,18 @@ def frame():
         beam(m, (-1.6, -0.2, z), (1.6, DECK - PLANK_T - 0.35, z), 0.14, 0.14, DARK)
     rails(m, z0 + 0.15, z1, DECK, DECK, posts=[z0 + 0.15, z1])
     # gantry: a pair of posts each side (front and back of the pivot), lintel on top, braces to the deck
-    top = DECK + H + 0.9
+    top = DECK + H + 0.4
     for sx in (-1, 1):
-        x = sx * POST_X
-        for dz in (-0.22, 0.22):
-            m.add_box((x, DECK - PLANK_T - 0.3, HZ + 0.25 + dz), (0.3, top - DECK + PLANK_T + 0.3, 0.26), WHITE, bottom=False)
-        m.add_box((x, DECK + H - 0.18, HZ + 0.25), (0.34, 0.36, 0.72), DARK, bottom=DARK)          # pivot block
-        beam(m, (x, DECK, HZ + 1.8), (x, DECK + 2.2, HZ + 0.5), 0.2, 0.2, WHITE)                    # back brace
-        m.add_box((x, DECK - 0.3, HZ + 1.8), (0.4, 0.3, 0.4), DARK, bottom=DARK)                    # brace foot
-    beam(m, (-POST_X - 0.3, top + 0.15, HZ + 0.25), (POST_X + 0.3, top + 0.15, HZ + 0.25), 0.36, 0.3, WHITE)
-    m.add_gable((0, top + 0.3, HZ + 0.25), 2 * POST_X + 0.7, 0.5, 0.22, "Slate roof", gable=WHITE)  # cap
+        x = sx * (POST_X + 0.45)
+        m.add_box((x, -0.6, HZ + 0.25), (0.9, top + 0.6, 0.9), WHITE, top=WHITE, bottom=False)         # tower
+        for yb in (1.5, 3.1):                                                                             # courses
+            m.add_box((x, yb, HZ + 0.25), (0.98, 0.12, 0.98), DARK, bottom=DARK)
+        m.add_box((x, top, HZ + 0.25), (1.1, 0.14, 1.1), "Concrete", bottom="Concrete")
+        m.add_cone((x, top + 0.14, HZ + 0.25), 0.78, 0.7, "Slate roof", segments=4, yaw=math.pi / 4)  # cap
+        m.add_box((sx * POST_X, DECK + H - 0.18, HZ + 0.25), (0.34, 0.36, 0.72), DARK, bottom=DARK)   # pivot block
     # signal post outboard on the +X side, on a small bracket platform
     m.add_box((2.75, DECK - PLANK_T - 0.3, HZ + 1.4), (0.8, 0.3 + PLANK_T, 0.9), DARK, bottom=DARK)
-    m.add_box((2.75, DECK, HZ + 1.4), (0.22, 3.25, 0.22), WHITE, bottom=False)
+    m.add_box((2.75, DECK, HZ + 1.4), (0.24, 3.25, 0.24), WHITE, bottom=False)
     m.add_box((2.75, DECK + 3.25, HZ + 1.4), (0.3, 0.12, 0.3), DARK, bottom=DARK)
     return m
 
@@ -112,13 +120,13 @@ def frame():
 def leaf():
     """Local frame: origin at the hinge on the deck top; the leaf runs to z = -LEAF."""
     m = glb.Mesh()
-    deck(m, 0.0, -LEAF, y=0.0, under=DARK)
+    deck(m, 0.0, -LEAF, y=0.0, under=PLANK)   # after the review: one Packed earth slab both faces, so a raised leaf reads
     for z in (-0.6, -2.2, -3.8, -5.4):                                       # cross joists on the underside
         beam(m, (-1.6, -PLANK_T - 0.4, z), (1.6, -PLANK_T - 0.4, z), 0.2, 0.2, WOOD)
-    beam(m, (-CHAIN_X - 0.12, -0.1, -LEAF + 0.12), (CHAIN_X + 0.12, -0.1, -LEAF + 0.12), 0.24, 0.24, WHITE)   # tip
+    beam(m, (-CHAIN_X - 0.12, -0.1, -LEAF + 0.12), (CHAIN_X + 0.12, -0.1, -LEAF + 0.12), 0.24, 0.24, PLANK)   # tip
     for sx in (-1, 1):
         m.add_box((sx * CHAIN_X, 0.0, -LEAF + 0.12), (0.2, 0.2, 0.2), IRON, bottom=False)       # chain eyes
-    rails(m, -0.2, -LEAF + 0.15, 0.0, 0.0, posts=[-0.2, -2.1, -4.0, -LEAF + 0.15])
+    rails(m, -0.2, -LEAF + 0.15, 0.0, 0.0, posts=[-0.2, -2.1, -4.0, -LEAF + 0.15], colour=PLANK)
     return m
 
 
@@ -133,7 +141,7 @@ def balance_beam():
         beam(m, (-CHAIN_X, 0, z), (CHAIN_X, 0, z), 0.2, 0.22, WHITE)
     beam(m, (-CHAIN_X, 0, -LEAF + 0.1), (CHAIN_X, 0, -3.0), 0.14, 0.16, WHITE)                   # St Andrew's cross
     beam(m, (CHAIN_X, 0, -LEAF + 0.1), (-CHAIN_X, 0, -3.0), 0.14, 0.16, WHITE)
-    m.add_box((0, -0.5, BACK - 0.5), (2 * CHAIN_X + 0.26, 1.0, 1.0), "Soot brick", bottom="Soot brick")   # counterweight
+    m.add_box((0, -0.5, BACK - 0.5), (2 * CHAIN_X + 0.26, 1.0, 1.0), "Brick", bottom="Brick")   # counterweight
     m.add_box((0, 0.5, BACK - 0.5), (2 * CHAIN_X + 0.32, 0.12, 1.06), DARK, bottom=DARK)
     return m
 
@@ -142,9 +150,9 @@ def chains():
     m = glb.Mesh()
     for sx in (-1, 1):
         x = sx * CHAIN_X
-        tube(m, (x, -0.15, -0.0), (x, -H + 0.05, 0.0), 0.06, IRON, n=4)
+        tube(m, (x, -0.15, -0.0), (x, -H + 0.05, 0.0), 0.08, IRON, n=4)
         for k in range(4):                                                   # a few links read as a chain
-            m.add_box((x, -0.6 - k * (H - 0.9) / 3, 0), (0.14, 0.22, 0.14), IRON, bottom=IRON)
+            m.add_box((x, -0.6 - k * (H - 0.9) / 3, 0), (0.2, 0.28, 0.2), IRON, bottom=IRON)
     return m
 
 
@@ -153,7 +161,7 @@ def signal_arm():
     m = glb.Mesh()
     for i in range(4):
         x0 = 0.15 + i * 0.4
-        c = "Brick" if i % 2 == 0 else WHITE
+        c = "Brick" if i % 2 == 0 else BAND
         m.add_box((x0 + 0.2, -0.13, 0.24), (0.4, 0.26, 0.16), c, bottom=c)
     m.add_box((-0.25, -0.15, 0.24), (0.5, 0.3, 0.2), DARK, bottom=DARK)       # counter-arm
     tube(m, (0, 0, 0.0), (0, 0, 0.4), 0.1, DARK, n=6)                          # axle through the post
@@ -186,7 +194,7 @@ def ramp():
     m.add_box((-0.0, -0.5, -0.95), (2 * HALF_W, 0.5 + DECK - 0.2, 0.2), DARK, bottom=False)     # abutment face
     rails(m, 1.0, -1.0, 0.0, DECK)
     # barrier post on the -X side, and a rest post on the +X side for the pole's tip
-    m.add_box((-2.2, 0, 0.75), (0.28, 1.35, 0.28), WHITE)
+    m.add_box((-2.2, 0, 0.75), (0.3, 1.35, 0.3), WHITE)
     m.add_box((2.25, 0, 0.75), (0.2, 1.17, 0.2), WHITE)
     m.add_box((2.25, 1.17, 0.75), (0.3, 0.08, 0.3), DARK, bottom=DARK)
     return m
@@ -196,7 +204,7 @@ def barrier():
     m = glb.Mesh()
     for i in range(6):                                                       # banded pole along +X, 4.6 m
         x0 = 0.1 + i * 0.75
-        c = "Brick" if i % 2 == 0 else WHITE
+        c = "Brick" if i % 2 == 0 else BAND
         m.add_box((x0 + 0.375, -0.09, 0), (0.75, 0.18, 0.18), c, bottom=c)
     m.add_box((-0.35, -0.13, 0), (0.6, 0.26, 0.22), DARK, bottom=DARK)        # counterweight stub
     return m

@@ -55,6 +55,8 @@ public partial class RiverBoats : Node3D
             _row[i] = Hull(ModelLib.Pick("rowboat", "ferry-raft"), 4.2f);
             _barge[i] = Hull(ModelLib.Pick("barge", "rowboat"), 8.5f);
             b.AddChild(_row[i]); b.AddChild(_barge[i]);
+            if (Crew(false) is { } bm) _row[i].AddChild(Unscaled(bm, _row[i]));
+            if (Crew(true) is { } sk) _barge[i].AddChild(Unscaled(sk, _barge[i]));
             _cargo[i] = new MeshInstance3D[CargoSlots];
             _label[i] = new Label3D
             {
@@ -68,6 +70,15 @@ public partial class RiverBoats : Node3D
             _sig[i] = int.MinValue;
             _cargoGood[i] = Good.None;
         }
+    }
+
+    /// <summary>Undo the hull's fit scale on a child placed in game metres.</summary>
+    private static Node3D Unscaled(Node3D child, Node3D hull)
+    {
+        float k = 1f / Math.Max(0.01f, hull.Scale.X);
+        child.Scale *= k;
+        child.Position *= k;
+        return child;
     }
 
     /// <summary>A hull fitted to its length, its front (+Z) along the boat's heading.</summary>
@@ -87,19 +98,63 @@ public partial class RiverBoats : Node3D
     private void SetCargo(int i, Good g, bool barge)
     {
         foreach (var c in _cargo[i]) c?.QueueFree();
+        if (g == Good.Cloth) { SetClothRolls(i, barge); _cargoGood[i] = g; return; }
         string model = TownVillagers.LoadModel(g);
-        float len = barge ? 8.5f : 4.2f;
+        // Round n3 (RV): the load models are built in a carrier's frame (held at the hands), so each piece is set down by
+        // its own box: its foot on the deck, its middle on its spot, two by three in the hold (the barge's hold is
+        // amidships, the rowboat's between its thwarts), a little larger than a carried load so the good reads.
+        var aabb = ModelLib.Mesh(model).GetAabb();
+        float sc = barge ? 2.0f : 1.5f;
+        float deck = barge ? 0.8f : 0.25f, zc = barge ? -0.35f : 0.1f, dzr = barge ? 1.05f : 0.72f, dxc = barge ? 1.0f : 0.62f;
+        var mid = aabb.Position + aabb.Size / 2f;
         for (int k = 0; k < CargoSlots; k++)
         {
             var m = ModelLib.Instance(model, "Cargo" + k);
             int col = k % 2, rowk = k / 2;
-            m.Position = new Vector3((col - 0.5f) * (barge ? 1.3f : 0.8f), barge ? 1.2f : 0.8f, (rowk - 1f) * len * 0.22f);
-            m.Scale = Vector3.One * (barge ? 2.0f : 1.4f);
+            m.Scale = Vector3.One * sc;
+            m.Rotation = new Vector3(0, (k % 3) * 0.35f - 0.35f, 0);
+            var off = m.Basis * new Vector3(mid.X, aabb.Position.Y, mid.Z);
+            m.Position = new Vector3((col - 0.5f) * dxc, deck, zc + (rowk - 1f) * dzr) - off;
             m.Visible = false;
             _boat[i].AddChild(m);
             _cargo[i][k] = m;
         }
         _cargoGood[i] = g;
+    }
+
+    private static CylinderMesh? _rollMesh;
+
+    /// <summary>After the review (n3 RV): cloth in a hold is plain rolled bolts (style sheet section 6): Brick cylinders laid
+    /// across the hold, two to a row, no stripe (the carried cloth's Limewash stripe read as a second awning on a barge).</summary>
+    private void SetClothRolls(int i, bool barge)
+    {
+        _rollMesh ??= new CylinderMesh
+        {
+            TopRadius = 0.24f, BottomRadius = 0.24f, Height = 0.95f, RadialSegments = 8, Rings = 1,
+            Material = new StandardMaterial3D { AlbedoColor = Palette.Brick, Roughness = 1f },
+        };
+        float sc = barge ? 1f : 0.7f;
+        float deck = barge ? 0.8f : 0.25f, zc = barge ? -0.35f : 0.1f, dzr = barge ? 0.75f : 0.5f, dxc = barge ? 1.05f : 0.72f;
+        for (int k = 0; k < CargoSlots; k++)
+        {
+            int col = k % 2, rowk = k / 2;
+            var m = new MeshInstance3D { Name = "Cargo" + k, Mesh = _rollMesh, Visible = false };
+            m.Scale = Vector3.One * sc;
+            m.Rotation = new Vector3(0, 0, MathF.PI / 2f);   // lying across the hold (along the boat's X)
+            m.Position = new Vector3((col - 0.5f) * dxc, deck + 0.24f * sc, zc + (rowk - 1f) * dzr);
+            _boat[i].AddChild(m);
+            _cargo[i][k] = m;
+        }
+    }
+
+    /// <summary>Round n3 (RV): someone aboard: the boatman at the rowboat's stern, the skipper at the barge's tiller.</summary>
+    private static Node3D? Crew(bool barge)
+    {
+        if (!ModelLib.Has("villager")) return null;
+        var man = ModelLib.Instance("villager", barge ? "Skipper" : "Boatman");
+        man.Scale = Vector3.One * (barge ? 0.95f : 0.8f);
+        man.Position = barge ? new Vector3(0.4f, 0.75f, -3.6f) : new Vector3(0, 0.15f, -1.45f);
+        return man;
     }
 
     private static ArrayMesh WakeMesh()

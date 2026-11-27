@@ -10,6 +10,7 @@ namespace TideToll.Game;
 /// near end when the lane opens, a faint trail first that wears in to firm earth over <see cref="LaneWearSeconds"/> of
 /// game time. Lanes are never paved by the simulation, so they stay earth. River positions are at cell centres, road
 /// points at cell corners: lane points are shifted half a cell before the same cell walk as roads.
+/// Round n3 (RV): each crossing's two bank ends get a short worn way too (<see cref="Approaches"/>).
 /// </summary>
 public partial class TownGround
 {
@@ -72,10 +73,34 @@ public partial class TownGround
         for (int i = 0; i < n; i++)
         {
             var l = rp.Links[i];
-            if (l.Kind != RiverLinkKind.Lane) { _laneCells[i] = Array.Empty<int>(); _laneDist[i] = Array.Empty<float>(); continue; }
+            if (l.Kind != RiverLinkKind.Lane) { Approaches(l, cells, dist); _laneCells[i] = cells.ToArray(); _laneDist[i] = dist.ToArray(); _laneOpenAt[i] = -1; continue; }
             CellsAlong(l.Px, l.Py, -0.5, cells, dist);
             _laneCells[i] = cells.ToArray(); _laneDist[i] = dist.ToArray();
             _laneOpenAt[i] = -1;
+        }
+    }
+
+    /// <summary>Round n3 (asset track RV, after the review): a crossing (ford, bridges, ferry) gets a trodden way on each
+    /// bank, ApproachCells long, running away from the river from its two ends, so its stones or ramps are reached by a
+    /// worn path and do not stand on bare grass. Worn like a lane once the crossing opens.</summary>
+    private const double ApproachCells = 3.0;
+    private static void Approaches(RiverLink l, List<int> cells, List<float> dist)
+    {
+        cells.Clear(); dist.Clear();
+        int n = l.Px.Length;
+        if (n < 2) return;
+        double dx = l.Px[n - 1] - l.Px[0], dy = l.Py[n - 1] - l.Py[0];
+        double len = Math.Sqrt(dx * dx + dy * dy);
+        if (len < 1e-6) return;
+        dx /= len; dy /= len;
+        var c2 = new List<int>(); var d2 = new List<float>();
+        for (int e = 0; e < 2; e++)
+        {
+            double ex = e == 0 ? l.Px[0] : l.Px[n - 1], ey = e == 0 ? l.Py[0] : l.Py[n - 1];
+            double sx = e == 0 ? -dx : dx, sy = e == 0 ? -dy : dy;   // away from the river
+            CellsAlong(new[] { ex + sx * 0.5, ex + sx * (0.5 + ApproachCells) }, new[] { ey + sy * 0.5, ey + sy * (0.5 + ApproachCells) },
+                -0.5, c2, d2);
+            cells.AddRange(c2); for (int k = 0; k < c2.Count; k++) dist.Add(0f);
         }
     }
 

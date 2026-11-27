@@ -73,6 +73,7 @@ varying vec2 lp;                     // map-local metres: x east, y south, 0..ma
 
 vec2 rot(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
 vec3 two(sampler2D t, vec2 p) { return mix(texture(t, p / tile1).rgb, texture(t, rot(p, 0.9) / tile2).rgb, 0.45); }
+vec3 g3_earth(vec2 p) { return two(g3, p); }   // round n3: the bank lip's packed earth
 
 vec3 heat(float w) {
 	// the toy's heat stops: 0, 10, 25, 50, 85 (wear 0..100)
@@ -245,12 +246,27 @@ void fragment() {
 	float tflat = (1.0 - smoothstep(-aa, aa, d)) * (1.0 - inside);   // the tidal flat between edge and bank
 	float ford = mask.r;
 	vec2 wuv = vec2(lp.x / 40.0, lp.y / 40.0 - time_s * 0.012);
-	vec3 wc = mix(water_col.rgb, texture(water_tex, wuv).rgb, 0.55);
-	wc = mix(wc, deep_col.rgb, 0.45 * smoothstep(half_w * 0.15, -half_w * 0.6, d)); // deeper down the middle
-	// engraved waterlines along the flow that drift slowly
-	float k = lp.y * 0.9 - time_s * 0.35 + sin(lp.x * 0.5 + lp.y * 0.05) * 0.5 + (lp.x - cx) * 0.25;
-	float line = smoothstep(0.965, 0.985, sin(k) * 0.5 + 0.5) * smoothstep(half_w, half_w - 1.2, abs(lp.x - cx));
-	wc = mix(wc, wc * 0.62, line * 0.8 * (1.0 - ford) * (1.0 - ice));
+	vec3 wc = mix(water_col.rgb, texture(water_tex, wuv).rgb, 0.25);
+	wc = mix(wc, deep_col.rgb, 0.55 * smoothstep(half_w * 0.15, -half_w * 0.6, d)); // deeper down the middle
+	// Round n3 (RV): soft swirls in every direction instead of ruled dashes: two drifting noise contours, faint.
+	float sw = vnoise(vec2(lp.x * 0.45, lp.y * 0.3 - time_s * 0.18)) + 0.5 * vnoise(lp * 0.9 + vec2(3.7, -time_s * 0.3));
+	float swl = 1.0 - smoothstep(0.0, 0.045 + fwidth(sw) * 1.2, abs(fract(sw * 2.2) - 0.5));
+	wc = mix(wc, deep_col.rgb * 0.85, swl * 0.35 * smoothstep(-0.8, -2.5, dw) * (1.0 - ford) * (1.0 - ice));
+	// The shallows: a lighter band along the water's edge, wider at low water (the bed shows through).
+	float shw = 1.6 + tide_drop * 0.55;
+	float sh = smoothstep(-shw, -0.15, dw);
+	vec3 bedc = mix(water_col.rgb, two(g2, lp), 0.3);
+	wc = mix(wc, mix(bedc, paper.rgb, 0.06), sh * 0.6 * (1.0 - ice));
+	// Shimmer: slow sparkles of paper light that drift with the flow and fade in and out (one hash a pixel).
+	vec2 sq = vec2(lp.x * 0.42, lp.y * 0.21 - time_s * 0.16);
+	vec2 sc = floor(sq), sf = fract(sq) - 0.5;
+	float sh1 = hash12(sc + 17.0), sh2 = hash12(sc + 41.0);
+	vec2 so = (vec2(sh1, sh2) - 0.5) * 0.5;
+	float blink = max(0.0, sin(time_s * (0.6 + sh2 * 0.7) + sh1 * 6.283));
+	float fleck = 1.0 - smoothstep(0.07, 0.15, length((sf - so) * vec2(1.0, 2.2)));
+	float shim = fleck * step(0.45, sh1) * blink * smoothstep(-0.5, -1.5, dw);
+	shim *= 1.0 - smoothstep(0.2, 0.5, fwidth(lp.x));  // only where a fleck is a few pixels (not on the whole page)
+	wc = mix(wc, paper.rgb, shim * 0.8 * (1.0 - ford) * (1.0 - ice));
 	// ford: shallow, lighter water with the earth bed and pale ripples showing
 	vec3 bed = two(g2, lp);
 	vec3 shallow = mix(mix(water_col.rgb, bed, 0.45), paper.rgb, 0.12);
@@ -298,10 +314,28 @@ void fragment() {
 		c = mix(c, ink.rgb, line * 0.5 * band_mark * (1.0 - step(0.05, flood)));
 	}
 	if (tide_drop > 0.0) {
-		vec3 wetmud = mix(mud_col.rgb, water_col.rgb, 0.25 + 0.35 * smoothstep(0.0, -tide_drop, -dw)) * (0.92 + 0.12 * n2);
-		c = mix(c, wetmud, tflat * 0.9);
+		// Round n3 (RV), after the review: the flat is mud, never grey: Packed earth over Mud toward the bank, darker wet
+		// Mud toward the water, no water colour mixed in (it read as wet slate).
+		float wetness = 1.0 - smoothstep(0.0, max(tide_drop, 0.01), dw);   // 1 at the water's edge, 0 at the bank
+		vec3 wetmud = mix(mix(g3_earth(lp), mud_col.rgb, 0.5), mud_col.rgb * 0.84, wetness * 0.75) * (0.92 + 0.12 * n2);
+		// Round n3: ripple ridges left in the mud, parallel to the water's edge, and a few pale puddles.
+		float ridge = smoothstep(0.7, 0.95, sin(dw * 5.5 + vnoise(lp / 2.0) * 3.0) * 0.5 + 0.5);
+		wetmud = mix(wetmud, mud_col.rgb * 0.8, ridge * 0.35);
+		float pud = smoothstep(0.62, 0.7, vnoise(lp / 1.6 + 4.0)) * smoothstep(0.3, 0.9, dw);
+		wetmud = mix(wetmud, mix(water_col.rgb, paper.rgb, 0.35), pud * 0.5);   // pale River puddles, few
+		c = mix(c, wetmud, tflat * 0.95);
 		c = mix(c, paper.rgb, tflat * (1.0 - smoothstep(0.0, aa * 2.0, abs(dw))) * 0.6);  // a pale line at the water's edge
 	}
+	// Round n3 (RV): the bank. A lip of wet earth 0 to about 1.4 m beyond the bank line, its outer edge wandering, so
+	// grass never runs straight into water; packed earth over mud, darker toward the water.
+	// After the review: the width wanders 0.6 to 2.4 m over tens of metres (it looked uniform at the page), and now and
+	// then the grass bites right down to the bank line.
+	float lipw = 0.6 + 1.8 * smoothstep(0.2, 0.8, vnoise(lp / 11.0 + 9.0)) + 0.3 * (vnoise(lp / 3.3 + 2.0) - 0.5);
+	lipw *= 1.0 - 0.85 * smoothstep(0.74, 0.84, vnoise(vec2(lp.x * 0.05, lp.y / 13.0) + 31.0));
+	lipw = max(lipw, 0.12);
+	float lip = (1.0 - smoothstep(lipw - 0.25, lipw + 0.1, d)) * step(0.0, d) * (1.0 - ice * 0.6);
+	vec3 lipc = mix(mix(g3_earth(lp), mud_col.rgb, 0.35), mud_col.rgb, smoothstep(lipw * 0.6, 0.0, d) * 0.55) * (0.94 + 0.1 * n2);
+	c = mix(c, lipc, lip * (1.0 - 0.7 * ford));
 	c = mix(c, wc, inside);
 	c = mix(c, ink.rgb, band * (1.0 - 0.55 * ford));
 

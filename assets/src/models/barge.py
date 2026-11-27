@@ -13,6 +13,10 @@
 #          furled into a fat Limewash roll 5.2 m wide, so from straight above the barge shows a white cross-bar
 #          over the hull (the "sail mark"); a Brick pennant at the top points aft.
 #   cargo  goods in the hold: grain sacks, crates, timber, a wool bale. Hide the node for an empty barge.
+# Round n3 (track RV, 2026-11-26): the hull is no longer a dark smudge: Packed earth sides with a Brick top strake
+# and a Limewash boot stripe at the waterline, Paper caps on the bollards. The cargo node is gone from the file:
+# the game shows the barge's cargo itself, in the good's own load shape and colour (RiverBoats), so an empty barge
+# is empty and a full one shows what it carries.
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import glb, ledger, asset_path
@@ -22,13 +26,26 @@ BLOCKED = "free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg
 GUN, KEEL, DECK = 1.3, -0.5, 1.15
 MAST_Z = 2.6
 HALF = [(0.0, 6.0), (1.05, 5.65), (1.7, 4.8), (2.0, 3.4), (2.0, -3.2), (1.85, -4.9), (1.35, -5.8)]
-HULL, BAND, DECKC, DARK = "Soot brick", "Cast-iron green", "Trail earth", "Mud"
+HULL, BAND, DECKC, DARK = "Packed earth", "Brick", "Trail earth", "Mud"
+import math
+from _kit import loft
 
 
 def hull_node():
     m = glb.Mesh()
     hull(m, HALF, GUN, KEEL, 0.78, 0.86, dict(side=HULL, bottom=DARK, band=BAND, deck=DECKC), inner=(0.92, 0.96),
          deck=DECK, dz_keel=-0.1)
+    # boot stripe: a Limewash band round the hull just above the waterline, standing 3 cm proud
+    out = HALF + [(-x, z) for x, z in reversed(HALF[1:])]
+    out = [p for i, p in enumerate(out) if i == 0 or p != out[i - 1]]
+    if out[-1] == out[0]:
+        out = out[:-1]
+
+    def ring(y, grow):
+        t = (y - KEEL) / (GUN - KEEL)
+        sx, sz, dz = 0.78 + 0.22 * t, 0.86 + 0.14 * t, -0.1 * (1 - t)
+        return [(x * sx * grow + (0.03 if x > 0 else -0.03 if x < 0 else 0), y, z * sz * grow + dz) for x, z in out]
+    loft(m, ring(0.12, 1.0), ring(0.42, 1.0), "Limewash")
     # hold amidships: dark floor patch with a coaming round it (cargo sits on the floor at DECK)
     m.add_box((0, DECK, -0.6), (2.7, 0.02, 4.6), DARK, bottom=False)
     for x in (-1.45, 1.45):
@@ -55,6 +72,7 @@ def hull_node():
     # bollards at the bow and stern for the mooring lines
     for x, z in ((-1.2, 4.9), (1.2, 4.9)):
         m.add_box((x, DECK, z), (0.3, 0.4, 0.3), DARK, bottom=False)
+        m.add_box((x, DECK + 0.4, z), (0.36, 0.08, 0.36), "Paper", bottom="Paper")
     m.add_box((0, GUN - 0.1, 5.8), (0.3, 0.45, 0.4), DARK, bottom=False)                # stem head
     return m
 
@@ -89,10 +107,10 @@ def cargo_node():
     return m
 
 
-parts = [("hull", hull_node()), ("mast", mast_node(), None, (0.0, DECK, MAST_Z)), ("cargo", cargo_node())]
+parts = [("hull", hull_node()), ("mast", mast_node(), None, (0.0, DECK, MAST_Z))]
 for n, mm, *_ in parts:
     print(f"  {n}: {mm.tri_count()} tris")
 out = asset_path("models/barge.glb")
 print(glb.report(out, glb.write_glb(out, parts, max_tris=600)))
 ledger.add("models", out, kind="model", generator=__file__, note=BLOCKED, verified=True,
-           used_in="River: masted sailing barge (nodes hull, mast, cargo; cargo hidden when empty)")
+           used_in="River: masted sailing barge (nodes hull, mast; the cargo is drawn by the game in the good's shape)")

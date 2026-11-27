@@ -14,6 +14,9 @@
 #               raft's centre line, so the rope passes through the raft's guides.
 #   ferry-rope  a 1 m rope piece from (0, 0, 0) to (0, 0, -1), 0.14 m thick: put it at the near post's rope point,
 #               turn it to face the far post and scale Z by the distance between the two rope points.
+# Round n3 (track RV, 2026-11-26): posts 4.5 m with a Brick painted cap and a Thatch flag (seen at the normal view),
+# the raft with Brick-capped rail posts and a pile of Thatch sacks; the rope is a dark Mud line 0.16 m thick that
+# sags 0.7 m in the middle (ferry-rope: 1 m long in Z, the sag in absolute metres, so RiverLayer stretches only Z).
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import glb, ledger, asset_path
@@ -23,60 +26,78 @@ BLOCKED = "free asset sites (kenney.nl, quaternius.com, polyhaven.com, ambientcg
 DECK, ROPE_X, ROPE_Y = 0.35, 1.95, 1.3
 L, W = 5.6, 3.6
 WOOD, PLANK, RAIL, ROPE = "Mud", "Trail earth", "Packed earth", "Reed and thatch"
+POST_H, SAG = 4.5, 0.7
+import math
 
 
 def raft():
+    """After the review (n3 RV): one clear deck slab. Packed earth deck with a Paper edge band 0.15 m, plank lines in
+    the shade tone, two Thatch rail posts a side with Thatch rails (not dark), a mooring post upright at the bow with a
+    Brick cap, sacks and a Thatch crate; no loose pole. The rope guides stay on the +X side."""
     m = glb.Mesh()
     for x in (-1.25, 0.0, 1.25):                                    # three log floats along Z, half sunk
         tube(m, (x, 0.05, L / 2 - 0.1), (x, 0.05, -L / 2 + 0.1), 0.3, WOOD, n=6)
-    for i in range(7):                                              # deck planks across X, small gaps
-        z = -L / 2 + 0.6 + 0.73 * i
-        m.add_box((0, DECK - 0.12, z), (W, 0.12, 0.66), PLANK, bottom=PLANK)
-    for sz in (-1, 1):                                              # boarding flaps at both ends, darker
-        m.add_box((0, DECK - 0.14, sz * (L / 2 - 0.12)), (2.4, 0.1, 0.5), RAIL, bottom=RAIL)
-    for sx in (-1, 1):                                              # rails on both long sides
-        x = sx * (W / 2 - 0.12)
-        for z in (-2.2, 0.0, 2.2):
-            m.add_box((x, DECK, z), (0.16, 1.0, 0.16), WOOD, bottom=False)
-        beam(m, (x, DECK + 0.95, -2.3), (x, DECK + 0.95, 2.3), 0.14, 0.14, RAIL)
-        beam(m, (x, DECK + 0.5, -2.3), (x, DECK + 0.5, 2.3), 0.1, 0.1, RAIL)
+    m.add_box((0, DECK - 0.16, 0), (W, 0.16, L), "Paper", top="Paper", bottom=WOOD)          # the edge band shows round
+    m.add_box((0, DECK - 0.16, 0), (W - 0.3, 0.18, L - 0.3), "Packed earth", top="Packed earth", bottom=False)  # deck
+    for i in range(1, 6):                                           # plank lines across X, standing 1.5 cm proud
+        z = -L / 2 + 0.15 + (L - 0.3) * i / 6
+        m.add_box((0, DECK + 0.02, z), (W - 0.36, 0.015, 0.05), "Mud", bottom=False)
+    for sx in (-1, 1):                                              # two Thatch rail posts a side and one rail
+        x = sx * (W / 2 - 0.2)
+        for z in (-1.9, 1.9):
+            m.add_box((x, DECK + 0.02, z), (0.22, 0.95, 0.22), "Reed and thatch", bottom=False)
+        beam(m, (x, DECK + 0.92, -2.05), (x, DECK + 0.92, 2.05), 0.18, 0.14, "Reed and thatch")
     # rope guides on the +X side: a post outboard of the rail with a fork block that the rope runs through
     for z in (-1.6, 1.6):
         m.add_box((ROPE_X - 0.05, DECK - 0.12, z), (0.3, ROPE_Y - DECK + 0.12 - 0.1, 0.3), WOOD, bottom=WOOD)
         for dx in (-0.16, 0.16):
             m.add_box((ROPE_X + dx, ROPE_Y - 0.12, z), (0.08, 0.3, 0.3), WOOD, bottom=False)
-    tube(m, (ROPE_X, ROPE_Y, L / 2 + 0.2), (ROPE_X, ROPE_Y, -L / 2 - 0.2), 0.07, ROPE, n=5)   # rope stub
-    beam(m, (-0.6, DECK + 0.08, -2.4), (-0.9, DECK + 0.08, 2.4), 0.12, 0.12, RAIL)               # ferryman's pole
+    tube(m, (ROPE_X, ROPE_Y, L / 2 - 0.3), (ROPE_X, ROPE_Y, -L / 2 + 0.3), 0.08, "Mud", n=5)   # rope stub, the rope's colour
+    m.add_frustum((-0.9, DECK + 0.02, -L / 2 + 0.5), 0.2, 0.17, 1.2, WOOD, segments=6)          # mooring post at the bow
+    m.add_frustum((-0.9, DECK + 1.22, -L / 2 + 0.5), 0.22, 0.22, 0.3, "Brick", segments=6)
+    for x, z, h, yaw in ((0.55, -1.0, 0.0, 0.2), (0.95, -0.35, 0.0, -0.3), (0.75, -0.65, 0.42, 0.6)):   # sacks
+        m.add_box((x, DECK + h, z), (0.6, 0.42, 0.8), "Reed and thatch", yaw=yaw, top="Reed and thatch", bottom=False)
+        m.add_box((x, DECK + h + 0.42, z), (0.24, 0.1, 0.24), "Soot brick", yaw=yaw, bottom=False)
+    m.add_box((0.6, DECK, 1.2), (0.9, 0.7, 0.8), "Reed and thatch", top="Reed and thatch", bottom=False)    # a crate
+    m.add_box((0.6, DECK + 0.3, 1.2), (0.94, 0.08, 0.84), "Packed earth", bottom=False)                    # its band
     return m
 
 
 def post():
     m = glb.Mesh()
-    m.add_frustum((0, 0, 0), 0.34, 0.26, 2.6, WOOD, segments=6)                  # post
-    m.add_cone((0, 2.6, 0), 0.26, 0.2, WOOD, segments=6)                         # weathered top
-    m.add_frustum((0, 0, 0), 0.62, 0.5, 0.28, ROPE, segments=7)                   # rope coil at the foot
-    m.add_frustum((0, 0.28, 0), 0.5, 0.42, 0.14, ROPE, segments=7, cap_bottom=False)
-    m.add_cylinder((0, ROPE_Y - 0.12, 0), 0.36, 0.24, ROPE, segments=6)          # lashing where the rope is made fast
-    tube(m, (0, ROPE_Y, -0.2), (0, ROPE_Y, -0.9), 0.07, ROPE, n=5)               # rope leaving towards the river
+    m.add_frustum((0, 0, 0), 0.36, 0.28, POST_H, WOOD, segments=6)              # post
+    m.add_frustum((0, POST_H, 0), 0.36, 0.36, 0.3, "Brick", segments=6)          # painted cap
+    m.add_cone((0, POST_H + 0.3, 0), 0.38, 0.3, "Paper", segments=6)
+    beam(m, (0, POST_H + 0.6, 0), (0, POST_H + 1.3, 0), 0.07, 0.07, WOOD)         # flag staff and flag
+    m.add_poly([(0.04, POST_H + 1.28, 0), (0.85, POST_H + 1.1, 0.05), (0.04, POST_H + 0.9, 0)], ROPE, facing=(0, 0, 1))
+    m.add_poly([(0.04, POST_H + 1.28, -0.02), (0.85, POST_H + 1.1, 0.03), (0.04, POST_H + 0.9, -0.02)], ROPE, facing=(0, 0, -1))
+    m.add_frustum((0, 0, 0), 0.66, 0.54, 0.3, ROPE, segments=7)                   # rope coil at the foot
+    m.add_frustum((0, 0.3, 0), 0.54, 0.46, 0.14, ROPE, segments=7, cap_bottom=False)
+    m.add_cylinder((0, 2.1, 0), 0.4, 0.26, "Mud", segments=6)                    # lashing where the rope is made fast
     # bell bracket towards +X, small hand bell hanging under it, rope pull hanging from the bell
-    beam(m, (0.15, 2.2, 0), (0.95, 2.2, 0), 0.14, 0.16, WOOD)
-    beam(m, (0.2, 1.75, 0), (0.7, 2.15, 0), 0.1, 0.1, WOOD)                      # strut
-    m.add_frustum((0.8, 1.72, 0), 0.24, 0.14, 0.4, "Cast-iron green", segments=7, cap_bottom=True)   # bell
-    m.add_box((0.8, 2.12, 0), (0.08, 0.1, 0.08), WOOD, bottom=False)
-    beam(m, (0.8, 1.72, 0), (0.8, 1.15, 0), 0.06, 0.06, ROPE)                    # bell pull
+    beam(m, (0.15, 3.0, 0), (1.0, 3.0, 0), 0.16, 0.18, WOOD)
+    beam(m, (0.2, 2.5, 0), (0.75, 2.95, 0), 0.12, 0.12, WOOD)                    # strut
+    m.add_frustum((0.85, 2.48, 0), 0.28, 0.16, 0.44, "Cast-iron green", segments=7, cap_bottom=True)   # bell
+    m.add_box((0.85, 2.92, 0), (0.08, 0.1, 0.08), WOOD, bottom=False)
+    beam(m, (0.85, 2.48, 0), (0.85, 1.6, 0), 0.07, 0.07, ROPE)                   # bell pull
+    m.add_box((-1.1, 0, -0.5), (1.0, 0.16, 0.6), "Packed earth", top="Trail earth")  # landing steps, beside the rope
+    m.add_box((-1.1, 0, -1.0), (1.0, 0.08, 0.5), "Packed earth", top="Trail earth")
     return m
 
 
 def rope():
     m = glb.Mesh()
-    tube(m, (0, 0, 0), (0, 0, -1.0), 0.07, ROPE, n=5)
+    n = 10
+    pts = [(0.0, -SAG * math.sin(math.pi * i / n), -i / n) for i in range(n + 1)]
+    for a, b in zip(pts, pts[1:]):
+        tube(m, a, b, 0.08, "Mud", n=5, ends=False)
     return m
 
 
 for name, make, used, budget in (
-        ("ferry-raft", raft, "River: rope ferry raft (rope line at x = +1.95, y = 1.3)", 500),
-        ("ferry-post", post, "River: ferry landing post with hand bell, rope made fast at y = 1.3", 300),
-        ("ferry-rope", rope, "River: ferry rope, 1 m piece scaled along Z between the two posts", 50)):
+        ("ferry-raft", raft, "River: rope ferry raft (rope line at x = +1.95, y = 1.3), sacks and a crate on deck", 600),
+        ("ferry-post", post, "River: ferry landing post (4.5 m, painted cap, flag, hand bell, landing steps)", 300),
+        ("ferry-rope", rope, "River: ferry rope, 1 m piece scaled along Z between the two posts, sagging 0.7 m", 150)):
     out = asset_path(f"models/{name}.glb")
     print(glb.report(out, glb.write_glb(out, make(), max_tris=budget)))
     ledger.add("models", out, kind="model", generator=__file__, note=BLOCKED, used_in=used, verified=True)

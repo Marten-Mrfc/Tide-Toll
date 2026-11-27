@@ -17,35 +17,50 @@ DECK, PLANK_T, HW = 0.5, 0.14, 1.2
 WOOD, PLANK, DARK = "Packed earth", "Trail earth", "Mud"
 
 m = glb.Mesh()
-for i in range(8):                                               # planks across the jetty, small gaps
+# Round n3 (track RV, 2026-11-26): piles that show (0.34 m, Mud, standing 1 m above the deck with Paper caps),
+# a deck 3.2 x 6.5 m of planks in two tones, tidy goods capped and low (under 1.2 m): a crate stack under a Brick
+# tarp, a pyramid of six sacks (Packed earth hessian with Soot brick ties), a barrel, a mooring post with a rope
+# coil, and a lantern on a post at the jetty's end.
+for i in range(8):                                               # planks across the jetty, small gaps, two tones
     z = 2.625 - 0.75 * i
-    m.add_box((0, DECK - PLANK_T, z), (2 * HW, PLANK_T, 0.69), PLANK, bottom=DARK)
+    m.add_box((0, DECK - PLANK_T, z), (2 * HW + 0.3, PLANK_T, 0.69), PLANK if i % 2 else "Packed earth", bottom=DARK)
 for x in (-0.9, 0.9):                                            # stringers
     beam(m, (x, DECK - PLANK_T - 0.1, 3.0), (x, DECK - PLANK_T - 0.1, -3.0), 0.2, 0.2, DARK)
-for z in (-2.7, -0.4):                                           # piles under the deck (the posts double as piles)
-    for x in (-0.9, 0.9):
-        m.add_box((x, -0.8, z), (0.22, DECK - PLANK_T - 0.2 + 0.8, 0.22), DARK, bottom=False)
-m.add_box((0, 0, 3.25), (2.0, 0.22, 0.5), WOOD)                  # plank step onto the bank
-# mooring posts: outside the deck edge, tall enough to read, dark weathered tops
-for x, z in ((-1.42, -2.75), (1.42, -2.75), (-1.42, -0.2), (1.42, -0.2)):
-    m.add_box((x, -0.8, z), (0.3, DECK + 0.8 + 1.0, 0.3), WOOD, bottom=False)
-    m.add_box((x, DECK + 1.0, z), (0.36, 0.14, 0.36), DARK, bottom=DARK)
-    if z < -1:
-        m.add_box((x, DECK + 0.62, z), (0.36, 0.16, 0.36), "Reed and thatch", bottom="Reed and thatch")   # lashing
-# low bollard at the end of the jetty with a coiled line
-m.add_cylinder((0, DECK, -2.6), 0.2, 0.45, DARK, segments=6)
-m.add_frustum((0.0, DECK, -2.0), 0.36, 0.3, 0.12, "Reed and thatch", segments=7)
-# goods waiting on the shore half: crates, sacks, a wool bale
-m.add_box((-0.6, DECK, 1.9), (0.9, 0.8, 0.9), WOOD)
-m.add_box((-0.6, DECK + 0.8, 1.9), (0.94, 0.08, 0.3), DARK, bottom=DARK)
-m.add_box((-0.55, DECK + 0.88, 1.9), (0.6, 0.5, 0.6), "Paper", bottom="Paper")                   # wool bale
-m.add_box((-0.55, DECK + 1.08, 1.9), (0.64, 0.1, 0.64), PLANK, bottom=False)                     # its cord
-m.add_box((-0.65, DECK, 0.85), (0.8, 0.6, 0.8), WOOD)
-m.add_box((-0.65, DECK + 0.6, 0.85), (0.84, 0.08, 0.26), DARK, bottom=DARK)
-for x, z in ((0.55, 2.0), (0.6, 1.15), (0.45, 0.35)):            # grain sacks
-    m.add_sphere((x, DECK + 0.3, z), 0.36, PLANK, rings=2, segments=6, squash=0.85)
+m.add_box((0, 0, 3.25), (2.2, 0.22, 0.5), WOOD)                  # plank step onto the bank
+# piles: outside the deck edge, through to the water, Paper caps
+for x, z in ((-1.55, -2.9), (1.55, -2.9), (-1.55, -0.9), (1.55, -0.9), (-1.55, 1.1), (1.55, 1.1)):
+    m.add_box((x, -0.8, z), (0.34, DECK + 0.8 + 1.0, 0.34), DARK, bottom=False)
+    m.add_box((x, DECK + 1.0, z), (0.42, 0.12, 0.42), "Paper", bottom="Paper")
+for x in (-1.55, 1.55):                                          # a rope lashing on the end piles
+    m.add_box((x, DECK + 0.5, -2.9), (0.42, 0.16, 0.42), "Reed and thatch", bottom="Reed and thatch")
+# mooring bollard and its coil at the end
+m.add_cylinder((0.6, DECK, -2.6), 0.22, 0.5, DARK, segments=6)
+m.add_frustum((-0.3, DECK, -2.5), 0.4, 0.34, 0.14, "Reed and thatch", segments=7)
+# lantern on a post at the end (Brick hood)
+m.add_box((-0.9, DECK, -3.0), (0.16, 1.9, 0.16), DARK, bottom=False)
+m.add_box((-0.9, DECK + 1.9, -3.0), (0.36, 0.34, 0.36), "Reed and thatch", bottom="Soot brick")
+m.add_cone((-0.9, DECK + 2.24, -3.0), 0.3, 0.26, "Brick", segments=4)
+# crates in a tidy stack under a Brick tarp
+m.add_box((-0.55, DECK, 1.9), (1.0, 0.55, 1.0), "Packed earth")
+m.add_box((-0.55, DECK + 0.55, 1.9), (1.0, 0.45, 1.0), "Packed earth")
+m.add_box((-0.55, DECK + 1.0, 1.9), (1.08, 0.08, 1.08), "Brick", bottom="Brick")
+m.add_box((-1.1, DECK + 0.3, 1.9), (0.06, 0.7, 0.9), "Brick", bottom=False)         # the tarp's hanging side
+m.add_box((-0.55, DECK + 0.25, 2.42), (0.9, 0.08, 0.06), DARK, bottom=False)      # batten
+# a pyramid of six sacks: 3, 2, 1
+def sack(x, y, z, yaw=0.0):
+    m.add_box((x, y, z), (0.55, 0.3, 0.42), "Packed earth", yaw=yaw, top="Packed earth", bottom=False)
+    m.add_box((x + 0.2, y + 0.08, z), (0.14, 0.14, 0.2), "Soot brick", yaw=yaw, bottom=False)
+for k, x in enumerate((0.0, 0.55, 1.1)):
+    sack(x - 0.1, DECK, 0.65)
+for x in (0.17, 0.72):
+    sack(x, DECK + 0.3, 0.65)
+sack(0.45, DECK + 0.6, 0.65)
+# a barrel
+m.add_cylinder((0.7, DECK, 1.85), 0.34, 0.75, "Packed earth", segments=7)
+m.add_cylinder((0.7, DECK + 0.3, 1.85), 0.36, 0.1, DARK, segments=7, cap_top=False, cap_bottom=False)
+m.add_cylinder((0.7, DECK + 0.75, 1.85), 0.3, 0.03, "Trail earth", segments=7, cap_bottom=False)
 
 out = asset_path("models/landing.glb")
-print(glb.report(out, glb.write_glb(out, m, max_tris=500)))
+print(glb.report(out, glb.write_glb(out, m, max_tris=700)))
 ledger.add("models", out, kind="model", generator=__file__, note=BLOCKED, verified=True,
-           used_in="River: Hamlet landing (timber jetty with mooring posts and goods waiting)")
+           used_in="River: the landing (timber jetty on six piles, tidy capped goods, lantern)")
