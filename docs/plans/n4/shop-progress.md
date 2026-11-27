@@ -134,6 +134,7 @@ What I still see:
   eases over 0.2 s while the foot already stands at the bottom, so for those frames the foot can cover the last row's
   lower part.
 - On the narrow rail the foot "Next: Extend a cottage at a later level" does not fit and reads "Next: Extend a cottage".
-- u46 and u47 (hover, pressed) are pictures only: under game-layout's headless run the pointer does not reach a row, so
-  those two states are "not made" there (as u42 already was); u48 is made in both.
+- u46, u47 and u48 (hover, pressed, blocked) are pictures only: under game-layout's headless run the rows do not count
+  as in view for the pointer, so those states are not made there (as u42 already was; u48 prints "no blocked row yet").
+  The rules S1 to S7 still run on every other state.
 - At 1280x720 at 150 the shop scrolls (Regulars below); whole rows only, as before.
