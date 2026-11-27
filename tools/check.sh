@@ -188,8 +188,17 @@ if have_godot; then
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 2400 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
+  if [ "$SHOT" = 1 ] && command -v xvfb-run >/dev/null 2>&1; then
+    # n8, the ink line (style sheet section 3): the cottage kinds, weaver cottage, mill, stall, well, a street and a
+    # villager group at the play view (640 x 480 at the 1080p play view's metres per pixel and line width); the share
+    # of each model's pixels the ink covers, against a ceiling per kind (AssetAudit.InkCheck.cs). About a minute.
+    step game-ink tools/godot-test.sh 'ASSET AUDIT PASS' timeout 600 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/asset-audit.tscn --quit-after 100000 -- --ink-check --out-dir="$ROOT/build/ink-check"
+    note "$(grep -o '^INK [a-z0-9-]* share=[0-9.]*' "$LOGS/game-ink.log" | sed 's/^INK //; s/ share=/=/' | tr '\n' ' ')"
+  else
+    skip game-ink "--no-screenshot or no xvfb-run"
+  fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-save screenshot game-ink; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

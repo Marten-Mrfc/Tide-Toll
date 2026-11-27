@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using TideToll.Sim.Town;
@@ -17,13 +18,15 @@ namespace TideToll.Game.Tests;
 /// </summary>
 public partial class AssetAudit
 {
-    /// <summary>Ceilings (weighted ink share of the model's pixels). Buildings 30, the street 32, figures 50.</summary>
+    /// <summary>Ceilings (weighted ink share of the model's pixels), a little above the n8 look (style sheet section 3):
+    /// cottages 0.14-0.20 -> 0.25, mill 0.22 -> 0.27, stall 0.27 -> 0.32, well 0.24 -> 0.30, street 0.23 -> 0.28,
+    /// villagers 0.36 -> 0.42. Today's look before n8 measured 0.53-0.66 on the cottages.</summary>
     public static readonly (string name, float ceiling)[] InkCeilings =
     {
-        ("cottage-a0", 0.30f), ("cottage-a1", 0.30f), ("cottage-a2", 0.30f), ("cottage-b0", 0.30f), ("cottage-b1", 0.30f),
-        ("cottage-b2", 0.30f), ("cottage-c0", 0.30f), ("cottage-c1", 0.30f), ("cottage-c2", 0.30f),
-        ("weaver-cottage", 0.30f), ("mill", 0.30f), ("market-stall", 0.35f), ("well", 0.35f),
-        ("street", 0.32f), ("villagers-group", 0.50f),
+        ("cottage-a0", 0.25f), ("cottage-a1", 0.25f), ("cottage-a2", 0.25f), ("cottage-b0", 0.25f), ("cottage-b1", 0.25f),
+        ("cottage-b2", 0.25f), ("cottage-c0", 0.25f), ("cottage-c1", 0.25f), ("cottage-c2", 0.25f),
+        ("weaver-cottage", 0.25f), ("mill", 0.27f), ("market-stall", 0.32f), ("well", 0.30f),
+        ("street", 0.28f), ("villagers-group", 0.42f),
     };
 
     private Node3D InkSubject(string name, float walker)
@@ -63,6 +66,11 @@ public partial class AssetAudit
     private async Task InkCheck(float playSize, float play1080, float walker)
     {
         var fails = new List<string>();
+        // Warm-up: the first frames after the window and camera change are not yet settled (the first subject
+        // measured 0.73 instead of 0.18 without this).
+        Main.Rig.Place(new Vector3((_spot.X + 0.5f) * TownGround.Cell, 0, (_spot.Y + 0.5f) * TownGround.Cell), playSize);
+        Main.Rig.UserMoved = true;
+        await Frames(20);
         foreach (var (name, ceiling) in InkCeilings)
         {
             if (_only != null && !_only.Contains(name)) continue;
@@ -77,17 +85,33 @@ public partial class AssetAudit
             Main.Rig.UserMoved = true;
             await Frames(3);
             InkAs1080(name == "street" ? play1080 * 1.2f : play1080);
-            await Frames(2);
-            var drawn = GetViewport().GetTexture().GetImage();
-            Main.Ink.InkVisible = false;
-            await Frames(2);
-            var noink = GetViewport().GetTexture().GetImage();
+            // The light on a newly placed model can change over its first frames (the first subject came out darker
+            // in its second picture): picture it without ink before and after, and take the pair only when they agree.
+            Image drawn = null!, noink = null!;
+            for (int tries = 0; tries < 4; tries++)
+            {
+                Main.Ink.InkVisible = false;
+                await Frames(2);
+                var before = GetViewport().GetTexture().GetImage();
+                Main.Ink.InkVisible = true;
+                await Frames(2);
+                drawn = GetViewport().GetTexture().GetImage();
+                Main.Ink.InkVisible = false;
+                await Frames(2);
+                noink = GetViewport().GetTexture().GetImage();
+                if (MeanDiff(before, noink) < 0.5f) break;
+            }
             subject.Visible = false;
             await Frames(2);
             var ground = GetViewport().GetTexture().GetImage();
             Main.Ink.InkVisible = true;
             subject.QueueFree();
-            if (_dir.Length > 0) drawn.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}.png"));
+            if (_dir.Length > 0)
+            {
+                drawn.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}.png"));
+                noink.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}-noink.png"));
+                ground.SavePng(System.IO.Path.Combine(_dir, $"ink-check-{name}-ground.png"));
+            }
             float share = InkShare(drawn, noink, ground);
             string line = $"INK {name} share={share:0.000} ceiling={ceiling:0.00}";
             GD.Print(line);
@@ -96,6 +120,14 @@ public partial class AssetAudit
             await Frames(1);
         }
         Check(fails.Count == 0, "ink above its ceiling: " + string.Join("; ", fails));
+    }
+
+    private static float MeanDiff(Image a, Image b)
+    {
+        byte[] x = a.GetData(), y = b.GetData();
+        double s = 0;
+        for (int i = 0; i < x.Length; i++) s += Math.Abs(x[i] - y[i]);
+        return (float)(s / x.Length);
     }
 
     /// <summary>Weighted ink share of the model's pixels (see the class summary). Runs once per subject, not per frame.</summary>
