@@ -144,7 +144,7 @@ public partial class SpreadArt : Control
                 var off = new Vector2(side * i * 2.5f * S, i * 1.8f * S);
                 DrawRect(new Rect2(page.Position + off, page.Size), UiKit.PaperDark.Darkened(0.06f * i));
             }
-            DrawRect(page, UiKit.Paper);
+            DrawRect(page, PageLeaf.BookPaper);
             // Shade into the gutter so the spread reads as a bound book.
             float w = 70 * S;
             int steps = 14;

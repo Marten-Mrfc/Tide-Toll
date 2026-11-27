@@ -72,7 +72,8 @@ public partial class SettingsPages : Control
     {
         if (!Visible || _clip[i] is not { } c || !IsInstanceValid(c) || !c.Visible) return 0f;
         var area = SpreadArea;
-        float x0 = Math.Max(area.Position.X, c.Region.Position.X), x1 = Math.Min(area.End.X, c.Region.End.X);
+        var (s0, s1) = Seen(i);
+        float x0 = Math.Max(area.Position.X, s0), x1 = Math.Min(area.End.X, s1);
         return Math.Max(0f, x1 - x0) / Math.Max(1f, area.Size.X);
     }
     public bool SectionVisible(int i) => _clip[i] is { } c && IsInstanceValid(c) && c.Visible;
@@ -153,12 +154,12 @@ public partial class SettingsPages : Control
             // Back to the section the page is leaving: the same leaf turns back from where it is.
             (_from, _showing) = (_showing, _from);
             _fwd = !_fwd;
-            _turnT = 1f - _turnT;
+            TurnBack();
             _queued = -1;
             for (int k = 0; k < 4; k++) _ribbonFrom[k] = k == _from ? 1f : 0f;
         }
         else if (i == _showing) _queued = -1;
-        else _queued = i;  // a third section: this turn finishes quickly, then the next one starts
+        else { if (_queued < 0) Hurry(); _queued = i; }  // a third section: this turn finishes quickly, then the next one starts
         if (turn) PageTurned?.Invoke();
         SyncView();
         SetRibbonsPressed();

@@ -53,6 +53,9 @@ public partial class CameraRig : Node3D
     /// <summary>The whole book (cover) size in metres and its centre in world space, for the book view.</summary>
     public Vector2 BookSize = new(618f, 346f);
     public Vector3 BookCentre = Vector3.Zero;
+    /// <summary>Round L3: where the view stands at the zoom's outer end (map-local; Main sets it to the settings spread's
+    /// view so the book stands in one place); null: the book's middle with the tabs' room.</summary>
+    public Vector3? OuterCentre;
 
     /// <summary>
     /// Screen pixels kept free to the right of the page edge in the map and book views, for the interface's bookmark
@@ -168,7 +171,7 @@ public partial class CameraRig : Node3D
         // Wide enough for the book plus the tabs' room on its right: size * aspect = book + room * size / height.
         float room = PlayRoomPx / Math.Max(1f, vp.Y);
         _targetSize = Math.Min(MaxSize, Math.Max(BookSize.Y * 1.10f, BookSize.X * 1.03f / Math.Max(0.3f, aspect - room)));
-        _target = MapXf.AffineInverse() * (BookCentre + new Vector3(room * _targetSize / 2f, 0, 0));
+        _target = OuterCentre is { } oc && _targetSize >= MaxSize - 1e-3f ? oc : MapXf.AffineInverse() * (BookCentre + new Vector3(room * _targetSize / 2f, 0, 0));
         _target.Y = 0;
         InPlayView = false;
         Finish(instant);
@@ -303,8 +306,9 @@ public partial class CameraRig : Node3D
         if (tb > 0f)
         {
             tb = tb * tb * (3f - 2f * tb);
-            p.X = Mathf.Lerp(p.X, (bx0 + bx1 + room) / 2f, tb);
-            p.Z = Mathf.Lerp(p.Z, (bz0 + bz1) / 2f, tb);
+            var oc = OuterCentre ?? new Vector3((bx0 + bx1 + room) / 2f, 0, (bz0 + bz1) / 2f);
+            p.X = Mathf.Lerp(p.X, oc.X, tb);
+            p.Z = Mathf.Lerp(p.Z, oc.Z, tb);
         }
         p.Y = 0;
         return p;

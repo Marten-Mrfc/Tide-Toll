@@ -234,13 +234,6 @@ public partial class SettingsPages
         blocker.SetAnchorsPreset(LayoutPreset.FullRect);
         _frame!.AddChild(blocker);
         _slipBlocker = blocker;
-        var card = new PanelContainer { Name = "Slip" };
-        var cardBox = UiKit.Card(s, UiKit.Paper, 2f);
-        cardBox.SetContentMarginAll(UiKit.Px(s, 26));
-        card.AddThemeStyleboxOverride("panel", cardBox);
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", UiKit.Px(s, 12));
-        card.AddChild(box);
         string title, text, yes, no;
         switch (_slip)
         {
@@ -257,25 +250,19 @@ public partial class SettingsPages
                     : $"{GameInput.KeyName(_clash.key)} is already used for {other}. Swap the keys, so {other} gets {GameInput.KeyName(oldKey)} instead?";
                 yes = "Swap keys"; no = "Cancel"; break;
         }
-        box.AddChild(UiKit.Text(title, s, 30, UiKit.Serif));
-        var body = UiKit.Text(text, s, 18);
-        body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        body.CustomMinimumSize = new Vector2(Mathf.Min(460 * s, _rightPage.Size.X - 60 * s), 0);
-        box.AddChild(body);
+        // Round L3: the one modal card (ModalCard), centred on the window, never over the rows it is about.
+        var card = ModalCard.Build(s, title, text, out var body, out var row, "Slip");
         if (_slip == "keep")
         {
             _countdown = UiKit.Text(KeepText(), s, 17, UiKit.UiBold, UiKit.FadedInk);
             _countdown.Name = "Countdown";
-            box.AddChild(_countdown);
+            body.GetParent().AddChild(_countdown);
+            body.GetParent().MoveChild(_countdown, body.GetIndex() + 1);
         }
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", UiKit.Px(s, 14));
-        box.AddChild(row);
         var bYes = PageButton("slip.0", yes, s, SlipYes);
         var bNo = PageButton("slip.1", no, s, SlipCancel);
-        bYes.CustomMinimumSize = bNo.CustomMinimumSize = new Vector2(150 * s, 44 * s);
-        row.AddChild(bYes);
-        row.AddChild(bNo);
+        row.AddChild(ModalCard.Button(bYes, s, primary: false));
+        row.AddChild(ModalCard.Button(bNo, s, primary: true));
         _frame.AddChild(card);
         _slipCard = card;
         // Keep the keyboard inside the slip.
@@ -285,10 +272,8 @@ public partial class SettingsPages
             b.FocusNeighborLeft = b.FocusNeighborRight = b.FocusNext = b.FocusPrevious = p;
             b.FocusNeighborTop = b.FocusNeighborBottom = b.GetPath();
         }
-        // Over the right page, centred.
-        card.ResetSize();
-        var size = card.GetCombinedMinimumSize();
-        card.Position = (_rightPage.GetCenter() - size / 2).Round();
+        // Centred on the window (the canvas).
+        ModalCard.Centre(card, _canvas);
         // Round 6: the clash slip keeps clear of the rows it names (it lay over them); placed again once the rows have
         // their places (the page is laid out after this call).
         if (_slip == "clash")
@@ -324,25 +309,25 @@ public partial class SettingsPages
     {
         var size = card.GetCombinedMinimumSize();
         var rows = ClashRows();
-        float pw = _rightPage.Size.X, m = 24;
-        var leftPage = new Rect2(_rightPage.Position.X - pw, _rightPage.Position.Y, pw, _rightPage.Size.Y);
-        // The free foot of the right page first (under its last row), then each page's middle, bottom and top.
-        var tries = new[]
-        {
-            new Vector2(_rightPage.GetCenter().X - size.X / 2, _rightPage.End.Y - size.Y - m),
-            _rightPage.GetCenter() - size / 2,
-            leftPage.GetCenter() - size / 2,
-            new Vector2(leftPage.GetCenter().X - size.X / 2, leftPage.End.Y - size.Y - m),
-            new Vector2(_rightPage.GetCenter().X - size.X / 2, _rightPage.Position.Y + m),
-            new Vector2(leftPage.GetCenter().X - size.X / 2, leftPage.Position.Y + m),
-        };
-        foreach (var at in tries)
-        {
-            var r = new Rect2(at, size);
-            bool clear = true;
-            foreach (var row in rows) if (row.Intersects(r)) { clear = false; break; }
-            if (clear) { card.Position = at.Round(); return; }
-        }
+        // Round L3: nor over the page's own buttons (it lay on "Restore defaults").
+        var off = _frame!.GetGlobalRect().Position;
+        foreach (var key in new[] { "keys.restore", "back" })
+            if (_controls.TryGetValue(key, out var ctl) && ctl.IsInsideTree()) { var r0 = ctl.GetGlobalRect(); r0.Position -= off; rows.Add(r0.Grow(8)); }
+        // Round L3 review: one rule at every window size. The card stands centred on the window, as every modal card
+        // does; only when that would lie on a row it names (or on the page's own buttons) does it move straight up or
+        // down from the centre, to the nearest place that is clear and inside the window.
+        var c0 = (_canvas - size) / 2f;
+        float step = 8f, reach = Math.Max(c0.Y, 0f);
+        for (float d = 0; d <= reach + step; d += step)
+            foreach (float dy in d == 0 ? new[] { 0f } : new[] { -d, d })
+            {
+                var at = new Vector2(c0.X, Math.Clamp(c0.Y + dy, 0f, Math.Max(0f, _canvas.Y - size.Y)));
+                var r = new Rect2(at, size);
+                bool clear = true;
+                foreach (var row in rows) if (row.Intersects(r)) { clear = false; break; }
+                if (clear) { card.Position = at.Round(); return; }
+            }
+        card.Position = c0.Round();
     }
 
     private void SlipYes()

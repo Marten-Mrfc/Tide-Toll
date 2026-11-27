@@ -19,7 +19,7 @@ public partial class UiAudit
         Main.Rig.UserMoved = true;
         Main.Rig.LookAt(pivot, Main.Rig.PlaySize, instant: true);
         await WaitFor(() => Math.Abs(Main.Rig.Camera.Size - Main.Rig.TargetSize) < 0.5f && Main.Rig.InPlayView && !Main.Cover.Moving
-                            && Main.Hud.SlimVisible && Main.Hud.FullAlpha <= 0f, 8000);
+                            && Main.Hud.FullAlpha <= 0f, 8000);
         await Wait(600);
         await Shot(pageId, $"Page stage ({age} age)", $"camera to Rig.PlaySize (the whole page); slim strip={Main.Hud.SlimVisible}, stage={Main.Stage}");
         Main.Rig.LookAt(pivot, Main.Rig.MaxSize, instant: true);
@@ -63,7 +63,9 @@ public partial class UiAudit
         await Frames(4);
         await WaitFor(() => Main.Menu.CoverShown && !Main.Menu.Motion.Running, 20000);
 
-        // u21..u25: settings pages from the cover.
+        // u21..u25: settings pages from the cover. (Round L3: in an --only run the u20 question's Esc may have resumed the
+        // game: pause again first.)
+        if (Main.Menu.Now == PauseMenu.State.Playing) { Main.Menu.Pause(); await WaitFor(() => Main.Menu.CoverShown && !Main.Menu.Motion.Running, 60000); }
         var store = Main.Settings.Store;
         Key pave0 = store.KeyFor("tt_pave", 0), bell0 = store.KeyFor("tt_bell", 0);
         string[] ids = { "u21", "u22", "u23", "u24" };

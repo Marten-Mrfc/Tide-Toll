@@ -56,7 +56,13 @@ public partial class PauseMenu : CanvasLayer
     /// <summary>The cover menu is the menu now (its lettering may still be fading in).</summary>
     public bool CoverShown => Now == State.Cover && _cover.Visible && _warm <= 0 && !_saveDue;
     public bool QuestionShown => _ask.Visible && Now == State.Asking;
-    public string QuestionText => _askText.Text;
+    public string QuestionText => QuestionTitle + " " + _askText.Text;
+    public const string QuestionTitle = "Start a new town?", QuestionBody = "This town will be lost.";
+    private ColorRect _askScrim = null!;
+    private PanelContainer? _askCard;
+    private CanvasGroup _askGroup = null!;
+    /// <summary>The question's card on screen (tests and the tour).</summary>
+    public Rect2 QuestionRect => _askCard?.GetGlobalRect() ?? default;
     /// <summary>The lettering (title, name, menu) as drawn: Visible and its opacity (tests).</summary>
     public bool LetteringVisible => _cover.Visible;
     public bool QuestionVisible => _ask.Visible;
@@ -80,9 +86,13 @@ public partial class PauseMenu : CanvasLayer
         _quit = Item("Quit", SaveAndQuit);
         _ask = new Control { Name = "Question", Visible = false, MouseFilter = Control.MouseFilterEnum.Stop };
         _root.AddChild(_ask);
-        _ask.Draw += () => DrawTooling(_ask);
-        _askText = new Label { Text = Question, HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        _ask.AddChild(_askText);
+        // Round L3: the question is the one modal card (ModalCard), centred on the window over a dimmed cover.
+        _askScrim = new ColorRect { Name = "Scrim", Color = new Color(UiKit.Ink, 0.35f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        _ask.AddChild(_askScrim);
+        // Round L3 review: the card (paper, text, buttons) is drawn into one group and faded as one picture, so its
+        // text never lags its paper (each child blended on its own left dark ink invisible on the dark cover).
+        _askGroup = new CanvasGroup { Name = "QuestionGroup" };
+        _ask.AddChild(_askGroup);
         _yes = Item("Start a new town", ConfirmNewTown, _ask);
         _no = Item("Keep this town", CancelAsk, _ask);
         _coverItems = new[] { _resume, _settings, _newTown, _quit };
@@ -187,6 +197,7 @@ public partial class PauseMenu : CanvasLayer
         choice.BgColor = new Color(Gilt, 0.04f); choice.BorderColor = new Color(GiltDim, 0.85f);
         foreach (var b in _allItems)
         {
+            if (b.GetParent() != _cover) continue;
             b.AddThemeFontSizeOverride("font_size", UiKit.FontPx(s, b.GetParent() == _ask ? 34 : 44));
             b.AddThemeStyleboxOverride("normal", b.GetParent() == _ask ? choice : plain);
             b.AddThemeStyleboxOverride("hover", frame);
@@ -204,9 +215,7 @@ public partial class PauseMenu : CanvasLayer
             l.AddThemeConstantOverride("shadow_offset_x", UiKit.Px(s, 1));
             l.AddThemeConstantOverride("shadow_offset_y", UiKit.Px(s, 2));
         }
-        _askText.AddThemeFontOverride("font", UiKit.Serif);
-        _askText.AddThemeFontSizeOverride("font_size", UiKit.FontPx(s, 40));
-        _askText.AddThemeColorOverride("font_color", GiltBright);
+        BuildAskCard(s);
         _laidRect = default;
     }
 
@@ -265,9 +274,12 @@ public partial class PauseMenu : CanvasLayer
         bool moved = r != _laidRect;
         _laidRect = r; _laidSlide = slide;
         _cover.Position = r.Position; _cover.Size = r.Size;
-        _ask.Position = r.Position + new Vector2(0, slide * UiKit.Px(s, 28)); _ask.Size = r.Size;
-        if (!moved && !force) { _ask.QueueRedraw(); return; }
-        _cover.QueueRedraw(); _ask.QueueRedraw();
+        var view = GetViewport().GetVisibleRect().Size;
+        _ask.Position = new Vector2(0, slide * UiKit.Px(s, 28)); _ask.Size = view;
+        _askScrim.Position = new Vector2(0, -slide * UiKit.Px(s, 28)); _askScrim.Size = view;
+        if (_askCard != null) ModalCard.Centre(_askCard, view);
+        if (!moved && !force) return;
+        _cover.QueueRedraw();
         float w = r.Size.X;
         Place(_title, w, r.Size.Y * 0.16f);
         Place(_name, w, _title.Position.Y + _title.Size.Y + UiKit.Px(s, 4));
@@ -278,17 +290,19 @@ public partial class PauseMenu : CanvasLayer
             b.Position = new Vector2((w - b.Size.X) / 2f, y);
             y += b.Size.Y + UiKit.Px(s, 14);
         }
-        _askText.Size = new Vector2(w * 0.78f, 0);
-        _askText.ResetSize();
-        _askText.Size = new Vector2(w * 0.78f, _askText.Size.Y);
-        _askText.Position = new Vector2(w * 0.11f, r.Size.Y * 0.30f);
-        y = _askText.Position.Y + _askText.Size.Y + UiKit.Px(s, 40);
-        foreach (var b in _askItems)
-        {
-            b.ResetSize();
-            b.Position = new Vector2((w - b.Size.X) / 2f, y);
-            y += b.Size.Y + UiKit.Px(s, 14);
-        }
+    }
+
+    /// <summary>The question's modal card, built again for an interface size (the two buttons move into it).</summary>
+    private void BuildAskCard(float s)
+    {
+        foreach (var b in _askItems) b.GetParent()?.RemoveChild(b);
+        if (_askCard != null) { _askGroup.RemoveChild(_askCard); _askCard.QueueFree(); }
+        _askCard = ModalCard.Build(s, QuestionTitle, QuestionBody, out var body, out var row, "QuestionCard");
+        _askText = body;
+        _askGroup.AddChild(_askCard);
+        row.AddChild(ModalCard.Button(_yes, s, primary: false));
+        row.AddChild(ModalCard.Button(_no, s, primary: true));
+        Chain(_yes, _no);
     }
 
     private static void Place(Control c, float w, float y)
@@ -302,7 +316,6 @@ public partial class PauseMenu : CanvasLayer
     {
         // The question's lines slide in with it, but its tooled frame stays put on the board (it lies exactly over the
         // cover's own, so the two cross-fade as one).
-        if (page == _ask) page.DrawSetTransform(new Vector2(0, -_askSlide * UiKit.Px(Math.Max(0.5f, _s), 28)));
         var sz = page.Size;
         float s = Math.Max(0.5f, _s);
         float i1 = sz.X * 0.085f, i2 = i1 + UiKit.Px(s, 8);
@@ -340,6 +353,9 @@ public partial class PauseMenu : CanvasLayer
     /// The camera for the open book under the settings spread: straight down, the 3D pages exactly under the 2D pages
     /// (their height and centre), so the spread arrives on the paper as a cross-fade.
     /// </summary>
+    /// <summary>The settings pages' rectangle on screen (Main: the zoom's outer end is the spread view).</summary>
+    public Rect2 SpreadPagesRect => _pages.PagesRect;
+
     public (Vector3 centre, float size) SpreadView()
     {
         var vp = GetViewport().GetVisibleRect().Size;

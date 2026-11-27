@@ -48,6 +48,14 @@ public partial class MotionTest
         };
     }
 
+    private float PivotJerk(int i) => new Vector2(_buf[i].PX - 2 * _buf[i - 1].PX + _buf[i - 2].PX, _buf[i].PZ - 2 * _buf[i - 1].PZ + _buf[i - 2].PZ).Length();
+    private float PivotPeak()
+    {
+        float pk = 0;
+        for (int i = 1; i < _n; i++) pk = Math.Max(pk, new Vector2(_buf[i].PX - _buf[i - 1].PX, _buf[i].PZ - _buf[i - 1].PZ).Length());
+        return pk;
+    }
+
     /// <summary>The leaf's edge has a place only while a page turns (it draws nothing at rest): at rest, the nearest turning frame's.</summary>
     private float LeafAt(int i)
     {
@@ -118,14 +126,19 @@ public partial class MotionTest
                 if (_fps == 60) Check(share <= bound, $"{name}: {ChName[c]} jumps {share:0.000} of its range in one frame at frame {i} (bound {bound})");
             }
             // The shape of the curves is checked at 60 fps and finer (at 30 a 0.2 s fade is six frames: too coarse to judge).
-            if (kind == Kind.Impatient || peak <= 0 || _fps < 60) continue;
+            // Round L3: impatient cases too (speed is carried over when one transition takes over another).
+            if (peak <= 0 || _fps < 60) continue;
             var (first, last) = Window(c, peak * 1e-4f);
             float d0 = MathF.Abs(Val(first, c) - Val(first - 1, c)), d1 = MathF.Abs(Val(last, c) - Val(last - 1, c));
             Check(d0 <= peak * EndSlow, $"{name}: {ChName[c]} starts at speed {d0 / peak:0.00} of its top speed (bound {EndSlow})");
             Check(d1 <= peak * EndSlow, $"{name}: {ChName[c]} stops at speed {d1 / peak:0.00} of its top speed (bound {EndSlow})");
             for (int i = 2; i < _n; i++)
             {
+                if (c == 9 && (_buf[i].TurnId != _buf[i - 1].TurnId || _buf[i - 1].TurnId != _buf[i - 2].TurnId)) continue;
                 float a = (Val(i, c) - Val(i - 1, c)) - (Val(i - 1, c) - Val(i - 2, c));
+                // Round L3: the pivot moves in the plane; its distance from the first frame bends wherever the path passes
+                // near that point (a turned-round move does), so its change of speed is the vector's, against its top speed.
+                if (c == 1) { a = PivotJerk(i); peak = Math.Max(peak, PivotPeak()); }
                 Check(MathF.Abs(a) <= peak * Jerk, $"{name}: {ChName[c]} speed jumps {MathF.Abs(a) / peak:0.00} of its top speed at frame {i} (bound {Jerk})");
             }
         }

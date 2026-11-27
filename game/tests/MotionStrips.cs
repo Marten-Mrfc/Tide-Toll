@@ -57,6 +57,8 @@ public partial class MotionStrips : TownTestBase
             await Strip("resume", () => TestInput.Key(Godot.Key.Enter));
             await Until(() => M.Now == PauseMenu.State.Playing && !M.Motion.Running, 3000, "the town");
             await Wait(400);
+            await EscTwiceStrip();
+            await Wait(400);
             var hud = Main.Hud;
             await PageStrip("achievements", hud.AchievementsFade, () => hud.OpenAchievements(), () => hud.CloseAchievements());
         }
@@ -137,6 +139,47 @@ public partial class MotionStrips : TownTestBase
 
     private Image? _tableEdge;
 
+    /// <summary>Round L3: the book closing, Esc again 0.45 s in (the clock running freely so the parts' speeds are
+    /// real), and the opening that takes over held at even moments: no part may drop to rest at the takeover.</summary>
+    private async Task EscTwiceStrip()
+    {
+        M.Motion.Release();
+        TestInput.Key(Godot.Key.Escape);
+        await Until(() => M.Motion.Running && M.Motion.Time >= 0.45f, 3000, "the closing under way");
+        TestInput.Key(Godot.Key.Escape);
+        // Held only once the opening has taken over (holding first would set the closing's clock back before the takeover).
+        await Until(() => M.Moving == PauseMenu.Move.Open, 600, "the opening taking over");
+        M.Motion.Hold(0f);
+        await Frames(2);
+        Check(M.Carried, "esc-twice: the opening did not carry the closing's speeds");
+        for (int k = 0; k < Count; k++)
+        {
+            M.Motion.Hold(M.Motion.Length * k / (Count - 1));
+            await Frames(3);
+            await Save("esc-twice", k);
+        }
+        M.Motion.Release();
+        await Until(() => M.Now == PauseMenu.State.Playing && !M.Motion.Running, 3000, "the town after esc-twice");
+    }
+
+    /// <summary>Round L3: the 3D page as the camera shows it at the spread view (before the leaf) against the 2D settings
+    /// page drawn over it at rest (the leaf and the pages are drawn in PageLeaf.BookPaper): at most 4 of 255 apart.</summary>
+    private void PaperCheck(string name, Image book, Image pages)
+    {
+        var r = P.PagesRect;
+        float half = r.Size.X / 2f, sp = r.Position.X + half, worst = 0f;
+        foreach (var (x0, where) in new[] { (sp + half * 0.3f, "right"), (r.Position.X + half * 0.3f, "left") })
+        {
+            // A strip of the page's foot margin, clear of print on both.
+            var patch = new Rect2I((int)x0, (int)(r.End.Y - r.Size.Y * 0.045f), (int)(half * 0.4f), Math.Max(4, (int)(r.Size.Y * 0.025f)));
+            var ca = Mean(book, patch); var cb = Mean(pages, patch);
+            float d = Math.Max(Math.Abs(ca.R - cb.R), Math.Max(Math.Abs(ca.G - cb.G), Math.Abs(ca.B - cb.B))) * 255f;
+            worst = Math.Max(worst, d);
+            GD.Print($"STRIPS paper {name} {where} {patch}: 3D page {ca.R * 255:0.0},{ca.G * 255:0.0},{ca.B * 255:0.0}; settings page {cb.R * 255:0.0},{cb.G * 255:0.0},{cb.B * 255:0.0}; differ {d:0.0} of 255");
+        }
+        Check(worst <= 4f, $"{name}: the settings pages differ from the book's own paper by {worst:0.0} of 255");
+    }
+
     private async Task<Image> Grab()
     {
         await Frames(2);
@@ -148,6 +191,7 @@ public partial class MotionStrips : TownTestBase
     private void TableCheck(string name, Image a, Image? b, bool opening)
     {
         if (b == null) { _tableEdge = a; return; }
+        if (opening) PaperCheck(name, a, b);
         var r = P.PagesRect;
         var size = a.GetSize();
         // Left of the book (clear of its cover's lip and the page stack), and below it (left of the 3D bookmark).

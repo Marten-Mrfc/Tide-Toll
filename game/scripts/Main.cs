@@ -67,7 +67,19 @@ public partial class Main : Node3D
         _limitsFor = vp;
         float aspect = vp.X / vp.Y;
         Rig.MaxSize = Math.Max(BookBuilder.CoverSize.Y * 1.10f, BookBuilder.CoverSize.X * 1.06f / Math.Max(0.3f, aspect));
+        // Round L3: zoomed all the way out the book stands in ONE place, the place of the settings spread (which keeps
+        // its margins to the window and the navigation row): the zoom's outer end is the spread view.
+        Rig.OuterCentre = null;
+        if (Menu != null && Menu.SpreadPagesRect.Size.Y >= 1f)
+        {
+            _limitsPages = Menu.SpreadPagesRect;
+            var (c, size) = Menu.SpreadView();
+            Rig.MaxSize = size;
+            Rig.OuterCentre = c;
+        }
     }
+
+    private Rect2 _limitsPages;
 
     public override void _Ready()
     {
@@ -272,7 +284,7 @@ public partial class Main : Node3D
         if (follow && !Rig.UserMoved && _followClock >= 0.25) { _followClock = 0; Follow(instant: false); }
         var vp = GetViewport().GetVisibleRect().Size;
         if (vp.Y < 1f || Rig.Camera.Size <= 0f) return;
-        if (vp != _limitsFor) SetZoomLimits();
+        if (vp != _limitsFor || Menu.SpreadPagesRect != _limitsPages) SetZoomLimits();
         Ink.Update(Rig.Camera, vp);
         // Round 7: not while the menu has the book (the town stands still; PauseMenu writes the page before each motion).
         Summary.Watched = Rig.Camera.Size >= Rig.PlaySize * 0.8f && !Menu.IsPaused;
