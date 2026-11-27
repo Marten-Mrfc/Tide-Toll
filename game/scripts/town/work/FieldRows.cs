@@ -30,6 +30,7 @@ public partial class FieldRows : Node3D
 
     private WorkPlaces _w = null!;
     private readonly MultiMesh[] _mm = new MultiMesh[Kinds];
+    private static readonly MultiMesh?[] Shared = new MultiMesh?[Kinds + 1];
     private MultiMesh _stooks = null!;
     private readonly int[] _count = new int[Kinds];
 
@@ -68,14 +69,20 @@ public partial class FieldRows : Node3D
         int cap = MaxFields * MaxRows * MaxPieces * 2;
         for (int k = 0; k < Kinds; k++)
         {
-            var mi = ModelLib.Multi(ModelLib.Pick(Models[k], "field-ripe"), "Rows" + k, cap);
-            AddChild(mi);
-            _mm[k] = mi.Multimesh;
+            // made once for the process (static; see WellWorks): a new scene's rows take them over
+            Shared[k] ??= NewMulti(ModelLib.Pick(Models[k], "field-ripe"), cap);
+            _mm[k] = Shared[k]!;
+            _mm[k].VisibleInstanceCount = 0;
+            AddChild(new MultiMeshInstance3D { Name = "Rows" + k, Multimesh = _mm[k] });
         }
-        var st = ModelLib.Multi(ModelLib.Pick("work-stook", "field-ripe"), "Stooks", MaxFields * MaxRows * 2);
-        AddChild(st);
-        _stooks = st.Multimesh;
+        Shared[Kinds] ??= NewMulti(ModelLib.Pick("work-stook", "field-ripe"), MaxFields * MaxRows * 2);
+        _stooks = Shared[Kinds]!;
+        _stooks.VisibleInstanceCount = 0;
+        AddChild(new MultiMeshInstance3D { Name = "Stooks", Multimesh = _stooks });
     }
+
+    private static MultiMesh NewMulti(string model, int cap)
+        => new() { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = cap, Mesh = ModelLib.Mesh(model), VisibleInstanceCount = 0 };
 
     public void Reset()
     {

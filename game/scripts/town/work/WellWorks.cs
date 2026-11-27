@@ -32,7 +32,10 @@ public partial class WellWorks : Node3D
     private readonly Vector3[] PailPos = new Vector3[2];
     private Vector3 _toView = Vector3.Back;
     private static readonly float[] PailYaw = { 0.4f, 1.2f };
-    private StandardMaterial3D? _wood;   // not static: a Resource held past the scene is finalized after the engine is gone
+    // Code-made resources are made once for the process and kept (static): a resource wrapper left to the garbage
+    // collector is finalized on its own thread, which races the engine (game-save: "Handle is not initialized").
+    private static StandardMaterial3D? _wood;
+    private static BoxMesh? _arm, _grip;
 
     /// <summary>The wet ground's state, 0 dry to 1 soaked (tests), the bucket's drawn height share, pails shown, tips started.</summary>
     public float Wet { get; private set; }
@@ -89,8 +92,8 @@ public partial class WellWorks : Node3D
         _wood ??= new StandardMaterial3D { AlbedoColor = Palette.Mud, Roughness = 1f, SpecularMode = BaseMaterial3D.SpecularModeEnum.Disabled };
         _crank = new Node3D { Name = "Crank", Position = new Vector3(1.2f, Drum, 0) };
         holder.AddChild(_crank);
-        _crank.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.1f, 0.1f, 0.42f), Material = _wood }, Position = new Vector3(0, 0, 0.2f) });
-        _crank.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.3f, 0.09f, 0.09f), Material = _wood }, Position = new Vector3(0.12f, 0, 0.4f) });
+        _crank.AddChild(new MeshInstance3D { Mesh = _arm ??= new BoxMesh { Size = new Vector3(0.1f, 0.1f, 0.42f), Material = _wood }, Position = new Vector3(0, 0, 0.2f) });
+        _crank.AddChild(new MeshInstance3D { Mesh = _grip ??= new BoxMesh { Size = new Vector3(0.3f, 0.09f, 0.09f), Material = _wood }, Position = new Vector3(0.12f, 0, 0.4f) });
         Apply();
     }
 

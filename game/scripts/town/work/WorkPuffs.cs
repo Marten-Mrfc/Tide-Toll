@@ -21,11 +21,18 @@ public partial class WorkPuffs : Node3D
     public override void _Ready()
     {
         Name = "Puffs";
-        _puffs = Make("Flour", new SphereMesh { Radius = 0.5f, Height = 0.8f, RadialSegments = 10, Rings = 5 });
-        _rings = Make("Splash", new TorusMesh { InnerRadius = 0.82f, OuterRadius = 1f, Rings = 20, RingSegments = 3 });
+        // the meshes, materials and MultiMeshes are made once for the process (static; see WellWorks); one pool is
+        // drawn at a time (a new scene takes them over from the one it replaces)
+        _puffs = Made[0] ??= Make(new SphereMesh { Radius = 0.5f, Height = 0.8f, RadialSegments = 10, Rings = 5 });
+        _rings = Made[1] ??= Make(new TorusMesh { InnerRadius = 0.82f, OuterRadius = 1f, Rings = 20, RingSegments = 3 });
+        AddChild(new MultiMeshInstance3D { Name = "Flour", Multimesh = _puffs, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        AddChild(new MultiMeshInstance3D { Name = "Splash", Multimesh = _rings, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        Clear();
     }
 
-    private MultiMesh Make(string name, Mesh mesh)
+    private static readonly MultiMesh?[] Made = new MultiMesh?[2];
+
+    private static MultiMesh Make(Mesh mesh)
     {
         var mat = new StandardMaterial3D
         {
@@ -34,7 +41,6 @@ public partial class WorkPuffs : Node3D
         };
         mesh.SurfaceSetMaterial(0, mat);
         var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseColors = true, Mesh = mesh, InstanceCount = Cap, VisibleInstanceCount = 0 };
-        AddChild(new MultiMeshInstance3D { Name = name, Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         return mm;
     }
 
