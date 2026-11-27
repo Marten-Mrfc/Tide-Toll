@@ -10,7 +10,8 @@ Several builders work at once, each in its own git worktree under `build/wt/`, o
    - any Godot picture run longer than two minutes; `./check` as a whole.
    - Take it: `mkdir /home/user/tide-toll/build/locks/heavy` (it succeeds only if nobody holds it). Give it back: `rmdir /home/user/tide-toll/build/locks/heavy`.
    - If you cannot get it, do other work and try again; wait with `python3 -c "import time; time.sleep(30)"`. Never a busy loop; foreground `sleep` is blocked.
-   - If the folder is more than 25 minutes old (`stat -c %Y`), its holder has probably died: say so in your report, `rmdir` it and take it.
+   - **Never hold the lock more than 15 minutes in one take:** split a long run (pictures, layout at several sizes) into takes and give the lock back between them.
+   - If the folder is more than **45 minutes** old (`stat -c %Y`), its holder has probably died: say so in your report, `rmdir` it and take it. (It was 25 minutes until 27 November 18:25, when a live holder's lock was taken as stale at 18:01 and two heavy runs overlapped.)
    - Building (`dotnet build`), the simulation's tests (`dotnet test sim.tests ...`) and short picture runs do not need the lock. Two builders (the places and the ink research) started before this rule and do not know it: a timing failure may still be their load, so run a failed timing check once more under the lock before you believe it.
 4. **Display numbers** for xvfb are given per builder; use only yours.
 5. **Never weaken a test.** A test that only fits the old look or the old rule may be replaced by the equal test for the new one; write each down (old assertion, new assertion, why). Report failures plainly, with the output.
