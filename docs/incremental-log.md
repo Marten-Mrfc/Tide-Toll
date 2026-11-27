@@ -46,6 +46,7 @@ The owner approved everything open: the boats, the villager roles, the ink lines
 
 - Rules for builders sharing the machine: `docs/plans/builders-rules.md` (a heavy-run lock: the folder `build/locks/heavy`; never `git stash`: at about 12:15 the ink builder's `git stash pop` applied the boats builder's stashed work in the wrong checkout; it kept a copy in the scratchpad folder `foreign-stash-backup` and the boats builder was told at 12:36 to check its work is whole).
 - After each builder: its pictures looked at by the lead, a reviewer who did not build it, fixes, merge into `claude/prototype-1`, and when a batch is in: the whole check on a clean copy (under the lock), a finished (non-Snapshot) commit, the Windows build.
+- **A whole check for a Windows build of what is merged** (villagers as people, the retune with the spreading on, the trade headwear's files; not the boats, not the trades): started 16:26 on a clean copy of `55ec84f` (`build/ck/n7-a`, log `build/ck-n7-a.log`), holding the heavy-run lock. If it passes: a finished (non-Snapshot) commit, then wait for GitHub's build.
 - To resume after a restart: `git worktree list`; each builder's progress file in its checkout says what is done; a lost builder is started again from its sheet and progress file.
 
 | Decision made for the owner | Why |
