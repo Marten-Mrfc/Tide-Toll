@@ -69,6 +69,8 @@ ShopItemKind.Training = 22              // one row, ten steps
 
 **The shop:** the row "Training" in the People group after Load, no key; it appears with the Trades card. Rules S1 to S9 hold; its name and line 2 are in the layout fixture.
 
+**The ledger's tooltip in the second age** gains one sentence, because since the retune a level's renown eases with time and the number after "of" falls slowly: "Word of the river spreads: each level asks a little less as time goes by."
+
 **On the map:** the hover tag "Joss, reaper"; the tag for 2 seconds on the first three villagers the town assigns; one hint, once, when the card first shows: "Every villager has a trade. Change them on the card at the left, or leave it to the town."
 
 **Rules:** nothing in one frame (0.15 s or longer, at 30, 60 and 120 frames a second); no allocation per frame; text made only when what it says changes; nothing overlaps or is cut at 1920 x 1080 and 1280 x 720, at interface sizes 80, 100 and 150 percent (the fixture holds the longest names); the two cards never show at once; the middle of the map stays free.
@@ -76,7 +78,9 @@ ShopItemKind.Training = 22              // one row, ten steps
 ## Part 3: the figures
 
 - A villager wears its trade's headwear (the models of the board's round 2; the miller its apron too); a Helper hair only. A change of trade changes the head with a short fade or a small puff, never in one frame.
-- The tunic list as the board's round 2 recommends, so no tunic takes a hat's colour.
+- **The tunic list becomes Brick, Packed earth, Cast-iron green, Mud, Soot brick** (River and Thatch go: under the kerchief and the straw hat they make one blue or one yellow figure; see the grid in `mockup/hats-round2.png`). The heads and the apron are separate meshes that the tunic's dye does not touch; keep them so.
+- The models are in `assets/models/`: `villager-head-kerchief`, `-strawhat`, `-cap`, `villager-apron`, and the Helper's `villager-head-helper-mud`, `-earth`, `-soot`. Known weak points to judge again in the game's frames: at the play view a carrier and a Helper differ by the head's colour only; the miller's peak hides the upper face.
+- The ink check reads its first subject of a run too high (a villagers' group measured alone reads 0.53, measured second 0.36): find the cause or measure a warm-up subject first, and say which.
 - `game-ink` passes with a group in mixed headwear; no allocation per frame in `TownVillagers`.
 
 ## Part 4: the tuning (the bands do not move; reasons and tables per constant, as the retune did)
@@ -86,6 +90,8 @@ ShopItemKind.Training = 22              // one row, ten steps
 3. **Careless:** at most about 15 percent later, and never an idle villager.
 4. **Seen:** villagers with a trade make at least 70 percent of their trips at it; the share of time with more than three quarters of the villagers on one job well under today's; hat changes by the town no more than about three a minute. Give the figures.
 5. Order: `TradeLean` (how much they stay), then the two bonuses so that point 1 holds, then Training's price and step so its payback sits among the other rows'.
+6. **The first age has little room** (the retune's notes: the charter's floor of 25 minutes has 0.8 minutes on its nearest run, seed 7 with the saver; a leaning of 10 percent alone took it under). Its last level still costs minutes of the town's own best income (`CharterMinutes`, `Town.LevelRenownOf`), the rule the retune replaced in the second age. If trades cannot be given room there by `CharterMinutes` alone, replace that rule the way the retune did in the second age (fixed when the drive starts, easing with time), with the same proof (a richer run reaches the charter no later), and say so plainly. In the second age use `LevelMinutesScale` as the retune's notes describe.
+7. **The boats are being changed at the same time** (they take turns in the simulation: `docs/plans/n6/boats-progress.md` on branch `wt/n6-boats-build`), which moves the second age a little. Tune the second age last, and expect one more pass of `bands` after both are merged.
 
 ## Tests and pictures
 
