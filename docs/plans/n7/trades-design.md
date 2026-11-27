@@ -2,6 +2,8 @@
 
 The owner: "I would like each villager to have a role and that it can be assigned. Like I would like to add that as a full system."
 
+**After the board and its review (16:10 UTC) the build sheet `trades-build-sheet.md` holds the decisions; where this page differs from it, the sheet is right.** The main changes: the unassigned villager is a Helper and wears no hat; the town gives every villager a trade; plus and minus set your own count, which the town then leaves alone; one Training row for all trades; no status on a trade's line.
+
 Step 1 made villagers people (a name, a card on a click, bodies that keep apart). The retune (`retune-sheet.md`) makes them spread by themselves. This page is step 2: the trades of the first age. Step 3 (the second age's trades and who works where) is sketched at the end. The research behind it: `villager-roles.md`, `research/design-options.md`, `research/sim-roles-experiments.md`.
 
 ## What the player gets
