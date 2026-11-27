@@ -109,11 +109,10 @@ Run in this worktree with the commands of `tools/check.sh`; the timing checks an
 - game-ink: PASS (103 s; shares as in the table above). It fails on the old look: every kind was over its ceiling
   (cottages 0.53 to 0.66 against 0.25).
 - ledger (`python3 tools/check-ledger.py`): PASS, 504 rows, 478 asset files, 0 problems
-- **game-motion: FAIL, three runs**, each time only "frame N took 6.3 to 20 ms of CPU (gate 6)" on a different
-  transition and frame rate each run (pause, tab-flick, settings-close, esc-spam, banner, tab-redirected). The load
-  average was 10 to 15 on 4 cores while I held the lock (other work was running anyway). game-motion runs headless:
-  the ink shader is not executed there, and `InkOutline.Update` (the only per-frame ink code) is unchanged. I read it
-  as load, not as this change, but it has not been seen passing on this branch: run it once more on a quiet machine.
+- game-motion: **PASS** (MOTION RATES PASS) on the fourth run, at 12:33 with the load average down to 6, under the
+  lock. The three runs before it (12:21 to 12:29, load average 10 to 15 on 4 cores) failed only on "frame N took 6.3
+  to 20 ms of CPU (gate 6)", a different transition and frame rate each time. game-motion runs headless (the shader
+  is not executed) and the per-frame ink code is unchanged, so those were the machine's load.
 - screenshot: not run (not asked; its pictures all change with the new line).
 
 ## What I still see wrong
