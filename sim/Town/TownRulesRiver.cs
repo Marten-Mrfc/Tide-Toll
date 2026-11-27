@@ -28,7 +28,7 @@ public static class TownRulesRiver
     // n7 retune: 0.06 a minute (new). The fixed curve alone passes each run's own income growth straight into its seal minute:
     // at the growth that restores the mean, the buyers sealed from 17.6 to 40.2 minutes after the ring, a wider spread than the
     // 20-35 band. Easing the levels with time makes the seal minute follow the log of a town's income rather than the income
-    // itself: buyers 21.0 to 31.4 minutes. 0.03 still left 17.8 to 29.1 (with a too short last stretch); 0.07 thinned the floor.
+    // itself: buyers 21.0 to 31.4 minutes. 0.03 (growth 1.19) still left 17.8 to 29.1; 0.07 (growth 1.4) thinned the floor (20.5).
     public static double LevelEase = 0.06;
     // n7 retune: 1.05 (was 1, added unused by the people builder): brings the mean seal minute back with growth and ease as
     // above (0.9 gave 23.5 / 26.9 payback / cheapest; 1.05 gives 25.1 / 27.6 against 25.9 / 26.6 before).
