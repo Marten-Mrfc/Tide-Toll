@@ -28,6 +28,7 @@ public static class BandsCommand
         Apply(o);
         if (o.ContainsKey("rates")) return Rates(a, z);
         if (o.ContainsKey("demo")) return Demo(a, z);
+        if (o.ContainsKey("choice0")) return Choice0(a, z);
         int ns = z - a + 1;
         var first = new PacingResult[ns * Bots.Length];
         var river = new RiverPacingResult[ns * Bots.Length];
@@ -228,6 +229,30 @@ public static class BandsCommand
             Console.WriteLine($"DEMO {seed,3} | {cpm[0],7:F0} / {cpm[1],7:F0} / {cpm[2],7:F0} | {seal[0],5:F2} / {seal[1],5:F2} / {seal[2],5:F2} | {(ok ? "yes" : "NO")}");
         }
         Console.WriteLine($"DEMO richer never later on {ordered} of {n} seeds");
+        return 0;
+    }
+
+    /// <summary>n7 trades: the payback bot with each side of choice 0 forced; the charter minute per seed.</summary>
+    private static int Choice0(int a, int z)
+    {
+        int n = z - a + 1;
+        var ch = new double[n, 2];
+        System.Threading.Tasks.Parallel.For(0, 2 * n, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 }, i =>
+        {
+            int seed = a + i / 2, side = i % 2;
+            var t = new Town(seed);
+            var bot = new TownBot(BotKind.Payback, seed) { ForceChoice0 = side };
+            while (!t.HasCharter && t.Time < 60 * 60) { t.Step(); bot.Act(t); }
+            ch[i / 2, side] = t.Time / 60;
+        });
+        int sa = 0, sb = 0; double ma = 0, mb = 0;
+        for (int s = 0; s < n; s++)
+        {
+            Console.WriteLine($"CHOICE0 {a + s,3} | lanes {ch[s, 0],6:F2} | backs {ch[s, 1],6:F2}");
+            ma += ch[s, 0] / n; mb += ch[s, 1] / n;
+            if (ch[s, 0] < ch[s, 1]) sa++; else if (ch[s, 1] < ch[s, 0]) sb++;
+        }
+        Console.WriteLine($"CHOICE0 mean lanes {ma:F2} backs {mb:F2} differ {Math.Abs(ma - mb) / Math.Min(ma, mb) * 100:F2} % | sooner: lanes {sa}, backs {sb}");
         return 0;
     }
 

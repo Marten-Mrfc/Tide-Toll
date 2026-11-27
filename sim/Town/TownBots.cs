@@ -20,6 +20,8 @@ public sealed class TownBot
     public BotKind Kind { get; }
     /// <summary>Test switches: never ring the bell; never pave; never buy an extra hand (a test that buys the offer itself).</summary>
     public bool NoBell, NoPave, NoHands;
+    /// <summary>Test switch: the side (0 or 1) to take at choice 0 whatever the estimate (-1: the bot's own pick).</summary>
+    public int ForceChoice0 = -1;
     /// <summary>The second age: ring in the next age at the charter and play on (off by default: the bots stop at the charter, as before).</summary>
     public bool PlayOn;
     private Mulberry32 _rng;
@@ -54,6 +56,7 @@ public sealed class TownBot
     private void ChooseBoon(Town t)
     {
         var c = t.Choice;
+        if (c.Choice == 0 && ForceChoice0 >= 0) { t.ChooseSide(ForceChoice0); return; }
         int side = Kind switch
         {
             BotKind.Cheapest => 0,

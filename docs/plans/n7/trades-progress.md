@@ -300,3 +300,50 @@ Added `town.TrainingStepBonus` (what one more step adds to both bonuses, 0 after
 - `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   297, Skipped:     0, Total:   298` (`ThePaybackBotDoesNotAlwaysPickTheSameSide`).
 - `bands --bell` (both ages): no band fails; every margin as in the band table above (unchanged: no rule changed this round).
 - game-playthrough (under the lock; the lock folder was 25.7 minutes old, its holder presumed gone, removed and taken at 18:01): `PLAY PASS charter=34.5min buys=201 paves=24 extends=14 bells=78 clicks=200 keys=107`.
+
+## Third round (the lead's decision on the choice at level 4)
+
+### The test replaced, for choice 0 only
+
+`TownRulesV3Tests.ThePaybackBotDoesNotAlwaysPickTheSameSide`. Old assertion (choice 0): the payback bot's picks split, neither side more than 8 of seeds 1 to 10. New assertion (choice 0): seeds 1 to 10, the payback bot with Wider lanes forced at choice 0 and again with Stronger backs forced (its own play otherwise, `TownBot.ForceChoice0`, a test switch): the two mean charter minutes differ by at most 2 percent, and neither side reaches the charter sooner on more than 8 seeds. Why: with villagers spread no road is crowded at level 4 in any town, so the bot's estimate is the same everywhere and its picks cannot split whatever the constant (the sweep above); the new test looks at what the choice does. Choices 1 to 3 keep the old assertion. The comment at the test says the same.
+
+### Forced picks at today's BoonWalk (0.045): it already passes
+
+`bands --choice0` (charter minute, payback bot):
+
+| seed | lanes forced | backs forced |
+| --- | --- | --- |
+| 1 | 28.92 | 29.45 |
+| 2 | 30.37 | 32.81 |
+| 3 | 29.52 | 29.12 |
+| 4 | 29.60 | 30.73 |
+| 5 | 29.24 | 29.23 |
+| 6 | 28.88 | 28.95 |
+| 7 | 28.35 | 26.21 |
+| 8 | 31.23 | 30.90 |
+| 9 | 29.75 | 29.61 |
+| 10 | 30.07 | 27.55 |
+| mean | 29.59 | 29.46 (differ 0.46 %) |
+
+Sooner: lanes on 4 seeds, backs on 6. Both conditions hold at 0.045, so **`BoonWalk` is unchanged** (the smallest change that meets them is none), and with no constant changed **the pin was not recorded anew**: it still dates from `70922b8` and passes at every commit since (with only the trades added: `ff77486`).
+
+### Choice 2 now shows: it fails the old assertion
+
+With choice 0 no longer failing first, the same test reaches choice 2 (A Third room / B Faster hands) and fails: **"choice 2: side A 9, side B 1 of 10"** (one over the bound). It passed on the main branch. Faster hands' worth counts the queues (`rate x (WorkShareOfTrip + queued / villagers) x ...`), and with villagers spread the queues at level 10 are short, so Third room wins nearly everywhere: the same cause as choice 0. Not tuned: the decision allows `BoonWalk` only, and the test's assertion for choices 1 to 3 is to stay. The lead's call (the same replacement for choice 2, or `BoonHands` / `BoonRoom`).
+
+### CharterMinutes
+
+Smallest margin over the first-age band tests (counts that sit at their floor on the main branch too left out) and the saver's last-gap margin:
+
+| CharterMinutes | smallest band margin (run) | next | saver last stretch / longest before | smallest of all |
+| --- | --- | --- | --- | --- |
+| 9.5 | 0.6 % (charter floor, seed 7 saver) | 2.4 % (ceiling) | 2.80 / 3.10 (9.7 %) | 0.6 % |
+| 10 | 0.6 % (charter floor, seed 7 saver) | 1.5 % (ceiling) | 2.91 / 3.10 (6.2 %) | 0.6 % |
+| 10.5 | 1.4 % (charter floor) | 1.5 % (ceiling) | 3.08 / 3.10 (0.8 %) | 0.8 % |
+
+10.5 wins by 0.2 points, a difference well inside what one run moves; it is not shipped, because changing it changes the trades-off run and the pin was to be re-recorded only with the boon's change, which did not happen. **`CharterMinutes` stays 10.** If the pin is freed for it alone, 10.5 is the one by the rule.
+
+### Result lines (third round)
+
+- `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Failed!  - Failed:     1, Passed:   299, Skipped:     0, Total:   300` (`ThePaybackBotDoesNotAlwaysPickTheSameSide`, "choice 2: side A 9, side B 1 of 10").
+- `bands --bell`, both ages: no band fails; the margins are those of the band table above (nothing in the rules changed).
