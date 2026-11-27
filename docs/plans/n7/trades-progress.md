@@ -37,7 +37,7 @@ Town.TradeOfJob(JobKind j)              // static; wool and cloth jobs: None (th
 Town.TradeOfLeaning(Leaning l)          // static
 town.TradeWorkBonus, town.TradeWorthBonus   // fractions, Training included, without the like
 town.TradeEarnPerHead(Trade t)          // coin a minute a head of the trade's work lately (the figure the town fills by)   [rules commit 2d2bac4]
-town.TrainingStepBonus                  // what one more Training step adds to both bonuses (0.04 = +4 %; 0 after ten)      [second round, see below]
+town.TrainingStepBonus                  // what one more Training step adds to both bonuses (0.04 = +4 %; 0 after ten)      [ba55341]
 
 town.SetTradeCount(Trade t, int n)      // yours from now on (Trade.None: the Helpers' count); false if nothing changed
 town.SetVillagerTrade(int id, Trade t)  // that villager is yours from now on
@@ -290,4 +290,4 @@ How fragile: the margins of the first age's bands are those of single runs that 
 
 ### 5. The Training tooltip's view
 
-Added `town.TrainingStepBonus` (what one more step adds to both bonuses, 0 after the tenth); the tooltip's percentages: `TradeWorkBonus`, `TradeWorthBonus` (now) and `TrainingStepBonus` (one more step). No rule changed.
+Added `town.TrainingStepBonus` (what one more step adds to both bonuses, 0 after the tenth; commit `ba55341`); the tooltip's percentages: `TradeWorkBonus`, `TradeWorthBonus` (now) and `TrainingStepBonus` (one more step). No rule changed.
