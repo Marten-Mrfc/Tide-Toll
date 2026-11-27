@@ -161,7 +161,7 @@ public partial class AssetAudit : TownTestBase
             var n = new Node3D { Name = "Subject" };
             for (int i = 0; i < 6; i++)
             {
-                var f = TownVillagers.Figure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, i % 2);
+                var f = TownVillagers.Figure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, i % 2, trade: GroupTrades[i]);
                 f.Position = new Vector3((i % 3 - 1) * 1.6f * walker, 0, (i / 3) * 1.8f * walker);
                 f.Rotation = new Vector3(0, 0.4f * (i - 2), 0);
                 n.AddChild(f);
