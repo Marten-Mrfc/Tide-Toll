@@ -1,9 +1,9 @@
 {
  "newest": {
-  "round": "R2 (assets)",
-  "commit": "4dbb3e0",
-  "url": "https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300",
-  "result": "success, artifact `TideToll-windows-x64`: the river, crossings, boats, the book's table, leather and paper, and the small things, on top of the new layout and asset round 1"
+  "round": "final (feel, last look)",
+  "commit": "e02da4e",
+  "url": "https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45939301484",
+  "result": "success, artifact `TideToll-windows-x64` (88 MB): **the final build of the night**, with everything"
  },
  "closing": [
   {
@@ -11,15 +11,18 @@
    "title": "The newest Windows build",
    "kind": "text",
    "paras": [
-    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300\"><strong>Round R2 (assets), commit 4dbb3e0</strong></a>. Open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
-    "success, artifact <code>TideToll-windows-x64</code>: the river, crossings, boats, the book's table, leather and paper, and the small things, on top of the new layout and asset round 1",
+    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45939301484\"><strong>Build final (feel, last look), commit e02da4e</strong></a>. Open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
+    "In this build: artifact <code>TideToll-windows-x64</code> (88 MB): <strong>the final build of the night</strong>, with everything",
     "Nobody has run this exe on Windows tonight. Everything ran on Linux in a cloud machine without a graphics card."
    ],
    "items": [
     "start, commit <code>b797857</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45806770859\">run page</a>",
     "R1 (assets), commit <code>828643d</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45906718094\">run page</a>",
     "L1 (layout), commit <code>754ea3d</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45913581143\">run page</a>",
-    "R2 (assets), commit <code>4dbb3e0</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300\">run page</a>"
+    "R2 (assets), commit <code>4dbb3e0</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300\">run page</a>",
+    "L2 + L3 (messages, the book), commit <code>924e819</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45931659971\">run page</a>",
+    "R3 (assets), commit <code>eb40c66</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45935225528\">run page</a>",
+    "final (feel, last look), commit <code>e02da4e</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45939301484\">run page</a>"
    ],
    "items_title": "Every build of the night, oldest first"
   },
@@ -31,23 +34,29 @@
     {
      "title": "Better",
      "items": [
-      "The town is clearly better to look at: people instead of pawns, a street that does not repeat, a real mill, trees of five kinds, fields that read as crops.",
-      "The screen is calm now, judged from the pictures: every kind of thing has one place, and nothing overlaps on any of the eight window and interface sizes tested.",
-      "The shop reads as a list with prices instead of twelve cards.",
-      "Play is unchanged by the numbers: the charter at minute 33.9 and 201 purchases, as before the night."
+      "The screen is calm. Every kind of thing has one fixed place: the ledger top left, the shop top right, the bell bottom left, navigation bottom right, one message top centre, one line of guidance bottom centre. A check compares every state of the screen on eight window and interface sizes with the layout sheet: nothing overlaps, nothing is cut off, nothing changes place when something else appears.",
+      "The shop is a list of rows with a price instead of twelve three-line cards. Locked purchases are named on their group's heading, finished ones leave, each row has its own icon, and a tooltip says what a purchase does, what it is worth and why it cannot be bought yet. Eighteen text sizes became four.",
+      "Messages wait their turn. One banner at a time, one note at a time, none appearing in a single frame; about two thirds of the old notes are gone; a banner that is no longer true is dropped; a request says Done or Too late in its own place.",
+      "The first minute explains itself with four short hints that show once.",
+      "The town is better to look at: villagers are people with hats, hoods and arms; cottages come in nine shapes with chimneys and smoke; a real mill whose sails turn; five kinds of tree; fields that read as crops; a river with banks, reeds and shimmer; crossings and boats that can be read; the charter stone found at a glance.",
+      "The book lies on a wooden table and has tooled leather; its turning leaf looks like a leaf; an interrupted animation keeps its speed; the pause question and the settings' boxes are one kind of card.",
+      "How it plays is unchanged by the numbers: the whole first age played through real clicks and keys reaches the charter at minute 33.9 with 201 purchases, with the same purchases and decisions a minute as before the night."
      ]
     },
     {
      "title": "Not better",
      "items": [
-      "Loads are a few pixels at the normal view and read by colour more than by shape.",
-      "Every roof is the same thatch yellow.",
-      "The charter stone could not be found at a glance after the first round (round 2 made it taller and set it beside the bell).",
-      "With eight things affordable, the shop is a wall of gold pills.",
-      "The left sheet is mostly blank paper early in the game.",
-      "Icons are still stand-ins (round 3 is making them).",
-      "Zoomed out to the book, the one-line purse lies over the page's title.",
-      "Nobody has played the new interface with their own hands."
+      "Nobody has played this with their own hands or heard any of its sounds. Everything was judged from pictures, twelve-frame strips and measurements, on a machine without a graphics card.",
+      "The second age was not played through by real input, as your step 6 asked \"if there is time left\": there was none. Villagers housed by the river still walk home to a first-age cottage, and the ford still matters on about half of the towns.",
+      "There is no title page when the game starts.",
+      "The animals are too small to see at the normal view; a reviewer wrote \"the town is not yet alive\". Loads are a few pixels there too and read by colour more than by shape.",
+      "The gable-ended cottage reads dark from above, and every roof is the same thatch yellow.",
+      "With many things affordable the shop is a wall of gold pills, and early in the game the ledger is mostly blank ruled paper.",
+      "The age-change leaf reads as a leaf laid down and lifted again, not as one forward turn. Pressing Esc twice quickly still overshoots a little.",
+      "Zoomed out, the page stage and the book stage now look almost alike: both show the whole book.",
+      "The digits have a slashed zero (the interface font has no other); it reads as code in a book.",
+      "The small rewards (the coin hop, dust, ripples, the bell's rings) were reviewed once and fixed once; I have not seen them move.",
+      "Under load three tests are not steady (a row coming to rest in the town test, a ten-second wait in the settings test, the motion test's 6 ms gate): they pass on a quiet machine, but a steady test would not need one."
      ]
     }
    ]
@@ -162,6 +171,46 @@
      "20",
      "The book's work ran in a third checkout beside the message round, with file ownership split between them",
      "To leave time for the feel round and the final checks"
+    ],
+    [
+     "21",
+     "About two thirds of the small notes are gone, and a banner is dropped when it is no longer true (a level banner once the town has passed that level)",
+     "Late news is noise"
+    ],
+    [
+     "22",
+     "The four first-minute hints are remembered in the settings file, so a new town does not show them again",
+     "\"Never again\" in your brief; the save format stays as it is"
+    ],
+    [
+     "23",
+     "The step \"if there is time left\" (the second age played by real input; a title page) is not started unless the last-look list is done by 03:50",
+     "The layout, the messages and the assets took the night, as the brief ranks them"
+    ],
+    [
+     "24",
+     "The small rewards are thinned when the town is busy (some are skipped, none queue)",
+     "Your brief: keep them light; with thirty villagers every delivery would otherwise flicker"
+    ],
+    [
+     "25",
+     "Each cottage size has its own scale again (0.86, 0.91, 0.95 of its plot)",
+     "The first asset round had made plain cottages smaller than they were before the night"
+    ],
+    [
+     "26",
+     "Zoomed out, the page stage now shows the whole book inside the window (it used to show the map's page with its edges cut)",
+     "Reviewers found the compass and the page number cut off; the side effect is that the page and book stages look alike"
+    ],
+    [
+     "27",
+     "The age-change page turn is a leaf with the new age's title on it, above the whole interface",
+     "It was a paper sweep with the shop drawn over it"
+    ],
+    [
+     "28",
+     "Achievement medals are shown on the achievements page and in achievement notes; other message kinds have icons drawn but not yet shown",
+     "Time; the layout check had to pass with every change"
     ]
    ]
   },
@@ -169,18 +218,62 @@
    "id": "needs",
    "title": "Needs you",
    "kind": "text",
-   "items": [],
+   "items": [
+    "Play the newest Windows build yourself. Everything tonight was judged from pictures and measurements on a machine without a graphics card: say whether the screen stays calm in play, whether messages come at a good pace, and whether anything stutters.",
+    "Listen. The six new reward sounds have players on the review page; in the game, check that a sound now comes with its message and that the sounds do not pile up when the town is busy.",
+    "Answer the yes-or-no questions on the review page and say continue.",
+    "Decide about the digits. The interface font draws a slashed zero and has no other; plain zeros need another font for numbers (a free-licence font from a site this machine may not reach, which needs your approval) or digits drawn by us.",
+    "Say whether the next round should go to what was not reached tonight: the second age played through by real input (river villagers walking home to first-age cottages, the ford mattering on half the towns) and a title page."
+   ],
+   "paras": []
+  },
+  {
+   "id": "sounds",
+   "title": "New sounds to listen to",
+   "kind": "music",
    "paras": [
-    "Nothing at the moment."
+    "Made in code tonight and checked only by measurement: nobody has heard them."
+   ],
+   "tunes": [
+    {
+     "file": "assets/audio/sfx/coin-hop-01.wav",
+     "title": "Coin hop",
+     "note": "a small coin flicked up and landing on others, 0.4 s, four variants. Plays as a delivery's coin lands, at most every 0.3 s."
+    },
+    {
+     "file": "assets/audio/sfx/dust-puff-01.wav",
+     "title": "Dust puff",
+     "note": "a breath of dry earth with a few grains, 0.35 s, three variants. Plays when a cottage is extended and, quieter, for dust on a new trail."
+    },
+    {
+     "file": "assets/audio/sfx/grit-01.wav",
+     "title": "Grit",
+     "note": "a handful of gravel scattering, 0.55 s, three variants. Plays when a road is paved."
+    },
+    {
+     "file": "assets/audio/sfx/ripple-01.wav",
+     "title": "Ripple",
+     "note": "a small lap of water and a bubble, 0.5 s, three variants. Plays when a boat moors or casts off, when goods are sold at the landing and at the ford's stones."
+    },
+    {
+     "file": "assets/audio/sfx/bell-creak-01.wav",
+     "title": "Bell creak",
+     "note": "the bell's yoke turning in its wooden frame, 0.45 s, two variants. Plays with the bell and with each peal of the new age."
+    },
+    {
+     "file": "assets/audio/sfx/gift-ring-01.wav",
+     "title": "Gift ring",
+     "note": "a soft struck chime, 0.9 s, two notes. Plays when a level's gift arrives and at a purchase that has a place on the map."
+    }
    ]
   }
  ],
  "counts": {
-  "builds": 4,
-  "decisions": 20,
-  "needs": 0,
-  "sounds": 0,
-  "better": 4,
-  "not_better": 8
+  "builds": 7,
+  "decisions": 28,
+  "needs": 5,
+  "sounds": 6,
+  "better": 7,
+  "not_better": 11
  }
 }
