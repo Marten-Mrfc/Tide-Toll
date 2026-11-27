@@ -127,7 +127,10 @@ public static class TownRules
 
     // ---- Villagers as people (n7 step 1) ----
     // A villager's own kind of work (Town.LeaningOf, from the seed and its number) counts this much more when it chooses a job.
-    public static double LeanBonus = 0.10;
+    // 0 for now (the lead, n7 follow-up: 0.10 pushed the play-through 1.7 min and tipped pacing bands); step 2 gives it meaning.
+    public static double LeanBonus = 0;
+    // n7: the second age's blind spot: the pasture's and the weaver's waits count those on their way there (false: as before).
+    public static bool SiteWaitCountsOnTheWay = true;
 
     // ---- Perks: every PerkEvery levels of a track ----
     public const int PerkEvery = 5;

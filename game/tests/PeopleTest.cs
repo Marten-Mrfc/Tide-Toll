@@ -105,7 +105,7 @@ public partial class PeopleTest : TownTestBase
         var z = new HudZones(GetViewport().GetVisibleRect().Size, hud.UiScale);
         Check(Near(hud.PersonCardRect, z.Person), $"the card in its zone under the ledger ({hud.PersonCardRect} vs {z.Person})");
         string card = hud.PersonCardText;
-        Check(card.StartsWith(T.VillagerName(who) + "|") && card.Contains("Lives ") && card.Contains("A good hand") && card.Contains("trip"), $"the card says who it is ({card})");
+        Check(card.StartsWith(T.VillagerName(who) + "|") && card.Contains("Lives ") && card.Contains("A good hand") == T.LeaningCounts && card.Contains("trip"), $"the card says who it is ({card})");
         Check(vil.SelectedRingAlpha > 0.99f, $"the selected villager keeps its ring ({vil.SelectedRingAlpha:0.00})");
         Check(hud.OverInterface(hud.PersonCardRect.GetCenter()), "the card stops the map (OverInterface)");
         await Click(hud.PersonClose.GetGlobalRect().GetCenter());

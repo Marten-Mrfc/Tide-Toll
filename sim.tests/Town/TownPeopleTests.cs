@@ -91,7 +91,8 @@ public class TownPeopleTests
                 double want = T.LeaningOfJob(j) == T.LeaningOf(1, id) ? 10 * (1 + TownRules.LeanBonus) : 10;
                 Assert.Equal(want, t.LeanedFor(id, j, 10), 12);
             }
-        Assert.InRange(TownRules.LeanBonus, 0.01, 0.25); // "a small natural leaning"
+        Assert.InRange(TownRules.LeanBonus, 0, 0.25); // "a small natural leaning" (0: off until trades give it meaning)
+        Assert.Equal(TownRules.LeanBonus > 0, t.LeaningCounts);
     }
 
     /// <summary>Blind spot 1: flour pickers on their way to the field (or at it) count in the mill's wait.</summary>
@@ -142,6 +143,7 @@ public class TownPeopleTests
                     bool wool = o.Job is JobKind.WoolBoat or JobKind.WoolMarket, cloth = o.Job is JobKind.ClothBoat or JobKind.ClothMarket;
                     // Not yet sheared (pasture) or not yet woven (weaver), and not standing at that site.
                     bool ahead = (site == 0 ? wool || cloth : cloth) && o.RSite != site && !PastSite(o, site);
+                    if (ahead && !TownRules.SiteWaitCountsOnTheWay) { onWay++; continue; } // switched off: not counted
                     if (ahead) Assert.True(site == 0 ? o.Carry == Good.None : o.Carry != Good.Cloth);
                     if (ahead) { c++; onWay++; }
                 }
@@ -168,6 +170,7 @@ public class TownPeopleTests
     [Fact]
     public void FewerSpellsOfTheWholeTownOnOneJob()
     {
+        if (!TownRules.SiteWaitCountsOnTheWay) return; // the second age's fix switched off (TownRules): nothing to hold
         int samples = 0, herd = 0;
         var byJob = new int[16];
         for (int seed = 1; seed <= 3; seed++)

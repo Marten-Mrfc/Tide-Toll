@@ -33,6 +33,7 @@ public static class PeopleCommand
         bool river = o.ContainsKey("river");
         int max = o.TryGetValue("max", out var m) ? int.Parse(m, Inv) : 120;
         if (o.TryGetValue("lean", out var ln)) TownRules.LeanBonus = double.Parse(ln, Inv);
+        if (o.TryGetValue("sitefix", out var sf)) TownRules.SiteWaitCountsOnTheWay = sf != "0";
         var bots = new List<BotKind>();
         if (which is "all" or "payback") bots.Add(BotKind.Payback);
         if (which is "all" or "cheapest") bots.Add(BotKind.Cheapest);

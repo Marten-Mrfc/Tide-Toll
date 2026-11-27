@@ -74,8 +74,8 @@ public partial class TownVillagers
     private void InitRings()
     {
         _hoverMat = RingMaterial(); _selMat = RingMaterial();
-        _hoverRing = new MeshInstance3D { Name = "HoverRing", Mesh = RingMesh(0.48f, 0.60f), MaterialOverride = _hoverMat, Visible = false, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        _selRing = new MeshInstance3D { Name = "SelectedRing", Mesh = RingMesh(0.46f, 0.66f), MaterialOverride = _selMat, Visible = false, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        _hoverRing = new MeshInstance3D { Name = "HoverRing", Mesh = RingMesh(0.98f, 1.16f), MaterialOverride = _hoverMat, Visible = false, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        _selRing = new MeshInstance3D { Name = "SelectedRing", Mesh = RingMesh(0.96f, 1.22f), MaterialOverride = _selMat, Visible = false, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         AddChild(_hoverRing);
         AddChild(_selRing);
     }
@@ -89,7 +89,8 @@ public partial class TownVillagers
         return m;
     }
 
-    /// <summary>A flat ring (annulus) on the ground, radii in model units (scaled by WalkerScale when placed).</summary>
+    /// <summary>A flat ring (annulus) on the ground, radii in model units (scaled by WalkerScale when placed): just outside
+    /// the soft shadow disc (0.95), so it reads at the normal view.</summary>
     private static ArrayMesh RingMesh(float r0, float r1)
     {
         var st = new SurfaceTool();
@@ -113,7 +114,7 @@ public partial class TownVillagers
         if (h >= 0) _hoverShown = h;
         _hoverA = Math.Clamp(_hoverA + (h >= 0 ? dt : -dt) / 0.1f, 0f, 1f);
         if (_hoverShown >= n) _hoverA = 0f;
-        Ring(_hoverRing, _hoverMat, _hoverShown, _hoverA, 0.8f);
+        Ring(_hoverRing, _hoverMat, _hoverShown, _hoverA, 0.9f);
         bool sel = SelectedId >= 0 && SelectedId < n;
         _selA = Math.Clamp(_selA + (sel ? dt : -dt) / 0.12f, 0f, 1f);
         if (sel) _selShown = SelectedId;

@@ -117,7 +117,7 @@ public sealed partial class Town
         {
             if (o == self) continue;
             if (o.RMode != 0 && o.Phase == VillagerPhase.Queued && o.RSite == site) c++;
-            else if (o.RSite != site && BoundForSite(o, site)) c++; // n7: those on their way there count too
+            else if (TownRules.SiteWaitCountsOnTheWay && o.RSite != site && BoundForSite(o, site)) c++; // n7: those on their way there count too
         }
         int over = c - SitePlaces(site) + 1;
         return over <= 0 ? 0 : over * (site == SitePasture ? TownRulesRiver.ShearTime : TownRulesRiver.WeaveTime) / ToolsFactor / SitePlaces(site);

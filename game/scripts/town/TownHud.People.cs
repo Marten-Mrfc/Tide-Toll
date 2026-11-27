@@ -21,7 +21,7 @@ public partial class TownHud
     public string PersonTagText => _personTag.Visible && _tagF.Value > 0.5f ? _personTag.Text : "";
     public bool PersonCardVisible => _person.Visible && _personF.On;
     public Rect2 PersonCardRect => _person.Visible ? _person.GetGlobalRect() : new Rect2();
-    public string PersonCardText => _person.Visible ? $"{_pName.Text}|{_pHome.Text}|{_pLean.Text}|{_pNow.Text}|{_pCount.Text}" : "";
+    public string PersonCardText => _person.Visible ? $"{_pName.Text}|{_pHome.Text}|{(_pLean.Visible ? _pLean.Text + "|" : "")}{_pNow.Text}|{_pCount.Text}" : "";
     /// <summary>The close cross on the card (tests click it).</summary>
     public Button PersonClose => _pClose;
     /// <summary>The hit radius on screen now, canvas pixels.</summary>
@@ -164,6 +164,12 @@ public partial class TownHud
             _pName.Text = t.VillagerName(id);
             _pHome.Text = HomeWords(t, v);
             _pLean.Text = LeaningWords(v.Leaning);
+            // A leaning is said only while it changes anything in play (step 2 gives it meaning as a trade).
+            bool lean = t.LeaningCounts;
+            _pLean.Visible = lean;
+            float y = lean ? 71 : 52;
+            _pNow.Position = new Vector2(_pNow.Position.X, UiKit.U(_s, y));
+            _pCount.Position = new Vector2(_pCount.Position.X, UiKit.U(_s, y + 21));
         }
         int sig = HashCode.Combine(v.Phase, v.Job, v.Carry, v.Stage, v.QueuePosition, v.Workplace, v.OnRiver);
         if (sig != _cardSig) { _cardSig = sig; _pNow.Text = NowWords(t, v); }

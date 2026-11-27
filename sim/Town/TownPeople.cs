@@ -85,6 +85,9 @@ public sealed partial class Town
         return _names[i] ??= VillagerNameOf(S.Seed, i);
     }
 
+    /// <summary>Whether a leaning changes anything in play now (the bonus is above 0); the card says a leaning only then.</summary>
+    public bool LeaningCounts => TownRules.LeanBonus > 0;
+
     /// <summary>Villager <paramref name="i"/>'s leaning.</summary>
     public Leaning VillagerLeaning(int i) => LeaningOf(S.Seed, i);
 
