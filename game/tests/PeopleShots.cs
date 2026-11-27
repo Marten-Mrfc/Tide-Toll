@@ -68,6 +68,8 @@ public partial class PeopleShots : TownTestBase
         Save("people-card", GetViewport().GetTexture().GetImage());
         Crop("people-card-close", hud.PersonCardRect.GetCenter() + new Vector2(140, -120), 640, 400, 2);
         hud.Select(-1);
+        await Frames(30);
+        Save("people-none", GetViewport().GetTexture().GetImage());   // n7 step 2 mock-up: the column with nothing selected
         // A busy road before and after: the town held still, the same people drawn by round 6's spread, then by the bodies pass.
         Main.Driver.SetPaused(true);
         for (int pass = 0; pass < 2; pass++)
