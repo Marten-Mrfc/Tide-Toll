@@ -177,3 +177,40 @@ The ring now lies just outside the soft shadow (radii 0.98 to 1.16, selected 0.9
 - `people-road-before*.jpg` and `people-road-after*.jpg`: a moment when two walkers pass each other on the lane west of the well. After, they hold opposite sides of the cobbles; the before picture has them nearer the middle. Still a modest difference at the normal view, where a figure is wider than the road.
 
 The pictures were taken just before the last hover fix, which does not change what they show.
+
+### Second follow-up (the lead's decision: setting (i), a retune of the second age)
+
+**1. The retune, stopped by the rule.** The one constant is new: `TownRulesRiver.LevelMinutesScale`, a factor on every second-age level's minutes (`LevelRenown`), applied where the river plan is built. Old value: 1 (there was no factor).
+
+Mean seal minutes after the ring, seeds 1 to 10:
+
+| | payback | cheapest |
+| --- | --- | --- |
+| before the blind-spot fixes | 25.93 | 26.55 |
+| after them, setting (i) | 25.64 | 26.72 |
+| with the scale 1.0023 | 25.88 | 26.81 |
+
+With setting (i) the second age barely moved. The 4 to 6 percent in the lead's note came from the leaning setting (0.10). Restoring both means together asks for (25.93 + 26.55) / (25.64 + 26.72) = 1.0023. With 1.0023 the whole `sim.tests` run still failed 3 tests (265 passed). All three misses are the random bot, which is not in the two means:
+- `TheSecondAgeTakes20To35MinutesForTheBuyers`: seed 8 random affordable, 19.4 minutes (0.6 short of 20); seed 6 random affordable, 19.9 minutes (0.1 short).
+- `BoatsPayTollsBeforeTheSeal`: seed 6 random affordable, 3 tolls in 3.4 minutes (0.1 short of 3.5).
+- `TollStepsPayBackBeforeTheSeal`: seed 8 random affordable, spent 24599, earned 2250.
+
+So the retune stopped there, as the rule says. The constant stays in the code at 1, with these numbers in its comment. The branch is setting (i) exactly, and its two misses are the ones in the table above (seed 8 random).
+
+**2. The shop's key cap.** `ShopRow.PlaceKey` now places the cap from the icon's rectangle as placed. The cap's centre is the icon's centre, its top is never above the icon's foot (`max(row height - 20, icon bottom)`), and its width includes the label's own minimum. The failing case was vertical: the cap's top at y 89 sat above the icon's foot at 90 while the row blended between compact and tall (`S1-keycap` also checks "under"). The rule's tolerance is unchanged.
+
+**3. The card's foot.** With the leaning line hidden the card is 105 units tall instead of 124; it stays in its zone, which is still 124. The zone rule now reads like the shop's: the zone's position and width, and the card's height up to the zone's. `game-people` checks the foot is 16 units of paper or less.
+
+**Check steps on the final code** (`91fad22`, setting (i); heavy steps under the lock, taken and given back per step):
+
+- simulation tests: **Failed 2, Passed 266**. `TheSecondAgeTakes20To35MinutesForTheBuyers`: seed 8 random affordable, 19.4 minutes. `TollStepsPayBackBeforeTheSeal`: seed 8 random affordable, spent 24599, earned 2250.
+- game-build: 0 errors. game-town: `TOWN PASS faint=0.40 maxstep=0.008 worn=0.95 ...`. game-save: `SAVE PASS autosave-clock=0.63/0.63s level 2 paved 1 villagers 4`.
+- game-layout, three runs:
+  - Runs 1 and 2: `LAYOUT PASS ... failures=0`.
+  - Run 3, and its rerun: no layout rule failed (36 states checked, no `LAYOUT FAIL` line). Both times it stopped on the shop's real-time switch check: `FAIL: the switch eases over the slide's time (switch to compact: 28 frames over 186 ms ...)` and then `... 187 ms ...`, where 200 ms is needed. That check times the shop's own 0.2 s slide by the wall clock (`Time.GetTicksMsec`, frames not fixed) and passed in runs 1 and 2 at 191 and 207 ms.
+- game-people: `PEOPLE RATES PASS` (60 fps: `picked=21/21 shared=0 passpairs=9790 sidefails=0 follow=1.15m/0.00s flicker=0 bytes=613 villagerbytes=1 pickbytes=0`; 30 and 120 fps the same).
+- game-playthrough: `PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102`.
+- game-perf: `PERF PASS`. game-river: `RIVER PASS ... checks=419 ... level=28 villagers=36`.
+- game-motion: `MOTION RATES PASS` (60 fps: `alloc-max=5672B cpu-max=3.10ms`; 30: 2.66 ms; 120: 3.30 ms).
+- game-work: `WORK RATES PASS` (60 fps: pairs=622, gap 1.98-2.30 m). game-work-places: `WORK PLACES PASS` at 60, 30 and 120 fps.
+- game-ink: `ASSET AUDIT PASS play1080=46.0 play640=20.4 walker=1.10 ...`.
