@@ -7,7 +7,9 @@ public enum ShopItemKind : byte { Villager = 0, Pace = 1, Load = 2, Pave = 3, Bu
     // The second age
     Ferry = 12, Berth = 13, Crane = 14, BoatPrices = 15, RiverValue = 16, Raft = 17, Rope = 18, Toll = 19, Winch = 20,
     // Green pass 2: the first age's ladder of small steps (sim/Town/TownRegulars.cs)
-    Regulars = 21 }
+    Regulars = 21,
+    // n7 trades: one row for all trades, ten steps (sim/Town/TownTrades.cs)
+    Training = 22 }
 
 /// <summary>One thing the player can buy (or press). Index: offer id for Building, road id for Pave (the suggested road),
 /// (int)Good for Value, cottage plot id for Extend (the suggested cottage), Load step for Load, else -1.</summary>
@@ -89,6 +91,7 @@ public sealed partial class Town
         into.Add(Item(ShopItemKind.Pace, -1, "Pace", S.PaceLevel, S.PaceLevel >= PaceCap ? 0 : PacePrice, PaceLockReason));
         if (S.LoadLevel < TownRules.LoadPrices.Length)
             into.Add(Item(ShopItemKind.Load, -1, TownRules.LoadNames[S.LoadLevel], S.LoadLevel, LoadPrice, LoadLockReason));
+        AddTrainingItem(into);
         int pr = SuggestedPave();
         if (pr >= 0) into.Add(Item(ShopItemKind.Pave, pr, NextSurface(pr) == Surface.Cobbles ? "Cobbles" : "Gravel", S.Paved, PavePrice(pr), ""));
         else into.Add(Item(ShopItemKind.Pave, -1, "Pave a road", S.Paved, 0, "No worn-in road to pave"));
@@ -129,6 +132,7 @@ public sealed partial class Town
         ShopItemKind.BellTrack => BuyBellTrack(),
         ShopItemKind.Hand => BuyHand(item.Index),
         ShopItemKind.Regulars => BuyRegulars(),
+        ShopItemKind.Training => BuyTraining(),
         _ => BuyRiver(item.Kind, item.Index),
     };
 

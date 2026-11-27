@@ -198,6 +198,7 @@ public sealed partial class Town
         double best = 0; JobKind bestJob = JobKind.None; int bestW = -1;
         double load = LoadUnits * CoinBonus;
         _choosing = LeaningOf(S.Seed, v.Id);
+        _choosingTrade = v.Trade;
         for (int wi = 0; wi < S.Workplaces.Length; wi++)
         {
             var w = S.Workplaces[wi];

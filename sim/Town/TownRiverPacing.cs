@@ -37,7 +37,7 @@ public sealed class RiverPacingResult
     public long Purchases;
     public double LongestNothingAffordable, LongestNothingAffordableAt;
     public double LongestMapGap, LongestMapGapAt;
-    public int[] ByKind = new int[22];
+    public int[] ByKind = new int[23];
     /// <summary>By RiverLinkKind: people crossed (by any crossing) per minute while that crossing was the newest one built.</summary>
     public double[] CrossPerMinute = new double[5];
     /// <summary>By RiverLinkKind: Town.CrossingCapacity of each crossing when it opened (CapAtOpen) and of the one before it then (PrevCapAtOpen), and at the seal.</summary>

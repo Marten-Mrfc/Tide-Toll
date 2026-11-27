@@ -10,7 +10,7 @@ public sealed partial class Town
     {
         "Fastest pace reached", "Best tools reached", "Best price reached", "Best prices reached", "The bell is at its best",
         "All Load steps bought", "Every cottage is extended", "Already built", "The biggest crane", "The biggest raft",
-        "The best rope", "The highest toll", "The fastest winch",
+        "The best rope", "The highest toll", "The fastest winch", "All training done",
     };
 
     /// <summary>Whether a reason means "not on sale yet" (a later level or something still to come).</summary>

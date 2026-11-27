@@ -46,6 +46,9 @@ public sealed class VillagerState
     // n7 people: counters no rule reads (missing in an older save: 0). Name and leaning are not stored: Town.VillagerName, LeaningOf.
     public int Trips;              // deliveries made
     public double Earned;          // coin those deliveries paid
+    // n7 trades (missing in an older save: a Helper the town may fill)
+    public Trade Trade;            // its trade (None: a Helper)
+    public bool TradeByPlayer;     // set on its card by the player: the town never moves it
 }
 
 /// <summary>A place where villagers work: the well, a field, the mill. Places limit how many work at once; the rest queue.</summary>
@@ -144,6 +147,16 @@ public sealed class TownState
     public double TouchLastCoin, TouchLastTime;           // coin earned and game time at the last touch (or when the beat was set)
     public double CharterRenown;                          // renown the charter needs, fixed at level MaxLevel - 1 (0: the table's)
     public double TouchPrevRate;                          // income a minute over the beat before the last (0: none yet)
+
+    // ---- n7 trades (missing in an older save: these defaults; every villager a Helper and the town filling) ----
+    public bool TownFillsTrades = true;
+    public bool[] TradeCountByPlayer = new bool[Town.TradeCount]; // by Trade (index 0: the Helpers): the player set this count
+    public int[] TradeWant = new int[Town.TradeCount];           // the count the player set (read where TradeCountByPlayer)
+    public int Training;                                         // Training steps bought
+    public double[] TradeEarn = new double[Town.TradeCount];     // coin its members earned, decaying by TradeEarnKeep a second (about the last minute)
+    public double TradeMoveAt = -1;                              // game time of the town's last rebalancing move
+    public long TradeChanges;                                    // trade changes in all (the town's and the player's)
+    public long TradeChangesByTown;                              // the town's
 
     // ---- The second age (save version 3; null before it is rung in) ----
     public RiverState? River;

@@ -39,6 +39,8 @@ public enum TownEventKind : byte
     LandingDelivery = 31,  // Villager, Good, Amount, Coin, X, Y (the landing), Index = boat id (-1: sold to the landing store)
     // Added in the green pass
     TouchAdded = 32,       // Index = touch number (Town.Touch(Index)), Level = (int)TouchKind, Plot (first-age plot, -1 if a river plot), Amount = river plot (-1 if first age), X, Y, Value = heading (radians), Text = kind name
+    // Added with trades (n7 step 2)
+    TradeChanged = 33,     // Villager, Index = (int)Trade now, Amount = (int)Trade before, Level = 1 by the player (0 by the town), X, Y
 }
 
 /// <summary>One thing that happened during a step. Drain them with Town.DrainEvents each frame.</summary>

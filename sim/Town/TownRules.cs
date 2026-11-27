@@ -181,6 +181,18 @@ public static class TownRules
     // Each regular: every delivery pays RegularsStep more. Price: RegularsMinutes of the best coin rate when the level was
     // reached (at least RegularsRateMin a minute), times RegularsGrowth ^ regulars won at this level; starts again each level.
     public static double RegularsStep = 0.004, RegularsMinutes = 0.15, RegularsGrowth = 1.35, RegularsRateMin = 20;
+    // ---- n7 trades (sim/Town/TownTrades.cs, TownTradeRules.cs; reasons: docs/plans/n7/trades-progress.md) ----
+    // The choice of work: a job of the villager's own trade counts TradeLean times its rate (a Helper weighs every job at 1).
+    public static double TradeLean = 1;
+    // The reward at its own trade: work time / (1 + TradeWork + Training * TradeStep), a delivery of its trade's good worth
+    // (1 + TradeWorth + Training * TradeStep); in the trade it likes, TradeLikes more on both.
+    public static double TradeWork = 0, TradeWorth = 0, TradeLikes = 0, TradeStep = 0;
+    // The town's filling: at most one rebalancing move every TradeMoveEvery seconds, when the best trade's members earn more
+    // than (1 + TradeMoveGap) times the worst's a head.
+    public static double TradeMoveEvery = 20, TradeMoveGap = 0.2;
+    // Training: ten steps; price TrainingMinutes of the best coin a minute (at least TrainingRateMin), times TrainingGrowth ^ steps.
+    public const int TrainingMax = 10;
+    public static double TrainingMinutes = 1.5, TrainingRateMin = 20, TrainingGrowth = 1.5;
     public static double HandWellBase = 150, HandFieldBase = 600, HandMillBase = 4000, HandGrowth = 2.5;
 }
 
