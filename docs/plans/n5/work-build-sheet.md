@@ -75,5 +75,5 @@ At most four new ones, made in code like the others, each with a ledger row, qui
 
 - **Villagers** (the line, the poses, tools, taking the goods, the parked cart, the bell): `game/scripts/town/TownVillagers*.cs` and new files beside them.
 - **Places** (well, field, mill, market, cottage; their models and props): new files `game/scripts/town/Work*.cs` or one per place, the generators and the ledger.
-- Both read the same small interface, written first by the places' builder and kept in one file: for a workplace, where its work spots, its line and its goods are in the drawing, and a call "a unit of work was finished here".
+- Both read the same small interface, kept in one file (`game/scripts/town/WorkSites.cs`), written first by the villagers' builder (who starts first) and extended by the places' builder: for a workplace, where its work spots, its line and its goods are in the drawing, and a call "a unit of work was finished here".
 - Tests that only fit the old look (a villager standing exactly on the simulation's spot, for example) may be replaced by the equal test for the new look; each replacement is written down with its reason. No test is weakened.
