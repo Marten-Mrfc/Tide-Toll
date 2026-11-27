@@ -87,3 +87,13 @@ Code: `TownFeel.cs`, `TownFeel.Spawn.cs`, `SoundCues.cs`, `game/tests/FeelStrips
 - SHOULD extend: fixed. Limewash, a half fan against the cottage front facing away from the path, 0.45 to 0.6 s. Seen: puffs at the cottage's side, path clear.
 - SHOULD bell rings: Limewash, a fifth smaller. SHOULD gift ring: at its widest a fifth smaller than the plot. SHOULD sounds: gift-ring least gap 0.9 s; the ford's stones use `ripple-ford` (same files, gap 0.6 s).
 - SHOULD pool pressure: not taken in a thirty-villager sheet (no time). By the numbers: coins at most one per 0.2 s with a 0.95 s life, so at most 5 on screen; trail dust only for walkers on trails not worn in.
+- Strips read (04:10 to 04:20): coin gold, high over the market stall; flourish gold band ring and gold sparks; extend Limewash puffs against the cottage, path clear; pave a wave of about four small earth stones moving along the road, road and walkers clear; bell really rung: the bell visibly turns in its frame between frames, Limewash rings round the post in frames 1 to 3 (partly under the frame); landing two rings round the moored boat on the water. Ford (first run): rings hid under the stepping stones; made wider (3.4 m) and retaken in `build/n3/feel/fix-ford/`.
+- Tests on the final code (04:11 to 04:12 UTC, machine loaded by three strip runs): PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102; RIVER PASS (fordcrossings=22 checks=436); SMOKE PASS; TOWN PASS; SAVE PASS; PERF PASS (town 1x 0.794 ms, 8x 0.807 ms; river 1x 0.732 ms, 8x 0.603 ms; 533 / 738 / 1211 / 1578 B/frame). The whole ./check was not run (the lead runs it on a clean copy, lead's note of 03:06).
+- Retakes (04:13 to 04:17, `build/n3/feel/fix-request/`, `fix-ford/`): the market is no workplace, so "open" now means `Town.PlotWorking` (code and strip). Request: the gold flourish at the built market stall's door. Gift: the band ring is under the market stall (the strip ran the town until the market was built, so the level's plot is no longer empty; in the game the gift rings on the new empty plot): staging fault, not judged again. Ford: thin white rings round the middle stepping stones, still faint (the stones and a barge on the ford cover most of them).
+
+## Left (for whoever comes next)
+
+- The ford's rings are still faint at the play zoom: a ring beside the wader's feet rather than round the stone, or a broad band.
+- Gift strip: stage it before the plot is built (take it right after `LevelReached`).
+- Bell rings lie partly under the bell's frame; a ring starting at the frame's edge (radius 1.8 m) would show more.
+- Pool pressure not proven in a thirty-villager sheet.
