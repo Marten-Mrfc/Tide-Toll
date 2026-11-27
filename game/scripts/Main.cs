@@ -47,6 +47,8 @@ public partial class Main : Node3D
     /// <summary>A note for the margin from start-up (a damaged save), shown once the interface exists.</summary>
     public string StartNote { get; private set; } = "";
     private Node3D? _trees;
+    /// <summary>The trees' root (tests: the drawing's matrix hides it).</summary>
+    public Node3D? Trees => _trees;
     /// <summary>The camera follows the town's extent (false once the player moves the view, true again on Home or a gift).</summary>
     public bool Following => !Rig.UserMoved;
     /// <summary>The town's extent in map-local metres (x, z), as followed.</summary>

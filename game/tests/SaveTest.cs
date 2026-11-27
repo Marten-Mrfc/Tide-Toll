@@ -75,6 +75,16 @@ public partial class SaveTest : TownTestBase
         await Frames(2);
         Check(Main.Saver.SaveNow(), "SaveNow failed");
         Check(Main.Saver.LastSaveTime != null, "no time for the last save");
+        // n10 (Q7): the autosave writes on a worker; its file is byte for byte the one a save on the main thread writes,
+        // and it is the file the reload below loads.
+        byte[] onMain = FileAccess.GetFileAsBytes(Main.Saver.SavePath);
+        int saves0 = Main.Saver.Saves, bg0 = Main.Saver.BackgroundSaves;
+        Check(Main.Saver.SaveNow(background: true), "the background save did not start");
+        await Until(() => !Main.Saver.Writing && Main.Saver.Saves > saves0, 600, "the background save to finish");
+        Check(Main.Saver.BackgroundSaves == bg0 + 1, "the save was not written on the worker");
+        byte[] onWorker = FileAccess.GetFileAsBytes(Main.Saver.SavePath);
+        Check(onMain.Length > 1000 && onMain.AsSpan().SequenceEqual(onWorker), $"the worker's save differs from the main thread's ({onMain.Length} and {onWorker.Length} bytes)");
+        Notes.Add($"background save {onWorker.Length} bytes, identical;");
         string before = State(T);
         int seed = Main.Driver.Seed;
         var pivot = Main.Rig.PivotLocal; float size = Main.Rig.Camera.Size;
@@ -106,6 +116,9 @@ public partial class SaveTest : TownTestBase
         DirAccess.MakeDirRecursiveAbsolute(tmpPath); // a folder where the save is written first: the write fails
         Check(!Main.Saver.SaveNow(), "a save that could not be written reported success");
         Check(Main.Hud.LastNote.StartsWith("The town could not be saved"), $"no note for a save that could not be written ('{Main.Hud.LastNote}')");
+        int fails0 = Main.Saver.Failures;
+        Main.Saver.SaveNow(background: true);   // n10: the worker's failure reaches the main thread as a failure too
+        await Until(() => !Main.Saver.Writing && Main.Saver.Failures > fails0, 600, "the background save's failure");
         DirAccess.RemoveAbsolute(tmpPath);
         Check(Main.Saver.SaveNow(), "saving works again");
         string good = FileAccess.GetFileAsString(Main.Saver.SavePath);

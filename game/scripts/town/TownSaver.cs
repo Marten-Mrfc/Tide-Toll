@@ -49,20 +49,25 @@ public partial class TownSaver : Node, ISaveActions
         if (GameSettings.Current != null) GameSettings.Current.Changed += OnSetting;
     }
 
-    public override void _ExitTree() { if (GameSettings.Current != null) GameSettings.Current.Changed -= OnSetting; }
+    public override void _ExitTree()
+    {
+        FinishWrite();
+        if (GameSettings.Current != null) GameSettings.Current.Changed -= OnSetting;
+    }
 
     private void OnSetting(string key) { if (key == GameSettings.KAutosave) _clock = 0; }
 
     public override void _Process(double delta)
     {
         // Round 4: real time, not the frame's delta (the engine clamps and scales that on slow frames).
+        if (_writing != null && _writing.IsCompleted) Collect();
         ulong now = Time.GetTicksMsec();
         double dt = _lastMs == 0 ? 0 : (now - _lastMs) / 1000.0;
         _lastMs = now;
         int minutes = GameSettings.Current?.AutosaveMinutes ?? 2;
         if (minutes <= 0 || _main.Driver.Paused) return;
         _clock += dt;
-        if (_clock >= minutes * 60.0) { _clock = 0; SaveNow(); }
+        if (_clock >= minutes * 60.0) { _clock = 0; SaveNow(background: true); }
     }
 
     public bool HasSave => FileAccess.FileExists(SavePath);
@@ -79,8 +84,17 @@ public partial class TownSaver : Node, ISaveActions
 
     public string FolderPath => ProjectSettings.GlobalizePath(Main.Profile);
 
-    public bool SaveNow()
+    public bool SaveNow() => SaveNow(false);
+
+    /// <summary>
+    /// Writes the save. n10 (performance research Q7): with <paramref name="background"/> (the autosave) the town and
+    /// the file's bytes are made here, on the main thread, exactly as for any save, and only the writing and the rename
+    /// happen on a worker; the result (Saves, or a failure's note) is taken in a later frame. Every other save (pause,
+    /// quit, a new town, the Saving page) first waits for a write still running, then writes as before.
+    /// </summary>
+    public bool SaveNow(bool background)
     {
+        FinishWrite();
         if (_readFailed) return Failed("The save on disk could not be read, so it is not written over. Restart the game to try it again.");
         try
         {
@@ -92,10 +106,17 @@ public partial class TownSaver : Node, ISaveActions
             };
             DirAccess.MakeDirRecursiveAbsolute(Main.Profile);
             string tmp = SavePath + ".tmp";
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(f);   // the same bytes StoreString wrote from Serialize
+            if (!background) GameSettings.Current?.WritePendingReadout();   // n10: the readout's F3 choice, with a save
+            if (background)
+            {
+                _clock = 0;
+                return WriteInBackground(bytes, ProjectSettings.GlobalizePath(tmp), ProjectSettings.GlobalizePath(SavePath));
+            }
             using (var fa = FileAccess.Open(tmp, FileAccess.ModeFlags.Write))
             {
                 if (fa == null) return Failed("The town could not be saved: the file could not be written.");
-                fa.StoreString(JsonSerializer.Serialize(f));
+                fa.StoreBuffer(bytes);
             }
             if (DirAccess.RenameAbsolute(tmp, SavePath) != Error.Ok)
             {
@@ -142,6 +163,7 @@ public partial class TownSaver : Node, ISaveActions
     /// </summary>
     public bool TryContinue(out string note)
     {
+        FinishWrite();
         note = "";
         if (!HasSave) return false;
         // Round 4: a read that fails (the file could not be read in full) never sets a good save aside: it stays where
@@ -180,6 +202,7 @@ public partial class TownSaver : Node, ISaveActions
 
     public bool LoadLast()
     {
+        FinishWrite();
         if (!HasSave) return false;
         bool ok = TryContinue(out string note);
         if (!ok && note != "") { _main.NewTown(); _main.Hud.Trouble(note); }
@@ -192,6 +215,7 @@ public partial class TownSaver : Node, ISaveActions
     /// </summary>
     public void DeleteSave()
     {
+        FinishWrite();
         _readFailed = false;
         _main.NewTown();
         if (HasSave) DirAccess.RemoveAbsolute(SavePath);

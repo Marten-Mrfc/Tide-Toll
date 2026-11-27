@@ -65,13 +65,26 @@ public sealed class GameSettings
     public void ShowHintsAgain() { if (HintsSeen != 0) { HintsSeen = 0; Commit(KHints); } }
     public const string KHints = "hints_seen";
 
-    /// <summary>n10: the performance readout (F3) shows; not on the settings pages. Read first like the hints, no event.</summary>
+    /// <summary>
+    /// n10: the performance readout (F3) shows; not on the settings pages. Never written in a frame of play: the choice
+    /// is kept here and written by <see cref="WritePendingReadout"/> with the town's next save (pause, quit, new town).
+    /// </summary>
     public bool ShowReadout { get; private set; }
+    public bool ReadoutPending { get; private set; }
     public void SetShowReadout(bool on)
     {
-        Read();
         if (ShowReadout == on) return;
         ShowReadout = on;
+        ReadoutPending = true;
+    }
+    /// <summary>Writes a readout choice not yet in the file (the file is read first, as for the hints).</summary>
+    public void WritePendingReadout()
+    {
+        if (!ReadoutPending) return;
+        bool on = ShowReadout;
+        Read();
+        ShowReadout = on;
+        ReadoutPending = false;
         Save();
     }
 

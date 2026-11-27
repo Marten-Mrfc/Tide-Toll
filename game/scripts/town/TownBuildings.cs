@@ -26,6 +26,8 @@ public partial class TownBuildings : Node3D
     /// <summary>The mill's sails (null when the mill is not drawn); WorkPlaces' MillWorks turns them with the work.</summary>
     public Node3D? MillSailsNode => _sails;
     private Node3D?[] _stakes = Array.Empty<Node3D?>();
+    /// <summary>n10 (Q1): the staked plots' words, in the order they were added (the tree's order): TownHud reads this list instead of searching the tree.</summary>
+    public readonly System.Collections.Generic.List<Label3D> Words = new();
     private float[] _pop = Array.Empty<float>();
     private int[] _ext = Array.Empty<int>();
     /// <summary>The extensions the drawn cottage on a plot shows (tests).</summary>
@@ -77,6 +79,7 @@ public partial class TownBuildings : Node3D
     {
         _loadedWithCharter = true;
         foreach (var c in GetChildren()) { RemoveChild(c); c.QueueFree(); }
+        Words.Clear();
         var plots = _drv.Town.Plan.Plots;
         _built = new Node3D?[plots.Length];
         _bodies = new Node3D?[plots.Length];
@@ -215,6 +218,7 @@ public partial class TownBuildings : Node3D
             VerticalAlignment = VerticalAlignment.Top,
         };
         root.AddChild(label);
+        Words.Add(label);
         return root;
     }
 
