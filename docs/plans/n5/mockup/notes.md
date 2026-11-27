@@ -94,7 +94,7 @@ What was asked for (lead-look.md and audit.md) and what was done. The board, the
 
 | Model | What it is |
 | --- | --- |
-| `work-wet-patch` | Overlapping uneven blobs of Wet mudflat, 1.2 cm high, sunk so they nearly meet the ground; two puddles (River); footprints (Mud) going toward the lane. |
+| `work-wet-patch` | Overlapping uneven blobs, 1 cm high, sunk so they nearly meet the ground: trodden earth (Packed earth) outside and wet ground (Wet mudflat) inside, so the edge is soft; two puddles (River); small footprints going toward the lane. |
 | `work-bucket` | Staves, two iron bands, a bail and a rope (separate node "Rope"). |
 | `work-pail` | Unlike the bucket: wider and lower, Trail earth, a rope handle, water near the rim. |
 
@@ -138,8 +138,8 @@ Triangles: a ripe piece is about 450. A whole field of ripe pieces (six rows of 
   - The stallholder stands at the table's end, wearing the apron; a villager sets a sack down; another walks off with empty hands on the trail.
 
 ## What still does not look right
-- **Well, wet patch:** it still gets a thin ink line round its edge and reads a little dark. The footprints read as pebbles at the close view. A decal in the ground shader would be the right tool in the game.
-- **Well, rope:** it hardly shows; it is mostly under the roof.
+- **Well, wet patch:** it still gets a thin ink line round its outer edge, and the footprints are small grey dashes. A decal in the ground shader would be the right tool in the game.
+- **Well, bucket and rope:** they now show above the near rim, but the bucket is still one tub among the pails at the normal view.
 - **Field, sickles:** small at the normal view. The bent backs and the cut edge carry the scene.
 - **Field, swath:** the stalks read as zigzags close up.
 - **Field, rim:** the grass rim is still the old hard-edged headland. Round 2 tried rim tufts, but at this view they looked like tick marks, so they were dropped.
