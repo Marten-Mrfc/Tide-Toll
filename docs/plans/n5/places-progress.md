@@ -221,3 +221,5 @@ the table; the cottage door is unchanged (small at the normal view).
   contribute. The lasting fix is one rule for the whole game: no Resource made in code per scene; made once per
   process (static cache, as `ModelLib` already does for models), or released explicitly by its owner before the
   scene goes, everywhere at once. That reaches files that belong to other builders; it was not done in this round.
+- Under the heavy-run lock (12:37 to 12:39): `game-work` PASS (`WORK RATES PASS`, 0 error lines at 60, 30, 120 fps);
+  `game-work-places` PASS at 60, 30 and 120 fps, 0 error lines.
