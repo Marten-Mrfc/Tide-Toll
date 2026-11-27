@@ -139,12 +139,23 @@ public partial class TownTest
         // Night 3: a row that moved in the last 0.3 s takes no click (layout sheet section 3): aim when it is still.
         int mi = -1; for (int i = 0; i < Main.Hud.Marks.Count; i++) if (Main.Hud.Marks[i] == mark) mi = i;
         Check(mi >= 0 && Main.Hud.RowTipParts(mi).title == T.HandName(w), "the offer's tooltip names it whole");
-        await Until(() => Main.Hud.RowCalm(mi), 120, "the hand's row comes to rest");
+        // The shop holds a new row back while the pointer rests on it (rows never move under the pointer); the pointer
+        // may be on the shop from an earlier click, so it moves off, as a player's would, before the row is awaited.
+        TestInput.Motion(GetViewport().GetVisibleRect().GetCenter());
+        for (int k = 0; k < 120 && !Main.Hud.RowCalm(mi); k++) await Frames(1);
+        Check(Main.Hud.RowCalm(mi), $"the hand's row comes to rest (row {mi}: {Main.Hud.RowDebug(mi)}; offers {string.Join(",", OffersNow())})");
         var markRect = mark!.GetGlobalRect(); bool markOff = mark.Disabled;
         await Click(markRect.GetCenter());
         Check(T.HandsBought(w) == hands + 1, $"a click on the bookmark buys the hand ({T.HandName(w)}; coin {T.Coin:0} price {T.HandPrice(w):0}, mark at {markRect} disabled {markOff}, screen {Main.GetViewport().GetVisibleRect().Size}, shown {Main.Hud.Marks.Count})");
         _bought++; _kinds[ShopItemKind.Hand] = Got(ShopItemKind.Hand) + 1;
 
-        Notes.Add($"hand0={hands} boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
+        Notes.Add($"offers={string.Join(",", OffersNow())} hand0={hands} boonkey={c.BName} milestones={Main.Hud.Milestones} touches={T.TouchCount} hand={T.HandName(w)} drive=met");
+    }
+
+    private System.Collections.Generic.List<int> OffersNow()
+    {
+        var l = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < T.WorkplaceCount; i++) if (T.HandOffered(i)) l.Add(i);
+        return l;
     }
 }
