@@ -30,6 +30,8 @@ public partial class Main : Node3D
     public RiverAudio RiverSound { get; private set; } = null!;
     public InkOutline Ink { get; private set; } = null!;
     public TownAudio Audio { get; private set; } = null!;
+    /// <summary>Night 5: the well, the fields, the mill, the market table and the cottage doors at work.</summary>
+    public WorkPlaces Work { get; private set; } = null!;
     public TownHud Hud { get; private set; } = null!;
     public TownSummary Summary { get; private set; } = null!;
     public SettingsRuntime Settings { get; private set; } = null!;
@@ -115,6 +117,7 @@ public partial class Main : Node3D
         Villagers = new TownVillagers(); MapOrigin.AddChild(Villagers); Villagers.Init(Driver);
         Touches = new TownTouches(); MapOrigin.AddChild(Touches); Touches.Init(Driver);
         var life = new TownLife(); MapOrigin.AddChild(life); life.Init(Driver);   // night 3 (asset track LF): animals, birds, gardens
+        Work = new WorkPlaces(); MapOrigin.AddChild(Work); Work.Init(this);   // night 5: the places answer to the work
         River = new RiverLayer(); MapOrigin.AddChild(River); River.Init(this);
         Boats = new RiverBoats(); MapOrigin.AddChild(Boats); Boats.Init(Driver);
         RiverSound = new RiverAudio(); AddChild(RiverSound); RiverSound.Init(Driver);
@@ -204,7 +207,7 @@ public partial class Main : Node3D
     {
         Saver?.SaveNow();
         QuitRequests++;
-        if (!HoldQuit) GetTree().Quit();
+        if (!HoldQuit) CleanExit.Quit(GetTree()); // frees the scene and drains .NET's finalizers first (night 9)
     }
 
     /// <summary>The bounding box of every given plot and open road, in map-local metres.</summary>

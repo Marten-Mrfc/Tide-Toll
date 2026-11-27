@@ -36,6 +36,16 @@ public interface IWorkSite
     bool GoodsAt(int slot, out Vector3 at);
 }
 
+/// <summary>Fix round (places): a site whose doorway is not where the plan's door is (the mill's work turned onto the
+/// flank the camera sees) says where the grain goes in (map-local metres, with height).</summary>
+public interface IWorkDoorway
+{
+    bool DoorwayAt(out Vector3 at);
+    /// <summary>Where a worker's pack frame or handcart stands while they work (map-local metres, on the ground);
+    /// <paramref name="side"/> is 0.95 for a frame and 1.4 for a cart. False: beside the owner.</summary>
+    bool ParkAt(int slot, float side, out Vector3 at);
+}
+
 /// <summary>
 /// The shared interface between the villagers (TownVillagers*.cs) and the places (Work*.cs): for a workplace, where in
 /// the drawing its work spots, its line and its goods are, and the calls "a unit of work was finished here" and "a load
@@ -151,8 +161,15 @@ public static class WorkSites
     }
 
     /// <summary>The doorway of a plot (map-local metres, at the threshold): where the mill's grain sack goes in.</summary>
+    public static bool ParkAt(int plot, int slot, float side, out Vector3 at)
+    {
+        at = Vector3.Zero;
+        return plot >= 0 && plot < Sites.Length && Sites[plot] is IWorkDoorway d && d.ParkAt(slot, side, out at);
+    }
+
     public static Vector3 Doorway(Town t, int plot)
     {
+        if (plot >= 0 && plot < Sites.Length && Sites[plot] is IWorkDoorway d && d.DoorwayAt(out var at)) return at;
         var p = t.Plan.Plots[plot];
         DoorDir(p, out _, out _, out float dx, out float dy);
         return new Vector3((p.DoorX + 0.5f - dx * 1.0f) * Cell, 0.5f, (p.DoorY + 0.5f - dy * 1.0f) * Cell);
@@ -188,6 +205,25 @@ public static class WorkSites
             if (d < bd) { bd = d; best = roads[k]; }
         }
         return best;
+    }
+
+    /// <summary>n5 fix round: how far a line stands off the lane's middle, cells (a third of a cell), so those walking
+    /// the same lane pass beside it instead of merging with it.</summary>
+    public const float LineEdgeCells = 1f / 3f;
+
+    /// <summary>
+    /// Where one waiting <paramref name="dist"/> cells back along a workplace's line really stands (map cells): the
+    /// lane point (<see cref="LinePoint"/>) moved to the right-hand edge of the lane as one walks toward the place. The
+    /// whole line is moved aside by one heading, the lane's at the line's front (<paramref name="step"/>, the gap between
+    /// two in line, back from the door), so the gaps stay exactly as along the lane. <paramref name="heading"/> is the
+    /// lane point's own (back toward the front of the line). The one source for the drawing and the tests.
+    /// </summary>
+    public static void LineStand(Town t, int workplace, int road, float dist, float step, out float x, out float y, out float heading)
+    {
+        LinePoint(t, workplace, road, dist, out x, out y, out heading);
+        LinePoint(t, workplace, road, step, out _, out _, out float h);
+        x -= MathF.Sin(h) * LineEdgeCells;
+        y += MathF.Cos(h) * LineEdgeCells;
     }
 
     /// <summary>

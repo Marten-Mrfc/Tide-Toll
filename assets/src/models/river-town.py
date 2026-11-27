@@ -124,9 +124,9 @@ def pasture():
     # night 3 fix: three thatch courses across the slope (Trail earth bands standing 0.06 m proud), so the roof reads as
     # thatch and not as a flat orange board, and a ridge roll along the top
     for f in (0.25, 0.5, 0.75):
-        y = 1.86 + (1.25 - 1.86) * f + 0.05
+        y = 1.86 + (1.25 - 1.86) * f + 0.008                # n8: painted bands, 1 cm proud (were 0.08 m beams)
         z = sz0 - 1.15 + 2.35 * f
-        beam(m, (sx0 - 1.7, y, z), (sx0 + 1.7, y, z), 0.14, 0.08, PLANK, ends=False)
+        beam(m, (sx0 - 1.7, y, z), (sx0 + 1.7, y, z), 0.14, 0.01, PLANK, ends=False)
     tube(m, (sx0 - 1.75, 1.9, sz0 - 1.12), (sx0 + 1.75, 1.9, sz0 - 1.12), 0.12, "Reed and thatch", n=5)
     m.add_box((sx0, 1.06 + 0.06, sz0 + 1.2), (3.4, 0.14, 0.12), "Soot brick", bottom="Soot brick")   # eaves course
     m.add_box((sx0, 1.7, sz0 - 1.1), (3.4, 0.2, 0.2), "Packed earth", bottom="Packed earth")       # back plate
@@ -192,7 +192,7 @@ def weaver_cottage():
         hl = 2.9 + f * (r - 2.9) - 0.2
         for sz in (-1, 1):
             beam(m, (cx - hl, 2.02 + f * 3.33, sz * 3.0 * (1 - f)), (cx + hl, 2.02 + f * 3.33, sz * 3.0 * (1 - f)),
-                 0.2, 0.09, "Trail earth", up=(0, 3.0, sz * 3.33), ends=False)
+                 0.2, 0.02, "Trail earth", up=(0, 3.0, sz * 3.33), ends=False)   # n8: painted bands, 1 cm proud
     m.add_box((cx + 0.5, 3.4, -0.9), (0.7, 2.9, 0.7), "Brick", bottom=False)             # a chimney: the house is lived in
     m.add_box((cx + 0.5, 6.2, -0.9), (0.94, 0.2, 0.94), "Soot brick", bottom="Soot brick")
     for sx in (-1, 1):                                       # corner posts and sill beams
@@ -222,7 +222,7 @@ def weaver_cottage():
         m.add_poly([(x0, yi, z0), (x1 + 0.25, yo, z0), (x1 + 0.25, yo + t, z0), (x0, yi + t, z0)], WOOD,
                    facing=(0, 0, s))
     for z in (-1.0, 1.0):                                                              # board battens on the roof
-        beam(m, (x0 + 0.1, yi + t + 0.04, z), (x1 + 0.2, yo + t + 0.04, z), 0.14, 0.08, "Soot brick", ends=False)
+        beam(m, (x0 + 0.1, yi + t + 0.005, z), (x1 + 0.2, yo + t + 0.005, z), 0.14, 0.01, "Soot brick", ends=False)  # n8: painted
     m.add_box(((x0 + x1) / 2, 0, -2.35), (x1 - x0, 1.9, 0.14), "Packed earth")          # plank back wall (north)
     m.add_box(((x0 + x1) / 2, 0, -2.44), (0.18, 1.9, 0.06), WOOD, bottom=False)         # its batten
     m.add_box(((x0 + x1) / 2, 0, 0), (x1 - x0 + 0.1, 0.06, 4.6), "Trail earth")       # beaten earth floor

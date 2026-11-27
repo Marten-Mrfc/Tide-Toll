@@ -178,6 +178,12 @@ if have_godot; then
   # damaged save and one from another version set aside with a note, the quit paths save, delete gives a new town.
   step game-save tools/godot-test.sh 'SAVE PASS' timeout 600 "$GODOT" --headless --path game --audio-driver Dummy res://tests/save.tscn --quit-after 100000
   note "$(grep -o 'SAVE PASS.*' "$LOGS/game-save.log" | head -1 | sed 's/SAVE PASS //' | cut -c1-90)"
+  # Night 5, work you can watch (the places): a first age played in the running game and sampled every frame: a field
+  # never under a third gold and its fronts moving only with work finished there, the mill's sails faster with more at
+  # work, its door open exactly while it should be, every market delivery on the table, cottage doors opening for their
+  # people, nothing changed in one frame (also at 30 and 120 fps), no allocation by the places (tools/work-places-check.sh).
+  step game-work-places env GODOT="$GODOT" tools/work-places-check.sh
+  note "$(grep -o 'WORK PLACES PASS.*' "$LOGS/work-places-60.log" | head -1 | sed 's/WORK PLACES PASS //' | cut -c1-90)"
   if [ "$SHOT" = 0 ]; then
     skip screenshot "--no-screenshot"
   elif ! command -v xvfb-run >/dev/null 2>&1; then
@@ -193,8 +199,17 @@ if have_godot; then
     step screenshot tools/godot-test.sh 'SCREENSHOT PASS' timeout 2400 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/screenshot.tscn --quit-after 100000 -- --out-dir="$SHOTS"
     note "build/screenshots/town-{first-minute,...,summary,book-half-closed,cover-menu,settings-*,new-town-question}-1920x1080.png"
   fi
+  if [ "$SHOT" = 1 ] && command -v xvfb-run >/dev/null 2>&1; then
+    # n8, the ink line (style sheet section 3): the cottage kinds, weaver cottage, mill, stall, well, a street and a
+    # villager group at the play view (640 x 480 at the 1080p play view's metres per pixel and line width); the share
+    # of each model's pixels the ink covers, against a ceiling per kind (AssetAudit.InkCheck.cs). About a minute.
+    step game-ink tools/godot-test.sh 'ASSET AUDIT PASS' timeout 600 xvfb-run -a -s '-screen 0 1920x1080x24' "$GODOT" --path game --rendering-method mobile --rendering-driver vulkan --audio-driver Dummy --resolution 1920x1080 res://tests/asset-audit.tscn --quit-after 100000 -- --ink-check --out-dir="$ROOT/build/ink-check"
+    note "$(grep -o '^INK [a-z0-9-]* share=[0-9.]*' "$LOGS/game-ink.log" | sed 's/^INK //; s/ share=/=/' | tr '\n' ' ')"
+  else
+    skip game-ink "--no-screenshot or no xvfb-run"
+  fi
 else
-  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save screenshot; do
+  for s in game-build game-smoke game-town game-layout game-playthrough game-river game-perf game-book game-settings game-menu game-motion game-work game-people game-save game-work-places screenshot game-ink; do
     echo "-- $s: godot not found (run tools/setup-linux.sh or set GODOT=)"
     record "$s" FAIL 0 "godot not found"
   done

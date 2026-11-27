@@ -8,7 +8,7 @@ namespace TideToll.Game;
 /// Work you can watch (n5), A: the line. Those who wait at the well, a field or the mill stand in a line along the lane
 /// the first of them came by (<see cref="WorkSites.Lane"/>), <see cref="WorkSites.LineStep"/> apart (more with a
 /// handcart), each facing the workplace, the first nearest to it; a line longer than its lane bends on along the next
-/// road (<see cref="WorkSites.LinePoint"/>). When a place comes free the line moves up one step, front first: each
+/// road (<see cref="WorkSites.LinePoint"/>), a third of a cell aside on the lane's right-hand edge (<see cref="WorkSites.LineStand"/>). When a place comes free the line moves up one step, front first: each
 /// place starts a little after the one before it (<see cref="RippleSeconds"/>) and eases along the lane. Drawing only:
 /// the queue's order and length are the simulation's (<see cref="VillagerView.QueuePosition"/>).
 /// </summary>
@@ -87,7 +87,7 @@ public partial class TownVillagers
                 _qd[i] = MathF.Abs(left) <= k ? _qt[i] : _qd[i] + MathF.Sign(left) * k;
             }
             float gap = LineStepCells(t.LoadLevel);
-            WorkSites.LinePoint(t, w, _lane[w], gap * (1f + _qd[i]), out float lx, out float ly, out float lh);
+            WorkSites.LineStand(t, w, _lane[w], gap * (1f + _qd[i]), gap, out float lx, out float ly, out float lh);
             _lineX[i] = lx; _lineY[i] = ly;
             tx = lx; ty = ly;
             if (_qd[i] < 0.5f)
@@ -114,7 +114,7 @@ public partial class TownVillagers
                 if (fromNode < tail + 0.05f)
                 {
                     _holders[w]++;
-                    WorkSites.LinePoint(t, w, _lane[w], tail, out float lx, out float ly, out float lh);
+                    WorkSites.LineStand(t, w, _lane[w], tail, gap, out float lx, out float ly, out float lh);
                     tx = lx; ty = ly; face = HeadingYaw(lh);
                     return true;
                 }

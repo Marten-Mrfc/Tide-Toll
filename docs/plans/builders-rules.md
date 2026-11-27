@@ -3,7 +3,8 @@
 Several builders work at once, each in its own git worktree under `build/wt/`, on a machine with 4 cores.
 
 1. **Your checkout only.** Work only in the worktree you were given. Never touch `/home/user/tide-toll` itself or another worktree. Never push, never open a pull request. Commit on your branch with messages starting "Snapshot: " and the attribution lines your own session's rules give you. If a commit is refused by the permission check, do not work around it: go on and say so in your report.
-2. **A fresh checkout** needs `tools/sync-assets.sh` and `godot --headless --path game --import` before the first build.
+2. **Never use `git stash`.** The stash is shared between all worktrees: a `git stash pop` in one checkout can apply another builder's work there (it happened on 27 November). To set work aside, commit it on your branch or copy files to a folder under your worktree's `build/`.
+2a. **A fresh checkout** needs `tools/sync-assets.sh` and `godot --headless --path game --import` before the first build.
 3. **The heavy-run lock.** Tests that measure time fail when the machine is busy, and picture runs slow everyone down. Before any of these, take the lock; give it back the moment the run ends:
    - timing checks: `game-perf`, `game-motion`, `game-work`, `game-playthrough`, `game-river`, `game-layout`, and any check of your own that samples frames;
    - any Godot picture run longer than two minutes; `./check` as a whole.
