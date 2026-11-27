@@ -48,6 +48,7 @@ public partial class TownHud
         _tipLabel.AddThemeFontOverride("normal_font", UiKit.UiFont);
         _tipLabel.AddThemeColorOverride("default_color", UiKit.Ink);
         holder.AddChild(_tipLabel);
+        BuildRowCard(holder);
         _root.AddChild(_tip);
         _tipOwner = null;
     }
@@ -73,7 +74,8 @@ public partial class TownHud
         if (_shop.IsVisibleInTree() && _shop.Modulate.A > 0.5f && _shop.GetGlobalRect().HasPoint(p))
         {
             foreach (var r in _rowOrder) if (r.Button.Visible && r.Alpha > 0.5f && r.Button.GetGlobalRect().HasPoint(p)) return r.Button;
-            for (int g = 0; g < 5; g++) if (_groupHead[g].Visible && _groupHead[g].GetGlobalRect().HasPoint(p)) return _groupHead[g];
+            // Sheet v3: the headings carry nothing; the foot line's tooltip lists what is still to come and what is done.
+            if (_foot.Visible && _foot.GetGlobalRect().HasPoint(p)) return _foot;
             return null;
         }
         side = HudZones.TipSide.Right;
@@ -106,27 +108,13 @@ public partial class TownHud
         if (!_tip.Visible || _tipRefresh <= 0)
         {
             _tipRefresh = TipRefresh;
-            string text = TipTextFor(owner);
+            int row = RowIndexOf(owner);
+            string text = row >= 0 ? RowCardText(row) : TipTextFor(owner);
             if (text.Length == 0) { _tip.Visible = false; return; }
-            bool changed = _tipText != text;
-            if (changed) { _tipText = text; WriteTip(text); }
-            float w = UiKit.U(_s, HudZones.TipW), pad = UiKit.U(_s, 12);
-            var f = UiKit.UiFont;
-            int fs = UiKit.Type(_s, UiKit.Caption);
-            // Measured with the coin sign as wide as two figures; past five lines the box widens instead (up to 1.6 x).
-            string measure = text.Replace(CoinMark.ToString(), "00");
-            float lineH = f.GetHeight(fs);
-            float h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
-            for (int k = 0; k < 6 && h > lineH * TipMaxLines + 1f && w < UiKit.U(_s, HudZones.TipW * 1.6f); k++)
-            {
-                w += UiKit.U(_s, HudZones.TipW * 0.1f);
-                h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
-            }
-            _tipLabel.Position = new Vector2(pad, pad);
-            _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
-            h = Math.Max(h, _tipLabel.GetContentHeight());
-            _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
-            var size = new Vector2(w, MathF.Ceiling(h) + 2 * pad + 2);
+            _rowCard.Visible = row >= 0;
+            _tipLabel.Visible = row < 0;
+            Vector2 size = row >= 0 ? PlaceRowCard() : PlaceTipText(text);
+            _tipText = text;
             Rect2 r;
             if (_choice.Visible && (owner == _boonBtn[0] || owner == _boonBtn[1]))
             {
@@ -147,6 +135,29 @@ public partial class TownHud
             _tip.Visible = true;
         }
         _tip.Modulate = new Color(1, 1, 1, Math.Clamp((_tipAge - TipDelay) / TipFadeIn, 0, 1));
+    }
+
+    /// <summary>The plain tooltip: its text into the label, the box as tall as the text (wider past five lines).</summary>
+    private Vector2 PlaceTipText(string text)
+    {
+        if (_tipText != text || _tipLabel.GetParsedText().Length == 0) WriteTip(text);
+        float w = UiKit.U(_s, HudZones.TipW), pad = UiKit.U(_s, 12);
+        var f = UiKit.UiFont;
+        int fs = UiKit.Type(_s, UiKit.Caption);
+        // Measured with the coin sign as wide as two figures; past five lines the box widens instead (up to 1.6 x).
+        string measure = text.Replace(CoinMark.ToString(), "00");
+        float lineH = f.GetHeight(fs);
+        float h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
+        for (int k = 0; k < 6 && h > lineH * TipMaxLines + 1f && w < UiKit.U(_s, HudZones.TipW * 1.6f); k++)
+        {
+            w += UiKit.U(_s, HudZones.TipW * 0.1f);
+            h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
+        }
+        _tipLabel.Position = new Vector2(pad, pad);
+        _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
+        h = Math.Max(h, _tipLabel.GetContentHeight());
+        _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
+        return new Vector2(w, MathF.Ceiling(h) + 2 * pad + 2);
     }
 
     /// <summary>The tooltip's text into its label, the coin marks as the coin icon (only when the text changes).</summary>
@@ -172,8 +183,7 @@ public partial class TownHud
     {
         var t = _drv.Town;
         var sb = _tipSb.Clear();
-        for (int i = 0; i < _rowOrder.Count; i++) if (_rowOrder[i].Button == owner) return RowTip(i);
-        for (int g = 0; g < 5; g++) if (_groupHead[g] == owner) return GroupTip(g);
+        if (owner == _foot) return FootTip();
         if (owner == _bell) return _bellTip;
         if (owner == _tide) return "The tide. Boats come at high water; the ford can be walked at low water. " + _tideText.Text.Replace("\n", ", ") + ".";
         if (owner == _purse)
@@ -197,66 +207,18 @@ public partial class TownHud
             return _nextAge.Visible ? $"Ring in the next age{Key("tt_next_age")}: the town moves on to its next age when you are ready."
                 : DriveCardText.Replace(" | ", ". ").Replace("Charter. ", "") + ".";
         if (owner == _noteBox) return NoteShowing + " Click to put it away.";
-        if (owner == _achMark) return $"Achievements{Key("tt_achievements")}: {_achCount.Text}.";
-        if (owner == _agePageMark) return t.NextAgeRung ? $"This age's page{Key("tt_next_age")}." : "This age's page: it opens when the next age is rung in.";
-        if (owner == _home) return $"Back to the town{Key("tt_home_view")}: the view follows the town again.";
-        if (owner == PauseMark) return $"Pause{Key("tt_pause")}: close the book, the menu.";
+        // Sheet v3: a navigation button's tooltip names it and its key.
+        if (owner == _achMark) return NavTip("Achievements", "tt_achievements");
+        if (owner == _agePageMark) return NavTip("The age's page", "tt_next_age");
+        if (owner == _home) return NavTip("Centre the view", "tt_home_view");
+        if (owner == PauseMark) return NavTip("Pause", "tt_pause");
         return "";
     }
 
-    private string RowTip(int i)
+    /// <summary>"Achievements · Tab" (the name alone when the action has no key).</summary>
+    public static string NavTip(string name, string action)
     {
-        var t = _drv.Town;
-        var it = _shown[i];
-        var sb = _tipSb.Clear();
-        sb.Append(RowName(it));
-        if (_rowOrder[i].Step.Text.Length > 0) sb.Append(", level ").Append(_rowOrder[i].Step.Text);
-        sb.Append(". ").Append(Tooltip(it));
-        int w = WorthTenths(it.Worth);
-        if (w > 0)
-        {
-            sb.Append(' ').Append(TipWorth(w));
-            double perSec = it.Worth / 60.0;
-            if (perSec > 0 && it.Price > 0) sb.Append("; pays for itself in ").Append(Math.Ceiling(it.Price / perSec).ToString(Inv)).Append(" s");
-            sb.Append('.');
-        }
-        if (it.Price > 0 && !double.IsInfinity(it.Price)) sb.Append(" Price: ").Append(CoinMark).Append(Money(it.Price)).Append('.');
-        if (!it.Affordable)
-        {
-            if (it.Reason == "Not enough coin")
-            {
-                double need = Math.Max(1, it.Price - t.Coin), rate = t.CoinPerMinute / 60.0;
-                sb.Append(' ').Append(CoinMark).Append(Money(need)).Append(" short");
-                if (rate > 0) sb.Append(", about ").Append(Math.Ceiling(need / rate).ToString(Inv)).Append(" s");
-                sb.Append('.');
-            }
-            else if (it.Reason.Length > 0) sb.Append(' ').Append(it.Reason).Append('.');
-        }
-        int ord = 0;
-        for (int k = 0; k < i; k++) if (_shown[k].Kind == ShopItemKind.Building) ord++;
-        string keys = KeyLabel(ActionFor(it, it.Kind == ShopItemKind.Building ? ord : 0), it.Kind);
-        if (keys.Length > 0) sb.Append(" Key: ").Append(keys).Append('.');
-        return sb.ToString();
-    }
-
-    private string GroupTip(int g)
-    {
-        var t = _drv.Town;
-        var sb = _tipSb.Clear();
-        sb.Append(GroupNames[g]).Append('.');
-        bool any = false;
-        foreach (var it in _items)
-        {
-            if ((int)GroupOf(it.Kind) != g || IsRowItem(it, t) || IsLocked(it)) continue;
-            sb.Append(any ? ", " : " Done: ").Append(RowName(it));
-            any = true;
-        }
-        if (any) sb.Append('.');
-        foreach (var it in _items)
-        {
-            if ((int)GroupOf(it.Kind) != g || !IsLocked(it)) continue;
-            sb.Append(' ').Append(RowName(it)).Append(": ").Append(Lower(it.Reason)).Append('.');
-        }
-        return sb.ToString();
+        string k = Settings.GameInput.Bound(action);
+        return k.Length > 0 ? $"{name} · {k}" : name;
     }
 }

@@ -6,15 +6,18 @@ using TideToll.Sim.Town;
 namespace TideToll.Game;
 
 /// <summary>
-/// Night 3 (layout sheet v2, section 3): the shop card on the right, as tall as its rows. A heading line ("Shop", and
-/// "3 to buy now"), then the groups in the simulation's order with what is folded away on each heading line (finished
-/// and locked purchases are not rows). Rows are 56 units when everything fits, else all 40 (one line), else the card
-/// scrolls (the wheel scrolls it only then). A row fades in or out over 0.2 s and the rows below slide over 0.2 s, but
-/// not while the pointer is over the shop (until it leaves, or 1.5 s), and a row that moved in the last 0.3 s takes no
-/// click. A row that has just become affordable pulses once, one at a time, at most two a second.
+/// The shop card on the right (layout sheet v2 section 3, sheet v3 docs/plans/n4/shop-sheet-v3.md), as tall as its
+/// rows. A header ("Shop", and "3 to buy"), then the display groups, each heading (name and a hairline, nothing else)
+/// only while it has rows, and a foot line ("Next: Basket at level 3") while anything is still locked (finished and
+/// locked purchases are not rows). Rows are 56 units when everything fits, else all 40 (one line), else the card
+/// scrolls (the wheel scrolls it only then). A row or heading fades in or out over 0.2 s and what is below slides over
+/// 0.2 s, the card's bottom edge and the foot with the same ease, but not while the pointer is over the shop (until it
+/// leaves, or 1.5 s), and a row that moved in the last 0.3 s takes no click. A row that has just become affordable
+/// pulses once, one at a time, at most two a second.
 /// </summary>
 public partial class TownHud
 {
+    public const float FootUnits = 30;
     public const float RowFade = 0.2f, RowSlide = 0.2f, RowHold = 1.5f, RowClickCalm = 0.3f, PulseSeconds = 0.4f, PulseGap = 0.5f;
     private Panel _shop = null!;
     private Control _shopBody = null!;
@@ -22,9 +25,12 @@ public partial class TownHud
     private readonly List<ShopRow> _rows = new();       // every row node, leaving ones included
     private readonly List<ShopRow> _rowOrder = new();   // the rows shown, in order (parallel to _shown and _marks)
     private readonly Control[] _groupHead = new Control[5];
-    private readonly Label[] _groupName = new Label[5], _groupFold = new Label[5];
-    private readonly int[] _groupFoldSig = new int[5];
-    private readonly List<ShopItem> _groupDone = new();
+    private readonly Label[] _groupName = new Label[5];
+    private readonly ShopSlide[] _headAnim = new ShopSlide[5];
+    private readonly ShopSlide _card = new();
+    private Control _foot = null!;
+    private Label _footText = null!;
+    private int _nameSize;
     private float _scroll, _holdAge = -1f, _pulseGap;
     private bool _compactShop, _shopScrolls;
     private readonly System.Collections.Generic.List<float> _shopBounds = new();
@@ -62,17 +68,35 @@ public partial class TownHud
             _groupName[g].Name = "Name";
             _groupName[g].Text = GroupNames[g];
             _groupName[g].Position = new Vector2(UiKit.U(_s, 6), 0);
-            _groupName[g].Size = new Vector2(UiKit.U(_s, 90), head.Size.Y);
-            _groupFold[g] = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont, UiKit.Muted, HorizontalAlignment.Right);
-            _groupFold[g].Name = "Folded";
-            _groupFold[g].Position = new Vector2(UiKit.U(_s, 96), 0);
-            _groupFold[g].Size = new Vector2(head.Size.X - UiKit.U(_s, 102), head.Size.Y);
+            float nameW = TextWidth(_groupName[g]) + 2;
+            _groupName[g].Size = new Vector2(nameW, head.Size.Y);
+            // The hairline: ink at 16 percent from the name to the right edge (sheet v3), and nothing else on the line.
+            var rule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
+            float rx = UiKit.U(_s, 6) + nameW + UiKit.U(_s, 8);
+            rule.Position = new Vector2(rx, MathF.Round(head.Size.Y / 2f + UiKit.U(_s, 2)));
+            rule.Size = new Vector2(head.Size.X - rx - UiKit.U(_s, 6), Math.Max(1, UiKit.U(_s, 1)));
             head.AddChild(_groupName[g]);
-            head.AddChild(_groupFold[g]);
+            head.AddChild(rule);
             _shopBody.AddChild(head);
             _groupHead[g] = head;
-            _groupFoldSig[g] = int.MinValue;
+            _headAnim[g] = new ShopSlide();
         }
+        // The foot: one caption line under a hairline, at the card's bottom (it moves with the bottom edge).
+        _foot = new Control { Name = "Foot", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        _foot.Size = new Vector2(w - 2 * pad, UiKit.U(_s, FootUnits));
+        var footRule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        footRule.Position = new Vector2(UiKit.U(_s, 6), 0);
+        footRule.Size = new Vector2(_foot.Size.X - UiKit.U(_s, 12), Math.Max(1, UiKit.U(_s, 1)));
+        _foot.AddChild(footRule);
+        _footText = UiKit.Fixed(_s, UiKit.Caption, UiKit.UiFont, UiKit.MutedNumber);
+        _footText.Name = "Text";
+        _footText.Position = new Vector2(UiKit.U(_s, 6), UiKit.U(_s, 4));
+        _footText.Size = new Vector2(_foot.Size.X - UiKit.U(_s, 12), _foot.Size.Y - UiKit.U(_s, 4));
+        _foot.AddChild(_footText);
+        _shop.AddChild(_foot);
+        _footSig = int.MinValue;
+        _card.Reset();
+        _nameSize = NameSizeFor(w - 2 * pad);
         _rows.Clear(); _rowOrder.Clear(); _shown.Clear(); _marks.Clear(); _pulseQueue.Clear();
         _scroll = 0; _holdAge = -1f; _compactShop = false; _shopScrolls = false; _affordSig = int.MinValue;
     }
@@ -114,7 +138,7 @@ public partial class TownHud
                 row.Button.Pressed += () => RowPressed(made);
                 row.Button.MouseEntered += () => _main.Audio.UiHover();
                 row.Button.GuiInput += ShopGui;
-                row.Layout(Zones.Rail - UiKit.U(_s, 16), !_compactShop, PillUnits);
+                row.Layout(Zones.Rail - UiKit.U(_s, 16), !_compactShop, PillUnits, _nameSize);
                 row.Button.Modulate = new Color(1, 1, 1, 0);
                 _shopBody.AddChild(row.Button);
                 _rows.Add(row);
@@ -142,22 +166,27 @@ public partial class TownHud
         float pad = UiKit.U(_s, 8), headH = UiKit.U(_s, 28), gap = UiKit.U(_s, 4), top = pad + UiKit.U(_s, 36);
         int groups = 0;
         for (int g = 0; g < 5; g++) if (GroupHasAny(g)) groups++;
+        float footH = _foot.Visible ? UiKit.U(_s, FootUnits) : 0;
         float Gap(float rowH) => rowH < UiKit.U(_s, 50) ? UiKit.U(_s, 2) : gap;
-        float Content(float rowH) => top + groups * headH + _rowOrder.Count * (rowH + Gap(rowH)) + pad;
+        float Content(float rowH) => top + groups * headH + _rowOrder.Count * (rowH + Gap(rowH)) + footH + pad;
         float max = z.ShopMaxHeight;
         bool compact = Content(UiKit.U(_s, 56)) > max;
         _shopScrolls = compact && Content(UiKit.U(_s, 40)) > max;
         if (compact != _compactShop)
         {
             _compactShop = compact;
-            foreach (var r in _rows) r.Layout(z.Rail - UiKit.U(_s, 16), !compact, PillUnits);
+            foreach (var r in _rows) r.Layout(z.Rail - UiKit.U(_s, 16), !compact, PillUnits, _nameSize);
         }
         float rowH = UiKit.U(_s, compact ? 40 : 56);
         float content = Content(rowH);
         // The card follows its rows: as tall as where they are now (a row that is still sliding up or fading out keeps
         // its place in the card), at most H - 104.
-        float extent = content;
-        foreach (var r in _rows) if (r.Y >= 0 && r.Alpha > 0.01f) extent = Math.Max(extent, top + r.Y + rowH + pad);
+        // Sheet v3: the bottom edge (and the foot on it) eases with the rows' slide; it never cuts a row still showing.
+        _card.Aim(content, PointerOverShop() && _holdAge >= 0 && _holdAge <= RowHold);
+        _card.Step(dt);
+        float extent = _card.Y;
+        foreach (var r in _rows) if (r.Y >= 0 && r.Alpha > 0.01f) extent = Math.Max(extent, top + r.Y + rowH + footH + pad);
+        for (int g = 0; g < 5; g++) if (_headAnim[g].Alpha > 0.01f) extent = Math.Max(extent, top + _headAnim[g].Y + headH + footH + pad);
         var rect = z.Shop(extent);
         _shop.Position = rect.Position;
         _shop.Size = rect.Size;
@@ -167,14 +196,15 @@ public partial class TownHud
         float y = 0;
         int k = 0;
         bool pending = false;
-        for (int g = 0; g < 5; g++) _groupHead[g].Visible = false;
         _shopBounds.Clear();
+        for (int g = 0; g < 5; g++) _headAnim[g].Wanted = false;
         for (int g = 0; g < 5; g++)
         {
             if (!GroupHasAny(g)) continue;
-            var head = _groupHead[g];
-            head.Visible = !_shopScrolls || (y >= _scroll - 0.5f && y + headH <= _shopVisEnd + 0.5f);
-            head.Position = new Vector2(0, y);
+            var ha = _headAnim[g];
+            ha.Wanted = true;
+            ha.Want = y;
+            if (ha.Y >= -0.5f && Math.Abs(y - ha.To) > 0.5f) pending = true;
             _shopBounds.Add(y);
             y += headH;
             for (; k < _rowOrder.Count && (int)GroupOf(_rowOrder[k].Item.Kind) == g; k++)
@@ -195,9 +225,9 @@ public partial class TownHud
             foreach (float b in _shopBounds)
                 if (atEnd ? b >= maxScroll - 0.5f && (best < maxScroll - 0.5f || b < best) : Math.Abs(b - _scroll) < Math.Abs(best - _scroll)) best = b;
             _scroll = best;
-            float bodyH = rect.Size.Y - top - pad, end = 0;
+            float bodyH = rect.Size.Y - top - pad - footH, end = 0;
             foreach (float b in _shopBounds) if (b - _scroll <= bodyH + 0.5f) end = Math.Max(end, b - _scroll);
-            if (end > 0) _shop.Size = new Vector2(rect.Size.X, top + end + pad);
+            if (end > 0) _shop.Size = new Vector2(rect.Size.X, top + end + footH + pad);
             _shopVisEnd = _scroll + end;
             _shopBody.Position = new Vector2(pad, top - _scroll);
         }
@@ -208,6 +238,26 @@ public partial class TownHud
         else if (_holdAge < 0) _holdAge = 0f;
         else _holdAge += dt;
         bool hold = over && pending && _holdAge <= RowHold;
+        for (int g = 0; g < 5; g++)
+        {
+            var ha = _headAnim[g];
+            if (!ha.Wanted) continue;
+            if (ha.Y < -0.5f || ha.Alpha <= 0.01f) { ha.Y = ha.Want; ha.To = ha.Want; ha.T = -1; }
+            else if (!hold && Math.Abs(ha.Want - ha.To) > 0.5f) { ha.From = ha.Y; ha.To = ha.Want; ha.T = 0; }
+        }
+        for (int g = 0; g < 5; g++)
+        {
+            var ha = _headAnim[g];
+            ha.Slide(dt, RowSlide);
+            // A new heading waits (unseen) while the pointer holds the rows, as a new row does.
+            bool show = ha.Wanted && (!hold || ha.Alpha > 0);
+            ha.Alpha = show ? Math.Min(1, ha.Alpha + dt / RowFade) : Math.Max(0, ha.Alpha - dt / RowFade);
+            var head = _groupHead[g];
+            head.Position = new Vector2(0, ha.Y);
+            head.Modulate = new Color(1, 1, 1, ha.Alpha);
+            head.Visible = ha.Alpha > 0.01f && (!_shopScrolls || (ha.Y >= _scroll - 0.5f && ha.Y + headH <= _shopVisEnd + 0.5f));
+        }
+        _foot.Position = new Vector2(pad, _shop.Size.Y - pad - footH);
         foreach (var r in _rowOrder)
         {
             float to = r.Want;
@@ -245,50 +295,25 @@ public partial class TownHud
 
     private bool PointerOverShop() => _shop.IsVisibleInTree() && _shop.GetGlobalRect().HasPoint(_shop.GetGlobalMousePosition());
 
+    /// <summary>Sheet v3: a group has a heading only while it has a row (one that is not leaving).</summary>
     private bool GroupHasAny(int g)
     {
-        // Night 3 L1 fix: a group whose purchases are all finished (or not yet unlocked) keeps its heading with the
-        // count of done (sheet 3: the same thing stays in the same place), so it reads the simulation's whole list.
-        foreach (var it in _raw) if ((int)GroupOf(it.Kind) == g) return true;
+        foreach (var r in _rowOrder) if ((int)GroupOf(r.Item.Kind) == g) return true;
         return false;
     }
 
-    /// <summary>The heading lines: what is folded away ("1 done · Yoke at level 7 · +1 more").</summary>
-    private void FoldFrame(Town t)
+    /// <summary>The one size of every row name in this layout: body when every name of the catalogue fits its box at
+    /// body, else caption (sheet v3: decided once from the whole catalogue, never row by row).</summary>
+    private int NameSizeFor(float rowWidth)
     {
-        for (int g = 0; g < 5; g++)
-        {
-            int done = 0, locked = 0, firstLocked = -1;
-            for (int i = 0; i < _raw.Count; i++)
-            {
-                var it = _raw[i];
-                if ((int)GroupOf(it.Kind) != g || IsRowItem(it, t)) continue;
-                if (IsLocked(it) && !(it.Reason == "Unlocks at a later level" && t.Level >= t.MaxLevel)) { locked++; if (firstLocked < 0) firstLocked = i; }
-                else done++;
-            }
-            int sig = HashCode.Combine(done, locked, firstLocked >= 0 ? _raw[firstLocked].Name : "", firstLocked >= 0 ? _raw[firstLocked].Reason : "");
-            if (sig == _groupFoldSig[g]) continue;
-            _groupFoldSig[g] = sig;
-            var f = _groupFold[g];
-            string d = done > 0 ? $"{done} done" : "";
-            string l = firstLocked >= 0 ? $"{RowName(_raw[firstLocked])} {Lower(FoldLock(_raw[firstLocked].Reason))}" : "";
-            string more = locked > 1 ? $"+{locked - 1} more" : "";
-            f.Text = Join(d, l, more);
-            // L1 fix: one grammar for the headings (sheet 3): "1 done · +2 more", never "2 later".
-            if (TextWidth(f) > f.Size.X) f.Text = Join(d, locked > 0 ? $"+{locked} more" : "", "");
-            if (TextWidth(f) > f.Size.X) f.Text = d;
-        }
+        int body = UiKit.Type(_s, UiKit.Body);
+        float box = ShopRow.NameBox(rowWidth, PillUnits, _s, true);
+        foreach (var n in RowNameCatalogue)
+            if (UiKit.UiFont.GetStringSize(n, HorizontalAlignment.Left, -1, body).X > box) return UiKit.Type(_s, UiKit.Caption);
+        return body;
     }
 
-    private static string Join(string a, string b, string c)
-    {
-        string r = a;
-        if (b.Length > 0) r = r.Length > 0 ? r + " · " + b : b;
-        if (c.Length > 0) r = r.Length > 0 ? r + " · " + c : c;
-        return r;
-    }
-
-    /// <summary>"3 to buy now", with a note when one of them is scrolled out of sight.</summary>
+    /// <summary>"3 to buy", with the down mark when one of them is scrolled out of sight.</summary>
     private void AffordFrame()
     {
         int n = 0; bool hidden = false;
@@ -303,7 +328,7 @@ public partial class TownHud
         int sig = n * 2 + (hidden ? 1 : 0);
         if (sig == _affordSig) return;
         _affordSig = sig;
-        _shopAfford.Text = n == 0 ? "" : hidden ? $"{n} to buy now ↓" : $"{n} to buy now";
+        _shopAfford.Text = n == 0 ? "" : hidden ? $"{n} to buy ↓" : $"{n} to buy";
     }
 
     /// <summary>The wheel over the shop: it scrolls only when the rows overflow (and is swallowed at the ends);
@@ -363,5 +388,22 @@ public partial class TownHud
     public bool RowInView(int i) => i >= 0 && i < _rowOrder.Count && _shop.GetGlobalRect().Grow(1).Encloses(_rowOrder[i].Button.GetGlobalRect());
     public string RowDebug(int i) { if (i < 0 || i >= _rowOrder.Count) return "-"; var r = _rowOrder[i]; return $"Y {r.Y:0.0} To {r.To:0.0} Want {r.Want:0.0} slide {r.SlideT:0.00} since {r.SinceMove:0.00} alpha {r.Alpha:0.00} waiting {r.Waiting} leaving {r.Leaving} hold {_holdAge:0.00} over {PointerOverShop()} compact {_compactShop} rows {_rowOrder.Count}/{_rows.Count}"; }
     public bool RowCalm(int i) => i >= 0 && i < _rowOrder.Count && _rowOrder[i].SinceMove >= RowClickCalm && _rowOrder[i].Alpha >= 1f;
-    public string GroupFoldText(ShopGroup g) => _groupHead[(int)g].Visible ? _groupFold[(int)g].Text : "";
+    /// <summary>The group headings showing (their node, and whether any row of the group is shown; tests).</summary>
+    public bool GroupHeadShown(int g) => _groupHead[g].Visible && _groupHead[g].Modulate.A > 0.5f;
+    public Control GroupHead(int g) => _groupHead[g];
+    public bool GroupHasRows(int g) => GroupHasAny(g);
+    /// <summary>The foot line's text ("" when it does not show; tests).</summary>
+    public string FootText => _foot.Visible ? _footText.Text : "";
+    /// <summary>The one name size of this layout and the row width it was decided for (tests).</summary>
+    public int RowNameSize => _nameSize;
+    public float RowWidth => Zones.Rail - UiKit.U(_s, 16);
+    public float PillWidthUnits => PillUnits;
+    public ShopRow RowNode(int i) => _rowOrder[i];
+    /// <summary>The InputMap action of row i ("" none; tests: the keys ascend down the list).</summary>
+    public string RowAction(int i)
+    {
+        int ord = 0;
+        for (int k = 0; k < i; k++) if (_shown[k].Kind == ShopItemKind.Building) ord++;
+        return ActionFor(_shown[i], _shown[i].Kind == ShopItemKind.Building ? ord : 0);
+    }
 }

@@ -6,14 +6,17 @@ using TideToll.Sim.Town;
 namespace TideToll.Game;
 
 /// <summary>
-/// The shop's data, keys and rows' content (round 3, rules v2; night 3 layout in TownHud.ShopRows.cs and ShopRow.cs):
-/// every shop item the simulation lists, grouped People / Work / Roads / Town / The river, each with its own key. The
-/// Pave and Extend rows switch their click modes (TownHud.Pave.cs, TownHud.Extend.cs) instead of buying.
+/// The shop's data, keys and rows' content (round 3, rules v2; layout in TownHud.ShopRows.cs and ShopRow.cs): every
+/// shop item the simulation lists, grouped for display (sheet v3: People, Building, Work, Town, The river, so that the
+/// keys read upward down the list: 1 2 3, 4 5 F G H, 6 7 8 9, 0), each with its own key. The Pave and Extend rows
+/// switch their click modes (TownHud.Pave.cs, TownHud.Extend.cs) instead of buying.
 /// </summary>
 public partial class TownHud
 {
-    public enum ShopGroup { People, Work, Roads, Town, River }
-    private static readonly string[] GroupNames = { "People", "Work", "Roads", "Town", "The river" };
+    public enum ShopGroup { People, Building, Work, Town, River }
+    private static readonly string[] GroupNames = { "People", "Building", "Work", "Town", "The river" };
+    /// <summary>The town is in its second age (a row of a kind the sheet does not name goes to The river then).</summary>
+    private bool _secondAge;
 
     private readonly List<Button> _marks = new();
     private readonly List<ShopItem> _items = new();
@@ -37,13 +40,28 @@ public partial class TownHud
     public IReadOnlyList<ShopItem> ShownItems => _shown;
     public IReadOnlyList<Button> Marks => _marks;
 
-    public static ShopGroup GroupOf(ShopItemKind k) => k switch
+    /// <summary>Sheet v3: the display group of a kind (the simulation's order is not changed, only shown regrouped).</summary>
+    public static ShopGroup GroupOf(ShopItemKind k, bool secondAge) => k switch
     {
-        ShopItemKind.Villager or ShopItemKind.Extend => ShopGroup.People,
-        ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value => ShopGroup.Work,
-        ShopItemKind.Pave => ShopGroup.Roads,
+        ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load => ShopGroup.People,
+        ShopItemKind.Pave or ShopItemKind.Extend or ShopItemKind.Building => ShopGroup.Building,
+        ShopItemKind.Tools or ShopItemKind.Value => ShopGroup.Work,
+        ShopItemKind.BellTrack or ShopItemKind.Regulars => ShopGroup.Town,
         >= ShopItemKind.Ferry and <= ShopItemKind.Winch => ShopGroup.River,
-        _ => ShopGroup.Town,
+        _ => secondAge ? ShopGroup.River : ShopGroup.Town,
+    };
+
+    private ShopGroup GroupOf(ShopItemKind k) => GroupOf(k, _secondAge);
+
+    /// <summary>Sheet v3: a row's place inside its group: its key's place in 1 2 3 4 5 F G H 6 7 8 9 0, rows without a
+    /// key after (offers share one rank: the stable order keeps them F, G, H).</summary>
+    public static int KeyRank(in ShopItem it) => it.Kind switch
+    {
+        ShopItemKind.Villager => 10, ShopItemKind.Pace => 20, ShopItemKind.Load => 30, ShopItemKind.Pave => 40,
+        ShopItemKind.Extend => 50, ShopItemKind.Building => 55, ShopItemKind.Tools => 60,
+        ShopItemKind.Value => it.Index == (int)Good.Water ? 70 : it.Index == (int)Good.Grain ? 80 : 90,
+        ShopItemKind.BellTrack => 100,
+        _ => 1000,
     };
 
     /// <summary>The InputMap action of a shown item; building offers take F, G, H in the order they are shown.</summary>
@@ -181,24 +199,36 @@ public partial class TownHud
         return true;
     }
 
-    /// <summary>The shown items in display order: grouped, the simulation's order kept inside a group.</summary>
-    private void Grouped(List<ShopItem> src, List<ShopItem> dst)
+    /// <summary>The shown items in display order: grouped, inside a group by key (stable: the simulation's order
+    /// otherwise). No allocation: an insertion sort per group.</summary>
+    private void Grouped(List<ShopItem> src, List<ShopItem> dst, bool all = false)
     {
         dst.Clear();
         for (int g = 0; g < GroupNames.Length; g++)
-            foreach (var it in src) if ((int)GroupOf(it.Kind) == g && !RiverHidden(it)) dst.Add(it);
+        {
+            int start = dst.Count;
+            foreach (var it in src) if ((int)GroupOf(it.Kind) == g && (all || !RiverHidden(it))) dst.Add(it);
+            for (int i = start + 1; i < dst.Count; i++)
+            {
+                var x = dst[i];
+                int rx = KeyRank(x), j = i - 1;
+                while (j >= start && KeyRank(dst[j]) > rx) { dst[j + 1] = dst[j]; j--; }
+                dst[j + 1] = x;
+            }
+        }
     }
 
     private readonly List<ShopItem> _raw = new();
 
     /// <summary>Round 4: the river's group shows only what can be bought now or soon (coin the one thing missing):
     /// locked and finished river steps are left out, so the bookmarks fit at the end of the second age.</summary>
-    public static bool RiverHidden(in ShopItem it) => GroupOf(it.Kind) == ShopGroup.River && (it.Locked || it.Finished);
+    public static bool RiverHidden(in ShopItem it) => it.Kind is >= ShopItemKind.Ferry and <= ShopItemKind.Winch && (it.Locked || it.Finished);
 
     private void ShopFrame(float dt)
     {
         var t = _drv.Town;
         t.ShopItems(_raw);
+        _secondAge = t.RiverPlan != null;
         Grouped(_raw, _items);
         SyncRows(t, PointerOverShop());
         int offer = 0;
@@ -225,8 +255,9 @@ public partial class TownHud
             if (st == ShopRow.PillState.NotYet) r.SetFill(it.Price > 0 ? (float)Math.Clamp(t.Coin / it.Price, 0, 1) : 0f);
         }
         LayoutShop(dt, t);
-        FoldFrame(t);
+        FootFrame(t);
         AffordFrame();
+        BandFrame();
         PulseFrame(dt);
     }
 
@@ -244,7 +275,7 @@ public partial class TownHud
         }
         // Each part is set only when it changed (the signature changes with every coin while saving up).
         string key = FirstKey(ActionFor(it, ord));
-        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0; }
+        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Tall; r.PlaceKey(); }
         bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
         string name = RowName(it);
         int step = track && it.Level > 0 ? it.Level : 0;
@@ -255,27 +286,22 @@ public partial class TownHud
             r.Step.Text = step > 0 ? step.ToString(Inv) : "";
             r.PlaceStep();
         }
-        string w = worth > 0 ? WorthLine(worth) : "";
-        string state = st switch
+        // Sheet v3: line 2 is never empty and says one thing (the click to make, why it is blocked, the worth, or what
+        // it does); how far the coin has come is the pill's wash, the number is in the tooltip.
+        string line = st switch
         {
             ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a lit road" : "Click a lit cottage",
-            ShopRow.PillState.NotYet => $"{Money(need)} short",
-            ShopRow.PillState.Blocked => it.Reason.Length > 0 ? it.Reason : "Not yet",
-            _ => "",
+            ShopRow.PillState.Blocked => BlockedLine(it.Reason),
+            _ => worth > 0 ? WorthLine(worth) : DoesLine(it.Kind),
         };
-        string line = w.Length > 0 && state.Length > 0 ? w + " · " + state : w + state;
-        // An optional caption is dropped whole, never cut: the worth goes first (it stays in the tooltip).
-        if (state.Length > 0 && TextWidth(r.Line2, line) > r.Line2.Size.X) line = state;
         if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
         if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
-        string price = st == ShopRow.PillState.On ? "On" : it.Price > 0 && !double.IsInfinity(it.Price) ? (it.Kind == ShopItemKind.Pave ? "from " : "") + UiKit.Short(it.Price)
-            : it.Kind == ShopItemKind.Pave ? "no road" : "–"; // L1 fix: a blocked Pave says why, not an empty box
+        bool priced = it.Price > 0 && !double.IsInfinity(it.Price);
+        string price = st == ShopRow.PillState.On ? "On" : !priced ? "\u2013" : (it.Kind == ShopItemKind.Pave ? "from " : "") + PillMoney(it.Price);
         if (price != r.PriceShown)
         {
             r.PriceShown = price;
-            r.Price.Text = price;
-            r.FromPrice(it.Kind == ShopItemKind.Pave);
-            r.FitPrice();
+            r.SetPrice(price, st == ShopRow.PillState.On || !priced || it.Kind == ShopItemKind.Pave);
         }
     }
 
@@ -287,13 +313,6 @@ public partial class TownHud
         return best < double.MaxValue ? best : fallback;
     }
 
-    private static string RowName(in ShopItem it) => it.Kind switch
-    {
-        ShopItemKind.Pave => "Pave a road",
-        ShopItemKind.Extend => "Extend a cottage",
-        _ => it.Name,
-    };
-
     /// <summary>"+3.7 a minute": what one more is worth (line 2 of a row).</summary>
     public static string WorthLine(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} a minute" : $"+{Money(tenths / 10)} a minute";
 
@@ -303,44 +322,6 @@ public partial class TownHud
     /// <summary>Call when key bindings changed, so the bookmarks print the new keys.</summary>
     /// <summary>Kept for callers: the keys are reprinted by themselves when the bindings change (GameInput.Version).</summary>
     public void KeysChanged() { }
-
-    /// <summary>Round 5: the simulation's worth (coin a minute) as shown: tenths below 10, whole numbers above.</summary>
-    public static int WorthTenths(double w) => w <= 0.05 ? 0 : w < 10 ? (int)Math.Round(w * 10) : (int)Math.Round(w) * 10;
-    public static string WorthText(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} coin a minute" : $"+{Money(tenths / 10)} coin a minute";
-
-    /// <summary>Round 6: "Unlocks at level 25" reads "level 25" on a folded line.</summary>
-    private static string ShortLock(string reason) => reason.StartsWith("Unlocks at ") ? reason.Substring("Unlocks at ".Length) : reason;
-
-    /// <summary>"Unlocks at level 7" reads "at level 7" on a group's heading line.</summary>
-    private static string FoldLock(string reason) => reason.StartsWith("Unlocks ") ? reason.Substring("Unlocks ".Length) : reason;
-
-    private static string Lower(string s) => s.Length == 0 ? s : char.ToLowerInvariant(s[0]) + s.Substring(1);
-
-    private static string Tooltip(in ShopItem it) => it.Kind switch
-    {
-        ShopItemKind.Villager => "One more villager. Each cottage houses two, more when extended.",
-        ShopItemKind.Pace => "Everyone walks a little faster.",
-        ShopItemKind.Load => "Everyone carries one more unit per trip.",
-        ShopItemKind.Tools => "Work at the well, field and mill goes faster.",
-        ShopItemKind.Value => "This good pays more for every unit delivered.",
-        ShopItemKind.BellTrack => "The bell hurries everyone a little longer and rests a little less.",
-        ShopItemKind.Extend => "One more room in a cottage: room for one more villager. Click a lit cottage.",
-        ShopItemKind.Pave => "Pave one worn-in road: faster, and it carries more people. Click a lit road.",
-        ShopItemKind.Ferry => "A ferry over the river: it crosses at any tide, a few people at a time.",
-        ShopItemKind.Berth => "A second berth at the landing: two boats moor at once.",
-        ShopItemKind.Crane => "A crane at the landing: boats ask for bigger cargoes.",
-        ShopItemKind.BoatPrices => "Boats pay more for every unit.",
-        ShopItemKind.RiverValue => "This good pays more for every unit delivered.",
-        ShopItemKind.Raft => "A bigger raft: the ferry carries one more person.",
-        ShopItemKind.Rope => "A faster rope: the ferry crosses quicker.",
-        ShopItemKind.Toll => "Every boat through the drawbridge pays more toll.",
-        ShopItemKind.Winch => "A faster winch: the drawbridge lifts quicker, so walkers wait less.",
-        ShopItemKind.Regulars => RegularsHelp,
-        ShopItemKind.Hand => "One more place to work where people queue. Its workplace shows a marker.",
-        _ => "A building for the town, placed on its plot by the town.",
-    };
-
-    public const string RegularsHelp = "A regular customer: every delivery pays a little more.";
 
     public override void _UnhandledInput(InputEvent e)
     {

@@ -7,7 +7,8 @@ namespace TideToll.Game;
 /// Night 3 (layout sheet v2, sections 2 and 3): the timers at the bottom left (the bell: icon, "Ring", its key; while
 /// ringing the seconds over a bar running down; while resting the rest over a bar filling, disabled look) and
 /// navigation at the bottom right (Achievements with its count, this age's page, centre the view, pause; each with
-/// its key in a small cap and a tooltip). "Ring in the next age" lives in the ledger's strip until it is rung.
+/// a tooltip naming it and its key; sheet v3: each shows its icon centred and nothing else, Achievements its icon and
+/// count, no key cap). "Ring in the next age" lives in the ledger's strip until it is rung.
 /// </summary>
 public partial class TownHud
 {
@@ -16,7 +17,7 @@ public partial class TownHud
     private Panel _bellBar = null!;
     private ColorRect _bellFill = null!;
     private int _bellSig = int.MinValue, _navSig = int.MinValue;
-    private Label _achCount = null!, _achKey = null!, _pageKey = null!, _homeKey = null!, _pauseKey = null!;
+    private Label _achCount = null!;
     private string _bellTip = "";
     private int _achGot;
 
@@ -77,21 +78,21 @@ public partial class TownHud
         _stripBox.AddChild(_nextAge);
     }
 
-    private Button NavButton(string name, int slot, string icon, string standIn, out Label key)
+    /// <summary>A navigation button: its icon (26) centred, nothing else (Achievements: icon at the left, the count).
+    /// Disabled: border 1 at 40 percent ink, the icon at 40 percent (sheet v3).</summary>
+    private Button NavButton(string name, int slot, string icon, string standIn)
     {
         var r = Zones.NavButton(slot);
         var b = new Button { Name = name, Text = "", ClipContents = true, Position = r.Position, Size = r.Size };
         UiKit.StyleButton(b, _s, 0);
+        var off = UiKit.ButtonBox(_s, UiKit.ButtonLook.Disabled, 0);
+        off.BorderColor = new Color(UiKit.Ink, 0.4f);
+        b.AddThemeStyleboxOverride("disabled", off);
         b.MouseEntered += () => _main.Audio.UiHover();
-        var ic = UiKit.IconRect(_s, IconOr(icon, standIn));
-        ic.Position = new Vector2(slot == 0 ? UiKit.U(_s, 6) : (r.Size.X - UiKit.U(_s, 24)) / 2f, UiKit.U(_s, slot == 0 ? 12 : 2));
+        var ic = UiKit.IconRect(_s, IconOr(icon, standIn), 26);
+        float side = UiKit.U(_s, 26);
+        ic.Position = new Vector2(slot == 0 ? UiKit.U(_s, 12) : MathF.Round((r.Size.X - side) / 2f), MathF.Round((r.Size.Y - side) / 2f));
         b.AddChild(ic);
-        key = UiKit.KeyCap(_s);
-        // The cap sits on the button's foot: its height is the caption's own line (a Label never shrinks below it).
-        float capH = Math.Max(UiKit.U(_s, 16), key.GetMinimumSize().Y);
-        key.Position = slot == 0 ? new Vector2(UiKit.U(_s, 36), r.Size.Y - capH - 1) : new Vector2(UiKit.U(_s, 1), r.Size.Y - capH - 1);
-        key.Size = slot == 0 ? new Vector2(UiKit.U(_s, 70), capH) : new Vector2(UiKit.U(_s, 46), capH);
-        b.AddChild(key);
         _root.AddChild(b);
         return b;
     }
@@ -99,19 +100,18 @@ public partial class TownHud
     private void BuildNav()
     {
         for (int i = 0; i < _dimWas.Length; i++) _dimWas[i] = -1; // new buttons: dim them afresh
-        _achMark = NavButton("Achievements", 0, "nav-achievements", "ui-achievement", out _achKey);
+        _achMark = NavButton("Achievements", 0, "nav-achievements", "ui-achievement");
         _achMark.Pressed += ToggleAchievements;
-        _achCount = UiKit.Fixed(_s, UiKit.Body, UiKit.TightBold);
-        _achCount.VerticalAlignment = VerticalAlignment.Top;
+        _achCount = UiKit.Fixed(_s, UiKit.Body, UiKit.UiBold);
         _achCount.Name = "Count";
-        _achCount.Position = new Vector2(UiKit.U(_s, 34), UiKit.U(_s, 3));
-        _achCount.Size = new Vector2(UiKit.U(_s, 76), UiKit.U(_s, 20));
+        _achCount.Position = new Vector2(UiKit.U(_s, 46), 0);
+        _achCount.Size = new Vector2(_achMark.Size.X - UiKit.U(_s, 52), _achMark.Size.Y);
         _achMark.AddChild(_achCount);
-        _agePageMark = NavButton("AgePage", 1, "nav-page", "ui-new-map", out _pageKey);
+        _agePageMark = NavButton("AgePage", 1, "nav-page", "ui-new-map");
         _agePageMark.Pressed += NextAgePressed;
-        _home = NavButton("HomeMark", 2, "nav-home", "ui-reset", out _homeKey);
+        _home = NavButton("HomeMark", 2, "nav-home", "ui-reset");
         _home.Pressed += () => _main.Rig.HomePressed?.Invoke();
-        PauseMark = NavButton("PauseMark", 3, "nav-pause", "ui-pause", out _pauseKey);
+        PauseMark = NavButton("PauseMark", 3, "nav-pause", "ui-pause");
         PauseMark.Pressed += () => _main.Menu.Pause();
         _navSig = int.MinValue;
     }
@@ -160,11 +160,7 @@ public partial class TownHud
         {
             _navSig = nsig;
             _achCount.Text = $"{got} of {AchCount(t, _achRiver)}";
-            _achKey.Text = Settings.GameInput.Bound("tt_achievements");
-            _pageKey.Text = Settings.GameInput.Bound("tt_next_age");
-            _homeKey.Text = Settings.GameInput.Bound("tt_home_view");
-            _pauseKey.Text = Settings.GameInput.Bound("tt_pause");
-            _nextAgeKey.Text = _pageKey.Text;
+            _nextAgeKey.Text = Settings.GameInput.Bound("tt_next_age");
         }
         _agePageMark.Disabled = !t.NextAgeRung;
         _home.Disabled = !_main.Rig.UserMoved;
@@ -173,8 +169,8 @@ public partial class TownHud
         Dim(_agePageMark, 0); Dim(_home, 1); Dim(_achMark, 2);
     }
 
-    /// <summary>L1 fix: a disabled navigation button shows it (sheet 4: disabled is 45 percent ink): its icon and key cap
-    /// fade with the button's border, so Home reads as off while the view is already home.</summary>
+    /// <summary>A disabled navigation button shows it (sheet v3: its icon at 40 percent, with the button's border at 40
+    /// percent ink), so Home reads as off while the view is already home.</summary>
     private readonly int[] _dimWas = { -1, -1, -1 };
 
     private void Dim(Button b, int i)
@@ -182,7 +178,7 @@ public partial class TownHud
         int now = b.Disabled ? 1 : 0;
         if (_dimWas[i] == now) return; // only when it changes (GetChildren makes an array)
         _dimWas[i] = now;
-        float a = b.Disabled ? 0.45f : 1f;
+        float a = b.Disabled ? 0.4f : 1f;
         foreach (var ch in b.GetChildren())
             if (ch is CanvasItem ci && ci.Modulate.A != a) ci.Modulate = new Color(1, 1, 1, a);
     }
