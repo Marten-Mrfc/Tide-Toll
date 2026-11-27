@@ -23,6 +23,27 @@ Checkout: `/home/user/tide-toll/build/wt/n3-ui` (branch `wt/n3-ui`). Strips: `/h
 - game-playthrough (03:13): PLAY PASS charter=33.9min buys=201 paves=24 extends=14 bells=76 clicks=204 keys=102.
 - game-perf (03:21, current code): 1x mean 0.858 ms, 541 B/frame; 8x 1.112 ms, 738 B/frame; river 1x 1.055 ms, 1211 B/frame; river 8x 1.579 ms, 1579 B/frame. PERF PASS.
 
+## The strips, read (run of 03:20; sheets in `build/n3/feel/`, 960 x 540 real pixels at the play zoom)
+
+- feel-coin: a pale gold disc at the market's door path, rocks over (edge-on in frames 4 and 10), shrinks in 11, gone in 12. Readable (about 12 px), does not cover the building. Fault: the hop's height hardly shows from the steep view; it reads as a flip in place.
+- feel-trail-dust: small pale puffs with an ink edge at the feet of the one walker on a new trail, in 9 of 12 frames; light, never over the villager.
+- feel-extend: a cluster of pale ink-edged puffs at the cottage door, spreading and shrinking away by frame 12; the cottage stays clear.
+- feel-flourish: a paper ring at the new villager's cottage door and sparks inside it (frames 1 to 6), gone by 7. Fault: the sparks read as dark specks (the ink edge dominates spheres this small) rather than gold.
+- feel-bell: three paper rings spread round the bell post, the brightest in frames 8 and 11 lying over the post's base; the bell's own swing is not in the strip (the event was staged, the town was not really rung).
+- feel-request: (sheet taken; the same flourish at the market).
+- feel-pave (03:20 run): FAULT, fixed at 03:38: the grit sat in one clump at one end of the road (the code walked the grid's distances on the curve's points); now placed by `Road.At` along the curve. Retake started 03:40 into `build/n3/feel/retake/`.
+- feel-gift (03:20 run): FAULT of the staging: the town's level 6 gift has no plot, so nothing showed; the strip now picks the latest level whose gift has a plot. In the retake.
+- feel-landing (taken before the last fixes, landing code unchanged): a thin paper ring widening and sinking at the landing's edge on the bank, not on the water (the strip staged the sale at the landing's foot); faint at this zoom. A boat mooring rings at the boat itself (on the water); not staged.
+- Retake (03:44, `build/n3/feel/retake/`): feel-pave: a line of small dark stones jumps along the whole road from end to end (frames 1 to 11), gone at 12; the road and the walkers stay seen. feel-gift: a ring widens inside the new market plot's frame (frames 1 to 8) and sinks away (9); it reads as ink until it is largest (frame 8 pale gold). Fault: both read darker than meant (the ink edge on thin pieces).
+- feel-ford and a fresh feel-landing: the retake was still running at 03:46 (river part); not read.
+
+## Left / next
+
+- Sparks, grit and thin rings read as ink at the play zoom: thicker rings (inner radius 0.75) and larger sparks would let the colour show.
+- The coin's hop hardly shows from the steep view: more travel up the screen.
+- The landing's sale ring belongs on the water beside the landing, not on the bank.
+- The whole ./check was started at 03:27 and was still running at 03:46 (see the final answer).
+
 ## New sounds
 
 | File | Length | What it is for | When it plays |
