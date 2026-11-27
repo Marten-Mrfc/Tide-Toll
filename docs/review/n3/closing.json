@@ -1,0 +1,186 @@
+{
+ "newest": {
+  "round": "R2 (assets)",
+  "commit": "4dbb3e0",
+  "url": "https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300",
+  "result": "success, artifact `TideToll-windows-x64`: the river, crossings, boats, the book's table, leather and paper, and the small things, on top of the new layout and asset round 1"
+ },
+ "closing": [
+  {
+   "id": "build",
+   "title": "The newest Windows build",
+   "kind": "text",
+   "paras": [
+    "<a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300\"><strong>Round R2 (assets), commit 4dbb3e0</strong></a>. Open the run page, scroll to the bottom, download the artifact <code>TideToll-windows-x64</code>, unzip all of it and start <code>TideToll.exe</code>. You need to be signed in to GitHub. The exe is not signed, so Windows SmartScreen will warn once: choose \"More info\", then \"Run anyway\".",
+    "success, artifact <code>TideToll-windows-x64</code>: the river, crossings, boats, the book's table, leather and paper, and the small things, on top of the new layout and asset round 1",
+    "Nobody has run this exe on Windows tonight. Everything ran on Linux in a cloud machine without a graphics card."
+   ],
+   "items": [
+    "start, commit <code>b797857</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45806770859\">run page</a>",
+    "R1 (assets), commit <code>828643d</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45906718094\">run page</a>",
+    "L1 (layout), commit <code>754ea3d</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45913581143\">run page</a>",
+    "R2 (assets), commit <code>4dbb3e0</code>: <a href=\"https://github.com/Marten-Mrfc/Tide-Toll/actions/runs/45923453300\">run page</a>"
+   ],
+   "items_title": "Every build of the night, oldest first"
+  },
+  {
+   "id": "honest",
+   "title": "What got better and what did not, in my honest view",
+   "kind": "two",
+   "columns": [
+    {
+     "title": "Better",
+     "items": [
+      "The town is clearly better to look at: people instead of pawns, a street that does not repeat, a real mill, trees of five kinds, fields that read as crops.",
+      "The screen is calm now, judged from the pictures: every kind of thing has one place, and nothing overlaps on any of the eight window and interface sizes tested.",
+      "The shop reads as a list with prices instead of twelve cards.",
+      "Play is unchanged by the numbers: the charter at minute 33.9 and 201 purchases, as before the night."
+     ]
+    },
+    {
+     "title": "Not better",
+     "items": [
+      "Loads are a few pixels at the normal view and read by colour more than by shape.",
+      "Every roof is the same thatch yellow.",
+      "The charter stone could not be found at a glance after the first round (round 2 made it taller and set it beside the bell).",
+      "With eight things affordable, the shop is a wall of gold pills.",
+      "The left sheet is mostly blank paper early in the game.",
+      "Icons are still stand-ins (round 3 is making them).",
+      "Zoomed out to the book, the one-line purse lies over the page's title.",
+      "Nobody has played the new interface with their own hands."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "decisions",
+   "title": "Decisions made for you",
+   "kind": "table",
+   "numbered": true,
+   "head": [
+    "#",
+    "Decision",
+    "Why"
+   ],
+   "rows": [
+    [
+     "1",
+     "The interface and the assets are worked on at the same time, in two checkouts, and merged after each round",
+     "The night is ten hours; the brief asks for a third of it on the layout and a quarter on assets. Their files do not overlap"
+    ],
+    [
+     "2",
+     "Last night's log moved to <code>docs/incremental-log-night2.md</code>; this file starts fresh",
+     "One file to resume from, short enough to read after a restart"
+    ],
+    [
+     "3",
+     "The before pictures are kept in git as JPEG (<code>docs/review/n3/before/</code>)",
+     "The review page must show before and after even if the cloud machine is replaced in the night"
+    ],
+    [
+     "4",
+     "The left side of the screen becomes one \"ledger\" sheet that never changes size, with four ruled sections (purse, goal, a strip, a note); an empty section shows blank ruled paper",
+     "Four separate cards that came and went were a main cause of the chaos; a fixed sheet means nothing can move or pop in"
+    ],
+    [
+     "5",
+     "The shop becomes rows in one sheet: name and what it is worth on the left, a price pill on the right; locked purchases are named on the group's heading (\"Yoke at level 7\") instead of having rows",
+     "Calmer than twelve three-line cards, and nothing a player could read before is lost"
+    ],
+    [
+     "6",
+     "About two thirds of the small notes are no longer shown (\"A cottage is extended\", \"A road is cobbled\", \"A new villager moves in\", \"New to buy\", \"A road has worn in\", a request asked, met or missed)",
+     "They said what the player had just done or what another part of the screen already shows. A first age had about 200 notes, six a minute"
+    ],
+    [
+     "7",
+     "\"Ring in the next age\" lives in the ledger's strip, as a gold button that stays until used",
+     "It had no fixed place; it is the most important button of the age"
+    ],
+    [
+     "8",
+     "Coin numbers on the map are smaller (20 instead of 34) and stay 1.4 s instead of 1.8 s",
+     "They covered villagers and labels. The setting that turns them off stays"
+    ],
+    [
+     "9",
+     "A purchase's step is shown as a plain number after its name (\"Villager 9\") instead of \"level 9\"",
+     "\"Level\" also means the town's level, a few centimetres away"
+    ],
+    [
+     "10",
+     "The 150 percent interface size is honoured on a 1280 x 720 window too (the shop then uses one-line rows and may scroll)",
+     "The brief asks for it; a critic proposed capping it instead"
+    ],
+    [
+     "11",
+     "Fields are reworked although they are not on your list",
+     "In the audit they read as pallets of planks, and they are the largest things on the map"
+    ],
+    [
+     "12",
+     "No new keys are added (river purchases stay without keys; the choice of two keeps Z and X)",
+     "Adding keys would change how the game is played"
+    ],
+    [
+     "13",
+     "Building offers take the keys F, G and H in the order of the rows you can see",
+     "Locked offers are no longer rows, so the first visible offer is always F. Before, a locked offer could hold F"
+    ],
+    [
+     "14",
+     "A request's bar shows how much is delivered, not how much time is left; the time is in the text and turns red in its last quarter",
+     "A reviewer found that a request that was nearly met looked like a failing one"
+    ],
+    [
+     "15",
+     "At a level with a choice of two boons, the choice opens at once and the level's gift is told in a note",
+     "The sheet first said \"banner first\"; a decision should not be held back for three seconds"
+    ],
+    [
+     "16",
+     "Labels on the map (a staked plot, a boat's cargo, \"+ hand\") are small paper tags at a fixed size on screen",
+     "The old 3D labels shrank to 5 to 7 pixels at 1280 x 720"
+    ],
+    [
+     "17",
+     "Cottage variant and door colour follow from a cottage's place in the town, not from the save",
+     "The save format does not change, and the same town always looks the same"
+    ],
+    [
+     "18",
+     "The book's table now has an inkwell and quill, a candle, a ribbon and a seal stamp lying at its edges",
+     "The table was a flat dark brown filling 40 percent of the book view"
+    ],
+    [
+     "19",
+     "A ferryman, a boatman and a skipper stand on the raft and in the boats (decoration only)",
+     "The ferry and the boats looked abandoned"
+    ],
+    [
+     "20",
+     "The book's work ran in a third checkout beside the message round, with file ownership split between them",
+     "To leave time for the feel round and the final checks"
+    ]
+   ]
+  },
+  {
+   "id": "needs",
+   "title": "Needs you",
+   "kind": "text",
+   "items": [],
+   "paras": [
+    "Nothing at the moment."
+   ]
+  }
+ ],
+ "counts": {
+  "builds": 4,
+  "decisions": 20,
+  "needs": 0,
+  "sounds": 0,
+  "better": 4,
+  "not_better": 8
+ }
+}

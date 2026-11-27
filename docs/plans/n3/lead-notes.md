@@ -2,6 +2,19 @@
 
 Agents: read this file again whenever your brief says "check the lead's notes". A note names who it is for.
 
+## 01:58 UTC, for the L2 fixer (messages): stale banners
+
+A person who read the pictures of the new layout found banners that were out of date when they showed: u05 shows the banner "Level 2" while the town is at level 3; u13 shows "Level 12" at level 15; u33 at 1280 x 720 shows "A new age" at level 18; u16 shows the charter drive's banner after the charter is granted. Whatever the cause in each case (a banner that waited while the view was zoomed out or a page was open, or the tour running the game fast), the rule for the queue is: **a banner is dropped, not shown, when what it says is no longer true** (a level banner when the town has passed that level; the drive's banner once the drive is met or the charter granted; "A new age" once the age's first level is passed). The same for notes. Add a check for it to game-motion's queue checks, and look at u05, u13, u16 and u33 in your pictures.
+
+## 01:58 UTC, for asset track LF's fixer (life in the town): two things outside your list
+
+1. **Fields read as a raised wooden tray** (a brown rim round the ripe and the sprouting field, seen in the before-and-after pictures). You may edit `assets/src/models/field.py` for this one thing: lower and soften the rim so the field lies in the meadow (a mown headland, no board), and take the pictures again.
+2. **The heron is tiny at the normal view**: make it readable there (1.6 m, a clear neck and legs) or leave it out.
+
+## 01:58 UTC, for asset track IC's fixer (icons)
+
+The interface asks for some icons under names that do not match (your builder reported that the Yoke row shows the basket). Besides writing files under the names the code asks for today, list every such name under "For the lead" with the key it should be, so the interface builders can put it right in the last round.
+
 ## 00:20 UTC, for asset track BK's fixer: the closed cover is NOT blank in the game
 
 Your reviewer's must-fix 3 says the closed book's front is "a blank red field" and asks for a gilt device or title plate. In the game the cover carries the title "Tide & Toll", the town's name and the menu (Resume, Settings, New town, Quit), drawn by the pause menu as lettering inside the gilt rules; the asset audit hides the interface, so its picture shows the board without them. **Do not put a title, a plate or a device in the middle of the board, and do not move the gilt rules.** Raise the contrast of the tooling, the corners, the clasp and the spine as much as you like: decoration belongs to the border, the corners and the spine. If you want to see the real cover, take `tools/ui-audit.sh --only=u19 --out=/home/user/tide-toll/build/n3/assets-audit/r2-bk-cover` and read it.

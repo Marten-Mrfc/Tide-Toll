@@ -24,6 +24,14 @@ Checkout `/home/user/tide-toll/build/wt/n3-art2`. Pictures: `/home/user/tide-tol
 - Audit: subjects life-street, life-street-charter, life-hens, life-cat, life-dog, life-pasture, life-river, life-ducks
   (`AssetAudit.Town.cs`); the Life node is hidden for model pictures (`AssetAudit.cs`).
 
+- **Item 6:** `assets/src/models/dressing.py` -> `dress-bunting` (5 m, eight flags fluttering by the same cloth shader,
+  set beside the market as its "garden"), `dress-rocks` (four outcrops on quiet bank rows), `dress-gull` (on the first
+  outcrop, not on a mooring post: the landing's posts are RiverLayer's).
+- 01:41 first pictures read (r3-lf): gardens beside cottages, hens by the coop, cat on a step, dog, ducks and heron on
+  the river, sheep in the pasture; the willow in front of the landing is gone; the crane's jib lies over the landing,
+  not a roof. Animals were small at the normal view: scale raised (hens, ducks 2.2x, cat 2x, dog 1.8x, heron 1.6x);
+  cat reworked grey with a clear head, dog in two lumps with paws.
+
 ## Left
 
 - Pictures read and fixed; tests; ledger rows merged; item 6.

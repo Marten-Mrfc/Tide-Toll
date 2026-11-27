@@ -1,0 +1,3373 @@
+{
+ "about": "The owner's review page for night 3, in order. Built by docs/review/n3/build_review.py. Each picture has a 'path' (the final picture) and optional 'or' (stand-ins tried in order when the path does not exist yet); 'side' is before, after or null; items with 'pending': true are left out of the page until their 'needs' files exist and the flag is removed. 'optional' pictures are shown when present and never counted as missing.",
+ "title": "Tide & Toll Review",
+ "eyebrow": "Tide & Toll, night 3: one designed game, 26 to 27 November 2026",
+ "heading": "A calmer screen and a more beautiful town",
+ "intro": [
+  "You said the play is fun, but the interface, the models and the popups feel off, and that the layout felt chaotic. Tonight's work kept the play exactly as it was and changed how it looks: one fixed layout, one system for messages, and the town's models made again.",
+  "Every interface picture shows the screen before the night on the left and after on the right, at 1920 x 1080. Under each is one line saying what it shows and one question. Press Yes or No, then <strong>Copy my answers</strong>, paste them into the chat and say continue. Click or tap a picture to see it at full size."
+ ],
+ "sections": [
+  {
+   "id": "interface",
+   "title": "The interface, before and after",
+   "note": "One picture per state of the screen, from the same tour of one town (seed 1), before the night and on the final build.",
+   "items": [
+    {
+     "id": "A-u01",
+     "state": "u01",
+     "title": "First minute: one cottage, nothing affordable",
+     "shows": "The first minute, one cottage and nothing to buy yet. Before: five shop cards and a coin card. After: the ledger sheet on the left, the shop as rows on the right, and the first hint in the line at the bottom.",
+     "question": "Does the new screen feel calm at the very start?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u01.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u01.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u01.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u01.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u01.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u01.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u02",
+     "state": "u02",
+     "title": "First purchase affordable",
+     "shows": "The first purchase can be made. Before: the card says Buy. After: the Villager row's price pill turns gold and the first note, \"Achievement: First coin\", sits in the ledger.",
+     "question": "Can you see at once what you can buy now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u02.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u02.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u02.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u02.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u02.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u02.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u03",
+     "state": "u03",
+     "title": "Early shop: locked and affordable lines",
+     "shows": "Level 2, early shop: rows you can buy, rows still short of coin, and what comes later named in the group headings (\"Basket at level 3\").",
+     "question": "Is a list of rows with price pills easier to read than the old cards?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u03.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u03.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u03.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u03.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u03.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u03.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u04",
+     "state": "u04",
+     "title": "Level banner showing",
+     "shows": "A level banner. Before: a small card in the middle top over the town and three notes stacked on the left. After: one wide banner in the message place at the top, nothing else over the town.",
+     "question": "Is the level banner in the right place and the right size?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u04.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u04.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u04.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u04.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u04.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u04.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u05",
+     "state": "u05",
+     "title": "Hint line and request card",
+     "shows": "A request is running (level 3). Before: a separate request card plus three notes on the left. After: the request is a section of the ledger with its count bar; the line at the bottom gives the hint.",
+     "question": "Does the request read well as part of the ledger sheet?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u05.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u05.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u05.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u05.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u05.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u05.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u06",
+     "state": "u06",
+     "title": "Choice of two boons open",
+     "shows": "The choice of two boons at level 4. Before: a card at the top beside three notes. After: the choice fills the message place at the top with Z and X marked, the ledger stays as it was.",
+     "question": "Is the choice of two clear and easy to take?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u06.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u06.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u06.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u06.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u07",
+     "state": "u07",
+     "title": "Extend mode, pointer on a cottage",
+     "shows": "Extend mode with the pointer on a cottage: the lit cottages, the tip with the price, and the mode's instructions. After: the instructions move from the top to the line at the bottom, and the shop row shows On.",
+     "question": "Is it clear that you are in Extend mode and how to leave it?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u07.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u07.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u07.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u07.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u07.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u07.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u08",
+     "state": "u08",
+     "title": "Pave mode, pointer on a road",
+     "shows": "Pave mode with the pointer on a road: the lit roads, the suggested road and the price tip. After: the instructions are in the line at the bottom and the Pave a road row shows On.",
+     "question": "Is it clear that you are in Pave mode and how to leave it?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u08.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u08.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u08.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u08.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u08.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u08.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u09",
+     "state": "u09",
+     "title": "The bell ringing",
+     "shows": "The bell is ringing. Before: the bell's card at bottom left says how long it rings. After: a small bell button at bottom left with a draining bar and the seconds left.",
+     "question": "Can you read at a glance that the bell is ringing and for how long?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u09.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u09.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u09.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u09.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u09.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u09.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u10",
+     "state": "u10",
+     "title": "Middle of the age at rest",
+     "shows": "The middle of the first age (level 8) at rest: a request running, the shop with many rows. After: coin numbers on the map are smaller, the request's time turns red in its last quarter.",
+     "question": "Is the middle of the game calmer to look at than before?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u10.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u10.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u10.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u10.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u10.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u10.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u11",
+     "state": "u11",
+     "title": "Busiest moment of the middle game",
+     "shows": "The busiest moment of the first age: the level-up to 12 with a request running. Before: big coin numbers all over the town and four cards on the left. After: one banner, the request in the ledger, smaller coin numbers.",
+     "question": "Is the busiest moment now calm enough?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u11.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u11.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u11.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u11.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u11.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u11.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u12",
+     "state": "u12",
+     "title": "Building offer and staked plots",
+     "shows": "A building offer and staked plots, zoomed in on the plot (\"The market, to buy\"). After: the plot's label is a small paper tag, and the shop row for the stall has a key in a box.",
+     "question": "Do the paper tags on the map read better than the old floating labels?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u12.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u12.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u12.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u12.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u12.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u12.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u13",
+     "state": "u13",
+     "title": "Late in the age at rest, full shop",
+     "shows": "Late in the first age (level 15) at rest with the full shop. Before: the charter drive card and three notes on the left. After: the charter strip at the foot of the ledger, the shop as eleven rows.",
+     "question": "Is the full shop late in the age still easy to scan?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u13.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u13.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u13.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u14",
+     "state": "u14",
+     "title": "Charter drive card",
+     "shows": "The charter drive running. Before: a card with a tick bar. After: a one-line strip \"Charter\" with a row of small squares and the count.",
+     "question": "Is the charter drive clear enough as a one-line strip?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u14.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u14.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u14.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u14.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u14.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u14.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u15",
+     "state": "u15",
+     "title": "Achievements page open",
+     "shows": "The achievements page open at level 15. Before: a see-through sheet over the town that was hard to read. After: an opaque page in three columns with a bar under each achievement.",
+     "question": "Is the achievements page easy to read now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u15.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u15.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u15.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u15.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u15.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u15.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u16",
+     "state": "u16",
+     "title": "Charter moment and the age page",
+     "shows": "The charter moment: the town is granted its charter. After: \"Ring in the next age\" is a gold button with its key N in the ledger's strip, where it stays until used.",
+     "question": "Would you find the button to ring in the next age?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u16.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u16.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u16.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u16.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u16.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u16.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u17",
+     "state": "u17",
+     "title": "Page stage (first age)",
+     "shows": "Zoomed out to the whole page of the book (first age): the town's summary on the left page, the plan of the town on the right. After: the purse is one slim line at top left, the buttons small at bottom right.",
+     "question": "Does the page view look like a page in a book?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u17.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u17.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u17.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u17.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u17.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u17.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u17.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u18",
+     "state": "u18",
+     "title": "Book stage (first age)",
+     "shows": "Zoomed out to the open book on its table (first age): the summary on the left page, the town as a plan on the right.",
+     "question": "Does the open book look finished?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u18.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u18.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u18.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u18.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u18.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u18.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u18.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u19",
+     "state": "u19",
+     "title": "Pause cover",
+     "shows": "The pause cover: Esc closes the book. Before: the closed book with its menu lettered on the cover.",
+     "question": "Is the pause cover what you expect when you press Esc?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u19.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u19.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u19.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u19.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u19.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u19.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u19.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u20",
+     "state": "u20",
+     "title": "New town question",
+     "shows": "The question \"Start a new town? This town will be lost.\" with Start a new town and Keep this town, on the book's cover.",
+     "question": "Is this question clear and safe?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u20.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u20.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u20.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u20.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u20.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u20.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u21",
+     "state": "u21",
+     "title": "Settings: Sound",
+     "shows": "Settings, the Sound page: sliders for the master volume, music, ambience, effects and interface, and mute when the window is not active.",
+     "question": "Is the Sound page clear?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u21.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u21.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u21.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u21.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u21.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u21.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u21.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u22",
+     "state": "u22",
+     "title": "Settings: Display",
+     "shows": "Settings, the Display page: window mode, resolution, VSync, frame limit, interface size, coin numbers and the view following the town.",
+     "question": "Is the Display page clear?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u22.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u22.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u22.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u22.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u22.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u22.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u23",
+     "state": "u23",
+     "title": "Settings: Keys",
+     "shows": "Settings, the Keys page: two keys for every action in two columns, Restore defaults at the foot.",
+     "question": "Is the Keys page clear?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u23.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u23.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u23.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u23.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u23.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u23.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u23.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u24",
+     "state": "u24",
+     "title": "Settings: Saving",
+     "shows": "Settings, the Saving page: autosave every 2 minutes, Save now, Load the last save, Delete the save, and where the save file lives (the raw path).",
+     "question": "Should the raw save path stay on this page?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u24.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u24.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u24.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u24.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u24.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u24.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u25",
+     "state": "u25",
+     "title": "Key rebound with a clash",
+     "shows": "A key rebound to one that is already taken: the box \"That key is taken\" offers Swap keys or Cancel, the page darkened behind it.",
+     "question": "Is the key clash box clear?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u25.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u25.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u25.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u25.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u25.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u25.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u25.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u30",
+     "state": "u30",
+     "title": "Second age, first minute",
+     "shows": "The first minute of the second age (level 17). Before: the tide card at the top beside the coin card. After: the tide sits as a small dial with \"High, falling\" at the bottom beside the bell; the river group joins the shop.",
+     "question": "Is the tide easy to find at the bottom of the screen?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u30.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u30.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u30.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u30.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u30.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u30.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u31",
+     "state": "u31",
+     "title": "River age's page open",
+     "shows": "The river age's page open after the age is rung in. Before: see-through over the town. After: an opaque page with the age's news and Keep playing.",
+     "question": "Is the river age's page readable and welcome?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u31.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u31.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u31.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u31.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u31.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u31.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u32",
+     "state": "u32",
+     "title": "Second age middle: ferry, tide dial, skipper's request",
+     "shows": "The middle of the second age: the ferry stands, the tide dial and a skipper's request.",
+     "question": "Can you follow the skipper's request and the tide together?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u32.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u32.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u32.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u32.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u32.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u32.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u33",
+     "state": "u33",
+     "title": "Shop with the river group",
+     "shows": "The shop with the river group (level 18): the new river purchases listed under \"The river\" at the foot of the shop.",
+     "question": "Is the river group easy to find in the shop?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u33.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u33.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u33.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u33.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u33.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u33.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u34",
+     "state": "u34",
+     "title": "Second age late at rest (drawbridge, toll)",
+     "shows": "Late in the second age at rest: the drawbridge stands and takes tolls.",
+     "question": "Is the late river town still calm to look at?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u34.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u34.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u34.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u34.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u34.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u34.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u35",
+     "state": "u35",
+     "title": "Busiest moment (second age)",
+     "shows": "The busiest moment of the second age: the level-up to 24 with a skipper's request. After: one banner, the request in the ledger, cargo tags on the boats.",
+     "question": "Is the busiest moment of the second age calm enough?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u35.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u35.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u35.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u35.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u35.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u35.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u36",
+     "state": "u36",
+     "title": "Pave mode (second age)",
+     "shows": "Pave mode in the second age, close in: the lit road, the suggested road and the price tip, the river group in the shop.",
+     "question": "Is Pave mode as clear in the river age as in the first?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u36.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u36.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u36.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u36.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u36.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u36.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u38",
+     "state": "u38",
+     "title": "Borough seal moment and its page",
+     "shows": "The borough seal: \"The second age is complete\" page with the summary of both ages.",
+     "question": "Does the end of the second age feel like an ending?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u38.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u38.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u38.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u38.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u38.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u38.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u39",
+     "state": "u39",
+     "title": "Achievements page (second age)",
+     "shows": "The achievements page in the second age: the river's sixteen and the first age's count in the heading.",
+     "question": "Is the second age's achievements page easy to read?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u39.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u39.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u39.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u39.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u39.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u39.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u40",
+     "state": "u40",
+     "title": "Page stage (second age)",
+     "shows": "Zoomed out to the whole page in the second age: \"The Town on the River\" with both banks, the summary of both ages on the left.",
+     "question": "Does the river town look good as a plan in the book?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u40.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u40.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u40.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u40.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u40.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u40.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u40.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "A-u41",
+     "state": "u41",
+     "title": "Book stage (second age)",
+     "shows": "Zoomed out to the open book on its table in the second age.",
+     "question": "Is the open book at the end of the game a good last picture?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui/u41.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui/u41.jpg",
+       "or": [
+        "build/n3/ui-audit/l3-wip/u41.png",
+        "build/n3/ui-audit/l2-1920x1080-100/u41.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u41.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u41.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u41.png"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "messages",
+   "title": "Every kind of message in its place",
+   "note": "One picture per kind of message, where it appears on the screen. Where a strip of twelve frames exists it shows how the message arrives and leaves.",
+   "items": [
+    {
+     "id": "B-banner",
+     "shows": "A level banner in the message place at the top centre: the level and its gift, nothing else over the town.",
+     "question": "Is the banner noticed without getting in the way?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u04.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u04.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u04.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u04.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u04.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-banner.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-banner.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-choice",
+     "shows": "The choice of two boons in the same place at the top, each side with its key (Z, X) and what it is worth now.",
+     "question": "Is the choice of two the right size for its importance?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u06.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u06.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u06.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-choice.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-choice.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-note",
+     "shows": "A note in the ledger's note section (\"Achievement: First coin.\"), the only small note kept.",
+     "question": "Is the note noticed enough down in the ledger?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u02.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u02.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u02.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u02.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u02.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-notes.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-notes.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-request",
+     "shows": "A request in the ledger: who asks, how much of what, the time (red in its last quarter) and a bar of how much is delivered.",
+     "question": "Can you tell at a glance whether a request will be met?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u10.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u10.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u10.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u10.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u10.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-request.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-request.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-request-done",
+     "shows": "A request met: the ledger's goal section turns moss and says \"Done\" with the reward for 1.6 seconds, then empties.",
+     "question": "Does a met request feel like a small win?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/m-request-done.jpg",
+       "or": []
+      }
+     ],
+     "pending": true,
+     "needs": "docs/review/n3/after/ui/m-request-done.jpg"
+    },
+    {
+     "id": "B-charter-strip",
+     "shows": "The charter drive as a one-line strip at the foot of the ledger: \"Charter\", a row of squares and the count.",
+     "question": "Is the charter strip noticed enough?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u14.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u14.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u14.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u14.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u14.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "B-ring",
+     "shows": "After the charter: the gold \"Ring in the next age\" button with key N in the ledger's strip.",
+     "question": "Is the gold button the right way to offer the next age?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u16.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u16.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u16.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u16.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u16.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "B-hint",
+     "shows": "The town's hint in the line at the bottom centre (\"A queue at the mill. Better tools would help.\").",
+     "question": "Do you read the line at the bottom of the screen?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u13.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u13.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-line.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-line.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-pave-line",
+     "shows": "Pave mode's instructions in the line at the bottom (\"Pave: click a lit road. Hold Shift to pave several. P or Esc to stop.\").",
+     "question": "Is the bottom line the right place for a mode's instructions?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u08.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u08.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u08.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u08.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u08.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "B-refusal",
+     "shows": "A refusal in the line: a click that cannot be done (\"30 short\", \"The bell rests 31 s\") shows for 2.5 seconds.",
+     "question": "Is a refusal clear without being a scolding?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/m-refusal.jpg",
+       "or": []
+      }
+     ],
+     "pending": true,
+     "needs": "docs/review/n3/after/ui/m-refusal.jpg"
+    },
+    {
+     "id": "B-coin",
+     "shows": "Coin numbers on the map at the busiest moment: smaller (20 instead of 34) and gone after 1.4 seconds.",
+     "question": "Are the coin numbers now the right size?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u11.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u11.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u11.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u11.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u11.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "How it moves (twelve frames)",
+       "path": "docs/review/n3/after/motion/msg-coin.png",
+       "or": [
+        "build/wt/n3-ui/build/motion/msg-coin.png"
+       ],
+       "optional": true,
+       "size": "strip"
+      }
+     ]
+    },
+    {
+     "id": "B-tags",
+     "shows": "Tags on the map: the staked plot's paper tag (\"The market, to buy\") and the offer's key in the shop.",
+     "question": "Do the paper tags read well at this size?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u12.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u12.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u12.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u12.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u12.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "B-tooltip",
+     "shows": "A tooltip beside a shop row: what the purchase does and is worth.",
+     "question": "Does the tooltip say enough to choose?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/m-tooltip-shop.jpg",
+       "or": []
+      }
+     ],
+     "pending": true,
+     "needs": "docs/review/n3/after/ui/m-tooltip-shop.jpg"
+    },
+    {
+     "id": "B-page",
+     "shows": "A page: the river age's page over the town, opaque, with Keep playing.",
+     "question": "Is a page the right way to tell the news of a new age?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u31.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u31.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u31.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u31.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u31.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "B-ach-page",
+     "shows": "A page: the achievements page, opaque, in three columns, with Close and its key.",
+     "question": "Should every page look like this one?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "In its place",
+       "path": "docs/review/n3/after/ui/u15.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-100/u15.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100b/u15.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-100/u15.png",
+        "build/n3/ui-audit/l1-1920x1080-100/u15.png"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sizes",
+   "title": "The small window and other interface sizes",
+   "note": "The same layout at 1280 x 720, and at interface sizes 80 and 150 percent (Settings, Display). These pictures are at the window size named, not 1920 x 1080.",
+   "items": [
+    {
+     "id": "C-1280-u11",
+     "size": "1280x720-100",
+     "state": "u11",
+     "shows": "At 1280 x 720 (100 percent), the busiest moment of the first age. Before beside after.",
+     "question": "Is the small window still readable and calm?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui-1280x720/u11.jpg",
+       "or": [
+        "build/n3/ui-audit/1280x720-100/u11.png"
+       ]
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui-1280x720-100/u11.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-100/u11.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100b/u11.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100/u11.png",
+        "build/n3/ui-audit/l1-1280x720-100/u11.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-1280-u13",
+     "size": "1280x720-100",
+     "state": "u13",
+     "shows": "At 1280 x 720 (100 percent), late in the first age with the full shop. Before beside after.",
+     "question": "Does the full shop fit the small window well?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui-1280x720/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/1280x720-100/u13.png"
+       ]
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui-1280x720-100/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-100/u13.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100b/u13.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100/u13.png",
+        "build/n3/ui-audit/l1-1280x720-100/u13.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-1280-u33",
+     "size": "1280x720-100",
+     "state": "u33",
+     "shows": "At 1280 x 720 (100 percent), the shop with the river group in the second age. Before beside after.",
+     "question": "Is the river group still reachable in the small window?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui-1280x720/u33.jpg",
+       "or": [
+        "build/n3/ui-audit/1280x720-100/u33.png"
+       ]
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui-1280x720-100/u33.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-100/u33.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100b/u33.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100/u33.png",
+        "build/n3/ui-audit/l1-1280x720-100/u33.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-1280-u15",
+     "size": "1280x720-100",
+     "state": "u15",
+     "shows": "At 1280 x 720 (100 percent), the achievements page. Before beside after.",
+     "question": "Is the achievements page readable in the small window?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before",
+       "path": "docs/review/n3/before/ui-1280x720/u15.jpg",
+       "or": [
+        "build/n3/ui-audit/1280x720-100/u15.png"
+       ]
+      },
+      {
+       "side": "after",
+       "label": "After",
+       "path": "docs/review/n3/after/ui-1280x720-100/u15.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-100/u15.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100b/u15.png",
+        "build/n3/ui-audit/l1-fix/1280x720-100/u15.png",
+        "build/n3/ui-audit/l1-1280x720-100/u15.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-80-u13",
+     "size": "1920x1080-80",
+     "state": "u13",
+     "shows": "At 1920 x 1080 with the interface at 80 percent, late in the first age: everything smaller, more town to see.",
+     "question": "Is 80 percent still readable for you?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1920x1080-80/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-80/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-80b/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-80/u13.png",
+        "build/n3/ui-audit/l1-1920x1080-80/u13.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-80-1280-u03",
+     "size": "1280x720-80",
+     "state": "u03",
+     "shows": "At 1280 x 720 with the interface at 80 percent, early in the first age.",
+     "question": "Is the smallest setting still readable?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1280x720-80/u03.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-80/u03.png",
+        "build/n3/ui-audit/l1-fix/1280x720-80b/u03.png",
+        "build/n3/ui-audit/l1-fix/1280x720-80/u03.png",
+        "build/n3/ui-audit/l1-1280x720-80/u03.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-150-u13",
+     "size": "1920x1080-150",
+     "state": "u13",
+     "shows": "At 1920 x 1080 with the interface at 150 percent, late in the first age: large type, the town still in view in the middle.",
+     "question": "Is 150 percent comfortable to read without hiding the town?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1920x1080-150/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-150/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-150b/u13.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-150/u13.png",
+        "build/n3/ui-audit/l1-1920x1080-150/u13.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-150-u06",
+     "size": "1920x1080-150",
+     "state": "u06",
+     "shows": "At 1920 x 1080 with the interface at 150 percent, the choice of two boons.",
+     "question": "Does the choice of two still fit at 150 percent?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1920x1080-150/u06.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1920x1080-150/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-150b/u06.png",
+        "build/n3/ui-audit/l1-fix/1920x1080-150/u06.png",
+        "build/n3/ui-audit/l1-1920x1080-150/u06.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-150-1280-u13",
+     "size": "1280x720-150",
+     "state": "u13",
+     "shows": "At 1280 x 720 with the interface at 150 percent, late in the first age: the shop uses one-line rows and scrolls.",
+     "question": "Is the largest interface in the small window still usable?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1280x720-150/u13.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-150/u13.png",
+        "build/n3/ui-audit/l1-fix/1280x720-150b/u13.png",
+        "build/n3/ui-audit/l1-fix/1280x720-150/u13.png",
+        "build/n3/ui-audit/l1-1280x720-150/u13.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "C-150-1280-u35",
+     "size": "1280x720-150",
+     "state": "u35",
+     "shows": "At 1280 x 720 with the interface at 150 percent, the busiest moment of the second age: the shop is cut after Pave a road and scrolls.",
+     "question": "Is a shop that scrolls acceptable at this size?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Now",
+       "path": "docs/review/n3/after/ui-1280x720-150/u35.jpg",
+       "or": [
+        "build/n3/ui-audit/l2-1280x720-150/u35.png",
+        "build/n3/ui-audit/l1-fix/1280x720-150b/u35.png",
+        "build/n3/ui-audit/l1-fix/1280x720-150/u35.png",
+        "build/n3/ui-audit/l1-1280x720-150/u35.png"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "reworked",
+   "title": "Reworked assets, before and after",
+   "note": "Each asset at the normal view of the game and close up, before the night on the left and after on the right.",
+   "items": [
+    {
+     "id": "D-villager",
+     "asset": "villager",
+     "shows": "The villager. Before: a pawn with a pale head. After: a person with a face, hair, arms, legs and a tunic.",
+     "question": "Do the villagers look like people now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-carrying-water",
+     "asset": "villager-carrying-water",
+     "shows": "A villager carrying water: two blue buckets on a yoke, before and after.",
+     "question": "Can you tell Water at the normal view?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-carrying-water-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-carrying-water-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-carrying-water-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-water-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-carrying-grain",
+     "asset": "villager-carrying-grain",
+     "shows": "A villager carrying grain. Before: a sack-like lump on the head. After: a sack held in front, a straw hat.",
+     "question": "Can you tell Grain at the normal view?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-carrying-grain-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-carrying-grain-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-carrying-grain-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-grain-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-carrying-flour",
+     "asset": "villager-carrying-flour",
+     "shows": "A villager carrying flour. Before: a pale box on the head. After: a pale sack held in both arms.",
+     "question": "Can you tell Flour from Grain at the normal view?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-carrying-flour-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-carrying-flour-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-carrying-flour-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-flour-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-carrying-wool",
+     "asset": "villager-carrying-wool",
+     "shows": "A villager carrying wool. Before: a pale box on the head. After: a bundle of fleeces on the shoulder.",
+     "question": "Does the wool read as wool?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-carrying-wool-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-carrying-wool-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-carrying-wool-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-wool-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-carrying-cloth",
+     "asset": "villager-carrying-cloth",
+     "shows": "A villager carrying cloth. Before: a red box on the head. After: a striped roll of cloth under the arm.",
+     "question": "Does the cloth read as cloth?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-carrying-cloth-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-carrying-cloth-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-carrying-cloth-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-carrying-cloth-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-villager-cargo-timber",
+     "asset": "villager-cargo-timber",
+     "shows": "Timber. Before: two planks. After: one hewn log.",
+     "question": "Does the timber look right?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/villager-cargo-timber-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-cargo-timber-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/villager-cargo-timber-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-cargo-timber-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-load-steps",
+     "asset": "load-steps",
+     "shows": "The three Load steps close up. Before: the same villager three times. After: a basket, then a pack frame, then a handcart.",
+     "question": "Can you see each Load upgrade on the villagers?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-load-step-1-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-load-step-2-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/villager-load-step-3-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-load-step-1-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-load-step-2-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/villager-load-step-3-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-cottage-01",
+     "asset": "cottage-01",
+     "shows": "The plain cottage. Before: a large flat thatch box. After: a smaller cottage with a chimney, smoke, a door, a step and lines in the thatch.",
+     "question": "Is the new cottage the right size beside a villager?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/cottage-01-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/cottage-01-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/cottage-01-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/cottage-01-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-cottage-extension-1",
+     "asset": "cottage-extension-1",
+     "shows": "A cottage extended once. Before: the same box stretched longer. After: a second wing with its own roof.",
+     "question": "Can you tell an extended cottage from a plain one now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/cottage-extension-1-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/cottage-extension-1-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/cottage-extension-1-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/cottage-extension-1-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-cottage-extension-2",
+     "asset": "cottage-extension-2",
+     "shows": "A cottage extended twice. Before: stretched thin and long. After: two wings on the cottage; in the town beside the trail.",
+     "question": "Can you tell once from twice extended?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/cottage-extension-2-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/cottage-extension-2-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, in the town",
+       "path": "docs/review/n3/before/assets/town-cottage-extension-2-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/cottage-extension-2-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/cottage-extension-2-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, in the town",
+       "path": "docs/review/n3/after/assets/town-cottage-extension-2-normal.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-mill",
+     "asset": "mill",
+     "shows": "The mill. Before: a small post mill on legs. After: a tower mill with a cap and upright sails, and in the town by the field.",
+     "question": "Does the mill look like a mill now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/mill-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/mill-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, in the town",
+       "path": "docs/review/n3/before/assets/town-mill-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/mill-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/mill-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, in the town",
+       "path": "docs/review/n3/after/assets/town-mill-normal.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-market-stall",
+     "asset": "market-stall",
+     "shows": "The market stall. Before: a striped awning over an empty table. After: the same awning over a table of goods, crates and a pot. (The after picture in the town shows the plot before it is bought.)",
+     "question": "Does the stall look like a market?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/market-stall-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/market-stall-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, in the town",
+       "path": "docs/review/n3/before/assets/town-market-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/market-stall-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/market-stall-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, in the town",
+       "path": "docs/review/n3/after/assets/town-market-normal.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-tree-oak",
+     "asset": "tree-oak",
+     "shows": "The oak. Before: a round green lump. After: a trunk and a crown of several clumps.",
+     "question": "Does the oak read as an oak?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/tree-oak-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/tree-oak-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/tree-oak-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/tree-oak-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-tree-poplar",
+     "asset": "tree-poplar",
+     "shows": "The poplar: before one tall oval, after two stacked crowns on a trunk.",
+     "question": "Does the poplar look like a tree you know?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/tree-poplar-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/tree-poplar-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/tree-poplar-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/tree-poplar-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-tree-willow",
+     "asset": "tree-willow",
+     "shows": "The willow: before a dome with hanging flaps, after a drooping crown of strands around a trunk.",
+     "question": "Does the willow look like a willow?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/tree-willow-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/tree-willow-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/tree-willow-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/tree-willow-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-trees-group",
+     "asset": "trees-group",
+     "shows": "A group of trees of different kinds together, before and after.",
+     "question": "Do the trees together make a pleasant wood?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/trees-group-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/trees-group-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/trees-group-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/trees-group-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-field-sprouting",
+     "asset": "field-sprouting",
+     "shows": "A sprouting field. Before: a frame of planks. After: brown furrows with green shoots and a grass edge.",
+     "question": "Does the sprouting field read as a field?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/field-sprouting-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/field-sprouting-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/field-sprouting-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/field-sprouting-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-field-ripe",
+     "asset": "field-ripe",
+     "shows": "A ripe field. Before: a frame of yellow planks. After: a golden field with a raised edge and three sheaves; in the town by the trail.",
+     "question": "Does the ripe field read as crops rather than a wooden tray?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/field-ripe-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/field-ripe-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, in the town",
+       "path": "docs/review/n3/before/assets/town-field-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/field-ripe-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/field-ripe-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, in the town",
+       "path": "docs/review/n3/after/assets/town-field-normal.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-field-stubble",
+     "asset": "field-stubble",
+     "shows": "A field after harvest: before planks with stooks, after stubble with stooks and bales.",
+     "question": "Does the harvested field read as harvested?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/field-stubble-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/field-stubble-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/field-stubble-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/field-stubble-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-charter-stone",
+     "asset": "charter-stone",
+     "shows": "The charter stone. Before: a grey slab. After: a taller standing stone with a red seal and ribbons on a paved ring.",
+     "question": "Would you find the charter stone at a glance in the town?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/charter-stone-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/charter-stone-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/charter-stone-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/charter-stone-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-seal-stone",
+     "asset": "seal-stone",
+     "shows": "The seal stone. Before: a square plinth with a red seal. After: a round plinth with a column and a blue seal.",
+     "question": "Does the seal stone look like the end of the game deserves?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/seal-stone-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/seal-stone-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/seal-stone-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/seal-stone-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-well",
+     "asset": "well",
+     "shows": "The well: before a plain roof, after a red ridge, a bucket and a ring of earth around it.",
+     "question": "Is the well better?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/well-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/well-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/well-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/well-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-bell-post",
+     "asset": "bell-post",
+     "shows": "The bell post: before a plain frame, after a roofed frame with a rope on a ring of earth.",
+     "question": "Is the bell post better?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/bell-post-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/bell-post-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/bell-post-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/bell-post-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-river-high-water",
+     "asset": "river-high-water",
+     "shows": "The river at high water by the landing, before and after: banks of earth, reeds and shimmer on the water.",
+     "question": "Does the river look like a river now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/river-high-water-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/river-high-water-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/river-high-water-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/river-high-water-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-river-low-water",
+     "asset": "river-low-water",
+     "shows": "The river at low water: before the same blue, after wide mud flats along both banks and shallows.",
+     "question": "Can you see the tide is low without reading the dial?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/river-low-water-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/river-low-water-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/river-low-water-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/river-low-water-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crossing-ford",
+     "asset": "crossing-ford",
+     "shows": "The ford at low water: before scattered pebbles, after a row of stepping stones across the shallows.",
+     "question": "Does the ford read as a place to walk across?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crossing-ford-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crossing-ford-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crossing-ford-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crossing-ford-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crossing-footbridge",
+     "asset": "crossing-footbridge",
+     "shows": "The footbridge: before a flat plank bridge, after an arched wooden bridge with rails.",
+     "question": "Is the arched footbridge better?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crossing-footbridge-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crossing-footbridge-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crossing-footbridge-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crossing-footbridge-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crossing-ferry",
+     "asset": "crossing-ferry",
+     "shows": "The ferry: before a raft on a straight bar, after a raft with a ferryman between two posts with flags and a sagging rope.",
+     "question": "Does the ferry look used and working?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crossing-ferry-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crossing-ferry-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crossing-ferry-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crossing-ferry-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crossing-drawbridge-down",
+     "asset": "crossing-drawbridge-down",
+     "shows": "The drawbridge down: before a light frame, after dark timber towers and a leaf across the river.",
+     "question": "Does the drawbridge look strong enough for its toll?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crossing-drawbridge-down-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crossing-drawbridge-down-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crossing-drawbridge-down-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crossing-drawbridge-down-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crossing-drawbridge-lifted",
+     "asset": "crossing-drawbridge-lifted",
+     "shows": "The drawbridge lifted for a boat: the leaf raised while its towers stand, a rowboat passing.",
+     "question": "Is it clear that the bridge lifts for boats?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crossing-drawbridge-lifted-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crossing-drawbridge-lifted-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crossing-drawbridge-lifted-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crossing-drawbridge-lifted-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-rowboat",
+     "asset": "rowboat",
+     "shows": "The rowboat: before plain brown, after two-tone with oars, a lantern and a boatman.",
+     "question": "Is the rowboat better?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/rowboat-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/rowboat-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/rowboat-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/rowboat-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-barge",
+     "asset": "barge",
+     "shows": "The barge, before and after; the after picture shows its hold empty.",
+     "question": "Does the barge look different enough from before?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/barge-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/barge-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/barge-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/barge-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-landing-with-boats",
+     "asset": "landing-with-boats",
+     "shows": "The landing with boats moored: before stacks of pale boxes, after a tidy landing with a crane, the tide post and villagers queueing with loads.",
+     "question": "Is the landing tidy and easy to read?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/landing-with-boats-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/landing-with-boats-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/landing-with-boats-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/landing-with-boats-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-tide-post",
+     "asset": "tide-post",
+     "shows": "The tide post: before a thin striped pole, after a thicker banded post with a pointer and a roof.",
+     "question": "Would you look at the tide post to read the tide?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/tide-post-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/tide-post-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/tide-post-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/tide-post-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-crane",
+     "asset": "crane",
+     "shows": "The crane: before a frame with a treadwheel, after the same with a red top and a stone base.",
+     "question": "Is the crane better?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/crane-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/crane-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/crane-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/crane-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-book-table",
+     "asset": "book-table",
+     "shows": "The book's table: before a flat dark brown, after planks with wood grain.",
+     "question": "Does the table look like wood now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/book-table-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/book-table-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/book-table-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/book-table-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-book-leather",
+     "asset": "book-leather",
+     "shows": "The book's leather close in: before a plain red-brown, after tooling, studs, brass corners and a clasp.",
+     "question": "Does the leather look like an old book?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/book-leather-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/book-leather-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/book-leather-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/book-leather-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-book-closed",
+     "asset": "book-closed",
+     "shows": "The closed book on the table: before a plain cover, after a tooled cover with a stitched border on planks.",
+     "question": "Is the closed book handsome enough to be the pause screen?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/book-closed-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/book-closed-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/book-closed-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/book-closed-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-book-paper",
+     "asset": "book-paper",
+     "shows": "The book's paper close in: before pale grey print, after warmer paper and darker print.",
+     "question": "Is the print on the paper easy to read now?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/book-paper-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/book-paper-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/book-paper-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/book-paper-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-plot-stakes",
+     "asset": "plot-stakes",
+     "shows": "Plot stakes: before dark posts and lines, after pale stakes with a pale rope.",
+     "question": "Do the stakes look like a plot waiting to be built?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/plot-stakes-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/plot-stakes-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/plot-stakes-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/plot-stakes-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-props",
+     "asset": "props",
+     "shows": "Four props close up, before and after: flower bed, hen coop, signpost, handcart.",
+     "question": "Are the small props worth having in the town?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/prop-flower-bed-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/prop-hen-coop-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/prop-signpost-close.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/prop-handcart-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/prop-flower-bed-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/prop-hen-coop-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/prop-signpost-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/prop-handcart-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-keeper-hut",
+     "asset": "keeper-hut",
+     "shows": "The keeper's hut by the river, before and after (a red chimney, little else changed).",
+     "question": "Is the keeper's hut good as it is?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/keeper-hut-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/keeper-hut-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/keeper-hut-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/keeper-hut-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-pasture",
+     "asset": "pasture",
+     "shows": "The pasture: before dark grass in a fence, after lighter grass, a hay rack, a trough and a gate.",
+     "question": "Does the pasture look like a place for sheep?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/pasture-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/pasture-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/pasture-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/pasture-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "D-sheep",
+     "asset": "sheep",
+     "shows": "A sheep: before a box with a brown head, after a woolly body of puffs with a red-brown head.",
+     "question": "Does the sheep look like a sheep?",
+     "pictures": [
+      {
+       "side": "before",
+       "label": "Before, normal view",
+       "path": "docs/review/n3/before/assets/sheep-normal.jpg"
+      },
+      {
+       "side": "before",
+       "label": "Before, close up",
+       "path": "docs/review/n3/before/assets/sheep-close.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, normal view",
+       "path": "docs/review/n3/after/assets/sheep-normal.jpg"
+      },
+      {
+       "side": "after",
+       "label": "After, close up",
+       "path": "docs/review/n3/after/assets/sheep-close.jpg"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "new",
+   "title": "New assets, close up and in the town",
+   "items": [
+    {
+     "id": "E-street",
+     "asset": "street",
+     "shows": "A street of five new cottages with villagers: different roofs, sizes and chimneys, each with smoke.",
+     "question": "Does the street look varied without looking messy?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/street-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/street-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-cottages-all",
+     "asset": "cottages-all",
+     "shows": "All nine cottage models: three kinds of cottage, each plain, extended once and extended twice.",
+     "question": "Are three kinds of cottage enough variety?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/cottages-all-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/cottages-all-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-cottage-a0",
+     "asset": "cottage-a0",
+     "shows": "The first kind of cottage, plain: a hipped thatch roof, chimney, door and step.",
+     "question": "Do you like this cottage?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/cottage-a0-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/cottage-a0-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-cottage-c2",
+     "asset": "cottage-c2",
+     "shows": "The third kind of cottage, extended twice: gables and two chimneys.",
+     "question": "Does the biggest cottage look like a home that grew?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/cottage-c2-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/cottage-c2-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-tree-birch",
+     "asset": "tree-birch",
+     "shows": "A new tree, the birch: a white trunk with a small crown.",
+     "question": "Does the birch add something to the woods?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/tree-birch-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/tree-birch-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-tree-hawthorn",
+     "asset": "tree-hawthorn",
+     "shows": "A new tree, the hawthorn: a low bush with red berries.",
+     "question": "Does the hawthorn read as a hawthorn bush?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/tree-hawthorn-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/tree-hawthorn-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-reeds",
+     "asset": "reeds",
+     "shows": "A clump of reeds with bulrushes, as planted along the banks.",
+     "question": "Do the reeds belong on the banks?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/reeds-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/reeds-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-bank-stones",
+     "asset": "bank-stones",
+     "shows": "Bank stones: two pale rounded stones set along the river's banks.",
+     "question": "Do the bank stones fit the river?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/bank-stones-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/bank-stones-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-book-desk",
+     "asset": "book-desk",
+     "shows": "The open book on its table with the new quill and inkwell at the top edge and the seal at the right.",
+     "question": "Do the things on the table make the book view warmer?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/book-desk-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/book-desk-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-desk-inkwell",
+     "asset": "desk-inkwell",
+     "shows": "The inkwell and quill on their own (pictured on the audit's grass, not on the table).",
+     "question": "Do the inkwell and quill look right?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/desk-inkwell-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/desk-inkwell-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-desk-candle",
+     "asset": "desk-candle",
+     "shows": "The candle in its holder on its own (pictured on the audit's grass beside a villager for scale; on the table it is small).",
+     "question": "Does the candle look right?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/desk-candle-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/desk-candle-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-desk-seal",
+     "asset": "desk-seal",
+     "shows": "The seal stamp, a wax seal and a ribbon on their own (on the audit's grass).",
+     "question": "Do the seal stamp and ribbon look right?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/desk-seal-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/desk-seal-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-villager-head-hat",
+     "asset": "villager-head-hat",
+     "shows": "One of the new heads: a straw hat with a red band.",
+     "question": "Do the hats make villagers easier to tell apart?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/villager-head-hat-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/villager-head-hat-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-villagers-group",
+     "asset": "villagers-group",
+     "shows": "A group of villagers with the three heads, five tunic colours and their loads.",
+     "question": "Does the crowd look like different people?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/villagers-group-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/villagers-group-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-town-view-level-8",
+     "asset": "town-view-level-8",
+     "shows": "The town at level 8, close in, from the cottages-and-people round: the new cottage and trail. Its field is still the old one in this picture.",
+     "question": "Does the town at level 8 look like a hamlet?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/town-view-level-8-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/town-view-level-8-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-town-view-charter",
+     "asset": "town-view-charter",
+     "shows": "The town at the charter: paved roads, the well, the bell, the cottages and a queue at the field.",
+     "question": "Does the town at the charter look beautiful?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/town-view-charter-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/town-view-charter-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-town-view-river",
+     "asset": "town-view-river",
+     "shows": "The river town at the seal: the landing with its crane, the tide post, the ferry and the footbridge.",
+     "question": "Does the river town look beautiful?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/town-view-river-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/town-view-river-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-town-view-ferry",
+     "asset": "town-view-ferry",
+     "shows": "The ferry and the footbridge in the town at high water.",
+     "question": "Is the river crossing a pleasant thing to watch?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/town-view-ferry-normal.jpg"
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/town-view-ferry-close.jpg"
+      }
+     ]
+    },
+    {
+     "id": "E-icons-shop",
+     "shows": "Round 3: the new icons for the shop, large (left) and in the shop at level 8 (right): one line weight, one colour each.",
+     "question": "Do the shop icons read at a glance without their names?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "The shop icons at 192 px",
+       "path": "docs/review/n3/after/assets/icons-shop-192.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-ic/icons-shop-192.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "In the shop at level 8",
+       "path": "docs/review/n3/after/assets/icons-in-shop.jpg",
+       "or": [
+        "build/n3/ui-audit/r3-ic/u10.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E-icons-all",
+     "shows": "Round 3: every new icon at the size the game draws them: shop, boons, perks and milestones, first-age and river achievements (medals), messages and the buttons.",
+     "question": "Do the icons look like one family?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "All icons at 24 px",
+       "path": "docs/review/n3/after/assets/icons-all-24.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-ic/icons-all-24.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E-animals",
+     "shows": "Round 3: hens with their coop by a cottage, and ducks on the river among the reeds; normal view and close up.",
+     "question": "Do the animals make the town feel alive without crowding it?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Hens, normal view",
+       "path": "docs/review/n3/after/assets/life-hens-normal.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-hens-normal.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Hens, close up",
+       "path": "docs/review/n3/after/assets/life-hens-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-hens-close.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Ducks, normal view",
+       "path": "docs/review/n3/after/assets/life-ducks-normal.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-ducks-normal.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Ducks, close up",
+       "path": "docs/review/n3/after/assets/life-ducks-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-ducks-close.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E-birds",
+     "shows": "Round 3: a heron, close up and at the normal view (where it is a few pixels).",
+     "question": "Is the heron worth having if it is this small in the game?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/animal-heron-normal.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/animal-heron-normal.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/animal-heron-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/animal-heron-close.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E-gardens",
+     "shows": "Round 3: a vegetable garden with a scarecrow and a washing line, on their own and beside cottages in a street.",
+     "question": "Do the gardens and washing make each cottage look lived in?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Vegetable garden, close up",
+       "path": "docs/review/n3/after/assets/garden-vegetables-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/garden-vegetables-close.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Washing line, close up",
+       "path": "docs/review/n3/after/assets/garden-washing-line-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/garden-washing-line-close.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "A street, normal view",
+       "path": "docs/review/n3/after/assets/life-street-normal.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-street-normal.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "A street, close up",
+       "path": "docs/review/n3/after/assets/life-street-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/life-street-close.png"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "E-trail",
+     "shows": "Round 3: the new trail by the well, drawn as a footpath; normal view and close up.",
+     "question": "Does the new trail read as a footpath?",
+     "pictures": [
+      {
+       "side": null,
+       "label": "Normal view",
+       "path": "docs/review/n3/after/assets/road-new-trail-normal.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/road-new-trail-normal.png"
+       ]
+      },
+      {
+       "side": null,
+       "label": "Close up",
+       "path": "docs/review/n3/after/assets/road-new-trail-close.jpg",
+       "or": [
+        "build/n3/assets-audit/r3-lf/road-new-trail-close.png"
+       ]
+      }
+     ]
+    }
+   ],
+   "note": "Things that did not exist before the night: on their own at the normal view and close up, and in the town."
+  },
+  {
+   "id": "wrong",
+   "title": "What still looks wrong",
+   "note": "Found by looking at the final pictures. Most serious first.",
+   "items": [
+    {
+     "id": "F-1",
+     "pending": true,
+     "shows": "Filled in by the lead after reading the final pictures.",
+     "question": "Should this be fixed before anything new?",
+     "needs": "docs/review/n3/after/wrong/wrong-1.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "pictures": [
+      {
+       "side": null,
+       "label": "The final build",
+       "path": "docs/review/n3/after/wrong/wrong-1.jpg"
+      }
+     ]
+    },
+    {
+     "id": "F-2",
+     "pending": true,
+     "shows": "Filled in by the lead after reading the final pictures.",
+     "question": "Should this be fixed before anything new?",
+     "needs": "docs/review/n3/after/wrong/wrong-2.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "pictures": [
+      {
+       "side": null,
+       "label": "The final build",
+       "path": "docs/review/n3/after/wrong/wrong-2.jpg"
+      }
+     ]
+    },
+    {
+     "id": "F-3",
+     "pending": true,
+     "shows": "Filled in by the lead after reading the final pictures.",
+     "question": "Should this be fixed before anything new?",
+     "needs": "docs/review/n3/after/wrong/wrong-3.jpg (and in the manifest: 'shows', 'question', and remove 'pending')",
+     "pictures": [
+      {
+       "side": null,
+       "label": "The final build",
+       "path": "docs/review/n3/after/wrong/wrong-3.jpg"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

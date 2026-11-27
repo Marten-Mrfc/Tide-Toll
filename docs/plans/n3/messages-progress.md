@@ -102,3 +102,22 @@ screenshot: still running at 01:05.
 - 10: the tour states never pictured (a "not yet" row's tooltip, the bell's tooltip, a row pressed, the centre button disabled, a group with everything finished): not made. Coin numbers, tags and tips have no motion-test channel of their own (they are eased in code; the strips show coin numbers only small).
 - 11: the half row at 1280 x 720 with 150 percent: not pictured again.
 - Strips: retake msg-notes and msg-choice after the reorder (`tools/motion-strips.sh --messages-only`, about 8 minutes); shop rows arriving and leaving: no strip.
+
+## After the review (the L2 fixer, from 01:41 UTC)
+
+Reviews read: `l2-review-1.md`, `l2-review-2.md`, `lead-notes.md` (no note for the L2 fixer). Checkout `build/wt/n3-ui`.
+
+### Changes
+
+| Finding | What changed | Where |
+| --- | --- | --- |
+| R2 must 2 (root cause of R1 M1, R1 S1, S2, S6) | The messages' clocks (stays, gaps, waits, the refusal, the drive's "Done", the first-minute hints) count real time, at most 0.5 s a frame (`MessageQueue.Clock`); they were counted in `BookMotion.MaxStep` (1/20 s) steps, so at 1 frame a second a 3.2 s banner stayed about a minute. Easing still goes through `BookMotion` (unchanged). At 30, 60 and 120 fps nothing changes. | `MessageQueue.cs`, `TownHud.Line.cs`, `TownHud.Choice.cs`, `TownHud.FirstMinute.cs` |
+| R1 M1, R2 should 2, 3 | A hint's age counts only while the line shows it (a refusal or a mode in front does not use it up); no hint starts while the choice, the achievements page or an age page is open; hint 3 is tied to the first level banner SHOWING and given up 60 s after it; hint 2 pulses the cheapest affordable row ("the row pulses") | `TownHud.FirstMinute.cs`, `TownHud.Messages.cs` |
+| R1 M2, R2 must 1 | A large message is checked against the town when it is about to show and while it shows (`MessageQueue.Stale`): a level banner whose level is below the town's, a drive banner once the drive is no longer running, "A new age" once the town is a level further, are dropped | `MessageQueue.cs`, `TownHud.Messages.cs`, `TownHud.Book.cs` |
+| R1 M4 | A new coin number is placed beside a live one it would lie on (offset chosen once, so nothing jumps) | `TownHud.cs` (`FloatClearOf`) |
+| R2 should 5 | A coin number under a showing banner or choice card fades with it | `TownHud.cs` (`StepFloaters`) |
+| R2 should 6 | "Waiting for a berth" is never brick (brick is for missed and trouble) | `TownHud.Request.cs`, `TownHud.River.cs` |
+| R2 should 8 | The hint ring is half as thick (2.5 percent of its radius) and 60 percent opaque | `TownHud.Request.cs` |
+| R1 S4 | "A new age" says what changes: "The town turns to the river: a landing, boats and crossings." | `TownHud.Book.cs` |
+| R1 M6, R2 must 5 | The tour has four tooltip states: u42 a shop row not yet affordable, u43 the bell, u44 the achievements button, u45 a boon of the choice | `game/tests/UiAudit.Tips.cs`, `UiAudit.Age1.cs` |
+| (working aid) | `motion.tscn -- --messages-only` runs only the message part of game-motion (./check still runs everything) | `game/tests/MotionTest.cs` |

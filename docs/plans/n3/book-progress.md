@@ -36,3 +36,30 @@ Checkout: `/home/user/tide-toll/build/wt/n3-book` (branch wt/n3-book). Resume fr
 ## Not yet
 - Item 4 (no new game-motion check for the age change), item 7.
 - game-motion: every run under load (load 18 to 26) has failed only on the CPU gate; the shape checks on the impatient cases passed through tab-turned-back and tab-redirected in the runs that got there.
+
+## Final state (01:41)
+- ./check (started 01:18, load 20 to 26): game-build, smoke, town, perf, playthrough, river, layout, book, settings, menu passed; game-motion FAILED at 60, 30 and 120 fps on the CPU gate only (9.26, 11.36, 33.08 ms single frames); save and screenshot still running at 01:41.
+- game-motion alone, ~90 retries tonight: every one stopped on the CPU gate (6.0 to 1168 ms single frames). Impatient cases reached and passing their new shape checks before the CPU stop: esc-during-close, esc-during-open, back-during-settings-open, tab-turned-back, tab-redirected, tab-flick (and the staged ones). click-settings-on-lettering failed once on the pivot artefact (check changed to the vector, not rerun to there); the cases after it never reached.
+- ui-audit 1280 x 720 (`build/n3/ui-audit/l3-wip-1280x720`): u20 the question on the modal card, clear of its buttons; u25 the clash card centred, clear of its rows and of Restore defaults; u23 the key list still cut by its scroll area (a half row at the foot of the left page); u18 the book in its one place with margins and navigation under it.
+- Next: the page stage (compass, folio, purse over the title, navigation over the folio), the key list's scroll area, item 4 (age-change pops: the map tag "The market, to buy" vanished in one step as the achievements page opened, in TownHud's code), item 7.
+
+## After the review (fixer, 01:43 to 02:55 UTC)
+Review: `l3-review.md`. What was changed (all in the checkout `build/wt/n3-book`):
+- MUST 2 (blank leaf, text pops in): `PageLeaf.cs` `BackAlpha`: the leaf's back (and its shadow) fades out as it lands
+  (free edge from 60 % to 100 % of the page's width from the spine, smoothstep; about the last quarter of a turn's time),
+  so the page that lands shows through before the leaf lies flat. Not for the age leaf (Opaque) or the front.
+- MUST 4 (question card text lags its paper): `PauseMenu.cs`: the card is drawn into a `CanvasGroup` ("QuestionGroup")
+  under the scrim, so paper, text and buttons fade as one picture (one alpha); the scrim still fades with `_ask`.
+- MUST 3 (clash card, two places): `SettingsPages.KeysSaving.cs` `PlaceClashSlip`: one rule at every size: centred on
+  the window; only if that lies on a row it names or on Restore defaults/Back, it moves straight up or down from the
+  centre to the nearest clear place. (Kept the test that it covers no row it names: disagreed with "cover the rows".)
+- SHOULD (two fonts on the card): `ModalCard.cs`: body in the plain sans, both buttons bold sans at the same size, no
+  gilt shadow.
+- MUST 1 (age leaf a wipe): its path is in `TownHud.River.cs` (not mine). In `PageLeaf.cs` only: for Opaque the curl
+  is 150 s wide (was 56), the shadow 110 s (was 44), and the leaf darkens toward its free edge (shade 0.14 x lift).
+  Turning it about a spine and carrying the age title need `TownHud.River.PlaceWipe`: left for the messages builder.
+- MUST 5 / item 6 (purse over the page title): `TownHud.cs` StageFrame, the one allowed change: the one-line purse
+  fades out over sizes SlimSize to 1.08 SlimSize and is hidden beyond (all of the page stage at PlaySize). The tour's
+  u17 wait (`UiAudit.Book.cs` line 22) no longer waits for the slim strip. Compass, folio, navigation and the left
+  page's margin at the page stage: NOT fixed (needs the page stage's framing, PlaySize, and the tests built on it).
+- MUST 6 (esc twice overshoot): not changed (see final answer).

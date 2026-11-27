@@ -25,7 +25,14 @@ The interface today asks only for `shop-<kind>`, `shop-value-<good>`, `shop-bell
 3. Achievements: `"ach-" + Id.Replace('_', '-')` for the first age (`ach-first-coin` ... `ach-rate-300`), and for the river `"ach-" + Name` in lower case, apostrophes dropped, spaces as `-` (`ach-first-mooring`, `ach-weavers-pride`, `ach-skippers-friend`, `ach-raise-the-bridge`, ...). Nothing asks for them today.
 4. Notes and banners by kind: `msg-level`, `msg-charter`, `msg-drive`, `msg-boon`, `msg-age`, `msg-seal`, `msg-achievement` (or the achievement's own `ach-*`), `msg-building`, `msg-milestone` (or `milestone-pace|tools|value`), `msg-perk` (or `perk-*`), `msg-touch`, `msg-trouble`, `msg-hint`. Nothing asks for them today.
 5. Tide dial: `TownHud.River.cs` asks `ui-tide-high` / `ui-tide-low` (old 24-unit set); the new ones are `nav-tide-high` / `nav-tide-low`.
-6. Locked / finished rows: `ui-lock` and `ui-check` exist (old style) and are still unused.
+6. The achievements page (`TownHud.Book.cs` / `TownHud.Pages.cs`) draws no icon per achievement today (u15: names, lines and bars only). To show the medals: `IconOr(achKey, "ui-achievement")` beside each name, 24 on screen.
+7. Locked / finished rows: `ui-lock` and `ui-check` exist (old style) and are still unused.
+
+## Pictures
+
+- Sheets: `/home/user/tide-toll/build/n3/assets-audit/r3-ic/` (`icons-<group>-24-48.png`, `icons-<group>-192.png`, `icons-all-24.png`).
+- In the game: `/home/user/tide-toll/build/n3/ui-audit/r3-ic/` (1920 x 1080) and `r3-ic-1280x720/`. Note: new SVGs need `godot --headless --path game --import` after `tools/sync-assets.sh` before a picture run, or `IconOr` finds no file and shows the stand-in (my first run at 01:30 showed only old icons for this reason).
+- Read: u10 (shop at level 8): Villager, Extend, Pace, Yoke (shows the basket: wish 1), Tools (hammer), Water price (drop + coin), Grain price (ear + coin), Pave, Louder bell (plain bell: wish 1), Regulars, all new; nav-bell, nav-achievements, nav-page, nav-home, nav-pause new. u15: achievements page has no icons (wish 6).
 
 ## Still open
 
