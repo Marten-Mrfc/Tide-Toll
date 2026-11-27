@@ -144,7 +144,7 @@ public static class WorkSites
                 return new Vector3((ex - dy * side) * Cell, 0.2f, (ey + dx * side) * Cell);
             }
             case PlotKind.Market:
-                return new Vector3((p.DoorX + 0.5f - dx * 1.25f) * Cell, 0.9f, (p.DoorY + 0.5f - dy * 1.25f) * Cell);
+                return new Vector3((p.DoorX + 0.5f - dx * 1.8f) * Cell, 0.9f, (p.DoorY + 0.5f - dy * 1.8f) * Cell);
             default: // a cottage (and anything else): its door
                 return new Vector3((p.DoorX + 0.5f - dx * 0.7f) * Cell, 0.9f, (p.DoorY + 0.5f - dy * 0.7f) * Cell);
         }

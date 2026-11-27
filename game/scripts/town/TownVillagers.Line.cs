@@ -17,7 +17,7 @@ public partial class TownVillagers
     /// <summary>Delay between one place in the line starting to move up and the next behind it, real seconds at 1x.</summary>
     public const float RippleSeconds = 0.14f;
     private const int MaxWorkplaces = 48;
-    private readonly int[] _lane = new int[MaxWorkplaces];
+    private readonly int[] _lane = new int[MaxWorkplaces], _holders = new int[MaxWorkplaces];
     private readonly bool[] _inLine = new bool[Capacity], _atWork = new bool[Capacity];
     private readonly int[] _lineWp = new int[Capacity], _qt = new int[Capacity];
     private readonly float[] _qd = new float[Capacity], _qdelay = new float[Capacity];
@@ -44,6 +44,7 @@ public partial class TownVillagers
         for (int w = 0; w < nw; w++)
         {
             var wp = t.Workplace(w);
+            _holders[w] = 0;
             if (wp.QueueLength == 0 || !IsWorkplaceKind(wp.Kind)) _lane[w] = -1;
             else if (_lane[w] < 0) _lane[w] = WorkSites.Lane(t, w);
         }
@@ -97,6 +98,27 @@ public partial class TownVillagers
             else face = HeadingYaw(lh);
             _lineFace[i] = face;
             return true;
+        }
+        // Coming along the lane to a line: stop at its tail (do not walk past the line to the door and back).
+        if (v.Phase == VillagerPhase.Walking && v.Workplace >= 0 && v.Workplace < MaxWorkplaces && _lane[v.Workplace] >= 0 && v.Road == _lane[v.Workplace])
+        {
+            int w = v.Workplace;
+            var plan = t.Plan;
+            var rd = plan.Roads[v.Road];
+            int node = plan.Plots[t.Workplace(w).Plot].Node;
+            if (rd.A == node || rd.B == node)
+            {
+                float fromNode = (float)(rd.A == node ? v.Dist : rd.Length - v.Dist);
+                float gap = LineStepCells(t.LoadLevel);
+                float tail = gap * (1f + t.Workplace(w).QueueLength + _holders[w]);
+                if (fromNode < tail + 0.05f)
+                {
+                    _holders[w]++;
+                    WorkSites.LinePoint(t, w, _lane[w], tail, out float lx, out float ly, out float lh);
+                    tx = lx; ty = ly; face = HeadingYaw(lh);
+                    return true;
+                }
+            }
         }
         if (v.Phase == VillagerPhase.Working && v.Workplace >= 0)
         {
