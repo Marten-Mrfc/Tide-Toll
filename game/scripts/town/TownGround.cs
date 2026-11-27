@@ -91,6 +91,7 @@ public partial class TownGround : MeshInstance3D
         _wearImg = Image.CreateFromData(N, N, false, Image.Format.Rg8, _rg);
         _wearTex = ImageTexture.CreateFromImage(_wearImg);
         Material.SetShaderParameter("wear_tex", _wearTex);
+        NearInit();
         _crowdImg = Image.CreateFromData(N, N, false, Image.Format.R8, _crowd);
         _crowdTex = ImageTexture.CreateFromImage(_crowdImg);
         Material.SetShaderParameter("crowd_tex", _crowdTex);
@@ -301,6 +302,7 @@ public partial class TownGround : MeshInstance3D
         }
         _wearImg.SetData(N, N, false, Image.Format.Rg8, _rg);
         _wearTex.Update(_wearImg);
+        NearUpload();
         _crowdImg.SetData(N, N, false, Image.Format.R8, _crowd);
         _crowdTex.Update(_crowdImg);
         Material.SetShaderParameter(CrowdOn, anyCrowd ? 1f : 0f);

@@ -21,6 +21,8 @@ uniform sampler2D wetmud_tex : filter_linear, repeat_disable;              // R8
 uniform sampler2D gravel_tex : filter_linear, repeat_disable;              // R8 256x256: the gravel strip's edge ramp (0.5 = edge)              // RG8 128x128: R = ice wear/100, G = flood band
 uniform sampler2D paper_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D water_tex : source_color, filter_linear_mipmap, repeat_enable;
+// n10 (Q4): 1 where any cell within 5 cells has wear (TownGround.Near.cs); unset, it reads 1 and nothing is skipped.
+uniform sampler2D near_tex : hint_default_white, filter_nearest, repeat_disable;
 
 uniform float map_size = 256.0;
 uniform float cells = 128.0;
@@ -102,46 +104,62 @@ void fragment() {
 	// 1. Edges that wander: the lookup is warped by low-frequency noise (under half a cell), so cell squares and
 	//    straight vector strokes never show.
 	float cm = map_size / cells;
-	vec2 warp = vec2(vnoise(lp / 9.0), vnoise(lp / 9.0 + 31.7)) - 0.5;
-	warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
+	// n10 (Q4): the warp only moves lookups of the wear and of the gravel and cobble strips, all of which lie on worn
+	// cells; more than 4 cells from any wear (the near mask 0) every one of them reads the same with or without it.
+	bool near_wear = texture(near_tex, uv).r > 0.0;
+	vec2 warp = vec2(0.0);
+	if (near_wear) {
+		warp = vec2(vnoise(lp / 9.0), vnoise(lp / 9.0 + 31.7)) - 0.5;
+		warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
+	}
 	vec2 m = lp + warp * cm * 0.9;
 	// 2. Three readings of the same wear: the core (softened over under a cell), a wide spread (the trampled fringe
 	//    walkers leave beside a trail) and a broad average (only wide, busy trunks stay high in it). The ring samples
 	//    also give the wear's slope, which points across the trail: strokes are drawn along the walking direction.
-	float core = wear_at(m) * 0.4;
-	float spread = 0.0, broad = 0.0;
-	vec2 grad = vec2(0.0);
-	for (int k = 0; k < 6; k++) {
-		float a = float(k) * 1.0471976 + 0.35;
-		vec2 d = vec2(cos(a), sin(a));
-		core += wear_at(m + d * cm * 0.55) * 0.1;
-		float wn = wear_at(m + d * cm * 1.2);
-		spread += wear_at(m + d * cm * 2.2) + wn;
-		broad += wear_at(m + d * cm * 1.0);
-		grad += d * wn;
+	// n10 (Q4): far from any wear (the near mask is 0) every read below is 0, so the block's results are known:
+	// no wear, and no stroke direction (stroke 0.5). Only pixels near a trail run it.
+	float core = 0.0, spread = 0.0, broad = 0.0, stroke = 0.5;
+	if (near_wear) {
+		core = wear_at(m) * 0.4;
+		vec2 grad = vec2(0.0);
+		for (int k = 0; k < 6; k++) {
+			float a = float(k) * 1.0471976 + 0.35;
+			vec2 d = vec2(cos(a), sin(a));
+			core += wear_at(m + d * cm * 0.55) * 0.1;
+			float wn = wear_at(m + d * cm * 1.2);
+			spread += wear_at(m + d * cm * 2.2) + wn;
+			broad += wear_at(m + d * cm * 1.0);
+			grad += d * wn;
+		}
+		spread /= 12.0;
+		broad = (broad + wear_at(m) * 2.0) / 8.0;
+		vec2 across = grad / max(length(grad), 1e-3);
+		vec2 along = vec2(-across.y, across.x);
+		// Strokes: value noise stretched 8:1 along the path (fixed on the map, so they never swim).
+		stroke = vnoise(vec2(dot(lp, along) / 1.7, dot(lp, across) / 0.21));
+		stroke = mix(0.5, stroke, smoothstep(0.004, 0.03, length(grad)));   // no direction on open ground
 	}
-	spread /= 12.0;
-	broad = (broad + wear_at(m) * 2.0) / 8.0;
-	vec2 across = grad / max(length(grad), 1e-3);
-	vec2 along = vec2(-across.y, across.x);
-	// Strokes: value noise stretched 8:1 along the path (fixed on the map, so they never swim).
-	float stroke = vnoise(vec2(dot(lp, along) / 1.7, dot(lp, across) / 0.21));
-	stroke = mix(0.5, stroke, smoothstep(0.004, 0.03, length(grad)));   // no direction on open ground
-	float n1 = vnoise(lp / 2.2), n2 = vnoise(lp / 0.8), n3 = vnoise(lp / 5.5 + 3.1);
+	// n10 (Q4): with no wear (core, spread and broad 0) the fringe, the bare earth, the ruts, the packed earth, the
+	// hollow way and the ramp all weigh exactly 0, so the colour is the meadow's: the blend below runs only near wear.
+	float n2 = vnoise(lp / 0.8);
+	vec3 grass = two(g0, lp);
+	vec3 c = grass;
+	float bare = 0.0;
+	if (near_wear) {
+	float n1 = vnoise(lp / 2.2), n3 = vnoise(lp / 5.5 + 3.1);
 	// Meadow, then bent grass: a wide, pale, yellower fringe of flattened blades with strokes along the walking
 	// direction, strongest by the trail and fading out raggedly.
 	float fringe = smoothstep(0.03, 0.22, max(spread * 1.25, core)) * (0.62 + 0.38 * n3);
-	vec3 grass = two(g0, lp);
 	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.30) * (1.0 + 0.05 * n2);
 	flattened *= 0.93 + 0.16 * stroke;
-	vec3 c = mix(grass, flattened, fringe);
+	c = mix(grass, flattened, fringe);
 	// Bare earth, blended by height: the grass has a height (noise), and wear wears it down to the soil from the lowest
 	// tufts up. A lightly used trail is a broken line of soil through grass; the busier it is, the wider and more
 	// solid the soil. The sim's thresholds stay the anchors: no soil below wear 25 (trail), solid soil only
 	// from about 70 (a track), so the grass breaks through all along its edges.
 	float height = 0.50 * n2 + 0.32 * n1 + 0.18 * stroke;
 	float worn = clamp((core - 0.25) / 0.50, 0.0, 1.0) * 1.3 - 0.15;
-	float bare = smoothstep(height - 0.10, height + 0.10, worn);
+	bare = smoothstep(height - 0.10, height + 0.10, worn);
 	// Round 6 (W5): a just-given trail is faint but plainly there: a narrow, mostly unbroken line of soil down its
 	// middle (broken only where tall tufts stand), so a new road reads at the normal view before it wears in.
 	// Night 3, round 3 (LF): not one blurred line but a faint footpath: two thin ruts where the core crosses a narrow
@@ -160,6 +178,7 @@ void fragment() {
 	c = mix(c, mix(two(g3, lp), earth, 0.25 * n1), packed * 0.8);
 	c = mix(c, two(g4, lp), w4);
 	c = mix(c, texture(ramp_tex, vec2(core, 0.5)).rgb, ramp_mix * bare * (1.0 - w4));
+	}
 	float w = core;
 	// Rain's mud: wet trail, the same worn ground pulled toward wet earth and darkened, a little more solid over the
 	// trail's grassy edges, with a few still puddle glints on the busiest cells. It dries cell by cell (the C# side).
@@ -180,10 +199,13 @@ void fragment() {
 	// field: rows of ripe crop running east-west, trampled to earth where trails cross, with an ink edge
 	vec2 mask = texture(mask_tex, uv).rg;
 	float cell_m = map_size / cells;
-	{
+	// n10 (Q4): the crop and its edge are both weighted by mask.g, so off the crop cells (mask.g 0) they are skipped.
+	// The crop texture's derivatives are taken here, outside the branch (the same values the implicit lookup uses).
+	vec2 cuv = lp / 9.0, cdx = dFdx(cuv), cdy = dFdy(cuv);
+	if (mask.g > 0.0) {
 		float row = sin(lp.y * 6.2831853 / 1.25 + sin(lp.x * 0.35) * 0.4);
 		vec3 crop = mix(crop_dark.rgb, crop_col.rgb, smoothstep(-0.35, 0.35, row));
-		crop *= 0.94 + 0.12 * texture(g1, lp / 9.0).g;
+		crop *= 0.94 + 0.12 * textureGrad(g1, cuv, cdx, cdy).g;
 		float keep = 1.0 - smoothstep(0.08, 0.35, w);
 		c = mix(c, crop, mask.g * keep);
 		// edge of the crop area: compare with the mask a few decimetres away in four directions (a thin edge line)
@@ -249,12 +271,20 @@ void fragment() {
 	float inside = 1.0 - smoothstep(-aa, aa, dw);
 	float tflat = (1.0 - smoothstep(-aa, aa, d)) * (1.0 - inside);   // the tidal flat between edge and bank
 	float ford = mask.r;
+	// n10 (Q4): the water, the bank lip, the tidal flat and the bank's ink line all weigh 0 beyond the bank lip's widest
+	// (2.55 m) and the ink line's half width (aa * bank_px): there the block below is skipped. The derivatives it uses
+	// are taken here, outside the branch.
+	float sw = vnoise(vec2(lp.x * 0.45, lp.y * 0.3 - time_s * 0.18)) + 0.5 * vnoise(lp * 0.9 + vec2(3.7, -time_s * 0.3));
+	float fw_sw = fwidth(sw), fw_x = fwidth(lp.x);
+	bool near_river = d < 3.0 + aa * max(2.0 * bank_px, 4.0);
+	vec3 wc = vec3(0.0);
+	float band = 0.0;
+	if (near_river) {
 	vec2 wuv = vec2(lp.x / 40.0, lp.y / 40.0 - time_s * 0.012);
-	vec3 wc = mix(water_col.rgb, texture(water_tex, wuv).rgb, 0.25);
+	wc = mix(water_col.rgb, texture(water_tex, wuv).rgb, 0.25);
 	wc = mix(wc, deep_col.rgb, 0.55 * smoothstep(half_w * 0.15, -half_w * 0.6, d)); // deeper down the middle
 	// Round n3 (RV): soft swirls in every direction instead of ruled dashes: two drifting noise contours, faint.
-	float sw = vnoise(vec2(lp.x * 0.45, lp.y * 0.3 - time_s * 0.18)) + 0.5 * vnoise(lp * 0.9 + vec2(3.7, -time_s * 0.3));
-	float swl = 1.0 - smoothstep(0.0, 0.045 + fwidth(sw) * 1.2, abs(fract(sw * 2.2) - 0.5));
+	float swl = 1.0 - smoothstep(0.0, 0.045 + fw_sw * 1.2, abs(fract(sw * 2.2) - 0.5));
 	wc = mix(wc, deep_col.rgb * 0.85, swl * 0.35 * smoothstep(-0.8, -2.5, dw) * (1.0 - ford) * (1.0 - ice));
 	// The shallows: a lighter band along the water's edge, wider at low water (the bed shows through).
 	float shw = 1.6 + tide_drop * 0.55;
@@ -269,7 +299,7 @@ void fragment() {
 	float blink = max(0.0, sin(time_s * (0.6 + sh2 * 0.7) + sh1 * 6.283));
 	float fleck = 1.0 - smoothstep(0.07, 0.15, length((sf - so) * vec2(1.0, 2.2)));
 	float shim = fleck * step(0.45, sh1) * blink * smoothstep(-0.5, -1.5, dw);
-	shim *= 1.0 - smoothstep(0.2, 0.5, fwidth(lp.x));  // only where a fleck is a few pixels (not on the whole page)
+	shim *= 1.0 - smoothstep(0.2, 0.5, fw_x);  // only where a fleck is a few pixels (not on the whole page)
 	wc = mix(wc, paper.rgb, shim * 0.8 * (1.0 - ford) * (1.0 - ice));
 	// ford: shallow, lighter water with the earth bed and pale ripples showing
 	vec3 bed = two(g2, lp);
@@ -293,7 +323,8 @@ void fragment() {
 		ic = mix(ic, path, trod * 0.92);
 		wc = mix(wc, ic, ice);
 	}
-	float band = 1.0 - smoothstep(0.0, aa * bank_px, abs(d));  // ink line centred on the bank
+	band = 1.0 - smoothstep(0.0, aa * bank_px, abs(d));  // ink line centred on the bank
+	}
 	// The flood band: mud on worn paths after the flood, and the flood's wash filling outward from the bank as it rises.
 	if (flood > 0.0 || mud > 0.0) {
 		float inBand = texture(season_tex, uv).g * (1.0 - inside);
@@ -317,6 +348,7 @@ void fragment() {
 		float line = (1.0 - smoothstep(aa * 0.6, aa * 1.8, abs(d - at))) * step(0.1, gb) * step(0.5, fract(lp.y * 0.3));
 		c = mix(c, ink.rgb, line * 0.5 * band_mark * (1.0 - step(0.05, flood)));
 	}
+	if (near_river) {
 	if (tide_drop > 0.0) {
 		// Round n3 (RV), after the review: the flat is mud, never grey: Packed earth over Mud toward the bank, darker wet
 		// Mud toward the water, no water colour mixed in (it read as wet slate).
@@ -342,6 +374,7 @@ void fragment() {
 	c = mix(c, lipc, lip * (1.0 - 0.7 * ford));
 	c = mix(c, wc, inside);
 	c = mix(c, ink.rgb, band * (1.0 - 0.55 * ford));
+	}
 
 	// paper grain: fine and coarse mottling, multiplied, so it reads as gouache on paper
 	float g = texture(paper_tex, lp / 3.1).r * 0.6 + texture(paper_tex, rot(lp, 1.3) / 1.3).r * 0.4;

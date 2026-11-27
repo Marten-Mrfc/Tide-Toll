@@ -26,15 +26,18 @@ uniform float inner_k = 0.6;       // inner creases: the colour under them times
 uniform float ink_alpha = 1.0;     // strength of the whole pass (soft ink thins as the view zooms out)
 uniform float max_step = 8.0;      // the outer step is never above this (small things: InkOutline gives the soft pass 1)
 void vertex() { POSITION = vec4(VERTEX.xy, 1.0, 1.0); }
-float vz(ivec2 p, vec2 size, mat4 inv_proj) {
+// View depth from the depth value with four numbers of the inverse projection instead of a mat4 a tap (n10, Q5): the
+// z and w rows of a camera's inverse projection do not depend on the screen position (ortho: w = 1, z linear in d;
+// a symmetric perspective: z constant, w linear in d), so -(v.z / v.w) is (k.x d + k.y) / (k.z d + k.w), negated.
+vec4 zk(mat4 ip) { return vec4(ip[2].z, ip[3].z, ip[2].w, ip[3].w); }
+float vz(ivec2 p, vec2 size, vec4 k) {
 	p = clamp(p, ivec2(0), ivec2(size) - 1);   // texelFetch outside the target returns 0, which would draw a frame
 	float d = texelFetch(depth_tex, p, 0).r;
-	vec4 v = inv_proj * vec4((vec2(p) + 0.5) / size * 2.0 - 1.0, d, 1.0);
-	return -(v.z / v.w);
+	return -((k.x * d + k.y) / (k.z * d + k.w));
 }
 // Second difference at step w, both axes; an axis whose neighbours fall outside the target is skipped (clamping
 // there turns it into a first difference, which inks a frame line along the viewport edge on tilted ground).
-float d2(ivec2 p, int w, float zc, vec2 size, mat4 ip) {
+float d2(ivec2 p, int w, float zc, vec2 size, vec4 ip) {
 	ivec2 hi = ivec2(size) - 1;
 	float lx = (p.x - w >= 0 && p.x + w <= hi.x) ? abs(vz(p + ivec2(w, 0), size, ip) + vz(p - ivec2(w, 0), size, ip) - 2.0 * zc) : 0.0;
 	float ly = (p.y - w >= 0 && p.y + w <= hi.y) ? abs(vz(p + ivec2(0, w), size, ip) + vz(p - ivec2(0, w), size, ip) - 2.0 * zc) : 0.0;
@@ -43,7 +46,7 @@ float d2(ivec2 p, int w, float zc, vec2 size, mat4 ip) {
 void fragment() {
 	ivec2 p = ivec2(FRAGCOORD.xy);
 	vec2 size = vec2(textureSize(depth_tex, 0));
-	mat4 ip = INV_PROJECTION_MATRIX;
+	vec4 ip = zk(INV_PROJECTION_MATRIX);
 	float zc = vz(p, size, ip);
 	float wf = clamp(width_px, 1.0, max_step);
 	int w0 = int(floor(wf));

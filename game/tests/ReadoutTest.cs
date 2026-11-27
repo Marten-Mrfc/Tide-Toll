@@ -7,7 +7,7 @@ namespace TideToll.Game.Tests;
 
 /// <summary>
 /// game-readout (n10): the performance readout under xvfb with the Mobile renderer. F3 shows and hides it and the choice
-/// is written to settings.cfg; hidden, it does not process (so it allocates nothing); shown, its numbers are present and
+/// is written to settings.cfg with the next save (never in the frame of the key); hidden, it does not process (so it allocates nothing); shown, its numbers are present and
 /// sane and are rebuilt about twice a second; its own cost a frame (the box's frame work and the two probes round the
 /// interface) is under <see cref="CostGateMs"/> and <see cref="BytesGate"/> on average; holding F3 three seconds writes
 /// perf-readout.csv a row a second; the box lies clear of every zone of the layout sheet at 1280 x 720 and 1920 x 1080.
@@ -37,7 +37,9 @@ public partial class ReadoutTest : TownTestBase
         // F3 shows it and the settings file remembers it.
         await Key(Godot.Key.F3);
         Check(R.Shown && R.IsProcessing() && PerfReadout.Timing, "F3 shows the readout");
-        Check(Settings.GameSettings.Current!.ShowReadout && SettingsText().Contains("readout=true"), "settings.cfg remembers the readout shown");
+        // Never written in a frame of play: kept in the store, written with the town's next save.
+        Check(Settings.GameSettings.Current!.ShowReadout && !SettingsText().Contains("readout=true"), "the key press wrote settings.cfg in a frame of play");
+        Check(Main.Saver.SaveNow() && SettingsText().Contains("readout=true"), "settings.cfg remembers the readout shown after the next save");
 
         // About twice a second, and the numbers are sane.
         await Until(() => R.Updates >= 1, 2000, "a first update");
@@ -88,7 +90,8 @@ public partial class ReadoutTest : TownTestBase
         await Until(() => R.Text.Contains("recording"), 2000, "the box to say it is recording");
         await Key(Godot.Key.F3);
         Check(!R.Shown && !R.Logging && !R.IsProcessing() && !PerfReadout.Timing, "F3 hides the readout and ends the file");
-        Check(!Settings.GameSettings.Current!.ShowReadout && SettingsText().Contains("readout=false"), "settings.cfg remembers the readout hidden");
+        Check(!Settings.GameSettings.Current!.ShowReadout && SettingsText().Contains("readout=true"), "hiding wrote settings.cfg in a frame of play");
+        Check(Main.Saver.SaveNow() && SettingsText().Contains("readout=false"), "settings.cfg remembers the readout hidden after the next save");
         CheckFile(path);
 
         // Its place, clear of every zone.

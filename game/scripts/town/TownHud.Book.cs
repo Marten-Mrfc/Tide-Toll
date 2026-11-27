@@ -59,6 +59,9 @@ public partial class TownHud
     }
     private Button _achMark = null!, _achClose = null!, _ageClose = null!;
     private int _achShown = -1, _achSig = -1;
+    private Town? _achCountTown;
+    private long _achCountTick = -1;
+    private bool _achCountRiver;
     private double _achClock;
     private float _agePageIn = -1;
 
@@ -278,7 +281,15 @@ public partial class TownHud
         _scrim.Visible = pa > 0f;
         // The bookmark, bottom right beside the pause control: shown while zoomed in.
         if (t.InRiverAge != _achRiver) AchAge(t);
-        int got = _achGot = _achRiver ? TownSummary.RiverAchieved(t) : TownSummary.Achieved(t);
+        // n10 (research Q9): achievements unlock only inside a step (Town.CheckAchievements, CheckRiverAchievements), so
+        // the count is taken again only when the tick, the town or the age changed, not every frame (it read every
+        // achievement's value, and a second-age one builds a string).
+        if (t != _achCountTown || t.Tick != _achCountTick || _achRiver != _achCountRiver)
+        {
+            _achCountTown = t; _achCountTick = t.Tick; _achCountRiver = _achRiver;
+            _achGot = _achRiver ? TownSummary.RiverAchieved(t) : TownSummary.Achieved(t);
+        }
+        int got = _achGot;
         int sig = got + 1000 * Settings.GameInput.Version + (_achRiver ? 500 : 0);
         if (sig != _achSig)
         {

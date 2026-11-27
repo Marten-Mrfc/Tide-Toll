@@ -110,21 +110,16 @@ public partial class TownHud
         foreach (Node? n in _labelOwners)
         {
             if (n == null || !IsInstanceValid(n)) continue;
-            foreach (var c in n.FindChildren("W*", "Label3D", true, false))
+            // n10 (Q1): the buildings keep a list of their words (TownBuildings.Words, in the tree's order); the boats and
+            // the river are still searched (their files belong to other work this round).
+            if (n == _main.Buildings)
             {
-                if (c is not Label3D l) continue;
-                string nm = l.Name;
-                if (nm != "What" && nm != "Wants") continue;
-                l.Visible = false;
-                MapTag g;
-                if (used < _tags.Count) g = _tags[used];
-                else { g = new MapTag { Pill = NewTagPill() }; _tags.Add(g); }
-                used++;
-                if (g.Source != l) { g.Source = l; g.A = 0; g.Out = 0; }
-                g.Boat = nm == "Wants";
-                string text = TagText(l.Text);
-                if (text != g.Text) { g.Text = text; g.Pill.Text = text; g.Pill.ResetSize(); }
+                foreach (var l in _main.Buildings.Words)
+                    if (IsInstanceValid(l) && l.IsInsideTree()) AddTag(l, ref used);
+                continue;
             }
+            foreach (var c in n.FindChildren("W*", "Label3D", true, false))
+                if (c is Label3D l) AddTag(l, ref used);
         }
         // Tags without a source any more go quiet (kept in the list for reuse).
         while (_tags.Count > used)
@@ -134,6 +129,21 @@ public partial class TownHud
             _tagPool.Add(g.Pill);
             _tags.RemoveAt(_tags.Count - 1);
         }
+    }
+
+    private void AddTag(Label3D l, ref int used)
+    {
+        string nm = l.Name;
+        if (nm != "What" && nm != "Wants") return;
+        l.Visible = false;
+        MapTag g;
+        if (used < _tags.Count) g = _tags[used];
+        else { g = new MapTag { Pill = NewTagPill() }; _tags.Add(g); }
+        used++;
+        if (g.Source != l) { g.Source = l; g.A = 0; g.Out = 0; }
+        g.Boat = nm == "Wants";
+        string text = TagText(l.Text);
+        if (text != g.Text) { g.Text = text; g.Pill.Text = text; g.Pill.ResetSize(); }
     }
 
     private Label NewTagPill()

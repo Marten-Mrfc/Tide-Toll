@@ -63,28 +63,34 @@ public sealed class GameSettings
     }
     /// <summary>Hints marked seen since the file was last written (tests).</summary>
     public bool HintsUnsaved { get; private set; }
-    /// <summary>Writes hints marked seen since the last write. The file is read first: another store of the same file (the
-    /// settings pages) may have written it since, and this one must not put its older values back.</summary>
+    /// <summary>Writes hints marked seen since the last write, and (n10) the readout's F3 choice: one path for every
+    /// setting kept in memory until a save. The file is read first: another store of the same file (the settings pages)
+    /// may have written it since, and this one must not put its older values back.</summary>
     public void SaveHintsIfChanged()
     {
-        if (!HintsUnsaved) return;
+        if (!HintsUnsaved && !ReadoutPending) return;
         int seen = HintsSeen;
+        bool readout = ShowReadout, readoutPending = ReadoutPending;
         Read();
         HintsSeen |= seen;
+        if (readoutPending) ShowReadout = readout;
         Save();
     }
     /// <summary>The first-minute hints show again (the next town that starts).</summary>
     public void ShowHintsAgain() { if (HintsSeen != 0) { HintsSeen = 0; Commit(KHints); } }
     public const string KHints = "hints_seen";
 
-    /// <summary>n10: the performance readout (F3) shows; not on the settings pages. Read first like the hints, no event.</summary>
+    /// <summary>
+    /// n10: the performance readout (F3) shows; not on the settings pages. Never written in a frame of play: the choice
+    /// is kept here and written by <see cref="SaveHintsIfChanged"/> with the town's next save, like the hints.
+    /// </summary>
     public bool ShowReadout { get; private set; }
+    public bool ReadoutPending { get; private set; }
     public void SetShowReadout(bool on)
     {
-        Read();
         if (ShowReadout == on) return;
         ShowReadout = on;
-        Save();
+        ReadoutPending = true;
     }
 
     public GameSettings(string path = DefaultPath)
@@ -200,6 +206,7 @@ public sealed class GameSettings
     public void Save()
     {
         HintsUnsaved = false;
+        ReadoutPending = false;
         var sb = new StringBuilder();
         sb.Append("; Tide & Toll settings. Written by the game; a bad line is ignored.\n\n[sound]\n");
         for (int i = 0; i < Buses.Length; i++) sb.Append(Buses[i].ToLowerInvariant()).Append('=').Append(_volume[i]).Append('\n');
