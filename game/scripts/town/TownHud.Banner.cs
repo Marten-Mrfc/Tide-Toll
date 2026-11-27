@@ -16,7 +16,9 @@ public partial class TownHud
     private Vector3? _bannerAt;
 
     /// <summary>The banner's rectangle on screen while it shows (tests), and the gift point it keeps clear of.</summary>
-    public Rect2 BannerRect => _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
+    public Rect2 BannerRect => _large.Showing ? new Rect2(Zones.Banner.Position, Zones.Banner.Size) : new Rect2();
+    /// <summary>The banner's rectangle this frame (it moves 12 while it arrives and leaves).</summary>
+    public Rect2 BannerLiveRect => _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
     public Vector2? BannerGiftScreen => _bannerAt is { } a ? _main.Rig.LocalToScreen(a) : null;
 
     /// <summary>Round 4: the banner keeps clear of this map point (the gift it announces) on screen.</summary>
@@ -40,7 +42,7 @@ public partial class TownHud
     }
 
     /// <summary>The banner's text while it shows ("" otherwise), and every banner shown (tests).</summary>
-    public string BannerText => _banner.Visible ? _bannerHead.Text + ": " + _bannerText.Text : "";
+    public string BannerText => _large.Showing ? _large.Current.Head + ": " + _large.Current.Text : "";
     public readonly System.Collections.Generic.List<string> BannerLog = new();
     public Button HomeMark => _home;
 
@@ -72,35 +74,4 @@ public partial class TownHud
         _bannerAge = -1;
     }
 
-    public void Banner(string head, string text)
-    {
-        string line = head + ": " + text;
-        Log(BannerLog, line);
-        Log(NoteLog, line);
-        LastNote = line;
-        _bannerAt = null;
-        if (BannerWaits(head, text)) return;
-        _pendingHead = ""; _pendingText = ""; // the newest banner wins
-        ShowBanner(head, text);
-    }
-
-    /// <summary>One banner at a time: a new one takes the zone at once (its text swapped, its time from the start).</summary>
-    private void ShowBanner(string head, string text)
-    {
-        _bannerHead.Text = head;
-        _bannerText.Text = text;
-        _bannerAge = 0;
-        _banner.Visible = _fullA > 0.01f;
-    }
-
-    private void BannerFrame(float dt)
-    {
-        PendingBannerFrame();
-        if (_bannerAge < 0) { _banner.Visible = false; return; }
-        _bannerAge += dt;
-        if (_bannerAge > BannerSeconds) { _bannerAge = -1; _banner.Visible = false; return; }
-        _banner.Visible = _fullA > 0.01f && !_drv.Town.ChoiceOpen;
-        float a = Math.Clamp(Math.Min(_bannerAge / 0.3f, (BannerSeconds - _bannerAge) / 1f), 0f, 1f) * _fullA;
-        _banner.Modulate = new Color(1, 1, 1, a);
-    }
 }

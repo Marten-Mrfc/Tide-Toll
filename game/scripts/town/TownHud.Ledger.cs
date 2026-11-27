@@ -13,16 +13,14 @@ namespace TideToll.Game;
 /// </summary>
 public partial class TownHud
 {
-    public const int NoteQueueCap = 12;
     private Panel _ledgerPanel = null!;
     private Control _purse = null!, _goalBox = null!, _stripBox = null!, _noteBox = null!;
     private Label _noteLabel = null!;
     private float _noteAge = -1f;
-    private readonly Queue<(string text, bool strong)> _noteQueue = new();
 
     /// <summary>The note showing now ("" none) and how many wait (tests).</summary>
-    public string NoteShowing => _noteAge >= 0 ? _noteLabel.Text : "";
-    public int NotesWaiting => _noteQueue.Count;
+    public string NoteShowing => _notes.Showing ? _notes.Current.Text : "";
+    public int NotesWaiting => _notes.Waiting;
     public Rect2 PurseRect => _purse.GetGlobalRect();
     public Rect2 LedgerRect => _ledgerPanel.GetGlobalRect();
     /// <summary>The goal section while a request shows in it (empty otherwise).</summary>
@@ -87,7 +85,7 @@ public partial class TownHud
         _noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         // Two lines by the sheet; a third (tighter lines) until the message round rewrites notes over 2 lines (90
         // characters of caption need about 2.3 lines of the rail).
-        _noteLabel.MaxLinesVisible = 3;
+        _noteLabel.MaxLinesVisible = 2;
         _noteLabel.AddThemeConstantOverride("line_spacing", -UiKit.U(s, 3));
         _noteLabel.ClipText = true;
         _noteLabel.VerticalAlignment = VerticalAlignment.Top;
@@ -96,7 +94,6 @@ public partial class TownHud
         _noteLabel.Visible = false;
         _noteBox.AddChild(_noteLabel);
         _noteAge = -1f;
-        _noteQueue.Clear();
     }
 
     private HudZones Zones => new(_built, _s);
@@ -165,41 +162,6 @@ public partial class TownHud
     }
 
     public static readonly StringName FontName = "font", FontSizeName = "font_size";
-
-    /// <summary>A note: the note section shows one at a time, two lines; the others wait their turn (first in, first out).</summary>
-    public void Note(string text, bool strong = false)
-    {
-        NotesShown++;
-        LastNote = text;
-        Log(NoteLog, text);
-        // The same note again while it shows: it gets its full time again. Already waiting: not queued twice.
-        if (_noteAge >= 0 && _noteLabel.Text == text) { _noteAge = Math.Min(_noteAge, 0.2f); return; }
-        foreach (var q in _noteQueue) if (q.text == text) return;
-        _noteQueue.Enqueue((text, strong));
-        while (_noteQueue.Count > NoteQueueCap) _noteQueue.Dequeue();
-        if (_noteAge < 0) NextNote();
-    }
-
-    private void NextNote()
-    {
-        if (_noteQueue.Count == 0) { _noteAge = -1f; _noteLabel.Visible = false; _noteLabel.Text = ""; return; }
-        var (text, strong) = _noteQueue.Dequeue();
-        _noteLabel.Text = text;
-        _noteLabel.AddThemeFontOverride("font", strong ? UiKit.UiBold : UiKit.UiFont);
-        _noteLabel.Visible = true;
-        _noteAge = 0f;
-    }
-
-    private void StepNotes(float dt)
-    {
-        if (_noteAge < 0) return;
-        _noteAge += dt;
-        // A waiting note shortens the one showing to 4 s; alone it stays its 7 s.
-        float stay = _noteQueue.Count > 0 ? Math.Min(NoteSeconds, 4f) : NoteSeconds;
-        if (_noteAge > stay) { NextNote(); return; }
-        float a = Math.Clamp(Math.Min(_noteAge / 0.2f, (stay - _noteAge) / 0.6f), 0f, 1f);
-        _noteLabel.Modulate = new Color(1, 1, 1, a);
-    }
 }
 
 /// <summary>The ledger's faint ruled lines (drawn once per size).</summary>

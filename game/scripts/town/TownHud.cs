@@ -17,6 +17,10 @@ public partial class TownHud : CanvasLayer
 {
     public const int MaxNotes = 3, MaxFloaters = 32;
     public const float NoteSeconds = 7f, FloatSeconds = 1.4f, BannerSeconds = 3.5f; // round 6: banners 6 s to 3.5 s
+    /// <summary>Night 3, L2: coin numbers merge within this many seconds at one building; at most this many show.</summary>
+    public const float FloatMerge = 0.5f;
+    public const int FloatCap = 8;
+    private readonly MessageFader _floatModeF = new(0.15f, true);
 
     private Main _main = null!;
     private TownDriver _drv = null!;
@@ -33,6 +37,9 @@ public partial class TownHud : CanvasLayer
     private readonly float[] _floatAge = new float[MaxFloaters];
     private readonly double[] _floatCoin = new double[MaxFloaters];
     private readonly Vector2[] _floatCell = new Vector2[MaxFloaters];
+    /// <summary>L2 review: a number's sideways offset on screen, chosen once when it starts, so that it never lies on a
+    /// live one (two neighbouring buildings' numbers were drawn on top of each other).</summary>
+    private readonly float[] _floatDx = new float[MaxFloaters];
     private int _floatNext;
 
     /// <summary>Notes shown so far (tests), the text of the newest, floaters started.</summary>
@@ -127,8 +134,10 @@ public partial class TownHud : CanvasLayer
         BuildBookParts();
         BuildRiverParts();
         BuildChoiceParts();
+        BuildSecondRequest();
         BuildNav();
         BuildTip();
+        WireMessageClicks();
         _fullParts = new Control?[] { _ledgerPanel, _shop, _bell, _floatLayer };
         _fullA = -1f;
         _labelCards = Array.Empty<Control?>(); // round 6: the cards the map's labels keep clear of, taken again after a rebuild
@@ -137,23 +146,27 @@ public partial class TownHud : CanvasLayer
 
     public override void _Process(double delta)
     {
+        // Frame strips hold the messages' clocks: every message motion reads this frame's step (TownHud.Messages.cs).
+        if (StripStep >= 0f) { delta = StripNext; StripNext = 0f; }
+        _msgDt = (float)delta;
         var vp = _forcedCanvas ?? GetViewport().GetVisibleRect().Size;
         if (vp != _built && vp.Y > 1) Build();
         foreach (var e in _drv.Events) OnEvent(e);
         StageFrame((float)delta);
         Refresh();
-        StepNotes((float)delta);
         StepFloaters((float)delta);
         ShopFrame((float)delta);
         PaveFrame();
+        ModeFadeFrame((float)delta);
         RequestFrame((float)delta);
         HintFrame((float)delta);
-        BannerFrame((float)delta);
         TimersFrame();
         BookFrame((float)delta);
         RiverFrame((float)delta);
         ChoiceFrame((float)delta);
+        SecondRequestFrame();
         ZoneFrame();
+        MessagesFrame((float)delta);
         LabelsFrame((float)delta);
     }
 
@@ -162,14 +175,12 @@ public partial class TownHud : CanvasLayer
     private PanelContainer _slim = null!;
     private Label _slimText = null!;
     private float _fullA = 1f;
-    private bool _scrollHintShown;
     /// <summary>Opacity of the full interface (1 zoomed in, 0 once the page is in view) and whether the slim strip shows.</summary>
     public float FullAlpha => _fullA;
     public bool SlimVisible => _slim.Visible;
     public string SlimText => _slimText.Text;
     /// <summary>Game seconds after which the one-time hint to scroll out appears, if the player has not zoomed out yet.</summary>
     public const double ScrollHintAt = 75;
-    public const string ScrollHint = "Scroll out to see the whole book.";
 
     /// <summary>
     /// The interface follows the zoom: complete while zoomed in on the town; as the whole page comes into view it fades
@@ -203,8 +214,7 @@ public partial class TownHud : CanvasLayer
             // Night 3: the purse stays as one line in its own place.
             _slim.Modulate = new Color(1, 1, 1, 1f - a);
         }
-        if (!_scrollHintShown && size >= slim) _scrollHintShown = true; // found it alone: no hint needed
-        if (!_scrollHintShown && _drv.Town.Time >= ScrollHintAt) { _scrollHintShown = true; Note(ScrollHint); }
+        FirstMinuteFrame(dt, size, slim);
     }
 
     private Control?[] _fullParts = Array.Empty<Control?>();
@@ -250,23 +260,30 @@ public partial class TownHud : CanvasLayer
     private void OnEvent(in TownEvent e)
     {
         var t = _drv.Town;
+        FirstEvent(e);
+        if (e.Kind is TownEventKind.LevelReached or TownEventKind.BuildingOpened or TownEventKind.BoatArrived or TownEventKind.BoatLeft) TagsChanged();
         switch (e.Kind)
         {
             case TownEventKind.Delivery: if (Settings.GameSettings.Current?.ShowCoinNumbers ?? true) Float(e.X, e.Y, e.Coin); break;
             case TownEventKind.LevelReached:
-                if (e.Level > 1) { Banner($"Level {e.Level}", $"{Upper(e.Text)}."); BannerClearOf(GiftPoint(e.Level)); }
+                if (e.Level > 1)
+                {
+                    // A level that opens a choice: the choice opens at once with the level in its heading and the gift
+                    // is said as a note (a decision is never delayed by a banner).
+                    if (t.ChoiceOpen && t.Choice.Level == e.Level) Note($"Level {e.Level}: {Upper(e.Text)}.", true, NoteBuilding, "");
+                    else { Large($"Level {e.Level}", $"{Upper(e.Text)}.", PrioLevel, BannerStay, "level-reached"); BannerClearOf(GiftPoint(e.Level)); }
+                }
                 break;
             case TownEventKind.RequestAsked: case TownEventKind.RequestMet: case TownEventKind.RequestMissed: RequestEvent(e); break;
-            case TownEventKind.CottageExtended: Note(e.Level >= 2 ? "A cottage is extended again: room for one more." : "A cottage is extended: room for one more."); break;
-            case TownEventKind.BuildingOpened: Note((e.Text ?? "A new building") + " is open.", true); break;
-            case TownEventKind.OfferAvailable: Note("New to buy: " + Upper(e.Text ?? "a building") + "."); break;
-            case TownEventKind.RoadWornIn: Note("A road has worn in. It can be paved now."); break;
-            case TownEventKind.RoadPaved: Note(e.Surface == Surface.Cobbles ? "A road is cobbled." : "A road is laid with gravel."); break;
+            // Message-system section 2: what the player did or can already see raises no note (the thing shows it).
+            case TownEventKind.CottageExtended: case TownEventKind.RoadPaved: case TownEventKind.VillagerArrived: break;
+            case TownEventKind.OfferAvailable: break; // the new row fades into the shop and pulses once
+            case TownEventKind.RoadWornIn: PavePillPulse(); break; // the Pave pill changes to its price and pulses
+            case TownEventKind.BuildingOpened: Note((e.Text ?? "A new building") + " is open.", true, NoteBuilding, "gift-arrives"); break;
             case TownEventKind.PerkEarned: if (_perksSeen.Add(e.Text ?? "")) Note("Perk: " + (e.Text ?? "") + "."); break;
-            case TownEventKind.AchievementUnlocked: Note("Achievement: " + (e.Text ?? "") + "."); break;
-            case TownEventKind.VillagerArrived: if (t.VillagerCount > 1) Note("A new villager moves in."); break;
+            case TownEventKind.AchievementUnlocked: Note("Achievement: " + (e.Text ?? "") + ".", false, NoteAchievement, "achievement"); break;
             case TownEventKind.Charter:
-                Banner("The charter", "The town is granted its charter. Ring in the next age when you are ready.");
+                Large("The charter", "The town is granted its charter. Ring in the next age when you are ready.", PrioMoment, BannerLongStay, "charter-granted");
                 FocusBellGreen();
                 break;
             default: if (!ChoiceEvent(e)) RiverEvent(e); break;
@@ -294,6 +311,7 @@ public partial class TownHud : CanvasLayer
     private void OnTownReplaced()
     {
         _perksSeen.Clear();
+        ClearMessages();
         _hintShown = ""; _hintAge = 0; _hintRoad = -1; _hintPlot = -1; _reqFlash = 0;
         _markerOn = false; _markerA = 0f;
         if (_marker != null && IsInstanceValid(_marker)) _marker.Visible = false;
@@ -319,12 +337,16 @@ public partial class TownHud : CanvasLayer
         var cell = new Vector2((float)x, (float)y);
         for (int j = 0; j < MaxFloaters; j++)
         {
-            if (_floatAge[j] <= 0 || _floatCell[j].DistanceSquaredTo(cell) > 4f) continue; // any number still showing there
+            // Night 3, L2 (message-system section 1): deliveries at the same building within half a second are one
+            // number; its text changes in place and it rises on (no jump back in opacity or place).
+            if (_floatAge[j] <= 0 || _floatAge[j] > FloatMerge || _floatCell[j].DistanceSquaredTo(cell) > 4f) continue;
             _floatCoin[j] += coin;
-            _floatAge[j] = Math.Min(_floatAge[j], 0.3f); // drops back a little and shows full again, no jump to the start
             _floaters[j].Text = "+" + Money(Math.Max(1, _floatCoin[j]));
             return;
         }
+        int live = 0;
+        for (int j = 0; j < MaxFloaters; j++) if (_floatAge[j] > 0) live++;
+        if (live >= FloatCap) return; // eight at most
         int i = _floatNext;
         _floatNext = (_floatNext + 1) % MaxFloaters;
         _floatCell[i] = cell;
@@ -333,12 +355,45 @@ public partial class TownHud : CanvasLayer
         _floatAt[i] = new Vector3((float)x * TownGround.Cell, 9f, ((float)y - 1.5f) * TownGround.Cell);
         _floatAge[i] = 0.0001f;
         _floaters[i].Text = "+" + Money(Math.Max(1, coin));
+        _floatDx[i] = FloatClearOf(i);
         _floaters[i].Visible = true;
         FloatersStarted++;
     }
 
+    /// <summary>The sideways offset that keeps a new number off every live one (0 when it is clear where it is).</summary>
+    private float FloatClearOf(int i)
+    {
+        var rig = _main.Rig;
+        var l = _floaters[i];
+        float w = l.GetMinimumSize().X, h = Math.Max(l.GetMinimumSize().Y, 1f), gap = UiKit.U(_s, 8);
+        float x = rig.LocalToScreen(_floatAt[i]).X, y = rig.LocalToScreen(_floatAt[i]).Y - UiKit.U(_s, 44);
+        float dx = 0f;
+        for (int pass = 0; pass < 4; pass++)
+        {
+            bool moved = false;
+            for (int j = 0; j < MaxFloaters; j++)
+            {
+                if (j == i || _floatAge[j] <= 0) continue;
+                var o = _floaters[j];
+                float ow = o.Size.X, ox = o.Position.X + ow / 2f, oy = o.Position.Y;
+                // Both rise at one speed, so the height between them stays as it is now.
+                if (Math.Abs(oy - y) >= h + gap) continue;
+                float need = (w + ow) / 2f + gap, d = x + dx - ox;
+                if (Math.Abs(d) >= need) continue;
+                dx += (d >= 0 ? need - d : -need - d);
+                moved = true;
+            }
+            if (!moved) break;
+        }
+        return dx;
+    }
+
     private void StepFloaters(float dt)
     {
+        // Night 3, L2: Pave and Extend fade the numbers out (0.15 s) instead of hiding them in one frame.
+        _floatModeF.Want(!(PaveMode || ExtendMode));
+        _floatModeF.Step(dt);
+        float mode = _floatModeF.Value;
         for (int i = 0; i < MaxFloaters; i++)
         {
             if (_floatAge[i] <= 0) continue;
@@ -346,13 +401,18 @@ public partial class TownHud : CanvasLayer
             var l = _floaters[i];
             if (_floatAge[i] > FloatSeconds) { _floatAge[i] = 0; l.Visible = false; continue; }
             // Round 6: hidden while Pave or Extend points at something (they lay over the lit cottage and the tip).
-            bool modeOn = PaveMode || ExtendMode;
-            if (l.Visible == modeOn) l.Visible = !modeOn;
-            if (modeOn) continue;
+            bool show = mode > 0f;
+            if (l.Visible != show) l.Visible = show;
+            if (!show) continue;
             var at = _main.Rig.LocalToScreen(_floatAt[i]);
             float k = _floatAge[i] / FloatSeconds;
-            l.Position = at - new Vector2(l.Size.X / 2f, UiKit.U(_s, 44) + k * UiKit.U(_s, 24));
-            l.Modulate = new Color(1, 1, 1, Math.Clamp(Math.Min(_floatAge[i] / 0.1f, (FloatSeconds - _floatAge[i]) / 0.5f), 0f, 1f));
+            l.Position = at - new Vector2(l.Size.X / 2f - _floatDx[i], UiKit.U(_s, 44) + k * UiKit.U(_s, 24));
+            // A number never rises under a large message showing: it fades as the message comes (L2 review 2).
+            var r = new Rect2(l.Position, l.Size);
+            float under = 0f;
+            if (_banner.Visible && r.Intersects(_banner.GetGlobalRect())) under = _banner.Modulate.A;
+            if (_choice.Visible && r.Intersects(_choice.GetGlobalRect())) under = Math.Max(under, _choice.Modulate.A);
+            l.Modulate = new Color(1, 1, 1, (1f - under) * mode * BookMotion.Smoother(Math.Clamp(Math.Min(_floatAge[i] / 0.1f, (FloatSeconds - _floatAge[i]) / 0.5f), 0f, 1f)));
         }
     }
 }

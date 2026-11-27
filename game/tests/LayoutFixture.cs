@@ -40,7 +40,9 @@ public static class LayoutFixture
                 GD.Print($"LAYOUT fixture: no label at {path} (root has {names})");
                 continue;
             }
-            l.Text = text;
+            // L2: a note is two lines at most (message-system 1): the longest note goes in as the note section sets it,
+            // cut at a word with an ellipsis when it would take a third line (was: written raw into a 3-line label).
+            l.Text = path == "Ledger/NoteSection/Note" ? hud.NoteFit(text) : text;
             l.GetParent<Control>().Visible = true;
             l.Visible = true;
         }

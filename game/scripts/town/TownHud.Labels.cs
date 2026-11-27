@@ -38,7 +38,10 @@ public partial class TownHud
     /// <summary>The words of the tags shown now (tests and the audit).</summary>
     public int TagCount => _tags.Count;
 
-    public const float TagFade = 0.2f, TagStayOut = 0.5f;
+    public const float TagFade = 0.15f, TagStayOut = 0.5f, TagScanSeconds = 0.5f;
+    private float _labelScanT;
+    /// <summary>Scan the map's words in each of the next few frames (a plot staked, a boat arrived).</summary>
+    private void TagsChanged() => _labelScan = 3;
 
     private void LabelsFrame(float dt)
     {
@@ -51,7 +54,10 @@ public partial class TownHud
             _tags.Clear(); _tagPool.Clear();
             _labelCards = Array.Empty<Control?>(); _labelScan = 0; // the interface was built anew
         }
-        if (--_labelScan <= 0) { _labelScan = 30; ScanTags(); }
+        // Night 3, L2: scanned by real time (0.5 s, so a tour at one frame a second sees a new stake at once) and in the
+        // frames right after a plot is staked or a boat comes (so its tag appears at once and no 3D word is drawn).
+        _labelScanT -= dt;
+        if (_labelScanT <= 0f || _labelScan > 0) { if (_labelScan > 0) _labelScan--; _labelScanT = TagScanSeconds; ScanTags(); }
         _cardRects.Clear();
         if (_labelCards.Length == 0) _labelCards = new Control?[] { _ledger, _shop, _bell, _banner, _achMark, _agePageMark, PauseMark, _choice, _tide, _slim, _lineCard, _home, _hoverTip, _suggest };
         foreach (var c in _labelCards)
@@ -85,7 +91,7 @@ public partial class TownHud
                     want = !touch && g.Out <= 0;
                 }
                 g.A = want ? Math.Min(1f, g.A + dt / TagFade) : Math.Max(0f, g.A - dt / TagFade);
-                float a = g.A * _fullA;
+                float a = BookMotion.Smoother(g.A) * _fullA; // eased in and out (message-system section 3: 0.15 s)
                 if (g.Pill.Modulate.A != a) g.Pill.Modulate = new Color(1, 1, 1, a);
                 bool vis = a > 0.01f;
                 if (g.Pill.Visible != vis) g.Pill.Visible = vis;

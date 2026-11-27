@@ -147,7 +147,7 @@ public partial class TownHud
         foreach (var cur in _items)
             if (cur.Kind == it.Kind && cur.Index == it.Index)
             {
-                if (!_drv.Town.Buy(cur)) { _main.Audio.Cannot(); Note(cur.Reason.Length > 0 ? cur.Reason + "." : "Not yet."); }
+                if (!_drv.Town.Buy(cur)) { _main.Audio.Cannot(); Refuse(cur.Reason.Length > 0 ? cur.Reason + "." : "Not yet."); }
                 return;
             }
     }

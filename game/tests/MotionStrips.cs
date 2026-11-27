@@ -27,7 +27,20 @@ public partial class MotionStrips : TownTestBase
         foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--out-dir=")) _dir = a.Substring(10);
         System.IO.Directory.CreateDirectory(System.IO.Path.Combine(_dir, "frames"));
         bool ageOnly = Array.IndexOf(OS.GetCmdlineUserArgs(), "--age-only") >= 0;
+        bool msgOnly = Array.IndexOf(OS.GetCmdlineUserArgs(), "--messages-only") >= 0;
         var bot = new TownBot(BotKind.Payback, 1);
+        if (msgOnly)
+        {
+            // Night 3, L2: the message strips alone (a town at level 3, the view on it).
+            Main.Driver.RunBot(bot, t => t.Level >= 3, 20 * 60 * 30);
+            await Frames(30);
+            Main.Rig.UserMoved = false;
+            Main.Follow(instant: true);
+            await Wait(1500);
+            await MessageStrips(bot);
+            Notes.Add("dir=" + _dir);
+            return;
+        }
         if (!ageOnly)
         {
             Main.Driver.RunBot(bot, t => t.Level >= 5, 20 * 60 * 30);
@@ -59,6 +72,7 @@ public partial class MotionStrips : TownTestBase
             await Wait(400);
             var hud = Main.Hud;
             await PageStrip("achievements", hud.AchievementsFade, () => hud.OpenAchievements(), () => hud.CloseAchievements());
+            await MessageStrips(bot);
         }
         // The age-change page: a town at its charter, the next age rung in by its key.
         Main.Driver.RunBot(bot, t => t.HasCharter, 20 * 60 * 60);

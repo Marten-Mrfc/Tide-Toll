@@ -113,7 +113,14 @@ public sealed partial class ShopRow
     /// <summary>The step number just after the name, dropped whole if it does not fit.</summary>
     public void PlaceStep()
     {
+        // L1 left-over (sheet 4): a name that does not fit is first set in caption size, and only then cut.
+        Name.AddThemeFontSizeOverride(TownHud.FontSizeName, UiKit.Type(_s, UiKit.Body));
         float nameW = TownHud.TextWidth(Name);
+        if (nameW > Name.Size.X)
+        {
+            Name.AddThemeFontSizeOverride(TownHud.FontSizeName, UiKit.Type(_s, UiKit.Caption));
+            nameW = TownHud.TextWidth(Name);
+        }
         Step.Position = new Vector2(Name.Position.X + Math.Min(nameW, Name.Size.X) + U(6), Name.Position.Y);
         Step.Visible = Step.Text.Length > 0 && nameW + U(6) + TownHud.TextWidth(Step) <= Name.Size.X;
     }

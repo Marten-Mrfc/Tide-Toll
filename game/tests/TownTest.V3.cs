@@ -18,6 +18,8 @@ public partial class TownTest
     private async Task BoonByClick()
     {
         await Frames(3);
+        // Night 3, L2: one large message at a time: a banner showing leaves first (0.22 s), then the card arrives.
+        await Until(() => Main.Hud.ChoiceCardVisible, 60, "the choice's card arrives");
         var c = T.Choice;
         Check(Main.Hud.ChoiceCardVisible, "a choice open shows its card");
         string text = Main.Hud.ChoiceCardText;
@@ -32,8 +34,10 @@ public partial class TownTest
         await Click(Main.Hud.BoonButton(0).GetGlobalRect().GetCenter());
         await Frames(3);
         Check(!T.ChoiceOpen && T.ChoicePicked(c.Choice) == (int)c.A, $"a click on the left half takes {c.AName} (picked {T.ChoicePicked(c.Choice)})");
-        Check(Main.Hud.BoonMoments == moments + 1 && Main.Hud.BannerText.Contains(c.AName), $"the boon's moment shows ('{Main.Hud.BannerText}')");
-        Check(!Main.Hud.ChoiceCardVisible, "the card goes once picked");
+        // Night 3, L2: the boon chosen is a note (message-system section 2), and the card leaves by its eased fade.
+        Check(Main.Hud.BoonMoments == moments + 1 && Main.Hud.NoteLog.Exists(l => l.StartsWith("A boon for good: " + c.AName)), $"the boon's note is said ('{Main.Hud.LastNote}')");
+        Check(Main.Hud.ChoiceAlpha < 1f, "the card starts to leave once picked");
+        await Until(() => !Main.Hud.ChoiceCardVisible, 120, "the card goes once picked");
         _boonByClick = true;
         Notes.Add($"boonclick={c.AName}");
     }
@@ -49,13 +53,14 @@ public partial class TownTest
         Main.Driver.RunBotUntil(bot, t => t.ChoiceOpen, 20 * 60 * 60 * 10);
         Check(T.ChoiceOpen, "the bot played on to the next choice");
         await Frames(3);
+        await Until(() => Main.Hud.ChoiceCardVisible, 60, "the second choice's card arrives (after a banner leaves)");
         var c = T.Choice;
         Check(Main.Hud.ChoiceCardVisible && Main.Hud.ChoiceCardText.Contains(c.BName),
             $"the second choice's card (open {T.ChoiceOpen}, choice {c.Choice}, achievements {Main.Hud.AchievementsOpen}, age page {Main.Hud.AgePageOpen}, text '{Main.Hud.ChoiceCardText}')");
         await Key(Godot.Key.X);
         await Frames(2);
         Check(T.ChoicePicked(c.Choice) == (int)c.B, $"key X takes the right-hand boon {c.BName}");
-        Check(Main.Hud.BannerText.Contains(c.BName), $"the key's pick has its moment ('{Main.Hud.BannerText}')");
+        Check(Main.Hud.NoteLog.Exists(l => l.StartsWith("A boon for good: " + c.BName)), $"the key's pick has its note ('{Main.Hud.LastNote}')");
 
         // Milestones: Pace and the rest passed fifth steps by now; each was announced by name.
         Check(Main.Hud.Milestones >= 1 && Main.Hud.LastMilestone.Length > 0,
@@ -99,7 +104,10 @@ public partial class TownTest
         }
         Check(T.Drive.Done && partSeen, "the drive filled in parts and was met");
         await Frames(3);
-        Check(!Main.Hud.DriveCardVisible && Main.Hud.NoteLog.Exists(l => l.Contains("charter drive is met")), "the met drive leaves a note and its card goes");
+        // Night 3, L2: the strip says it in its own place ("Done" in moss for 1.6 s), then leaves by its fade; no note.
+        Check(Main.Hud.DriveCardText.Contains("Done") || Main.Hud.NextAgeButton.Visible, $"the met drive says Done in the strip ('{Main.Hud.DriveCardText}')");
+        Check(!Main.Hud.NoteLog.Exists(l => l.Contains("charter drive is met")), "the met drive raises no note");
+        await Until(() => !Main.Hud.DriveCardVisible, 400, "the met drive's strip goes");
         // An extra hand: offered in the shop and over its workplace, bought by a click.
         int w = -1;
         Main.Driver.RunBotUntil(bot, t => { for (int i = 0; i < t.WorkplaceCount; i++) if (t.HandOffered(i)) return true; return false; }, 20 * 60 * 60 * 4);

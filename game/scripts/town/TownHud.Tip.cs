@@ -47,6 +47,19 @@ public partial class TownHud
     {
         side = HudZones.TipSide.Left;
         if (_main.Menu != null && _main.Menu.IsPaused) return null;
+        // Night 3, L2: the rest of the play interface has this tooltip too (no engine tooltip is left in play).
+        if (AchievementsOpen)
+        {
+            side = HudZones.TipSide.Right;
+            for (int i = 0; i < _achCell.Length; i++) if (_achCell[i] != null && Hit(_achCell[i], p)) return _achCell[i];
+        }
+        if (_choice.Visible && _choiceF.On)
+        {
+            side = HudZones.TipSide.Right;
+            if (Hit(_boonBtn[0], p)) return _boonBtn[0];
+            side = HudZones.TipSide.Left;
+            if (Hit(_boonBtn[1], p)) return _boonBtn[1];
+        }
         if (_shop.IsVisibleInTree() && _shop.Modulate.A > 0.5f && _shop.GetGlobalRect().HasPoint(p))
         {
             foreach (var r in _rowOrder) if (r.Button.Visible && r.Alpha > 0.5f && r.Button.GetGlobalRect().HasPoint(p)) return r.Button;
@@ -57,6 +70,9 @@ public partial class TownHud
         if (Hit(_bell, p)) return _bell;
         if (Hit(_tide, p)) return _tide;
         if (_ledgerPanel.Modulate.A > 0.5f && Hit(_purse, p)) return _purse;
+        if (_ledgerPanel.Modulate.A > 0.5f && _req.Visible && Hit(_goalBox, p)) return _goalBox;
+        if (_ledgerPanel.Modulate.A > 0.5f && (_drive.Visible || _nextAge.Visible) && Hit(_stripBox, p)) return _stripBox;
+        if (_ledgerPanel.Modulate.A > 0.5f && _notes.Showing && Hit(_noteBox, p)) return _noteBox;
         side = HudZones.TipSide.Above;
         if (Hit(_achMark, p)) return _achMark;
         if (Hit(_agePageMark, p)) return _agePageMark;
@@ -114,6 +130,19 @@ public partial class TownHud
             return sb.ToString();
         }
         string Key(string action) { string k = Settings.GameInput.Bound(action); return k.Length > 0 ? $" [{k}]" : ""; }
+        for (int i = 0; i < _achCell.Length; i++)
+            if (_achCell[i] == owner && i < t.AchievementCount) { var a = t.Achievement(i); return $"{a.Name}: {a.Description}"; }
+        for (int side = 0; side < 2; side++)
+            if (_boonBtn[side] == owner && t.ChoiceOpen)
+            {
+                var c = t.Choice;
+                return $"{(side == 0 ? c.AName : c.BName)}{Key(side == 0 ? "tt_choose_a" : "tt_choose_b")}: {Town.BoonText(side == 0 ? c.A : c.B)} For good; the town runs on while you choose.";
+            }
+        if (owner == _goalBox) return RequestCardText.Replace(" | ", ". ") + ".";
+        if (owner == _stripBox)
+            return _nextAge.Visible ? $"Ring in the next age{Key("tt_next_age")}: the town moves on to its next age when you are ready."
+                : DriveCardText.Replace(" | ", ". ").Replace("Charter. ", "") + ".";
+        if (owner == _noteBox) return NoteShowing + " Click to put it away.";
         if (owner == _achMark) return $"Achievements{Key("tt_achievements")}: {_achCount.Text}.";
         if (owner == _agePageMark) return t.NextAgeRung ? $"This age's page{Key("tt_next_age")}." : "This age's page: it opens when the next age is rung in.";
         if (owner == _home) return $"Back to the town{Key("tt_home_view")}: the view follows the town again.";

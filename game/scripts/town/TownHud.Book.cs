@@ -40,7 +40,6 @@ public partial class TownHud
             var a = Ach(t, _achRiver, i);
             _achName[i].Text = a.Name;
             _achDesc[i].Text = a.Description;
-            _achCell[i].TooltipText = a.Description;
         }
         _achShown = -1;
     }
@@ -94,7 +93,6 @@ public partial class TownHud
             var a = _drv.Town.Achievement(i);
             var cell = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(cellW, 0) };
             cell.AddThemeConstantOverride("separation", 0);
-            cell.TooltipText = a.Description;
             var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             _achName[i] = PlayText(a.Name, UiKit.Body, UiKit.UiBold);
             _achName[i].SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -204,7 +202,7 @@ public partial class TownHud
             if (!t.RingNextAge()) return;
             _main.Audio.NextAgeRung();
             _main.Buildings.Peal(6f);
-            Banner("A new age", "The bell rings in the next age.");
+            Large(AgeBannerHead, "The town turns to the river: a landing, boats and crossings.", PrioMoment, BannerStay, "");
             FocusBellGreen();
             RiverRung();
             _agePageIn = AgePageDelay;

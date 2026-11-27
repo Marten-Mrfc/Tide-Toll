@@ -69,7 +69,7 @@ public partial class LayoutTest : UiAudit
         }
         Main.Hud.ForceCanvas(null);
         await Frames(2);
-        GD.Print($"LAYOUT budget (rule 5, reported only): most loud {_maxLoud} (limit 3), most quiet {_maxQuiet} (limit 4); worst: {_budgetNote}");
+        GD.Print($"LAYOUT budget (rule 5, a failure above its limits): most loud {_maxLoud} (limit 3), most quiet {_maxQuiet} (limit 4); worst: {_budgetNote}");
         foreach (var kv in _failKinds) GD.Print($"LAYOUT rule {kv.Key}: {kv.Value} failures");
         for (int i = 0; i < Math.Min(60, _fails.Count); i++) GD.Print("LAYOUT FAIL " + _fails[i]);
         Notes.Add($"states={_states} canvases={Canvases.Length} checks={_checks} failures={_fails.Count} loud<={_maxLoud} quiet<={_maxQuiet}");

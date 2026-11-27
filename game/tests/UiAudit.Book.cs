@@ -70,7 +70,9 @@ public partial class UiAudit
         for (int i = 0; i < SettingsPages.Sections.Length && i < ids.Length; i++)
         {
             string sec = SettingsPages.Sections[i];
-            // Under load the cover's motion takes many frames (BookMotion advances at most MaxStep a frame): wait long.
+            // L2 (the L1 fixer's left-over): the u20 question's Esc may have resumed the game; pause first, then wait for
+            // the cover. Under load the cover's motion takes many frames (BookMotion advances at most MaxStep a frame).
+            if (Main.Menu.Now == PauseMenu.State.Playing && !Main.Menu.Motion.Running) { Main.Menu.Pause(); await Frames(4); }
             await WaitFor(() => Main.Menu.CoverShown && !Main.Menu.Motion.Running, 60000);
             string opened = "cover's Settings by Enter";
             for (int tries = 0; tries < 3 && Main.Menu.Pages == null; tries++)

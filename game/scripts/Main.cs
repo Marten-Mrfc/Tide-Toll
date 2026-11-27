@@ -129,7 +129,7 @@ public partial class Main : Node3D
         Menu = new PauseMenu(); AddChild(Menu); Menu.Init(this);
         Follow(instant: true);
         // Continue the saved town (camera included); a damaged one is set aside and a note says so.
-        if (!seedGiven && !Saver.TryContinue(out string note) && note != "") { StartNote = note; Hud.Note(note, strong: true); }
+        if (!seedGiven && !Saver.TryContinue(out string note) && note != "") { StartNote = note; Hud.Trouble(note); }
     }
 
     private void PlantTrees()

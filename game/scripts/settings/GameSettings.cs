@@ -48,6 +48,22 @@ public sealed class GameSettings
     public bool ShowCoinNumbers { get; private set; }
     public bool FollowTown { get; private set; }
     public int AutosaveMinutes { get; private set; }
+    /// <summary>Night 3: the first-minute hints already shown, one bit each (message-system section 4).</summary>
+    public int HintsSeen { get; private set; }
+    public bool HintSeen(int hint) => (HintsSeen & (1 << hint)) != 0;
+    public void SetHintSeen(int hint)
+    {
+        int v = HintsSeen | (1 << hint);
+        if (v == HintsSeen) return;
+        // The file is read first: another store of the same file (the settings pages) may have written it since, and
+        // this one must not put its older values back. No Changed event: nothing on screen shows it.
+        Read();
+        HintsSeen |= v;
+        Save();
+    }
+    /// <summary>The first-minute hints show again (the next town that starts).</summary>
+    public void ShowHintsAgain() { if (HintsSeen != 0) { HintsSeen = 0; Commit(KHints); } }
+    public const string KHints = "hints_seen";
 
     public GameSettings(string path = DefaultPath)
     {
@@ -68,6 +84,7 @@ public sealed class GameSettings
         int[] v = { 80, 70, 70, 80, 80 };
         Array.Copy(v, _volume, v.Length);
         MuteWhenInactive = false;
+        HintsSeen = 0;
         WindowMode = WindowMode.Windowed;
         Resolution = new Vector2I(1280, 720);
         Vsync = true;
@@ -170,7 +187,8 @@ public sealed class GameSettings
         sb.Append("interface_size=").Append(InterfaceSize).Append('\n');
         sb.Append("coin_numbers=").Append(B(ShowCoinNumbers)).Append('\n');
         sb.Append("follow_town=").Append(B(FollowTown)).Append("\n\n[saving]\n");
-        sb.Append("autosave_minutes=").Append(AutosaveMinutes).Append("\n\n[keys]\n");
+        sb.Append("autosave_minutes=").Append(AutosaveMinutes).Append("\n\n[hints]\n");
+        sb.Append("hints_seen=").Append(HintsSeen).Append("\n\n[keys]\n");
         foreach (var a in GameInput.Actions)
         {
             var k = _keys[a.Name];
@@ -241,6 +259,9 @@ public sealed class GameSettings
                 return false;
             case "saving":
                 if (key == "autosave_minutes" && okInt && Array.IndexOf(AutosaveChoices, n) >= 0) { AutosaveMinutes = n; return true; }
+                return false;
+            case "hints":
+                if (key == "hints_seen" && okInt && n >= 0 && n < 256) { HintsSeen = n; return true; }
                 return false;
             case "keys":
                 if (!_keys.ContainsKey(key)) return false;

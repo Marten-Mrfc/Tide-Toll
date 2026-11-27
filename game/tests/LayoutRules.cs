@@ -72,7 +72,8 @@ public static class LayoutRules
         CheckFit(hud, z, id, canvas, fail, ref checks);
         CheckRows(hud, id, canvas, fail, ref checks);
         CheckTips(hud, z, id, canvas, fail, ref checks);
-        // Rule 5: the attention budget (reported, not failed this round).
+        CheckMessages(hud, z, id, canvas, fail, ref checks);
+        // Rule 5: the attention budget (night 3, L2: it fails the step; at most 3 loud and 4 quiet things at once).
         loud = 0; quiet = 0;
         var parts = new List<string>();
         int afford = 0, on = 0;
@@ -91,6 +92,32 @@ public static class LayoutRules
         if (hud.NextAgeButton.IsVisibleInTree() || hud.DriveCardVisible) { quiet++; parts.Add("strip"); }
         if (hud.RequestCardVisible && hud.RequestTimeBar < 0.25f) { quiet++; parts.Add("goal under a quarter"); }
         counted = $"loud {loud} [{string.Join(", ", parts)}] quiet {quiet}";
+        checks++;
+        if (loud > LoudLimit || quiet > QuietLimit) fail("5-budget", id, canvas, $"the attention budget: {counted} (limits loud {LoudLimit}, quiet {QuietLimit})");
+    }
+
+    public const int LoudLimit = 3, QuietLimit = 4;
+
+    /// <summary>
+    /// Night 3, L2 (message-system section 5): every message lies inside its zone (a large message may stand up to its
+    /// 12 of arrival above it; a note up to 8 left of its place, inside the note section; the goal's content 8 below).
+    /// </summary>
+    public static void CheckMessages(TownHud hud, HudZones z, string id, string canvas, FailFn fail, ref int checks)
+    {
+        float m = UiKit.U(z.S, 12) + 1, n = UiKit.U(z.S, 8) + 1;
+        int c = 0;
+        void In(string what, Rect2 r, Rect2 zone)
+        {
+            if (r.Size.X <= 0) return;
+            c++;
+            if (!zone.Grow(1).Encloses(r)) fail("msg-zone", id, canvas, $"{what} {r} lies outside its zone {zone}");
+        }
+        In("the banner", hud.BannerLiveRect, z.Banner.GrowIndividual(0, m, 0, 0));
+        In("the choice", hud.ChoiceRect, z.Message(HudZones.ChoiceMaxH).GrowIndividual(0, m, 0, 0));
+        In("the note", hud.NoteRect, new Rect2(z.Note.Position, z.Note.Size));
+        In("the line", hud.LineRect, z.Line);
+        In("the goal's content", hud.RequestContentRect, z.Goal.GrowIndividual(0, 0, 0, n));
+        checks += c;
     }
 
     private static bool Near(Rect2 a, Rect2 b) =>

@@ -5,7 +5,8 @@ import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-NAMES = ["pause", "resume", "settings-open", "tab-forward", "tab-back", "settings-close", "question", "age-page", "achievements", "age-panel"]
+NAMES = ["pause", "resume", "settings-open", "tab-forward", "tab-back", "settings-close", "question", "age-page", "achievements", "age-panel",
+         "msg-banner", "msg-choice", "msg-notes", "msg-request", "msg-line", "msg-coin"]
 COLS, ROWS, W, H, GAP = 4, 3, 640, 360, 6
 
 
@@ -35,7 +36,9 @@ def main(out):
         sheet.save(os.path.join(out, f"{name}.png"))
         made += 1
         print(f"sheet {name}: {os.path.join(out, name + '.png')}")
-    return 0 if made == len(NAMES) else 1
+    # A partial run (--age-only, --messages-only) makes only its own sheets: every sheet begun must be whole.
+    begun = [n for n in NAMES if os.path.exists(os.path.join(frames, f"{n}-00.png"))]
+    return 0 if made == len(begun) and made > 0 else 1
 
 
 if __name__ == "__main__":

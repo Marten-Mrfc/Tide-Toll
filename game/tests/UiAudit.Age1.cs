@@ -17,6 +17,8 @@ public partial class UiAudit
         bool any = false; T.ShopItems(_items); foreach (var it in _items) any |= it.Affordable;
         await Shot("u01", "First minute: one cottage, nothing affordable",
             $"new town (seed 1) as it opens, follow view, t={T.Time:0}s coin={T.Coin:0}; anything affordable={any}");
+        await TipShot("u42", "Tooltip: a shop row not yet affordable", Main.Hud.Mark(ShopItemKind.Villager), "the Villager row at the start");
+        await TipShot("u44", "Tooltip: a navigation button", Main.Hud.AchievementsMark, "the achievements button");
 
         // u02: the first purchase affordable (the town runs by itself until the villager bookmark is enabled).
         await Idle(t => Affordable(t, ShopItemKind.Villager), 5);
@@ -53,6 +55,7 @@ public partial class UiAudit
             await Key(Godot.Key.Space);
             await Wait(800);
             await Shot("u09", "The bell ringing", $"bell rung by its key (Space) at level {T.Level}; ringing={T.BellRinging}");
+            await TipShot("u43", "Tooltip: the bell", Main.Hud.BellButton, "the bell while it rings");
         }
         else NotMade("u09", "The bell ringing", "the bell was not ready within three minutes");
         _bot.NoBell = false;
@@ -72,6 +75,7 @@ public partial class UiAudit
             await Settle(500);
             await WaitFor(() => Main.Hud.ChoiceCardVisible, 5000);
             await Shot("u06", "Choice of two boons open", $"bot played until the simulation offered a choice (level {T.Level}); left open for the picture, then side A taken");
+            await TipShot("u45", "Tooltip: a boon of the choice", Main.Hud.BoonButton(0), "side A of the choice");
             await ClearChoice();
         }
         else NotMade("u06", "Choice of two boons open", "no choice offered by level " + T.Level);

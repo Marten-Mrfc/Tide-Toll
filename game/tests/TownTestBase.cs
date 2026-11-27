@@ -50,7 +50,23 @@ public abstract partial class TownTestBase : Node
 
     protected abstract string Marker { get; }
 
-    public static string ProfileFor(string marker) => "user://tests/" + marker.Replace(' ', '-').ToLowerInvariant() + "/";
+    /// <summary>
+    /// Night 3, L2: user:// is one folder for every checkout of the game (Godot names it after the project), so two
+    /// checkouts running the same test at once emptied and wrote the same profile (the fault the L1 fixer saw: one
+    /// check's verdict quoted another checkout's files). Each checkout now has a folder of its own, named by a stable
+    /// hash of its path.
+    /// </summary>
+    public static string ProfileFor(string marker) => "user://tests/" + CheckoutId + "/" + marker.Replace(' ', '-').ToLowerInvariant() + "/";
+
+    public static string CheckoutId
+    {
+        get
+        {
+            uint h = 2166136261;
+            foreach (char c in ProjectSettings.GlobalizePath("res://")) { h ^= c; h *= 16777619; }
+            return "co-" + h.ToString("x8");
+        }
+    }
 
     protected static void WipeProfile()
     {

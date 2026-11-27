@@ -13,16 +13,15 @@ public partial class TownHud
 {
     private PanelContainer _lineCard = null!;
     private Label _lineText = null!;
-    private string _pendingHead = "", _pendingText = "", _lineShown = "";
+    private string _lineShown = "";
 
     /// <summary>The Line zone's text as shown ("" when it is empty; tests).</summary>
-    public string LineText => _lineCard.Visible ? _lineShown : "";
+    public string LineText => _lineCard.Visible && _lineCardF.On ? _lineShown : "";
     public Rect2 LineRect => _lineCard.Visible ? _lineCard.GetGlobalRect() : new Rect2();
 
     private void BuildLine()
     {
         var z = Zones;
-        _lineShown = "";
         _lineCard = new PanelContainer { Name = "Line", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         _lineCard.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Quiet, 0));
         _lineCard.Position = z.Line.Position;
@@ -38,19 +37,19 @@ public partial class TownHud
         _lineText.Position = new Vector2(UiKit.U(_s, 12), 0);
         _lineText.Size = new Vector2(z.Line.Size.X - UiKit.U(_s, 24), z.Line.Size.Y);
         holder.AddChild(_lineText);
+        _lineBack = UiKit.Fixed(_s, UiKit.Caption, UiKit.CapFont, UiKit.Ink, HorizontalAlignment.Center);
+        _lineBack.Name = "TextBefore";
+        _lineBack.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _lineBack.MaxLinesVisible = 2;
+        _lineBack.Position = _lineText.Position;
+        _lineBack.Size = _lineText.Size;
+        _lineBack.Modulate = new Color(1, 1, 1, 0);
+        holder.AddChild(_lineBack);
+        _lineText.Text = _lineShown;
+        _lineCardF.Set(false);
         // The hint and the mode text are kept as labels of their own (tests read them); the line shows one of them.
         _hint = new Label { Name = "Hint", Visible = false };
         _lineCard.AddChild(_hint);
-    }
-
-    private void LineFrame()
-    {
-        string want = PaveMode || ExtendMode ? ModeHelp(PaveMode) : _hintShown;
-        // (Compared with the C# string last set: reading Label.Text makes a new string every frame.)
-        if (!ReferenceEquals(want, _lineShown) && want != _lineShown) { _lineShown = want; _lineText.Text = want; }
-        bool show = want.Length > 0 && _fullA > 0.01f;
-        _lineCard.Visible = show;
-        _lineCard.Modulate = new Color(1, 1, 1, _fullA);
     }
 
     /// <summary>Places every zone for this canvas (fixed rectangles; nothing is pushed by anything else).</summary>
@@ -58,11 +57,10 @@ public partial class TownHud
     {
         var z = Zones;
         LineFrame();
-        if (_banner.Visible) { _banner.Position = z.Banner.Position; _banner.Size = z.Banner.Size; }
         if (_choice.Visible)
         {
             var r = z.Message(ChoiceHeight());
-            _choice.Position = r.Position;
+            _choice.Position = r.Position; // a zone never moves: the choice fades in its place
             _choice.Size = r.Size;
         }
         if (_tide.Visible) { _tide.Position = z.Tide.Position; _tide.Size = z.Tide.Size; }
@@ -73,20 +71,4 @@ public partial class TownHud
 
     /// <summary>The choice card's height in sheet units: as tall as its content, at most 200.</summary>
     private float ChoiceHeight() => HudZones.ChoiceMaxH;
-
-    /// <summary>A banner waits while the Message zone holds the choice or while zoomed out; the newest one shows after.</summary>
-    private bool BannerWaits(string head, string text)
-    {
-        if (!_drv.Town.ChoiceOpen && _fullA > 0.01f) return false;
-        _pendingHead = head; _pendingText = text;
-        return true;
-    }
-
-    private void PendingBannerFrame()
-    {
-        if (_pendingHead.Length == 0 || _drv.Town.ChoiceOpen || _fullA <= 0.01f) return;
-        string h = _pendingHead, t = _pendingText;
-        _pendingHead = ""; _pendingText = "";
-        ShowBanner(h, t);
-    }
 }
