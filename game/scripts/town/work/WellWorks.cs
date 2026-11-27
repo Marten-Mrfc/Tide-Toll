@@ -107,6 +107,16 @@ public partial class WellWorks : Node3D
         _w.Puffs.Ring(_w.OnPlot(_plot, new Vector3(0, 0.03f, 0) + _toView * 1.1f), 0.4f, 1.2f, 0.9f, new Color(Palette.River, 0.8f), 0.15f);
     }
 
+    /// <summary>Someone began drawing: the two pails stand on the rim and fill as the bucket comes up.</summary>
+    public void Started(int plot)
+    {
+        if (plot != _plot) return;
+        _pailOn = true; _pailHold = -1f;
+    }
+
+    /// <summary>Where the yoke's two pails are lifted from: between the two pails on the rim.</summary>
+    public Vector3 PailsMid(int plot) => (PailAt(plot, 0) + PailAt(plot, 1)) * 0.5f + new Vector3(0, 0.3f, 0);
+
     /// <summary>The full pails were taken up by the one leaving.</summary>
     public void Taken(int plot)
     {
@@ -146,7 +156,7 @@ public partial class WellWorks : Node3D
         }
         if (busy > 0) _crankA = (_crankA + dt * _w.Pace * 4.5f) % (MathF.PI * 2f);
         if (_pailOn && _pailHold >= 0f) { _pailHold -= dt; if (_pailHold <= 0f) _pailOn = false; }
-        _pailS = Mathf.MoveToward(_pailS, _pailOn ? 1f : 0f, dt / 0.3f);
+        _pailS = Mathf.MoveToward(_pailS, _pailOn ? 1f : 0f, dt / WorkSites.TakeSeconds);
         if (busy == 0) Wet = Math.Max(0.15f, Wet - dt * _w.Pace * 0.012f);
         LastLargestChange = largest;
         if (_body != null) Apply();

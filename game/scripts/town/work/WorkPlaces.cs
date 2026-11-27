@@ -17,9 +17,11 @@ namespace TideToll.Game;
 /// </summary>
 public partial class WorkPlaces : Node3D
 {
-    /// <summary>The one switch: true until the villagers' side calls <see cref="UnitFinished"/>, <see cref="Delivered"/>
-    /// and <see cref="GoodsTaken"/> itself; then set false so nothing is counted twice.</summary>
-    public static bool DetectFromSim = true;
+    /// <summary>The one switch. False (joined): the villagers' side tells each place through its <see cref="IWorkSite"/>
+    /// (WorkSites.cs; one <see cref="PlaceSite"/> per plot, registered here) when work starts and finishes and when a
+    /// load lands. True: this node finds the units finished and the deliveries itself from the simulation's views (the
+    /// places alone, before the two parts were joined; kept for a build without the villagers' calls).</summary>
+    public static bool DetectFromSim = false;
 
     /// <summary>The shortest time any drawn change of a place takes (seconds of real time).</summary>
     public const float MinEase = 0.15f;
@@ -76,6 +78,12 @@ public partial class WorkPlaces : Node3D
         for (int i = 0; i < MaxVillagers; i++) { _phase[i] = VillagerPhase.Idle; _wp[i] = -1; _slot[i] = -1; }
         Array.Clear(Units);
         Puffs.Clear();
+        // one site per plot the villagers work at or bring loads to (made on a new town, never per frame)
+        WorkSites.Clear();
+        var plots = Town.Plan.Plots;
+        for (int p = 0; p < plots.Length; p++)
+            if (plots[p].Kind is PlotKind.Well or PlotKind.Field or PlotKind.Mill or PlotKind.Market or PlotKind.Cottage)
+                WorkSites.Register(p, new PlaceSite(this, p, plots[p].Kind));
         Well.Reset(); Fields.Reset(); Mill.Reset(); Stall.Reset(); Doors.Reset();
     }
 

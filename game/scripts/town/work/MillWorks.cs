@@ -97,6 +97,11 @@ public partial class MillWorks : Node3D
         for (int i = 0; i < 3; i++) if (!_flourOn[i] && _flourS[i] <= 0f) { s = i; break; }
         if (s < 0) { s = 0; for (int i = 1; i < 3; i++) if (_flourAge[i] < _flourAge[s]) s = i; }
         _flourOn[s] = true; _flourAge[s] = ++_serial; _flourHold[s] = -1f;
+        Puff();
+    }
+
+    private void Puff()
+    {
         // flour in the air at the door
         var c = new Color(Palette.Limewash, 0.85f);
         for (int i = 0; i < 4; i++)
@@ -104,6 +109,25 @@ public partial class MillWorks : Node3D
             var at = _w.OnPlot(_plot, new Vector3(0.1f + i * 0.35f, 2.6f + i * 0.25f, _front + 0.35f + i * 0.2f));
             _w.Puffs.Puff(at, new Vector3(0.3f, 1.2f, 0.25f), 0.95f - i * 0.12f, 1.5f, c, i * 0.08f);   // rising clear of the door
         }
+    }
+
+    /// <summary>Joined: a miller began on spot <paramref name="slot"/>: the flour sack of that spot stands on the step
+    /// while the grain is ground (one for each at work, up to three).</summary>
+    public void StartedAt(int plot, int slot)
+    {
+        if (plot != _plot) return;
+        int s = ((slot % 3) + 3) % 3;
+        _flourOn[s] = true; _flourHold[s] = -1f; _flourAge[s] = ++_serial;
+    }
+
+    /// <summary>Joined: the unit on spot <paramref name="slot"/> is ground: flour in the air, and its sack is lifted from
+    /// the step as it rises into the miller's arms.</summary>
+    public void FinishedAt(int plot, int slot)
+    {
+        if (plot != _plot || _body == null) return;
+        int s = ((slot % 3) + 3) % 3;
+        _flourOn[s] = false;
+        Puff();
     }
 
     /// <summary>A flour sack was lifted by someone leaving (the oldest on the step).</summary>
@@ -140,7 +164,7 @@ public partial class MillWorks : Node3D
         {
             _grainS[i] = Mathf.MoveToward(_grainS[i], i < Math.Min(3, queue) ? 1f : 0f, dt / SackSeconds);
             if (_flourOn[i] && _flourHold[i] >= 0f) { _flourHold[i] -= dt; if (_flourHold[i] <= 0f) _flourOn[i] = false; }
-            _flourS[i] = Mathf.MoveToward(_flourS[i], _flourOn[i] ? 1f : 0f, dt / SackSeconds);
+            _flourS[i] = Mathf.MoveToward(_flourS[i], _flourOn[i] ? 1f : 0f, dt / (_flourOn[i] ? SackSeconds : WorkSites.TakeSeconds));
         }
         _hoistS = Mathf.MoveToward(_hoistS, t.ToolsLevel >= HoistTools ? 1f : 0f, dt / 0.6f);
         if (busy > 0) _hoistBob += dt * _w.Pace * 0.5f;

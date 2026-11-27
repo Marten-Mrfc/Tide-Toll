@@ -51,6 +51,7 @@ public partial class FieldRows : Node3D
         public readonly bool[] StookOn = new bool[MaxRows * 2];
         public readonly int[] StookAge = new int[MaxRows * 2];
         public int Steps, StookSerial;
+        public readonly int[] TakenFrom = new int[MaxRows];
     }
     private readonly Field[] _f = new Field[MaxFields];
     private int _nf;
@@ -134,6 +135,7 @@ public partial class FieldRows : Node3D
                 f.T[i] = lived ? 1f : -(r * 0.09f + k * 0.04f);
             }
             for (int s = 0; s < 2; s++) { f.StookOn[r * 2 + s] = false; f.StookGrow[r * 2 + s] = 0f; }
+            f.TakenFrom[r] = -1;
         }
         if (lived)
         {
@@ -217,6 +219,7 @@ public partial class FieldRows : Node3D
         if (!(f.StookOn[a] && f.StookOn[b])) return;
         int old = f.StookAge[a] < f.StookAge[b] ? a : b;
         f.StookOn[old] = false;   // shrinks away (StookGrow eases to 0)
+        f.TakenFrom[r] = old;
         _dirty = true;
     }
 
@@ -237,8 +240,10 @@ public partial class FieldRows : Node3D
         var f = Of(plot);
         if (f == null || !f.Built) return Vector3.Zero;
         int r = RowOf(f.Rows, slot), a = r * 2, b = a + 1;
-        int s = f.StookOn[a] && (!f.StookOn[b] || f.StookAge[a] < f.StookAge[b]) ? a : b;
-        return f.Centre + new Vector3(f.StookX[s], 0f, f.RowZ[r]);
+        // the stook being taken up now (the sheaf rises from it), else the older one standing
+        int s = f.TakenFrom[r] >= 0 && !f.StookOn[f.TakenFrom[r]] && f.StookGrow[f.TakenFrom[r]] > 0f ? f.TakenFrom[r]
+            : f.StookOn[a] && (!f.StookOn[b] || f.StookAge[a] < f.StookAge[b]) ? a : b;
+        return f.Centre + new Vector3(f.StookX[s], 0.45f, f.RowZ[r] + 0.1f);
     }
 
     /// <summary>The share of a field's pieces that are gold now (an edge piece counts half; tests).</summary>
@@ -335,7 +340,7 @@ public partial class FieldRows : Node3D
                     float target = f.StookOn[s] ? 1f : 0f;
                     if (f.StookGrow[s] != target)
                     {
-                        f.StookGrow[s] = Mathf.MoveToward(f.StookGrow[s], target, dt / 0.4f);
+                        f.StookGrow[s] = Mathf.MoveToward(f.StookGrow[s], target, dt / WorkSites.TakeSeconds);   // taken up as the sheaf rises
                         _dirty = true;
                     }
                 }

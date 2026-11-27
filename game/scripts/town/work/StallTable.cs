@@ -79,6 +79,29 @@ public partial class StallTable : Node3D
         return _w.OnPlot(plot, new Vector3(0, TableY, b.End.Z - 0.25f));
     }
 
+    /// <summary>The place the next load will take (the villagers aim their arc there).</summary>
+    public int NextPlace()
+    {
+        for (int p = 0; p < Places; p++)
+        {
+            bool taken = false;
+            for (int i = 0; i < Pool; i++) if (_it[i].On && _it[i].Place == p && _it[i].Age < ArcSeconds + SellSeconds) taken = true;
+            if (!taken) return p;
+        }
+        int old = -1;
+        for (int i = 0; i < Pool; i++) if (_it[i].On && _it[i].Age < ArcSeconds + SellSeconds && (old < 0 || _it[i].Serial < _it[old].Serial)) old = i;
+        return old >= 0 ? _it[old].Place : 0;
+    }
+
+    /// <summary>Joined: a load has landed at the end of the villager's arc (aimed at <see cref="NextPlace"/>): it drops
+    /// the last bit onto its place from just above, settling with a small bounce, so it reads at the normal view.</summary>
+    public void Landed(int plot, Good good)
+    {
+        if (plot != _plot) return;
+        var at = PlaceAt(plot, NextPlace());
+        Delivered(plot, good, at + new Vector3(0, 0.9f, 0));
+    }
+
     public void Delivered(int plot, Good good, Vector3 from)
     {
         if (plot != _plot) return;
@@ -147,7 +170,8 @@ public partial class StallTable : Node3D
                 // a short arc from the villager's arms onto the table
                 float u = WorkPlaces.Smooth(it.Age / ArcSeconds);
                 pos = it.From.Lerp(to, u) + new Vector3(0, MathF.Sin(MathF.PI * u) * 1.2f, 0);
-                grow = 0.7f + 0.3f * u;
+                // grows to a little over its size as it lands and settles back (the eye catches the arrival)
+                grow = 0.75f + 0.25f * u + 0.35f * MathF.Sin(MathF.PI * u);
             }
             else
             {

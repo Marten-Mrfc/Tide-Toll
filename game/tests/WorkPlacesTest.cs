@@ -12,7 +12,7 @@ namespace TideToll.Game.Tests;
 ///   where this test, from the simulation's own views, sees work finished at that field, one step per unit;
 /// - the mill's sails turn faster with two at work than with one than with none (measured from the drawn angle);
 /// - the mill's door is open exactly while someone works or waits there (fully open after its swing, fully shut after);
-/// - every delivery to the market is put on the table (none missed);
+/// - every delivery to the market is put on the table when the villager's arc lands (within a second; none missed);
 /// - a cottage's door opens for its people;
 /// - nothing changes in one frame: field pieces, the well's bucket, the mill's door and the cottage doors change by at
 ///   most the share a 0.15 s ease allows in one frame;
@@ -75,6 +75,8 @@ public partial class WorkPlacesTest : TownTestBase
         bool lastWanted = false;
         var cottageNear = new float[plots];
         var rawBusy = new int[3];
+        var marketRing = new int[_fps];
+        int marketBad = 0;
         var sailSum = new double[3]; var sailN = new int[3];
         int busyHeld = -1; float busyFor = 0f; float lastSail = 0f; bool haveSail = false;
         long allocFrames = 0, allocMax = 0, frames = 0;
@@ -165,6 +167,11 @@ public partial class WorkPlacesTest : TownTestBase
             if (w.Well.SecondRope && ropeSeenAt < 0) ropeSeenAt = t.ToolsLevel;
             // ---- the market ----
             foreach (var ev in Main.Driver.Events) if (ev.Kind == TownEventKind.Delivery && ev.Plot == market) marketDeliveries++;
+            // joined, a load is on the table when the villager's arc lands (WorkSites.DropSeconds after the delivery):
+            // never more on the table than delivered, never fewer than were delivered a second ago
+            marketRing[(int)(frames % marketRing.Length)] = marketDeliveries;
+            int secondAgo = frames >= marketRing.Length ? marketRing[(int)((frames + 1) % marketRing.Length)] : 0;
+            if (w.Stall.Received > marketDeliveries || w.Stall.Received < secondAgo) marketBad++;
             // ---- cottages ----
             for (int p = 0; p < plots; p++)
             {
@@ -192,9 +199,9 @@ public partial class WorkPlacesTest : TownTestBase
             Check(sailN[0] > 0 && sailN[1] > 0 && sailN[2] > 0, $"sails not seen with 0, 1 and 2 at work ({sailN[0]}, {sailN[1]}, {sailN[2]} frames)");
             Check(sailSum[2] / sailN[2] > sailSum[1] / sailN[1] && sailSum[1] / sailN[1] > sailSum[0] / sailN[0], $"sails not faster with more at work: {Sail(0)} / {Sail(1)} / {Sail(2)}");
         }
-        Notes.Add($"market={marketDeliveries} table={w.Stall.Shown} missed={w.Stall.Missed}");
-        Check(w.Stall.Received == marketDeliveries && w.Stall.Shown == marketDeliveries && w.Stall.Missed == 0,
-            $"deliveries to the market not all on the table: {marketDeliveries} delivered, {w.Stall.Received} received, {w.Stall.Shown} shown, {w.Stall.Missed} missed");
+        Notes.Add($"market={marketDeliveries} table={w.Stall.Shown} missed={w.Stall.Missed} late={marketBad}");
+        Check(marketBad == 0 && w.Stall.Shown == w.Stall.Received && w.Stall.Missed == 0,
+            $"deliveries to the market not all on the table: {marketDeliveries} delivered, {w.Stall.Received} received, {w.Stall.Shown} shown, {w.Stall.Missed} missed, {marketBad} frames late");
         if (!_short) Check(marketDeliveries > 0, "no delivery to the market");
         Notes.Add($"cottage-open-frames={cottageOpens} cottage-bad={cottageBad} chimney-puffs={w.Doors.Puffs}");
         Check(cottageBad == 0, $"a cottage's door stayed shut with its people at it ({cottageBad} frames)");
