@@ -18,7 +18,8 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | 07:31 to 07:59 | Builder: plain zeros | Merged as `2f47f0b`. A derived family "Tide Legible" (`assets/src/2d/fonts-plain-zero.py`, two ledger rows, OFL kept); the game loads it; Atkinson no longer ships in the game. Layout check passes with no test changed (72,591 checks, 0 failures) |
 | 07:31 to 08:32 | Builder: the shop, tooltip and navigation to the sheet | Merged as `cd393b2`. Every sheet item built; game-layout with seven new shop rules passes (73,325 checks, 0 failures); playthrough unchanged (`charter=33.9min buys=201`). Tests replaced: listed in `docs/plans/n4/shop-progress.md` |
 | 08:34 on | Builder: six follow-up points from the lead's look at the pictures (foot line never over a row; "Later:" instead of "Next:"; the switch between tall and compact rows eased and sticky; a lighter wash; air in the tooltip's facts; a mark for rows out of sight) | running in `build/wt/n4-shop` |
-| 08:42 on | Reviewer who did not build it reads the pictures of the merged game (`build/n4/merged/`) | `docs/plans/n4/shop-review.md` |
+| 08:42 to 08:45 | Reviewer who did not build it read the pictures of the merged game (`build/n4/merged/`) | `docs/plans/n4/shop-review.md`: ten of the eleven faults gone, compact rows partly; "not awful any more"; must fix: the wash's edge cuts a price in half, an affordable pill caught wider than the rest (the pulse), line 2 touching the pill's corner |
+| 08:46 on | Builder: eight more points from the review (wash 30 percent with a faded edge; the pulse without a change of size; line 2 clear of the pill; tall rows at a pitch of 52 so the longest list keeps two lines at 1920 x 1080; hover and pressed further apart; tooltip 8 from the sheet; the level in the foot line; hairlines as in the ledger) | due 09:45 UTC in `build/wt/n4-shop` |
 
 | Decision made for the owner | Why |
 | --- | --- |
