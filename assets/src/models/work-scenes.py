@@ -24,8 +24,9 @@
 #                          handle (Packed earth); origin at the grip, blade reaching +Z and curling to -X
 #   work-scarecrow         post, cross-arm, rag coat (Soot brick), straw head with a hat
 #   work-jug               a clay water jug (Brick) with a cloth over it, for the row's end
-#   work-wet-patch         wet ground round the well: an uneven soft patch (Wet mudflat, 1.5 cm: no ink line),
-#                          two puddles (River) and footprints (Mud) going off toward +Z
+#   work-wet-patch         wet ground round the well: uneven blobs, trodden earth (Packed earth) outside and wet
+#                          ground (Wet mudflat) inside, 1 cm thick,
+#                          two puddles (River) and footprints going off toward +Z
 #   work-bucket            the well's bucket: staves (Packed earth), two iron bands (Slate roof), a bail; node "Rope"
 #                          rises 1.25 m from the bail
 #   work-pail              a carrying pail, unlike the bucket: wider and lower, Trail earth, rope handle, water top
@@ -304,15 +305,17 @@ def jug():
 def wet_patch():
     rng = random.Random(SEED + 11)
     m = glb.Mesh()
-    for cx, cz, r, sx, sz in ((0, 0, 3.2, 1.0, 0.9), (0.9, 1.4, 2.4, 1.1, 0.8), (-1.2, 0.8, 2.2, 0.9, 1.0),
-                              (0.4, -1.1, 2.3, 1.0, 0.8), (0.6, 2.9, 1.3, 1.1, 0.9)):
-        m.add_extrude((0, 0.005 + rng.uniform(0, .004), 0), blob(rng, cx, cz, r, 11, 0.2, sx, sz), 0.012, "Wet mudflat")
+    # trodden earth at the outside, the wet ground inside it (two tones, so the edge is soft)
+    for k, (cx, cz, r, sx, sz) in enumerate(((0, 0.3, 3.4, 1.0, 0.95), (0.9, 1.6, 2.4, 1.1, 0.8), (0, 0, 2.6, 1.0, 0.9),
+                                             (-0.9, 0.7, 1.8, 0.9, 1.0), (0.5, 1.3, 1.9, 1.0, 0.8))):
+        m.add_extrude((0, 0.004 + 0.004 * (k >= 2), 0), blob(rng, cx, cz, r, 11, 0.2, sx, sz), 0.01,
+                      "Packed earth" if k < 2 else "Wet mudflat")
     m.add_extrude((0, 0.02, 0), blob(rng, 1.6, 1.7, 0.45, 8, 0.25, 1.3, 0.8), 0.01, "River")   # puddles
     m.add_extrude((0, 0.02, 0), blob(rng, -1.9, -0.4, 0.3, 7, 0.25, 1.0, 1.2), 0.01, "River")
-    for k in range(7):                                                                # footprints toward +Z (the lane)
-        z = 1.7 + k * 0.55
-        x = 0.5 + (0.17 if k % 2 else -0.17) + 0.08 * k
-        m.add_extrude((0, 0.02, 0), blob(rng, x, z, 0.12, 6, 0.1, 0.8, 1.4), 0.012, "Mud")
+    for k in range(6):                                                                # footprints toward +Z (the lane)
+        z = 2.0 + k * 0.6
+        x = 0.5 + (0.15 if k % 2 else -0.15) + 0.08 * k
+        m.add_extrude((0, 0.02, 0), blob(rng, x, z, 0.09, 6, 0.1, 0.8, 1.5), 0.01, "Wet mudflat")
     return m
 
 

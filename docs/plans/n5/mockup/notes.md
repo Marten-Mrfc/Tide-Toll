@@ -125,7 +125,7 @@ Triangles: a ripe piece is about 450. A whole field of ripe pieces (six rows of 
   - The footprint is the real plot's proportions and about its size in the real frame.
 - **Well:**
   - The wet patch is uneven with puddles and footprints.
-  - The crank and the worker are on the side the camera sees; the bucket on the near rim differs from the two pails.
+  - The crank and the worker are on the side the camera sees; the bucket hangs on its rope just above the near rim (staves and iron bands) and differs from the two pails.
   - The line of four follows the curving trail; one walks off on the fork with the yoke.
   - Small touch: the game's cat.
 - **Mill:**

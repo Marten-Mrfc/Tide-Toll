@@ -134,7 +134,7 @@ public partial class AssetAudit
         Put(n, "work-wet-patch", new Vector3(0, -0.012f, 0), 0.25f);
         Put(n, "well", Vector3.Zero, wy, s);
         // The bucket just come up over the shaft's near rim, its rope running up under the roof to the roller.
-        Put(n, "work-bucket", new Vector3(0.35f, 1.85f, 0.55f), 0.3f, 1.05f);
+        Put(n, "work-bucket", new Vector3(-0.15f, 2.05f, 1.35f), 0.3f, 1.1f);
         // Two full pails on the rim, on the lane side.
         Put(n, "work-pail", new Vector3(-1.25f, 1.72f, 0.95f), 0.4f);
         Put(n, "work-pail", new Vector3(-0.55f, 1.72f, 1.55f), 1.2f);
@@ -227,11 +227,11 @@ public partial class AssetAudit
         Put(n, "work-doorway", new Vector3(0, 0.22f, front - 0.75f));
         Put(n, "work-door-leaf", new Vector3(0.72f, 0.22f, front - 0.55f), -1.25f);
         // Flour in the air at the door, and dust on the step (translucent: no ink).
-        Puff(n, 0.6f, new Vector3(0.35f, 2.0f, front + 0.45f), 0.9f);
-        Puff(n, 0.5f, new Vector3(0.95f, 2.6f, front + 0.85f), 0.8f);
-        Puff(n, 0.4f, new Vector3(1.45f, 3.1f, front + 1.2f), 0.65f);
-        Puff(n, 0.3f, new Vector3(1.85f, 3.5f, front + 1.5f), 0.5f);
-        Puff(n, 0.22f, new Vector3(2.1f, 3.85f, front + 1.75f), 0.38f);
+        Puff(n, 0.5f, new Vector3(0.1f, 2.75f, front + 0.35f), 0.85f);
+        Puff(n, 0.42f, new Vector3(0.75f, 3.2f, front + 0.6f), 0.75f);
+        Puff(n, 0.34f, new Vector3(1.3f, 3.6f, front + 0.85f), 0.6f);
+        Puff(n, 0.26f, new Vector3(1.7f, 3.95f, front + 1.05f), 0.45f);
+        Puff(n, 0.2f, new Vector3(2.0f, 4.25f, front + 1.2f), 0.32f);
         n.AddChild(new MeshInstance3D
         {
             Mesh = new CylinderMesh { TopRadius = 0.9f, BottomRadius = 0.9f, Height = 0.01f, RadialSegments = 14, Material = new StandardMaterial3D { AlbedoColor = new Color(Palette.Limewash, 0.55f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } },
