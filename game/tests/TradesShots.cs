@@ -67,10 +67,12 @@ public partial class TradesShots : TownTestBase
         // The villager's card with the caps; a cap's tooltip.
         int who = Clearest(vil);
         Check(who >= 0, "a villager to click");
-        await Click(vil.ScreenOf(Main.Rig, who));
+        Point(vil.ScreenOf(Main.Rig, who));
+        await Frames(2);
+        await Click(GetViewport().GetFinalTransform() * vil.ScreenOf(Main.Rig, who));
         Park();
         await Frames(30);
-        Check(hud.SelectedVillager == who, "selected");
+        Check(hud.SelectedVillager == who, $"selected (got {hud.SelectedVillager})");
         Column("trades-villager");
         var likes = t.Villager(who).Likes;
         Point(hud.TradeCapRect(likes == Trade.None ? Trade.Grain : likes).GetCenter());
@@ -85,9 +87,10 @@ public partial class TradesShots : TownTestBase
         // A strip of a count being changed: the plus of the carriers clicked, frames every 0.05 s.
         var strip = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
         var plus = hud.TradePlusHit(Trade.Water).GetCenter();
-        var r = hud.TradesCardRect.Grow(UiKit.U(hud.UiScale, 8));
+        var r = GetViewport().GetFinalTransform() * hud.TradesCardRect.Grow(UiKit.U(hud.UiScale, 8));
         Main.Driver.SetPaused(false);
-        await Click(plus);
+        Point(plus);
+        await Click(GetViewport().GetFinalTransform() * plus);
         Image[] frames = new Image[8];
         for (int k = 0; k < frames.Length; k++)
         {
@@ -119,7 +122,8 @@ public partial class TradesShots : TownTestBase
 
     private void Park() { Point(new Vector2(GetViewport().GetVisibleRect().Size.X * 0.6f, GetViewport().GetVisibleRect().Size.Y * 0.8f)); }
 
-    private void Point(Vector2 p) { Input.WarpMouse(p); TestInput.Motion(p); }
+    /// <summary>The pointer to a canvas point: the system pointer in window pixels (the interface size scales the canvas).</summary>
+    private void Point(Vector2 p) { Input.WarpMouse(GetViewport().GetFinalTransform() * p); TestInput.Motion(GetViewport().GetFinalTransform() * p); }
 
     private Image Shot() => GetViewport().GetTexture().GetImage();
 
@@ -129,7 +133,7 @@ public partial class TradesShots : TownTestBase
         var hud = Main.Hud;
         var z = new HudZones(GetViewport().GetVisibleRect().Size, hud.UiScale);
         var p = z.Person;
-        var r = new Rect2(0, p.Position.Y - z.P(120), p.End.X + z.P(340), p.Size.Y + z.P(200));
+        var r = GetViewport().GetFinalTransform() * new Rect2(0, p.Position.Y - z.P(120), p.End.X + z.P(340), p.Size.Y + z.P(200));
         var img = Shot();
         var ri = new Rect2I((Vector2I)r.Position, (Vector2I)r.Size).Intersection(new Rect2I(Vector2I.Zero, img.GetSize()));
         var c = img.GetRegion(ri);
@@ -141,6 +145,7 @@ public partial class TradesShots : TownTestBase
     {
         var img = Shot();
         var sz = img.GetSize();
+        centre = GetViewport().GetFinalTransform() * centre;
         w = Math.Min(w, sz.X); h = Math.Min(h, sz.Y);
         int x = Math.Clamp((int)centre.X - w / 2, 0, sz.X - w), y = Math.Clamp((int)centre.Y - h / 2, 0, sz.Y - h);
         var c = img.GetRegion(new Rect2I(x, y, w, h));

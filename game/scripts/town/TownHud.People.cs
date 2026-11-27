@@ -272,7 +272,7 @@ public partial class TownHud
                         : v.Job is JobKind.Water or JobKind.GrainHome ? "home"
                         : v.Stage == 1 ? "the mill" : "the market";
                     if (v.Job is JobKind.ClothBoat or JobKind.ClothMarket && v.Carry == Good.Wool) to = "the weaver";
-                    return $"Carrying {GoodWord(v.Carry)} to {to}";
+                    return to == "home" ? $"Carrying {GoodWord(v.Carry)} home" : $"Carrying {GoodWord(v.Carry)} to {to}";
                 }
                 if (v.Job == JobKind.None) return "Looking for work";
                 if (v.Job is JobKind.WoolBoat or JobKind.WoolMarket or JobKind.ClothBoat or JobKind.ClothMarket) return "On the way to the pasture";

@@ -158,6 +158,7 @@ public partial class TownHud
 
     private readonly Label?[] _autoTag = new Label?[AutoTags];
     private readonly int[] _autoWho = new int[AutoTags];
+    private readonly Trade[] _autoTrade = new Trade[AutoTags];
     private readonly float[] _autoAge = new float[AutoTags], _autoA = new float[AutoTags];
     private int _autoGiven;
 
@@ -177,8 +178,7 @@ public partial class TownHud
         var l = _autoTag[k];
         if (l == null) return;
         _autoWho[k] = e.Villager; _autoAge[k] = 0f;
-        l.Text = _drv.Town.VillagerName(e.Villager) + ", " + TradeOne[e.Index];
-        l.ResetSize();
+        _autoTrade[k] = (Trade)255; // the text is made when it shows, from the trade it has then (a batch of events may move it on)
     }
 
     /// <summary>A new town: the first three tags again.</summary>
@@ -197,6 +197,13 @@ public partial class TownHud
             bool show = _autoA[k] > 0.001f && _autoWho[k] >= 0;
             if (l.Visible != show) l.Visible = show;
             if (!show) continue;
+            var tr = _drv.Town.Villager(_autoWho[k]).Trade;
+            if (tr != _autoTrade[k])
+            {
+                _autoTrade[k] = tr;
+                l.Text = _drv.Town.VillagerName(_autoWho[k]) + ", " + TradeOne[(int)tr];
+                l.ResetSize();
+            }
             var head = _main.Rig.LocalToScreen(v.FeetLocal(_autoWho[k]) + new Vector3(0, v.FigureHeight, 0));
             l.Position = (head - new Vector2(l.Size.X / 2f, l.Size.Y + UiKit.Px(_s, 6))).Round();
             l.Modulate = new Color(1, 1, 1, _autoA[k]);
