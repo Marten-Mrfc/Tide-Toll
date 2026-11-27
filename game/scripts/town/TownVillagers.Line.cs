@@ -21,12 +21,12 @@ public partial class TownVillagers
     private readonly bool[] _inLine = new bool[Capacity], _atWork = new bool[Capacity];
     private readonly int[] _lineWp = new int[Capacity], _qt = new int[Capacity];
     private readonly float[] _qd = new float[Capacity], _qdelay = new float[Capacity];
-    private readonly float[] _lineX = new float[Capacity], _lineY = new float[Capacity];
+    private readonly float[] _lineX = new float[Capacity], _lineY = new float[Capacity], _lineFace = new float[Capacity];
 
     /// <summary>Tests: whether villager i is drawn in a workplace's line, has reached its place in it, its place (drawn).</summary>
     public bool InLine(int i) => _inLine[i];
     public bool LineSettled(int i) => _inLine[i] && MathF.Abs(_qd[i] - _qt[i]) < 0.01f && MathF.Abs(_x[i] - _lineX[i]) + MathF.Abs(_y[i] - _lineY[i]) < 0.03f
-                                      && MathF.Abs(_ox[i]) + MathF.Abs(_oy[i]) < 0.03f;
+                                      && MathF.Abs(_ox[i]) + MathF.Abs(_oy[i]) < 0.03f && MathF.Abs(Wrap(_yaw[i] - _lineFace[i])) < 0.05f;
     public float LinePlace(int i) => _qd[i];
     public int LaneOf(int workplace) => workplace >= 0 && workplace < MaxWorkplaces ? _lane[workplace] : -1;
     /// <summary>Where villager i is drawn this frame (map cells, with the drawn-only spacing), and the yaw it faces (model +Z).</summary>
@@ -89,6 +89,7 @@ public partial class TownVillagers
                 face = HeadingYaw(Math.Atan2(hy - ly, hx - lx));
             }
             else face = HeadingYaw(lh);
+            _lineFace[i] = face;
             return true;
         }
         if (v.Phase == VillagerPhase.Working && v.Workplace >= 0)

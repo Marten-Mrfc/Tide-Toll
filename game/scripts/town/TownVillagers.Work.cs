@@ -65,11 +65,11 @@ public partial class TownVillagers
         {
             _pPhase[i] = v.Phase; _pWp[i] = v.Workplace; _pCarry[i] = v.Carry;
             if (_fly[i] > 0 && _flyPlot[i] >= 0) WorkSites.Delivered(_flyPlot[i], i, _flyGood[i], _flyAmount[i]);
-            _take[i] = _tip[i] = _fly[i] = 0; _poseW[i] = 0; _stoop[i] = 0; _inLine[i] = false; _handOff[i] = true; _seenPose[i] = false;
+            _take[i] = _tip[i] = _fly[i] = 0; _poseW[i] = 0; _stoop[i] = 0; _inLine[i] = false; _handOff[i] = true; _seenPose[i] = false; _park[i] = 0;
             if (v.Phase == VillagerPhase.Working && v.Workplace >= 0)
             {
                 var wp = t.Workplace(v.Workplace);
-                _slot[i] = WorkSites.SlotOf(t, wp.Plot, v.X, v.Y); _kind[i] = KindOf(wp.Kind); _workStart[i] = t.Time; _poseW[i] = 1;
+                _slot[i] = WorkSites.SlotOf(t, wp.Plot, v.X, v.Y); _kind[i] = KindOf(wp.Kind); _workStart[i] = t.Time; _poseW[i] = 1; _park[i] = 1;
             }
             return;
         }

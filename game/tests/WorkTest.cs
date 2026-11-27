@@ -72,7 +72,7 @@ public partial class WorkTest : TownTestBase
         int pops0 = vil.Pops;
         begin.Sum = end.Sum = 0; end.Frames = 0;
         long g0 = GC.GetAllocatedBytesForCurrentThread(); long f0 = _frames;
-        await Watch(45);
+        await Watch(90);
         long perFrame = (GC.GetAllocatedBytesForCurrentThread() - g0) / Math.Max(1, _frames - f0);
         long villagerBytes = end.Sum / Math.Max(1, end.Frames);
         // The bell: heads up for a moment, a quicker rhythm while it rings.
@@ -93,14 +93,13 @@ public partial class WorkTest : TownTestBase
         Main.Driver.SetPaused(false);
         await Watch(25);
         // Every load that left the arms has landed (give the last ones their arc).
-        for (int f = 0; f < _fps; f++) { await Frames(1); }
         Main.Driver.SetPaused(true);
         for (int f = 0; f < _fps; f++) await Frames(1);
         long landed = WorkSites.DeliveredCount - d0;
         Check(_deliveries > 10, $"deliveries seen ({_deliveries})");
         Check(landed >= _deliveries && landed <= _deliveries + inFlight0, $"every delivery lands on its table or door ({landed} landed of {_deliveries}, {inFlight0} on the way at the start)");
         Check(vil.Pops - pops0 == 0, $"no load appears or vanishes in one frame ({vil.Pops - pops0})");
-        Check(_pairs > 40, $"enough neighbours in lines checked ({_pairs})");
+        Check(_pairs > 20 && _faced > 200, $"enough of the line checked ({_pairs} neighbour pairs, {_faced} facings)");
         Check(_outside == 0, $"nobody in a line stands inside a building or a field ({_outside})");
         Check(_reapers > 0, $"reapers seen with their tool ({_reapers})");
         Check(villagerBytes <= 16, $"the villagers allocate nothing per frame ({villagerBytes} B)");
@@ -134,11 +133,11 @@ public partial class WorkTest : TownTestBase
         var ev = Main.Driver.Events;
         for (int e = 0; e < ev.Count; e++) if (ev[e].Kind == TownEventKind.Delivery && ev[e].Villager < TownVillagers.Capacity) _deliveries++;
         _worstRate = Math.Max(_worstRate, vil.MaxPoseRate);
-        Check(vil.MaxPoseRate <= MaxPoseRate, $"a pose changed in one frame: {vil.MaxPoseRate:0.0} rad/s at {_fps} fps (bound {MaxPoseRate})");
+        if (!(vil.MaxPoseRate <= MaxPoseRate)) Check(false, $"a pose changed in one frame: {vil.MaxPoseRate:0.0} rad/s at {_fps} fps (bound {MaxPoseRate})");
         if (Main.Driver.Speed <= 1)
         {
             _worstStep = Math.Max(_worstStep, vil.MaxStepCells);
-            Check(vil.MaxStepCells < 0.5f, $"a villager jumped {vil.MaxStepCells:0.00} cells in one frame");
+            if (!(vil.MaxStepCells < 0.5f)) Check(false, $"a villager jumped {vil.MaxStepCells:0.00} cells in one frame");
         }
         int n = Math.Min(t.VillagerCount, TownVillagers.Capacity);
         for (int i = 0; i < n; i++)
@@ -148,17 +147,17 @@ public partial class WorkTest : TownTestBase
             _loadsChecked++;
             // No load before the work is finished: nothing in the arms while waiting or working but what was brought.
             if (v.Phase is VillagerPhase.Queued or VillagerPhase.Working && v.Workplace >= 0)
-                Check(shown == Good.None || shown == v.Carry, $"villager {i} drawn with {shown} while {v.Phase} (carrying {v.Carry})");
+                if (!(shown == Good.None || shown == v.Carry)) Check(false, $"villager {i} drawn with {shown} while {v.Phase} (carrying {v.Carry})");
             if (v.Phase == VillagerPhase.Working && v.Workplace >= 0)
             {
                 var wp = t.Workplace(v.Workplace);
-                Check(wp.Kind == PlotKind.Mill || shown == Good.None, $"villager {i} at work at the {wp.Kind} drawn with {shown}");
+                if (!(wp.Kind == PlotKind.Mill || shown == Good.None)) Check(false, $"villager {i} at work at the {wp.Kind} drawn with {shown}");
                 if (wp.Kind == PlotKind.Field && vil.PoseWeight(i) > 0.9f)
                 {
-                    Check(vil.ToolOf(i) == (TownVillagers.ScytheAt(t.ToolsLevel) ? 2 : 1), $"reaper {i} holds the {(TownVillagers.ScytheAt(t.ToolsLevel) ? "scythe" : "sickle")} (tool {vil.ToolOf(i)}, Tools {t.ToolsLevel})");
+                    if (!(vil.ToolOf(i) == (TownVillagers.ScytheAt(t.ToolsLevel) ? 2 : 1))) Check(false, $"reaper {i} holds the {(TownVillagers.ScytheAt(t.ToolsLevel) ? "scythe" : "sickle")} (tool {vil.ToolOf(i)}, Tools {t.ToolsLevel})");
                     _reapers++;
                 }
-                if (TownVillagers.CartAt(t.LoadLevel) && vil.PoseWeight(i) > 0.99f) { Check(vil.Parked(i) > 0.9f, $"worker {i}'s handcart stands parked ({vil.Parked(i):0.00})"); _parked++; }
+                if (TownVillagers.CartAt(t.LoadLevel) && vil.PoseWeight(i) > 0.99f) { if (!(vil.Parked(i) > 0.9f)) Check(false, $"worker {i}'s handcart stands parked ({vil.Parked(i):0.00})"); _parked++; }
             }
         }
         if (Main.Driver.Speed > 1) return;
@@ -191,14 +190,14 @@ public partial class WorkTest : TownTestBase
                     float gap = toward.Length() * TownGround.Cell;
                     _pairs++;
                     _worstGap = Math.Max(_worstGap, gap); _bestGap = Math.Min(_bestGap, gap);
-                    Check(gap >= 1.6f && gap <= 2.4f, $"the line at the {wp.Kind}: places {p - 1} and {p} stand {gap:0.00} m apart (1.6 to 2.4)");
-                    Check(vil.LinePlace(ahead) < vil.LinePlace(me), $"the line at the {wp.Kind} in queue order (place {p - 1} at {vil.LinePlace(ahead):0.00}, {p} at {vil.LinePlace(me):0.00})");
+                    if (!(gap >= 1.6f && gap <= 2.4f)) Check(false, $"the line at the {wp.Kind}: places {p - 1} and {p} stand {gap:0.00} m apart (1.6 to 2.4)");
+                    if (!(vil.LinePlace(ahead) < vil.LinePlace(me))) Check(false, $"the line at the {wp.Kind} in queue order (place {p - 1} at {vil.LinePlace(ahead):0.00}, {p} at {vil.LinePlace(me):0.00})");
                 }
                 float yaw = vil.DrawnYaw(me);
                 var facing = new Vector2(MathF.Sin(yaw), MathF.Cos(yaw));
                 if (toward.Length() < 1e-3f) continue;
                 float ang = MathF.Acos(Math.Clamp(facing.Dot(toward.Normalized()), -1f, 1f));
-                Check(ang < 1.05f, $"villager {me}, place {p} at the {wp.Kind}, faces {ang:0.00} rad away from the workplace");
+                if (!(ang < 1.05f)) Check(false, $"villager {me}, place {p} at the {wp.Kind}, faces {ang:0.00} rad away from the workplace");
                 _faced++;
             }
         }

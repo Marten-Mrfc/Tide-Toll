@@ -108,7 +108,7 @@ public partial class TownVillagers
         int lv = t.LoadLevel, bundles = BundlesAt(lv);
         _cartK[i] = Mathf.MoveToward(_cartK[i], 1f, dt * 3.5f);
         bool working = _atWork[i];
-        _park[i] = Mathf.MoveToward(_park[i], working ? 1f : 0f, dt * 3.5f);
+        _park[i] = Mathf.MoveToward(_park[i], working ? 1f : 0f, dt * 4f);
         Good shown = Good.None;
         // The load carried (not the mill's sack once it has gone in at the door).
         if (v.Carry != Good.None && (int)v.Carry < 6 && !(working && _tip[i] <= 0 && _kind[i] == 3))
