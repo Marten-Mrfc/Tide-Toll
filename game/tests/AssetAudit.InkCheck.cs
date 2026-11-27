@@ -71,7 +71,10 @@ public partial class AssetAudit
         Main.Rig.Place(new Vector3((_spot.X + 0.5f) * TownGround.Cell, 0, (_spot.Y + 0.5f) * TownGround.Cell), playSize);
         Main.Rig.UserMoved = true;
         await Frames(20);
-        foreach (var (name, ceiling) in InkCeilings)
+        // --ink-variants=a,b (any model names) measures those instead, with no ceiling (a look, not a check).
+        var list = new List<(string, float)>(InkCeilings);
+        if (_inkNames != null) { list.Clear(); foreach (var n in _inkNames) list.Add((n, 1f)); }
+        foreach (var (name, ceiling) in list)
         {
             if (_only != null && !_only.Contains(name)) continue;
             var at = new Vector3((_spot.X + 0.5f) * TownGround.Cell, 0, (_spot.Y + 0.5f) * TownGround.Cell);

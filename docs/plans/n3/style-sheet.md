@@ -37,9 +37,44 @@ New named colours may be added only where nothing fits, at most six tonight, eac
 
 ## 3. Line
 
-- The ink line is drawn by the game (`InkOutline`: a screen pass on depth, 1.5 to 2 px at play zoom). Models are built for it: give every part that should have a line a real edge (a step of at least 6 cm or a crease of at least 30 degrees).
-- Inner lines (planks, thatch courses, timber framing, door boards) are thin bands of the shade tone or of Timber, 4 to 6 cm wide, standing 1 to 2 cm proud so the ink finds them. Three to five courses on a roof, not twenty.
-- Nothing is perfectly straight or square: ridges sag 3 to 5 percent, walls lean up to 2 degrees, planks differ in length, posts tilt a little. Use the generator's seed so each model is the same every time it is built.
+The map is a coloured picture first. Ink is for the outside of things; everything inside is a darker band of the
+thing's own colour. (n8, after the owner's "black lines too much": measured in `docs/plans/n8/research/ink-experiments.md`.)
+
+**What the game draws** (`InkOutline`, one screen pass on depth, `outline_screen.gdshader`), with two weights:
+- **Silhouettes** (a depth change of 0.3 m or more: a roof edge over the ground, an eave over a wall, a chimney, a
+  figure against the grass): full Ink. The weight grows smoothly with the window and the zoom: about 2.4 px wide at
+  720 lines, 3 px at 900, 3.6 px at 1080, 4.8 px at 1440 at the play view; never less than 2 px.
+- **Inner creases** (ridge, hip, wall to roof, wall to ground, a step smaller than 0.3 m): found one pixel wide and
+  drawn as the colour under them darkened to 60 percent, fading in from a weak crease to a strong one. Not Ink.
+- The **soft-ink group** (trees, crops, reeds, villagers, loads, small props: glTF extras `{"ink": "soft"}`) gets a
+  1-pixel silhouette at every size and inner creases only where the slope changes sharply (threshold 1.5, not 0.45).
+
+**What the modeller builds:**
+- The outline and the real breaks of form only: wall to roof, ridge, eave, chimney, door recess, a step of 10 cm or more.
+- **Inner lines are painted, not built.** Thatch courses, planks, timber framing, shingles, door boards, field rows:
+  bands of the shade tone (or Timber) 4 to 20 cm wide lying **at most 1 cm proud** of the face. A raised step is read
+  as a crease, and a beam 9 cm proud gave two lines whose bands touched: every course a black stripe.
+- Counts at the play view: a roof at most four bands a slope (three on a wing); a wall at most a door, two windows and
+  its corner posts; a field its rows as two-tone bands, no step between them; a villager no built inner lines at all.
+- Nothing is perfectly straight or square: ridges sag 3 to 5 percent, walls lean up to 2 degrees, planks differ in
+  length, posts tilt a little. Use the generator's seed so each model is the same every time it is built.
+
+**The test** (`game-ink` in `tools/check.sh`, `game/tests/AssetAudit.InkCheck.cs`): each kind at the play view (the
+1080p play view's metres per pixel and line width), pictured with and without the ink pass and with the ground alone;
+the share of the model's pixels the ink covers (a pixel darkened halfway to Ink counts half) must stay under:
+
+| kind | n8 look | ceiling | before n8 |
+|---|---|---|---|
+| the nine cottages | 0.14 to 0.20 | 0.25 | 0.53 to 0.66 |
+| weaver cottage | 0.13 | 0.25 | 0.33 |
+| mill | 0.22 | 0.27 | 0.51 |
+| market stall | 0.27 | 0.32 | 0.49 |
+| well | 0.24 | 0.30 | 0.56 |
+| a street of five cottages and six carriers | 0.23 | 0.28 | 0.64 |
+| a group of six villagers | 0.36 | 0.42 | 0.70 |
+
+A new building should come in under 0.25; a small prop (a few dozen pixels across) is mostly outline and may reach
+0.45. By eye: blur the picture to a quarter of its size and the roof must still read as roof-coloured, not black.
 
 ## 4. Proportions (toy-like: chunky, heads and roofs a little too big)
 
