@@ -94,7 +94,7 @@ def used_in(stem):
 
 
 def font(size):
-    for f in ("assets/fonts/AtkinsonHyperlegible-Regular.ttf",):
+    for f in ("assets/fonts/TideLegible-Regular.ttf", "assets/fonts/AtkinsonHyperlegible-Regular.ttf"):
         p = os.path.join(ROOT, f)
         if os.path.exists(p):
             return ImageFont.truetype(p, size)

@@ -174,9 +174,10 @@ icon_facts = (f'<dl class="facts"><dt>Source</dt><dd>{E(_ir["source"])}</dd><dt>
 
 # ---------------------------------------------------------------- fonts
 FONTS = [
-    ("AtkinsonHyperlegible-Regular.ttf", "Atkinson Hyperlegible", "f-atk", "400", "Body, UI and numbers",
+    ("TideLegible-Regular.ttf", "Tide Legible (Atkinson Hyperlegible with a plain zero)", "f-atk", "400",
+     "Body, UI and numbers",
      "Toll at the ford: 3 pennies. Wear 0.42. Villagers 1,280 / 12:05"),
-    ("AtkinsonHyperlegible-Bold.ttf", "Atkinson Hyperlegible Bold", "f-atk", "700", "Bold body and numbers",
+    ("TideLegible-Bold.ttf", "Tide Legible Bold", "f-atk", "700", "Bold body and numbers",
      "Place fence. Open gate. 16 x 16 m field, 0.6 m crops"),
     ("Alegreya-Variable.ttf", "Alegreya (variable, 400 to 900)", "f-ale", "500", "Headings and brand serif",
      "The Hamlet by the river, in the year 1100"),
