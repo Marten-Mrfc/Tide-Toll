@@ -8,7 +8,7 @@ namespace TideToll.Game;
 /// Work you can watch (n5), A: the line. Those who wait at the well, a field or the mill stand in a line along the lane
 /// the first of them came by (<see cref="WorkSites.Lane"/>), <see cref="WorkSites.LineStep"/> apart (more with a
 /// handcart), each facing the workplace, the first nearest to it; a line longer than its lane bends on along the next
-/// road (<see cref="WorkSites.LinePoint"/>). When a place comes free the line moves up one step, front first: each
+/// road (<see cref="WorkSites.LinePoint"/>), a third of a cell aside on the lane's right-hand edge (<see cref="WorkSites.LineStand"/>). When a place comes free the line moves up one step, front first: each
 /// place starts a little after the one before it (<see cref="RippleSeconds"/>) and eases along the lane. Drawing only:
 /// the queue's order and length are the simulation's (<see cref="VillagerView.QueuePosition"/>).
 /// </summary>
@@ -34,26 +34,6 @@ public partial class TownVillagers
     public float DrawnYaw(int i) => _yaw[i];
     /// <summary>Gap between two in a line at the town's Load level, in cells.</summary>
     public static float LineStepCells(int loadLevel) => (CartAt(loadLevel) ? WorkSites.LineStepCart : WorkSites.LineStep) / Cell;
-
-    /// <summary>n5 fix round: how far the line stands off the lane's middle, cells (a third of a cell), so those walking
-    /// the same lane pass beside it instead of merging with it.</summary>
-    public const float LineEdgeCells = 1f / 3f;
-
-    /// <summary>Moves a point of the line to the right-hand edge of the lane as one walks toward the place (the lane's
-    /// heading <paramref name="h"/> faces the place; map cells, y south).</summary>
-    private static void ToEdge(ref float x, ref float y, float h)
-    {
-        x -= MathF.Sin(h) * LineEdgeCells;
-        y += MathF.Cos(h) * LineEdgeCells;
-    }
-
-    /// <summary>The one heading a whole line is moved aside by: the lane's at the line's front. One shift for all keeps
-    /// the gaps between places exactly as along the lane (a shift by each point's own heading opens them on a bend).</summary>
-    private float EdgeHeading(Town t, int w, float gap)
-    {
-        WorkSites.LinePoint(t, w, _lane[w], gap, out _, out _, out float h);
-        return h;
-    }
 
     private static bool IsWorkplaceKind(PlotKind k) => k is PlotKind.Well or PlotKind.Field or PlotKind.Mill;
 
@@ -107,8 +87,7 @@ public partial class TownVillagers
                 _qd[i] = MathF.Abs(left) <= k ? _qt[i] : _qd[i] + MathF.Sign(left) * k;
             }
             float gap = LineStepCells(t.LoadLevel);
-            WorkSites.LinePoint(t, w, _lane[w], gap * (1f + _qd[i]), out float lx, out float ly, out float lh);
-            ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
+            WorkSites.LineStand(t, w, _lane[w], gap * (1f + _qd[i]), gap, out float lx, out float ly, out float lh);
             _lineX[i] = lx; _lineY[i] = ly;
             tx = lx; ty = ly;
             if (_qd[i] < 0.5f)
@@ -135,8 +114,7 @@ public partial class TownVillagers
                 if (fromNode < tail + 0.05f)
                 {
                     _holders[w]++;
-                    WorkSites.LinePoint(t, w, _lane[w], tail, out float lx, out float ly, out float lh);
-                    ToEdge(ref lx, ref ly, EdgeHeading(t, w, gap));
+                    WorkSites.LineStand(t, w, _lane[w], tail, gap, out float lx, out float ly, out float lh);
                     tx = lx; ty = ly; face = HeadingYaw(lh);
                     return true;
                 }
