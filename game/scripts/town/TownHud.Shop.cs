@@ -275,7 +275,7 @@ public partial class TownHud
         }
         // Each part is set only when it changed (the signature changes with every coin while saving up).
         string key = FirstKey(ActionFor(it, ord));
-        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Tall; r.PlaceKey(); }
+        if (key != r.KeyShown) { r.KeyShown = key; r.Key.Text = key; r.Key.Visible = key.Length > 0 && r.Line2.Visible; r.PlaceKey(); }
         bool track = it.Kind is ShopItemKind.Villager or ShopItemKind.Pace or ShopItemKind.Load or ShopItemKind.Tools or ShopItemKind.Value or ShopItemKind.BellTrack or ShopItemKind.Regulars;
         string name = RowLabel(it);
         int step = track && it.Level > 0 ? it.Level : 0;
@@ -290,10 +290,12 @@ public partial class TownHud
         // it does); how far the coin has come is the pill's wash, the number is in the tooltip.
         string line = st switch
         {
-            ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a lit road" : "Click a lit cottage",
+            ShopRow.PillState.On => it.Kind == ShopItemKind.Pave ? "Click a road" : "Click a cottage",
             ShopRow.PillState.Blocked => BlockedLine(it.Reason),
             _ => worth > 0 ? WorthLine(worth) : DoesLine(it.Kind),
         };
+        // Addendum C: a worth that does not fit before the pill takes its short form ("+1,299 a min").
+        if (worth > 0 && st is not (ShopRow.PillState.On or ShopRow.PillState.Blocked) && TextWidth(r.Line2, line) > r.Line2.Size.X) line = WorthShort(worth);
         if (line != r.Line2Shown) { r.Line2Shown = line; r.Line2.Text = line; }
         if (st != r.State || !r.StateSet) { r.StateSet = true; r.SetState(st); r.PriceShown = ""; }
         bool priced = it.Price > 0 && !double.IsInfinity(it.Price);

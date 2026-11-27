@@ -44,11 +44,14 @@ public partial class TownHud
         _pillShortFrom = w <= Box(_pillUnits) ? 100_000 : 10_000;
     }
 
+    /// <summary>"+1,299 a min": the worth's short form for a narrow line 2.</summary>
+    public static string WorthShort(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+{tenths / 10}.{tenths % 10} a min" : $"+{Money(tenths / 10)} a min";
+
     /// <summary>Line 2 of a blocked row: why, in a few words.</summary>
     public static string BlockedLine(string reason) => reason switch
     {
-        "No room: wait for a cottage" => "No room in the cottages",
-        "No worn-in road to pave" => "No worn road yet",
+        "No room: wait for a cottage" => "Cottages are full",
+        "No worn-in road to pave" => "No worn road",
         "" => "Not yet",
         _ => reason,
     };
@@ -56,21 +59,21 @@ public partial class TownHud
     /// <summary>Line 2 of a row whose purchase has no rate: what it does, in a few words.</summary>
     public static string DoesLine(ShopItemKind k) => k switch
     {
-        ShopItemKind.Villager => "One more villager",
-        ShopItemKind.Pace => "Everyone walks faster",
-        ShopItemKind.Load => "More carried each trip",
+        ShopItemKind.Villager => "More villagers",
+        ShopItemKind.Pace => "Faster walking",
+        ShopItemKind.Load => "Bigger loads",
         ShopItemKind.Pave => "A faster road",
-        ShopItemKind.Extend => "Room for one more",
+        ShopItemKind.Extend => "One more room",
         ShopItemKind.Tools => "Faster work",
         ShopItemKind.Value or ShopItemKind.RiverValue => "A better price",
         ShopItemKind.BellTrack => "A longer ring",
-        ShopItemKind.Regulars => "Deliveries pay more",
-        ShopItemKind.Hand => "One more place to work",
-        ShopItemKind.Ferry => "Crosses at any tide",
-        ShopItemKind.Berth => "Two boats moor at once",
+        ShopItemKind.Regulars => "Pays more",
+        ShopItemKind.Hand => "Another worker",
+        ShopItemKind.Ferry => "Any tide",
+        ShopItemKind.Berth => "Two berths",
         ShopItemKind.Crane => "Bigger cargoes",
         ShopItemKind.BoatPrices => "Boats pay more",
-        ShopItemKind.Raft => "Carries one more",
+        ShopItemKind.Raft => "Bigger raft",
         ShopItemKind.Rope => "Crosses quicker",
         ShopItemKind.Toll => "More toll a boat",
         ShopItemKind.Winch => "Lifts quicker",

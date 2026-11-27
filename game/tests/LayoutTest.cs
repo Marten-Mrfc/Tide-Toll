@@ -58,6 +58,7 @@ public partial class LayoutTest : UiAudit
 
     protected override async Task AfterTour()
     {
+        await ShopSamples();
         // Rule 3 with the longest real text of every kind (LayoutFixture), on every canvas.
         foreach (var (canvas, s, name) in Canvases)
         {

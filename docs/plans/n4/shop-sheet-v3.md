@@ -35,9 +35,9 @@ The target is drawn: `mockup/shop-before-and-planned.png` (three game states, no
 
   A row of a kind not named here goes to Town (first age) or The river (second age). Within a group: rows with a key in key order, then rows without.
 - **Group heading** (28): the name (body, serif) and a hairline (ink at 16 percent) from the name to the right edge. Nothing else on it. A group without rows has no heading.
-- **Foot** (one line, caption, muted, under a hairline): only while something is still locked. "Next: Basket at level 3" names the locked purchase with the lowest level (the first in list order if several, then "+1 more"). Its tooltip lists every locked purchase with its level, and the finished ones. This one line replaces all the notes on the headings; "done" counts are not shown on the sheet.
+- **Foot** (one line, caption, muted, under a hairline): only while something is still locked. "Later: Basket at level 3" names the locked purchase with the lowest level (the first in list order if several, then "+1 more"); when its level is not known, "Later: Extend a cottage" (on both rails). It says "Later:", not "Next:": the ledger's "Next:" line says what the next level gives. While rows are scrolled out of sight below, the foot's place says "2 more below" with the small down mark instead. The foot fades in only once the card's edge has arrived and fades out before its room is given back, so it never lies over a row. Its tooltip lists every locked purchase with its level, and the finished ones. This one line replaces all the notes on the headings; "done" counts are not shown on the sheet.
 
-**A row** (56 tall, always two lines; the whole row is the click target):
+**A row** (48 tall with 4 between, a pitch of 52, always two lines; the whole row is the click target):
 
 ```
 [icon]  Name  9                          (  o    10,697 )
@@ -58,7 +58,7 @@ The target is drawn: `mockup/shop-before-and-planned.png` (three game states, no
 | State | Fill | Border | Text |
 | --- | --- | --- | --- |
 | Affordable | solid wheat | none | ink, bold |
-| Not yet | paper, with a **wheat wash (wheat at about half strength) filling the pill from the left** as far as coin / price | muted, 1 | muted number, regular |
+| Not yet | paper, with a **wheat wash (wheat at 30 percent, its leading edge fading out over 8) filling the pill from the left** as far as coin / price | muted, 1 | muted number, regular |
 | Blocked | paper | ink at 30 percent, 1 | disabled ink; the coin sign dimmed; with no price to show (Pave without a worn road) a centred en dash |
 | On | ink | none | "On", paper, bold, centred |
 
@@ -66,8 +66,8 @@ The target is drawn: `mockup/shop-before-and-planned.png` (three game states, no
   - Pave reads "from 12", centred, without the coin sign (as now).
   - A price is never set smaller in one row than in another. The largest price of a finished second age (fixture) fits at body size, bold, with at least 4 between the coin sign and the digits; if it would not, widen the pill (up to 104) or shorten large numbers sooner ("123k" from 100,000), the same way in every row.
   - A blocked row shows its icon and name in the disabled look as well.
-- **States of the row:** at rest no fill. **Hover:** a band of ink at 7 percent with corner 4 across the whole row. **Pressed:** ink at 14 percent, content 1 down. **Blocked:** no band (the tooltip still shows). The one pulse when a row becomes affordable stays.
-- **Compact rows** (40 tall, used as now when the tall rows do not fit): the same row in one line: icon (20), name in the same size and weight as in tall rows, pill (28 tall). No second line, no key cap. It must look like the same interface.
+- **States of the row:** at rest no fill. **Hover:** a band of ink at 9 percent with corner 4 across the whole row. **Pressed:** ink at 18 percent, content 1 down, the pill one step darker. **Blocked:** no band (the tooltip still shows). The one pulse when a row becomes affordable is a short lightening of the pill's fill (0.4 s), never a change of size.
+- **Compact rows** (40 tall, used when the tall rows do not fit; tall again only when they would fit with two rows to spare, so one row near the limit does not flip the list; the switch eases over 0.2 s like every other change: heights and places slide, line 2 and the key caps fade): the same row in one line: icon (20), name in the same size and weight as in tall rows, pill (28 tall). No second line, no key cap. It must look like the same interface.
 - **When rows or headings come and go** the rules of sheet v2 stand (0.2 s, the pointer holds the slide, a row that just moved takes no click), and the sheet's bottom edge and the foot line move with the same ease: no frame shows a gap, an overlap or a jump.
 
 **A shop row's tooltip** is a small card (296 wide), not a sentence:

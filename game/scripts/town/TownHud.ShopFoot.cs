@@ -41,6 +41,12 @@ public sealed class ShopSlide
 public partial class TownHud
 {
     private int _footSig = int.MinValue;
+    /// <summary>Tests: a foot text to show ("" none) instead of the shop's own, to sample its arrival and leaving.</summary>
+    public string? FootForce;
+    /// <summary>Tests: the tall/compact decision forced (null: the shop's own), to sample the switch.</summary>
+    public bool? CompactForce;
+    public float FootAlpha => _footA;
+    public Rect2 FootRect => _foot.GetGlobalRect();
     private readonly List<ShopItem> _footOrder = new();
     private readonly StringBuilder _footSb = new();
 
@@ -55,7 +61,8 @@ public partial class TownHud
 
     private void FootFrame(Town t)
     {
-        int sig = 17;
+        if (FootForce != null) { if (FootForce.Length > 0) _footText.Text = FootForce; _footWant = FootForce.Length > 0; _footSig = int.MinValue; return; }
+        int sig = 17 + _rowsBelow * 7919;
         foreach (var it in _raw) if (!IsRowItem(it, t)) sig = HashCode.Combine(sig, (int)it.Kind, it.Index, it.Reason, it.Name);
         if (sig == _footSig) return;
         _footSig = sig;
@@ -70,19 +77,24 @@ public partial class TownHud
             if (best < 0 || lv < bestLevel) { best = i; bestLevel = lv; same = 0; }
             else if (lv == bestLevel) same++;
         }
+        // Follow-up 2: "Later:", not "Next:" (the ledger's "Next:" says what the next level gives). A level only when it
+        // is known: "Later: Basket at level 3 · +1 more", else "Later: Extend a cottage".
         string text = "";
         if (best >= 0)
         {
             var it = _footOrder[best];
-            string first = $"Next: {RowName(it)} {Lower(FoldLock(it.Reason))}";
+            string first = bestLevel < int.MaxValue ? $"Later: {RowName(it)} at level {bestLevel}" : $"Later: {RowName(it)}";
             text = same > 0 ? $"{first} · +{same} more" : first;
             _footText.Text = text;
             if (TextWidth(_footText) > _footText.Size.X) text = first;
             _footText.Text = text;
-            if (TextWidth(_footText) > _footText.Size.X) text = $"Next: {RowName(it)}";
+            if (TextWidth(_footText) > _footText.Size.X) text = $"Later: {RowName(it)}";
         }
-        _footText.Text = text;
-        _foot.Visible = text.Length > 0;
+        // Follow-up 6: while rows are out of sight below, the foot says so instead.
+        if (_rowsBelow > 0) text = $"{_rowsBelow} more below \u2193";
+        // The text stays while the foot fades out (it is only wanted or not).
+        if (text.Length > 0) _footText.Text = text;
+        _footWant = text.Length > 0;
     }
 
     /// <summary>The foot's tooltip: every locked purchase with its level, then the finished ones.</summary>

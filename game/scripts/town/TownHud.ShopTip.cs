@@ -17,14 +17,14 @@ public partial class TownHud
     private Label _rcTitle = null!, _rcText = null!;
     private readonly Label[] _rcKeys = new Label[2];
     private ColorRect _rcRule = null!;
-    private readonly Label[] _rcLabel = new Label[4];
-    private readonly RichTextLabel[] _rcValue = new RichTextLabel[4];
-    private readonly string[] _rcValueShown = new string[4];
+    private readonly Label[] _rcLabel = new Label[5];
+    private readonly RichTextLabel[] _rcValue = new RichTextLabel[5];
+    private readonly string[] _rcValueShown = new string[5];
     /// <summary>The card's parts as last made (tests read them through <see cref="RowTipParts"/>).</summary>
     private string _rtTitle = "", _rtSentence = "";
     private readonly List<string> _rtKeys = new();
     private readonly List<(string label, string value)> _rtFacts = new();
-    private const float FactLabelUnits = 56;
+    private const float FactLabelUnits = 76;
 
     private void BuildRowCard(Control holder)
     {
@@ -46,7 +46,7 @@ public partial class TownHud
         _rcText.ClipText = false;
         _rcText.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         _rowCard.AddChild(_rcText);
-        _rcRule = new ColorRect { Name = "Rule", Color = new Color(UiKit.Ink, 0.16f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        _rcRule = new ColorRect { Name = "Rule", Color = UiKit.Ruling, MouseFilter = Control.MouseFilterEnum.Ignore };
         _rowCard.AddChild(_rcRule);
         for (int k = 0; k < _rcLabel.Length; k++)
         {
@@ -94,10 +94,10 @@ public partial class TownHud
         int w = WorthTenths(it.Worth);
         if (w > 0)
         {
-            string worth = WorthLine(w);
+            _rtFacts.Add(("Worth", WorthLine(w)));
+            // Addendum F: its own line, so no value breaks in the middle of a phrase.
             double perSec = it.Worth / 60.0;
-            if (perSec > 0 && it.Price > 0 && !double.IsInfinity(it.Price)) worth += ", pays back in " + Span(it.Price / perSec);
-            _rtFacts.Add(("Worth", worth));
+            if (perSec > 0 && it.Price > 0 && !double.IsInfinity(it.Price)) _rtFacts.Add(("Pays back", "in " + Span(it.Price / perSec)));
         }
         if (it.Price > 0 && !double.IsInfinity(it.Price)) _rtFacts.Add(("Price", (it.Kind == ShopItemKind.Pave ? "from " : "") + CoinMark + Money(it.Price)));
         if (!it.Affordable && !mode)
@@ -174,7 +174,7 @@ public partial class TownHud
             _rcLabel[k].Position = new Vector2(pad, y);
             _rcLabel[k].Size = new Vector2(lx - pad - UiKit.U(_s, 4), lineH);
             if (_rcValueShown[k] != value) { _rcValueShown[k] = value; WriteCoinText(_rcValue[k], value); }
-            float vh = Math.Max(lineH, f.GetMultilineStringSize(value.Replace(CoinMark.ToString(), "00"), HorizontalAlignment.Left, vw, fs).Y);
+            float vh = Math.Max(lineH, f.GetMultilineStringSize(value.Replace(CoinMark.ToString(), "00\u00A0"), HorizontalAlignment.Left, vw, fs).Y);
             _rcValue[k].Position = new Vector2(lx, y);
             _rcValue[k].Size = new Vector2(vw, vh + 2);
             vh = Math.Max(vh, _rcValue[k].GetContentHeight());
@@ -197,7 +197,8 @@ public partial class TownHud
         {
             if (i < text.Length && text[i] != CoinMark) continue;
             if (i > from) l.AddText(text.Substring(from, i - from));
-            if (i < text.Length) l.AddImage(coin, px, px, null, InlineAlignment.Center);
+            // Follow-up 5: about 4 units of air between the coin sign and the number, as in the pill (a no-break space).
+            if (i < text.Length) { l.AddImage(coin, px, px, null, InlineAlignment.Center); l.AddText("\u00A0"); }
             from = i + 1;
         }
     }
