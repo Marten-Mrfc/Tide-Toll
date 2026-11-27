@@ -28,3 +28,27 @@ Builder of the message system, checkout `build/wt/n3-ui` (branch wt/n3-ui). Spec
 - 8 First minute: done (`TownHud.FirstMinute.cs`, `[hints] hints_seen` in settings.cfg; `GameSettings.ShowHintsAgain()` exists but no button: the settings pages are the next round's).
 - 10 Tests: `MotionTest.Messages.cs` (banner, notes queue order/stay/gap, crowd, click away, line and cross-fade, the busiest moment, the large sounds' gap); game-layout rule 5 fails above loud 3 / quiet 4; `CheckMessages` (every message inside its zone).
 - 11: per-checkout test profiles (`TownTestBase.ProfileFor`: user:// is shared by every checkout).
+
+### 00:20 UTC
+
+- 3 Goal: a skipper's request while the town's own holds the goal section goes to the strip in one line ("Skipper Alder: 3 of 12 Wool, 40 s", fades 0.22 s), after the next-age button and the drive (`TownHud.Strip.cs`). Simplification: the town's request always holds the goal section (as before); a third request is not shown.
+- 6: "+ hand" markers fade (0.15 s, eased).
+- 9 Tooltips: the play tooltip now covers achievements (page cells), the two boons, the goal, the strip and the note sections; engine `TooltipText` removed from the achievements, boons and hand markers. Not pictured yet.
+- 11: shop names are set in caption size before they are cut (`ShopRow.PlaceStep`); the tour pauses first when the game plays before the settings states u21 to u24 (`UiAudit.Book.cs`). Not done: the half row at 1280 x 720 with 150 percent pictured again.
+- Strips: `tools/motion-strips.sh --messages-only` (`MotionStrips.Messages.cs`, interface clocks held by `TownHud.StripStep`): msg-banner, msg-notes, msg-line, msg-request, msg-coin, msg-choice. Shop rows arriving/leaving: not made (L1's fade/slide, untouched).
+
+### Tests changed (old assertion -> new assertion, why)
+
+| Test | Old | New | Why |
+| --- | --- | --- | --- |
+| TownTest.cs level gifts | every level has a "Level N:" banner | at a choice level a "Level N:" note and the choice's heading starts "Level N:" | a decision is never delayed by a banner (brief item 1) |
+| TownTest.cs CheckHint | a hint with a road or plot shows the ring | the ring shows while the line shows the town's hint; otherwise it is not at full | the line's priority: a refusal, a mode, a first-minute hint come first (message-system 1) |
+| TownTest.cs Extend | no coin number visible at once when the mode starts | none within 30 frames | the numbers fade out over 0.15 s (nothing in one frame) |
+| TownTest.V3 BoonByClick | banner text contains the boon; the card gone after 3 frames | the note log has "A boon for good: <boon>"; the card's opacity has started down, gone within 120 frames | message-system 2 (a boon is a note); the card leaves by its 0.22 s fade |
+| TownTest.V3 choices | the card visible 3 frames after the choice opens | visible within 60 frames | one large message at a time: a banner showing leaves first (0.22 s) |
+| TownTest.V3 key pick | banner text contains the boon | note log has it | as above |
+| TownTest.V3 drive met | the card gone and a note "charter drive is met" | the strip says "Done" (or the next-age button holds the strip); no such note; the strip goes within 400 frames | message-system 2: the strip says it in its place for 1.6 s |
+| LayoutRules rule 5 | reported only | fails above loud 3 or quiet 4 | brief item 10 |
+| LayoutRules (new) | - | every message inside its zone (`CheckMessages`) | message-system 5 |
+| BookTest scroll hint | unchanged; `TownHud.ScrollHint` is now the sheet's words "Scroll out to see the whole page, and the book." and goes to the line | | message-system 4 |
+| TownTestBase.ProfileFor | `user://tests/<marker>/` | `user://tests/co-<hash of the checkout path>/<marker>/` | user:// is shared by every checkout (brief item 11) |
