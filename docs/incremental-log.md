@@ -29,6 +29,15 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: villagers at work (27 November, from 08:50 UTC)
+
+The owner, while the right side was being finished: "Next spend time on interaction. I mean the villagers their interactions with the buildings, fields etc. Right now this looks super basic. This can be improved I think. Create a good idea like you did earlier with the screenshot of the Early: Now, Early: planned."
+
+- So: an idea first, shown as "now" beside "planned"; nothing is built into the game until the owner says yes.
+- What happens now (from `game/scripts/town/TownVillagers.cs` and the simulation's `VillagerState`): a villager stands straight for the work time and the load appears in one frame; the simulation already knows the work spot, the seconds left and the queue order, and the drawing uses none of it.
+- The idea: `docs/plans/n5/work-you-can-watch.md` (every job a small scene in three beats: take a place in a line, work while the place answers, take the goods that stand there; what you buy, you see; drawing only, no rule changes).
+- The picture: a builder stages the "planned" scenes with the game's own models in the asset audit and sets them beside real frames of the game, in `build/wt/n5-mock` (branch `wt/n5-mock`), due 10:00 UTC: `docs/plans/n5/mockup/work-now-and-planned.png`.
+
 ## The brief (from the owner, word for word)
 
 Use workflows to make Tide & Toll look and feel like one designed game overnight, without me. Build until 07:00 Amsterdam time (06:00 UTC on 27 November), then show me a review page. I will answer yes or no per item and say continue.
