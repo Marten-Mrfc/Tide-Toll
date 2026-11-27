@@ -88,3 +88,40 @@ first-age subjects stops after the charter.
 game-book BOOK PASS, game-town TOWN PASS (includes "the stakes are pale"), game-menu MENU PASS, game-save SAVE PASS.
 tools/motion-check.sh: every check passed except the CPU gate under load (60 fps question-in frame 8 14.5 ms; 30 fps
 tab-keys-display 6.12 ms; 120 fps pause 7.5 ms; gate 6 ms; load average 22 to 50).
+
+## Whole ./check (23:22 to 00:03 UTC, load 13 to 50)
+
+sim-build, sim-test, godot-nuget, sync-assets, game-build, game-smoke, game-town, game-perf (PERF PASS), game-river,
+game-book, game-menu, game-save, screenshot (SCREENSHOT PASS), ledger (328 rows, 0 problems): pass.
+game-playthrough: FAIL "the charter stone is pale dressed stone" (my replacement check's bound, see above); fixed and
+rerun alone 23:50: PLAY PASS charter=33.9min buys=201.
+game-motion: 60 and 30 fps MOTION PASS; 120 fps failed only on the CPU gate (back-during-settings-open frame 104
+8.40 ms, gate 6).
+game-settings: SETTINGS PASS then exit 134 on "Leaked unsafe reference to object: InputEventKey" at exit; rerun alone
+00:01: the same (SETTINGS PASS, exit 134, 1152 leak lines).
+
+Note: other agents' sessions share this session's scratchpad, and another builder's ./check wrote into the same
+scratchpad check.log; the results above are read from this checkout's build/check-logs/.
+
+## After the review (fixer, 00:05 UTC onward)
+
+Generators and game code changed after `assets-r2-bk-review.md`. Pictures retaken into `build/n3/assets-audit/r2-bk/`.
+
+| Review item | State |
+| --- | --- |
+| MUST 1 Handcart | fixed: rebuilt (town-props.py `handcart`, `cart_wheel`): level plank bed 0.8 x 1.2 m, two round 12-sided wheels 0.9 m standing on edge either side (Packed earth faces, Mud tread, Ink hub, a spoke bar), handles 0.2 m thick and 1 m long on a prop leg, Limewash sack 0.6 m tied twice in Reed and thatch. 232 tris |
+| MUST 2 Sheep | fixed: fleece of seven rounder Limewash lumps and a Paper top, soft ink, Soot brick legs 0.15 m thick, smaller Soot brick face (0.35 m), small ears. Node names Body/Head and the neck pivot unchanged. 248 tris |
+| MUST 3 Closed book front | partly: blind tooling pressed deeper and wider (6 and 10 m frames, 2 and 1.6 m, 60 percent toward Ink), edge wear band broader, a gilt (Reed and thatch) roll of dots between the frames. Disagreed: no gilt device or title plate in the middle: in the game the pause menu letters the title, the town's name and the four menu lines there (ui-audit u19), so a device would sit under the lettering. The front is blank only in the audit's lettering-free picture |
+| MUST 4 Plot stakes | fixed: stakes 1.2 m with a 0.3 m Brick cap (red dots at the corners), pennant 0.85 m, rope on the ground two tones (Limewash 0.2 m on an Ink band 0.3 m) |
+| MUST 5 Wattle and post | fixed: wattle = five straight Trail earth withies 0.18 m, 0.12 m apart, alternately in front of and behind three Packed earth rails, Mud posts (bent withies were tried first and read as dangling zigzags); post = Mud post leaning 4 degrees on a 0.32 m foot with a 0.32 m Paper cap |
+| MUST 6 Flower bed | fixed: 2.2 x 1.2 m, stone edge 0.25 m, twelve blossoms 0.35 m (Brick, Reed and thatch, Paper) on three cushions, each with a raised cone centre. 246 tris |
+| MUST 7 Hen coop | fixed: two hens (Limewash, golden Reed and thatch) each with round body, cocked tail wedge, round head, beak, Brick comb; framed door 0.44 x 0.54 and a wider ramp |
+| MUST 8 Desk things | fixed in z: ink pot and seal 40 m nearer the middle (BookBuilder.Desk.cs); the quill now lies fully in view. In x they cannot move inward without lying on the book (book to x 319): the 640 x 480 (4:3) audit frame cuts at about x 355; the game's 16:9 view reaches about x 470, so both are whole in the game. Candle: teardrop flame 2.8 cm across, 5 cm tall, Paper core |
+| SHOULD table close | done: table-wood.png 2048 x 1280 (was 1024 x 640), joint half as wide. The extreme close picture is still soft: it magnifies past anything the game shows (its nearest book view is book-print's) |
+| SHOULD corner pieces | fixed: BookCover.Dress.cs, 0.15 m inset, the turned plate kept inside the corner over a darker rim plate |
+| SHOULD keeper's hut | fixed: bell-cote moved to the east gable end, chimney clear at the west on the back slope |
+| SHOULD pasture | fixed: grazed ground in Bent grass with Meadow patches, four tufts (was nine), thatch courses and a ridge roll on the shelter |
+| SHOULD quill label | fixed: the Slate roof bar is gone |
+| SHOULD charter stone | done in TownBuildings.cs: 15 percent larger (want max 4.6 m, 0.63 of the green), moved to 0.36 of the green's width so its patch clears the bench |
+| SHOULD props in a town picture | not done: needs a new audit subject (TownTouches props appear only later in the age) |
+| SHOULD RiverLayer stakes | not mine (RiverLayer.cs): see "For the lead" above |

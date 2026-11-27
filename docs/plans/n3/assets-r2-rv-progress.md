@@ -62,3 +62,21 @@ tools/asset-audit.sh --only=<names> --out=/home/user/tide-toll/build/n3/assets-a
    my changes there are `SetCargo` (cargo set down by its box), `Crew`/`Unscaled` and two lines in `Build`.
 4. The villagers' load stacks queueing at the landing are the white heaps in the landing pictures; they belong to
    `TownVillagers.cs` (track P), not to the landing model.
+
+## Tests (23:22 to 00:00 UTC)
+
+- While working: game-river alone twice (22:59, 23:12; both while the audit ran) failed in TownVillagers' "villager N waiting on
+  the river drawn where it stands" (1.7 to 2.7 cells off, near cell 54,73); in ./check (23:2x) game-river PASSED.
+- ./check: sim-build, sim-test, godot-nuget, sync-assets, game-build, game-smoke, game-town, game-perf (PERF PASS, 0.437 ms mean),
+  game-playthrough, game-river (RIVER PASS), game-book, game-menu, game-motion, game-save passed; game-settings printed SETTINGS PASS
+  then failed on the exit-time "Leaked unsafe reference ... InputEventKey" lines; the screenshot step was still running after 30
+  minutes when the session's background limit stopped the whole check (not a test verdict); the ledger step never ran in it, so the
+  ledger check was run by hand: "ledger: 325 rows, 299 asset files checked, 0 problems".
+- game-settings alone at 00:00: SETTINGS PASS, then 1546 "Leaked" lines and GODOT TEST FAIL (the lead's note of 22:50).
+
+## Not done
+
+- The screenshot step of ./check (stopped by the time limit, not failed).
+- Reeds in the first age (the river is drawn there too, without reeds): RiverBanks only runs in the second age.
+- Low-water flats read grey-blue rather than mud; reeds' seed heads are dark and chunky (thin blades read as pure ink at the normal
+  view, so the blades were made wider: the clumps are toy-like rather than slender).
