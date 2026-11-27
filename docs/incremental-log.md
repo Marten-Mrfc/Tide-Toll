@@ -2,6 +2,24 @@
 
 The log of the night before (the incremental rebuild, rounds 1 to 7b) is kept in `docs/incremental-log-night2.md`. This file is the one to resume from.
 
+## After the night: the right side (27 November, from 07:17 UTC)
+
+The owner played the final build `e02da4e` and wrote: "Now fix the right ui. This still looks bugged and awful." No workflow this time: two builders and a reviewer, started by the lead one by one.
+
+- What is wrong, and the new design: `docs/plans/n4/shop-sheet-v3.md` (eleven faults seen in the final build's pictures; the shop, its tooltip and the navigation buttons redrawn), with the mock-up in `docs/plans/n4/mockup/`. The owner was sent the mock-up at 07:35.
+- The slashed zero of the interface font: `docs/plans/n4/font-brief.md`, prototype `docs/plans/n4/zero-prototype.py`.
+- Builders (worktrees on local branches, never pushed): the shop in `build/wt/n4-shop` (branch `wt/n4-shop`, progress `docs/plans/n4/shop-progress.md` there, deadline 09:30 UTC); the font in `build/wt/n4-font` (branch `wt/n4-font`, progress `docs/plans/n4/font-progress.md`, deadline 08:40 UTC).
+- Then: the lead merges both, takes the pictures again, has them read by a reviewer who did not build them, has the findings fixed, runs the whole check on a clean copy, pushes a finished commit and waits for the Windows build.
+- To resume after a restart: `git worktree list`; each builder's progress file says what is done; a builder that was lost is started again from the sheet and its progress file.
+
+| Decision made for the owner | Why |
+| --- | --- |
+| The shop's rows are regrouped for display (People: Villager, Pace, Load; Building: Pave, Extend, the offers; Work: Tools and prices; Town; The river) | So the keys read 1 2 3, 4 5 (F G H), 6 7 8 9, 0 down the list; no key changes |
+| "30 short" leaves the rows; the pill fills with wheat as the coin comes in | One fact per second line; the number is in the tooltip |
+| The notes on the group headings ("Basket at level 3 · +1 more", "1 done") become one foot line, "Next: Basket at level 3" | Four grey notes became one |
+| The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
+| The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
+
 ## The brief (from the owner, word for word)
 
 Use workflows to make Tide & Toll look and feel like one designed game overnight, without me. Build until 07:00 Amsterdam time (06:00 UTC on 27 November), then show me a review page. I will answer yes or no per item and say continue.
