@@ -171,6 +171,9 @@ public partial class TownHud
     private readonly Trade[] _autoTrade = new Trade[AutoTags];
     private readonly float[] _autoAge = new float[AutoTags], _autoA = new float[AutoTags];
     private int _autoGiven;
+    /// <summary>Seconds since the last tag was due to start (a tag that comes sooner waits for AutoTagGap).</summary>
+    private float _sinceTag = 99f;
+    public const float AutoTagGap = 0.5f;
 
     private void BuildAutoTags()
     {
@@ -187,22 +190,26 @@ public partial class TownHud
         int k = _autoGiven++;
         var l = _autoTag[k];
         if (l == null) return;
-        _autoWho[k] = e.Villager; _autoAge[k] = 0f;
+        // One after another, about half a second apart (the town's first filling lands in one batch).
+        float wait = Math.Max(0f, AutoTagGap - _sinceTag);
+        _autoWho[k] = e.Villager; _autoAge[k] = -wait;
+        _sinceTag = -wait;
         _autoTrade[k] = (Trade)255; // the text is made when it shows, from the trade it has then (a batch of events may move it on)
     }
 
     /// <summary>A new town: the first three tags again.</summary>
-    private void ResetTradeTags() { _autoGiven = 0; for (int k = 0; k < AutoTags; k++) { _autoAge[k] = AutoTagSeconds; _autoWho[k] = -1; } }
+    private void ResetTradeTags() { _autoGiven = 0; _sinceTag = 99f; for (int k = 0; k < AutoTags; k++) { _autoAge[k] = AutoTagSeconds; _autoWho[k] = -1; } }
 
     private void AutoTagsFrame(float dt)
     {
         var v = _main.Villagers;
+        _sinceTag += dt;
         for (int k = 0; k < AutoTags; k++)
         {
             var l = _autoTag[k];
             if (l == null) continue;
             _autoAge[k] += dt;
-            bool want = _autoWho[k] >= 0 && _autoWho[k] < _drv.Town.VillagerCount && _autoAge[k] < AutoTagSeconds && PickingOnForCards && _autoWho[k] != _tagFor;
+            bool want = _autoWho[k] >= 0 && _autoWho[k] < _drv.Town.VillagerCount && _autoAge[k] >= 0f && _autoAge[k] < AutoTagSeconds && PickingOnForCards && _autoWho[k] != _tagFor;
             _autoA[k] = Math.Clamp(_autoA[k] + (want ? dt : -dt) / 0.12f, 0f, 1f);
             bool show = _autoA[k] > 0.001f && _autoWho[k] >= 0;
             if (l.Visible != show) l.Visible = show;
@@ -216,11 +223,30 @@ public partial class TownHud
             }
             var head = _main.Rig.LocalToScreen(v.FeetLocal(_autoWho[k]) + new Vector3(0, v.FigureHeight, 0));
             l.Position = (head - new Vector2(l.Size.X / 2f, l.Size.Y + UiKit.Px(_s, 6))).Round();
+            // Fix round: placed by the map tags' rules: never cut by the window, never on a card, a kept tag or a showing
+            // tooltip (grown a little), and none for a villager under the interface; such a tag fades out.
+            if (_autoAge[k] >= 0f && AutoTagBlocked(new Rect2(l.Position, l.Size), _main.Rig.LocalToScreen(v.FeetLocal(_autoWho[k]))))
+                _autoAge[k] = AutoTagSeconds;
             l.Modulate = new Color(1, 1, 1, _autoA[k]);
         }
+    }
+
+    private bool AutoTagBlocked(Rect2 r, Vector2 feet)
+    {
+        if (OverInterface(feet) || Over(_trades, feet)) return true;
+        if (!new Rect2(Vector2.Zero, GetViewport().GetVisibleRect().Size).Encloses(r)) return true;
+        foreach (var c in _cardRects) if (c.Intersects(r)) return true;
+        if (_trades.Visible && _trades.GetGlobalRect().Intersects(r)) return true;
+        if (_person.Visible && _person.GetGlobalRect().Intersects(r)) return true;
+        if (_tip.Visible && _tip.GetGlobalRect().Grow(UiKit.Px(_s, 40)).Intersects(r)) return true;
+        float gap = UiKit.Px(_s, 4);
+        foreach (var kr in _keptRects) if (kr.Intersects(r.Grow(gap))) return true;
+        return false;
     }
 
     /// <summary>Opacity of the auto tags now (tests: they fade, never switch in one frame).</summary>
     public float AutoTagAlpha(int k) => _autoA[k];
     public int AutoTagsGiven => _autoGiven;
+    /// <summary>Seconds since tag k began to show (negative while it waits its turn; tests).</summary>
+    public float AutoTagAge(int k) => _autoAge[k];
 }

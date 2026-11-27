@@ -118,9 +118,31 @@ public partial class TradesTest
         // The Training row buys (a real click on its row).
         await TrainingBuys();
 
-        // The one-time hint, in the hints' own place (the line), once the card has shown.
-        for (int k = 0; k < _fps * 12 && (hud.FirstHintsShown & (1 << 4)) == 0; k++) await Run(1);
+        // The one-time hint, in the hints' own place (the line), once the card has shown. Fix round: the frame it appears
+        // in writes no file and allocates under the motion gate; its bit reaches the settings file with the town's next save.
+        string cfg = ProjectSettings.GlobalizePath(Main.Profile + "settings.cfg");
+        string cfgBefore = System.IO.File.Exists(cfg) ? System.IO.File.ReadAllText(cfg) : "";
+        var stamp = System.IO.File.Exists(cfg) ? System.IO.File.GetLastWriteTimeUtc(cfg) : default;
+        long hintBytes = -1;
+        for (int k = 0; k < _fps * 12 && (hud.FirstHintsShown & (1 << 4)) == 0; k++)
+        {
+            long a0 = GC.GetAllocatedBytesForCurrentThread();
+            await Frames(1);
+            long a1 = GC.GetAllocatedBytesForCurrentThread();
+            Sample();
+            if ((hud.FirstHintsShown & (1 << 4)) != 0) hintBytes = a1 - a0;
+        }
         Check((hud.FirstHintsShown & (1 << 4)) != 0, $"the trades' hint shows once the card has shown (hints shown {hud.FirstHintsShown}, now {hud.FirstHintNow})");
+        string during = System.IO.File.Exists(cfg) ? System.IO.File.ReadAllText(cfg) : "";
+        var stamp2 = System.IO.File.Exists(cfg) ? System.IO.File.GetLastWriteTimeUtc(cfg) : default;
+        Check(during == cfgBefore && stamp2 == stamp && (Settings.GameSettings.Current?.HintsUnsaved ?? false), "showing a first hint writes no file in that frame (the bit waits for the next save)");
+        Check(hintBytes >= 0 && hintBytes <= 8192, $"the frame the hint appears in allocates under the motion gate ({hintBytes} B, gate 8192)");
+        Check(Main.Saver.SaveNow(), "the town saves");
+        string after = System.IO.File.Exists(cfg) ? System.IO.File.ReadAllText(cfg) : "";
+        int seen = -1;
+        foreach (var ln in after.Split('\n')) if (ln.StartsWith("hints_seen=")) int.TryParse(ln.Substring(11).Trim(), out seen);
+        Check(seen >= 0 && (seen & (1 << 4)) != 0 && !(Settings.GameSettings.Current?.HintsUnsaved ?? true), $"after the town's next save the hint's bit is on disk (hints_seen={seen})");
+        Notes.Add($"hintframe={hintBytes}B");
 
         // Bytes per frame with the card shown and a line hovered.
         line = hud.TradeLineRect(Trade.Water);
@@ -161,9 +183,11 @@ public partial class TradesTest
         Step(ref _personA0, hud.PersonCardAlpha, ref _worstAlphaStep, "villager card");
         Step(ref _ringA0, vil.TradeRingAlpha, ref _worstAlphaStep, "trade rings");
         for (int k = 0; k < TownHud.AutoTags; k++) Step(ref _autoA0[k], hud.AutoTagAlpha(k), ref _worstAlphaStep, "trade tag");
+        for (int k = 0; k < TownHud.AutoTags; k++) if (_tagStart[k] < 0 && hud.AutoTagAlpha(k) > 0f) _tagStart[k] = _frames;
     }
 
     private readonly float[] _autoA0 = { -1, -1, -1 };
+    private readonly long[] _tagStart = { -1, -1, -1 };
 
     private static bool Size(Rect2 r, float w, float h, float s) => Math.Abs(r.Size.X - UiKit.U(s, w)) <= 1 && Math.Abs(r.Size.Y - UiKit.U(s, h)) <= 1;
     private static bool Near(Vector2 a, Vector2 b) => a.DistanceTo(b) <= 1.5f;

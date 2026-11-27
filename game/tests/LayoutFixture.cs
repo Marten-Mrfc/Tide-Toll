@@ -22,7 +22,9 @@ public static class LayoutFixture
         ("Ledger/NoteSection/Note", "Achievement: A town of many trades. Every workplace has an extra hand and a full queue."),
         ("Banner/Box/Title", "The borough seal"),
         ("Banner/Box/Text", "The town is granted its charter. Ring in the next age when you are ready, and read its page."),
-        ("Line/Box/Text", "Extend: click a lit cottage. Hold Shift to extend several. E or Esc to stop."),
+        // Fix round: the longer of the longest mode help and the longest first-minute hint (the trades' hint, 87 characters);
+        // the card grows upward for two lines (TownHud.FitLine, run by Apply below).
+        ("Line/Box/Text", Longer("Extend: click a lit cottage. Hold Shift to extend several. E or Esc to stop.", LongestFirstHint)),
         ("Bell/State", "rests 99 s"),
         ("Achievements/Count", "40 of 40"),
         // n7: the villager's card (the longest name with a by-name, home, leaning, now and counts).
@@ -44,6 +46,13 @@ public static class LayoutFixture
         ("Person/Counts", "999 trips · earned     9,999,999"),
     };
 
+    private static string Longer(string a, string b) => b.Length > a.Length ? b : a;
+
+    public static string LongestFirstHint
+    {
+        get { string l = ""; foreach (var h in TownHud.FirstHints) if (h.Length > l.Length) l = h; return l; }
+    }
+
     public static void Apply(TownHud hud)
     {
         var root = hud.GetNode<Control>("Root");
@@ -60,6 +69,7 @@ public static class LayoutFixture
             // L2: a note is two lines at most (message-system 1): the longest note goes in as the note section sets it,
             // cut at a word with an ellipsis when it would take a third line (was: written raw into a 3-line label).
             l.Text = path == "Ledger/NoteSection/Note" ? hud.NoteFit(text) : text;
+            if (path == "Line/Box/Text") hud.FitLineFor(text);
             l.GetParent<Control>().Visible = true;
             l.Visible = true;
         }

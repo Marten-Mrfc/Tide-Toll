@@ -51,14 +51,26 @@ public sealed class GameSettings
     /// <summary>Night 3: the first-minute hints already shown, one bit each (message-system section 4).</summary>
     public int HintsSeen { get; private set; }
     public bool HintSeen(int hint) => (HintsSeen & (1 << hint)) != 0;
+    /// <summary>Marks a first-minute hint as seen, in memory only: the file is written with the town's next save
+    /// (<see cref="SaveHintsIfChanged"/>: the autosave, the pause's save, the quit), never in a frame of play of its own
+    /// (writing the file there cost 29,840 bytes and a hitch in the frame the hint appeared; n7 trades fix round).</summary>
     public void SetHintSeen(int hint)
     {
         int v = HintsSeen | (1 << hint);
         if (v == HintsSeen) return;
-        // The file is read first: another store of the same file (the settings pages) may have written it since, and
-        // this one must not put its older values back. No Changed event: nothing on screen shows it.
+        HintsSeen = v;
+        HintsUnsaved = true;
+    }
+    /// <summary>Hints marked seen since the file was last written (tests).</summary>
+    public bool HintsUnsaved { get; private set; }
+    /// <summary>Writes hints marked seen since the last write. The file is read first: another store of the same file (the
+    /// settings pages) may have written it since, and this one must not put its older values back.</summary>
+    public void SaveHintsIfChanged()
+    {
+        if (!HintsUnsaved) return;
+        int seen = HintsSeen;
         Read();
-        HintsSeen |= v;
+        HintsSeen |= seen;
         Save();
     }
     /// <summary>The first-minute hints show again (the next town that starts).</summary>
@@ -176,6 +188,7 @@ public sealed class GameSettings
     // ---- the file ----
     public void Save()
     {
+        HintsUnsaved = false;
         var sb = new StringBuilder();
         sb.Append("; Tide & Toll settings. Written by the game; a bad line is ignored.\n\n[sound]\n");
         for (int i = 0; i < Buses.Length; i++) sb.Append(Buses[i].ToLowerInvariant()).Append('=').Append(_volume[i]).Append('\n');

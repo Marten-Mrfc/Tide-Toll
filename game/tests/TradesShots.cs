@@ -38,10 +38,11 @@ public partial class TradesShots : TownTestBase
         Main.Driver.Advance(20);
         var t = T;
         int n = t.VillagerCount;
-        // The town fills the trades (its rules); then one count set by you (ink and bold) and one Helper made by you.
+        // Fix round: the town as the game is: the town fills the trades by itself and no count is set by hand (only the
+        // count strip sets one). The earlier first hints are marked seen (a level 13 town is past its first minute), so
+        // the line shows the trades' own hint when the card first shows.
         Main.Driver.Advance(10);
-        t.SetTradeCount(Trade.Grain, t.TradeInfo(Trade.Grain).Members);
-        t.SetTradeCount(Trade.None, 1);
+        for (int h = 0; h < 4; h++) Settings.GameSettings.Current?.SetHintSeen(h);
         Main.Driver.SetSpeed(1);
         Main.Driver.SetPaused(false);
         await Frames(30);
@@ -50,6 +51,10 @@ public partial class TradesShots : TownTestBase
         Park();
         await Frames(16);
         Check(hud.TradesCardAlpha > 0.99f, $"the Trades card shows ({hud.TradesCardAlpha:0.00})");
+        for (int k = 0; k < 600 && hud.FirstHintNow != 4; k++) await Frames(1);
+        await Frames(16);
+        if (hud.FirstHintNow == 4) Save("trades-hint-whole", Shot());
+        else GD.Print($"TRADES SHOTS: the trades' hint did not show (now {hud.FirstHintNow}, shown {hud.FirstHintsShown})");
         Save("trades-card-whole", Shot());
         Column("trades-card");
         // A line hovered: its band and its members ringed; then its tooltip.
@@ -117,6 +122,12 @@ public partial class TradesShots : TownTestBase
         await Frames(26);
         Crop("trades-street-after", Main.Rig.LocalToScreen(at), 960, 540);
         Crop("trades-street-after-close", Main.Rig.LocalToScreen(at), 480, 270, 2);
+        // The trial: the kerchief and the cap 15 percent larger, the same moment.
+        TownVillagers.WearScale = 1.15f;
+        await Frames(3);
+        Crop("trades-street-larger", Main.Rig.LocalToScreen(at), 960, 540);
+        Crop("trades-street-larger-close", Main.Rig.LocalToScreen(at), 480, 270, 2);
+        TownVillagers.WearScale = 1f;
         Notes.Add($"dir={_dir} tag={_tag} villagers={n} who={who}");
     }
 

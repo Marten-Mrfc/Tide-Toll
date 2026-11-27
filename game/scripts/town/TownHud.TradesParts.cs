@@ -187,7 +187,7 @@ public partial class TownHud
             _shown = _next; _byPlayer = _boldNext; Bold = _byPlayer;
             Count.Text = _shown.ToString();
             Count.AddThemeFontOverride("font", _byPlayer ? UiKit.TabBold : UiKit.TabRegular);
-            Count.AddThemeColorOverride("font_color", _byPlayer ? UiKit.Ink : UiKit.MutedNumber);
+            Count.AddThemeColorOverride("font_color", _byPlayer ? UiKit.Ink : UiKit.Muted);
         }
     }
 

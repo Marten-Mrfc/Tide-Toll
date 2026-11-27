@@ -31,7 +31,8 @@ public static partial class LayoutRules
         "Achievements" => z.NavButton(0), "AgePage" => z.NavButton(1), "HomeMark" => z.NavButton(2), "PauseMark" => z.NavButton(3),
         "Banner" => z.Banner,
         "Choice" => z.Message(HudZones.ChoiceMaxH),
-        "Line" => z.Line,
+        // Fix round: the line grows upward from its zone's bottom edge when its text takes two lines (never into the middle).
+        "Line" => new Rect2(z.Line.Position.X, z.Line.End.Y - Math.Max(z.Line.Size.Y, c.Size.Y), z.Line.Size.X, Math.Max(z.Line.Size.Y, c.Size.Y)),
         "Person" => new Rect2(z.Person.Position, z.Person.Size.X, Math.Min(c.Size.Y, z.Person.Size.Y)), // n7: the card hugs its lines inside its zone (as the shop)
         "Trades" => z.Person, // n7 trades: the Trades card, 156 high, in the villager card's zone (never both shown)
         _ => new Rect2(),

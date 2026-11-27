@@ -19,6 +19,9 @@ public partial class TownVillagers
         "villager-head-kerchief", "villager-head-strawhat", "villager-head-cap",
     };
     public const int HeadKinds = 6, HelperHeads = 3, MillerHead = 5;
+    /// <summary>Fix round trial (review: the kerchief and the cap carry less than the straw hat at the play view): the
+    /// kerchief's and the cap's drawn size, about the neck. 1 = as modelled.</summary>
+    public static float WearScale = 1f;
     /// <summary>Length of a head's change (shrink and grow), seconds of frame time.</summary>
     public const float HeadSwapSeconds = 0.3f;
     /// <summary>Height of the neck in model units (the point the head shrinks into).</summary>
@@ -108,7 +111,8 @@ public partial class TownVillagers
         MaxHeadStep = Math.Max(MaxHeadStep, Math.Abs(s - _headScale[i]));
         _headScale[i] = s;
         int k = _headShown[i];
-        var hx = s >= 0.999f ? xf : xf * About(NeckY, s);
+        float ws = k == HelperHeads || k == MillerHead ? WearScale : 1f;   // the kerchief and the cap (a trial: 1 = as modelled)
+        var hx = s * ws >= 0.999f && s * ws <= 1.001f ? xf : xf * About(NeckY, s * ws);
         var mm = _headKinds[k];
         if (mm != null && s > 0.02f) mm.Multimesh.SetInstanceTransform(_headCount[k]++, hx);
         if (k == MillerHead && _aprons != null && s > 0.02f)

@@ -81,6 +81,7 @@ public partial class TownSaver : Node, ISaveActions
 
     public bool SaveNow()
     {
+        if (_readFailed) Settings.GameSettings.Current?.SaveHintsIfChanged(); // the settings are still written
         if (_readFailed) return Failed("The save on disk could not be read, so it is not written over. Restart the game to try it again.");
         try
         {
@@ -104,6 +105,8 @@ public partial class TownSaver : Node, ISaveActions
             }
             Saves++;
             _clock = 0;
+            // First-minute hints seen since the last save go to the settings file with the town (never in a frame of their own).
+            Settings.GameSettings.Current?.SaveHintsIfChanged();
             _failNoted = false;
             return true;
         }
