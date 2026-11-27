@@ -211,6 +211,8 @@ No band, target or test of the pacing suites was moved, loosened, skipped or spe
 ## Check steps (result lines)
 
 - `dotnet test sim.tests -c Release --filter "Category!=Gate&Category!=Perf"`: `Passed!  - Failed:     0, Passed:   276, Skipped:     0, Total:   276` (before: 271 of 271).
+- `--filter "Category=Perf"` (under the lock): `Passed!  - Failed:     0, Passed:     3`.
+- `--filter "Category=Gate"`: `Failed!  - Failed:     1, Passed:    32`: `ToyV2ParityTests.MathsProbesMatchV8BitForBit` ("11 of 146 maths probes differ from V8's in the last bit", the toy's maths probe for this machine's `Math.Exp`/`Pow`). Not this change: the main branch's code (`b608c2c`, built in `build/main-full/`) fails it the same way on this machine, and nothing here touches the toy.
 - game-build: 0 errors, 0 warnings.
 - game-town: `TOWN PASS faint=0.40 maxstep=0.009 worn=0.95 paved=0 boonclick=Wider lanes extended=0 level=6 bought=50 ...`
 - game-save: `SAVE PASS autosave-clock=0.66/0.66s level 2 paved 1 villagers 4`
