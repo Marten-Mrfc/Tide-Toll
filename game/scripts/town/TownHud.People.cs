@@ -58,6 +58,9 @@ public partial class TownHud
         _pLean = Line("Leaning", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 52, 20);
         _pNow = Line("Now", UiKit.Caption, UiKit.UiFont, UiKit.Ink, 71, 20);
         _pCount = Line("Counts", UiKit.Caption, UiKit.TabRegular, UiKit.Muted, 92, 20);
+        // Sized to its text by the coin sign's layout (SetCoinText resets the size): no clipping, or it would shrink to nothing.
+        _pCount.ClipText = false;
+        _pCount.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         _pClose = new Button { Name = "Close", Text = "×", Flat = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "" };
         _pClose.AddThemeFontSizeOverride("font_size", UiKit.Type(s, UiKit.Title));
         _pClose.AddThemeColorOverride("font_color", UiKit.Muted);
@@ -94,6 +97,15 @@ public partial class TownHud
 
     private bool OverPerson(Vector2 p) => Over(_person, p);
 
+    private Vector2 _peoplePointer = new(-1, -1);
+
+    /// <summary>Where the pointer is: from its own motion events, which also pass over cards (the viewport's own
+    /// mouse position is the system pointer's, not an injected one's). Never handled here.</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (e is InputEventMouse m) _peoplePointer = m.Position;
+    }
+
     private void PeopleInput(InputEvent e)
     {
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } mb && !_main.Rig.LeftDragged)
@@ -108,7 +120,7 @@ public partial class TownHud
     private void PeopleFrame(float dt)
     {
         var t = _drv.Town;
-        var p = _root.GetGlobalMousePosition();
+        var p = _peoplePointer;
         bool gui = GetViewport().GuiGetHoveredControl() != null;
         int h = gui ? -1 : PersonTarget(p);
         if (h != HoverVillager) { HoverVillager = h; _hoverHeld = 0f; }

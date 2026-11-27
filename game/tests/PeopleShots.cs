@@ -47,7 +47,8 @@ public partial class PeopleShots : TownTestBase
         Check(who >= 0, "a villager to point at");
         TestInput.Motion(vil.ScreenOf(Main.Rig, who));
         await Frames(40);
-        Check(hud.HoverVillager == who, $"hovering {who} (got {hud.HoverVillager})");
+        var under = GetViewport().GuiGetHoveredControl();
+        Check(hud.HoverVillager == who, $"hovering {who} (got {hud.HoverVillager}; control under the pointer: {(under == null ? "none" : under.GetPath().ToString())}; target {hud.PersonTarget(vil.ScreenOf(Main.Rig, who))})");
         Crop("people-hover", vil.ScreenOf(Main.Rig, who), 960, 540);
         Crop("people-hover-close", vil.ScreenOf(Main.Rig, who), 480, 270, 2);
         await Click(vil.ScreenOf(Main.Rig, who));
