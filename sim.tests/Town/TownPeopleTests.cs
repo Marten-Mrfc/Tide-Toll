@@ -95,11 +95,14 @@ public class TownPeopleTests
         Assert.Equal(TownRules.LeanBonus > 0, t.LeaningCounts);
     }
 
-    /// <summary>Blind spot 1: flour pickers on their way to the field (or at it) count in the mill's wait.</summary>
-    [Fact]
-    public void TheMillsWaitCountsFlourPickersStillAtTheField()
+    /// <summary>Blind spot 1, behind its switch (off as shipped): with it on, flour pickers on their way to the field (or at
+    /// it) count in the mill's wait; with it off they do not (the main branch's rule).</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TheMillsWaitCountsFlourPickersStillAtTheFieldWhenSwitchedOn(bool on)
     {
-        var t = new T(1);
+        var t = new T(1) { WaitFixesHere = on };
         var bot = new TownBot(BotKind.Payback, 1);
         int seen = 0;
         for (long k = 0; k < 40L * 60 * TownRules.TickHz && seen < 50; k++)
@@ -115,18 +118,21 @@ public class TownPeopleTests
             seen++;
             var probe = new VillagerState { Id = -1, Workplace = -1 };
             int walking = t.S.Villagers.Count(o => o.Workplace == mill && o.Phase == VillagerPhase.Walking);
-            int over = w.Busy + w.QueueLen + walking + early - w.Places + 1;
+            int over = w.Busy + w.QueueLen + walking + (on ? early : 0) - w.Places + 1;
             double want = over <= 0 ? 0 : over * t.WorkTime(PlotKind.Mill) / t.ToolsFactor / w.Places;
             Assert.Equal(want, t.ExpectedWait(mill, probe), 9);
         }
         Assert.True(seen >= 10, $"only {seen} moments with flour pickers at the field");
     }
 
-    /// <summary>Blind spot 2: those on their way to the pasture or the weaver count in its wait.</summary>
-    [Fact]
-    public void ThePastureAndWeaverWaitsCountThoseOnTheWay()
+    /// <summary>Blind spot 2, behind its switch (off as shipped): with it on, those on their way to the pasture or the
+    /// weaver count in its wait; with it off they do not.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ThePastureAndWeaverWaitsCountThoseOnTheWayWhenSwitchedOn(bool on)
     {
-        var t = new T(1);
+        var t = new T(1) { WaitFixesHere = on };
         var bot = new TownBot(BotKind.Payback, 1) { PlayOn = true };
         int seen = 0;
         for (long k = 0; k < 90L * 60 * TownRules.TickHz && seen < 40 && !t.HasSeal; k++)
@@ -143,7 +149,7 @@ public class TownPeopleTests
                     bool wool = o.Job is JobKind.WoolBoat or JobKind.WoolMarket, cloth = o.Job is JobKind.ClothBoat or JobKind.ClothMarket;
                     // Not yet sheared (pasture) or not yet woven (weaver), and not standing at that site.
                     bool ahead = (site == 0 ? wool || cloth : cloth) && o.RSite != site && !PastSite(o, site);
-                    if (ahead && !TownRules.SiteWaitCountsOnTheWay) { onWay++; continue; } // switched off: not counted
+                    if (ahead && !on) { onWay++; continue; } // switched off: not counted
                     if (ahead) Assert.True(site == 0 ? o.Carry == Good.None : o.Carry != Good.Cloth);
                     if (ahead) { c++; onWay++; }
                 }
@@ -170,12 +176,12 @@ public class TownPeopleTests
     [Fact]
     public void FewerSpellsOfTheWholeTownOnOneJob()
     {
-        if (!TownRules.SiteWaitCountsOnTheWay) return; // the second age's fix switched off (TownRules): nothing to hold
+        // With both fixes switched on for these towns (they ship off).
         int samples = 0, herd = 0;
         var byJob = new int[16];
         for (int seed = 1; seed <= 3; seed++)
         {
-            var t = new T(seed);
+            var t = new T(seed) { WaitFixesHere = true };
             var bot = new TownBot(BotKind.Payback, seed) { PlayOn = true };
             for (long k = 0; k < 120L * 60 * TownRules.TickHz && !t.HasSeal; k++)
             {
@@ -229,6 +235,7 @@ public class TownPeopleTests
     [Fact]
     public void TheSecondAgePlaysAsBeforeFromASavedTown()
     {
+        Assert.False(TownRules.MillWaitCountsOnTheWay);
         Assert.False(TownRules.MillWaitCountsOnTheWayInSecondAge);
         Assert.False(TownRules.SiteWaitCountsOnTheWay);
         Assert.Equal(0, TownRules.LeanBonus);

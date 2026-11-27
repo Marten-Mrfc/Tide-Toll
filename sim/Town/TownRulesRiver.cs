@@ -11,7 +11,7 @@ public static class TownRulesRiver
     // at least LevelRateMin), so a big town and a small one both take about the same time over the age.
     public static double[] LevelRenown = { 0, 0.39, 0.89, 1.53, 2.44, 3.90, 5.12, 6.98, 9.22, 12.17, 14.00, 20.24 };   // river polish: level 22 (the ferry) 3.65 to 3.90 (a real stretch of the ford alone), level 27 (the drawbridge) 15.82 to 14.00 (boats pay tolls before the seal); green pass: x0.64 of rules v3's (each level now fixed at the level before, at the best rate then)
     public static double LevelRateMin = 2000;
-    // n7 people (the lead's retune): every level's minutes above (LevelRenown) times this. Was 1 (no scale). With the
+    // n7 people: built, off (1) until the ages are retuned (see docs/plans/n7/people-progress.md). Every level's minutes above (LevelRenown) times this. Was 1 (no scale). With the
     // blind-spot fixes and no leaning (setting (i)) the mean seal minutes over seeds 1-10 went payback 25.93 -> 25.64,
     // cheapest 26.55 -> 26.72; restoring the two means together asks 52.48 / 52.36 = 1.0023, which gave payback 25.88 and
     // cheapest 26.81 but still left the random bot short (seed 8 19.4 min, seed 6 19.9 min of the 20 floor), so the retune

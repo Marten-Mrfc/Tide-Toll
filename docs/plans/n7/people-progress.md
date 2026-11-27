@@ -1,5 +1,36 @@
 # Villagers as people, step 1: progress (the people builder, 27 November)
 
+## What ships in step 1 (final, the lead's decision)
+
+**The simulation plays exactly as the main branch does.** Every behaviour switch is off. The `people` output is identical to the "before" file for every seed and both bots in both ages, the play-through reads `charter=33.9min buys=201`, and `sim.tests` passes 271 of 271.
+
+**In:**
+- **People in the simulation:**
+  - names (a pure function of seed and number, with a by-name when one repeats);
+  - two counters no rule reads (`Trips`, `Earned`);
+  - the views (`VillagerView`: `Dir`, `Stage`, `Slot`, `WorkLeft`, `Leaning`, `Trips`, `Earned`, `RiverHome`, `OnRiver`; `town.VillagerName`);
+  - old saves (v2 and v3) load with the counters at 0.
+- **Pointing at a villager:** the screen-space pick, the hover ring, the name tag after the tooltip's delay, the card docked under the ledger (the Person zone; it hugs its four lines). The card does not show a leaning while the leaning does nothing.
+- **The bodies pass, in the drawing only:** keep right by direction, following distance, standing spots, a bounded push on a neighbour grid, 200 villagers drawn.
+
+**Built and switched off**, each reachable by its constant and documented there, for the builder who retunes the ages:
+
+| switch (as shipped) | what it does | herding, payback / cheapest bot, seeds 1-10 (first age; second age) | tests it tips (seed, bot, margin) |
+| --- | --- | --- | --- |
+| none on (as shipped, = main) | | 26 % / 17 %; 55 % / 46 % | none |
+| `TownRules.MillWaitCountsOnTheWay` (false) | the mill's wait counts flour pickers still at or on the way to the field, first age | 22 % / 16 %; 51 % / 45 % (the second age only moves because the first age ends in another town) | `TheSecondAgeTakes20To35MinutesForTheBuyers` seed 6 random 19.6 min (0.4 short of 20); `BoatsPayTollsBeforeTheSeal` seed 6 random 3.4 min from drawbridge to seal (0.1 short of 3.5); `TheLandingEarnsAThirdOfAllCoinByTheMiddleOfTheAge` seed 8 saver 0.33 (under 0.01 short); `NeverMoreThan60SecondsWithNothingAffordable` seed 10 payback 61 s (1 s over) |
+| plus `MillWaitCountsOnTheWayInSecondAge` (false) | the same in the second age | 22 % / 16 %; 52 % / 36 % | `BoatsPayTollsBeforeTheSeal` seed 2 payback 3.4 min (0.1 short); `NeverMoreThan60SecondsWithNothingAffordable` seed 10 payback 67 s (7 s over) |
+| plus `SiteWaitCountsOnTheWay` (false) | the pasture's and the weaver's waits count those on their way there | 22 % / 16 %; 41 % / 32 % | `TheSecondAgeTakes20To35MinutesForTheBuyers` seed 8 random 19.4 min (0.6 short); `TollStepsPayBackBeforeTheSeal` seed 8 random spent 24599, earned 2250 |
+| plus `TownRulesRiver.LevelMinutesScale` 1.0023 (1) | every second-age level costs that much more (restores both bots' mean seal minute) | as the row above | seed 8 random 19.4 min and seed 6 random 19.9 min (floor 20); seed 6 random 3.4 min from drawbridge to seal; seed 8 random toll steps |
+| `TownRules.LeanBonus` 0.10 (0), with all three fixes | a villager's own kind of work counts 10 % more | 19 % / 16 %; 42 % / 29 % | `EveryBotFinishesTheAgeInTime` seed 7 saver charter 24.7 min (floor 25); `BoatsPayTollsBeforeTheSeal` seed 10 payback 3.4 min; the play-through `charter=35.6min buys=200` (1.7 min over, seed 1) |
+| `LeanBonus` 0.10, the mill's fix only (both ages) | | 19 % / 16 %; 50 % / 37 % | `EveryBotFinishesTheAgeInTime` seed 7 saver 24.7 min; `BoatsPayTollsBeforeTheSeal` seed 7 cheapest 3.4 min |
+
+What the retuner needs to know:
+- Every change of behaviour moves which single runs sit on the second age's band edges (the random bot at the 20-minute floor, the drawbridge-to-seal minutes, a minute with nothing affordable).
+- A second-age level costs minutes of the town's best coin a minute (`TownRiver.cs` `LevelRate`), so a town that earns less, or spreads more, seals as soon or sooner.
+- Measure any setting with `people --seeds 1-10 --river [--millfix 0|1|2] [--sitefix 0|1] [--lean x]`; `people --replay save.json --minutes n` compares rule sets from one saved town.
+- Tests switch the fixes per town (`Town.WaitFixesHere`), never globally.
+
 Branch `wt/n7-people`. The spec is `people-build-sheet.md`. Commits: `4b91e0a` part 1 (the simulation, alone), `e6f57f0` parts 2 and 3, then fixes and this page.
 
 ## What was built, file by file

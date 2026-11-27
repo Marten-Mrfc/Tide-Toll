@@ -34,6 +34,12 @@ public sealed partial class Town
 
     private string[] _names = Array.Empty<string>();
 
+    /// <summary>Tests: switch the blind-spot fixes on or off for this town alone (null: TownRules decides), so a test
+    /// never changes the rules other tests run under.</summary>
+    internal bool? WaitFixesHere;
+    private bool MillFixNow => WaitFixesHere ?? (S.River == null ? TownRules.MillWaitCountsOnTheWay : TownRules.MillWaitCountsOnTheWayInSecondAge);
+    private bool SiteFixNow => WaitFixesHere ?? TownRules.SiteWaitCountsOnTheWay;
+
     /// <summary>A pure 32-bit mix of the seed, the villager's number and a salt (no state, no random stream).</summary>
     private static uint PeopleHash(int seed, int id, uint salt)
     {
