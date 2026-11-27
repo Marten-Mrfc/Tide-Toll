@@ -104,8 +104,14 @@ void fragment() {
 	// 1. Edges that wander: the lookup is warped by low-frequency noise (under half a cell), so cell squares and
 	//    straight vector strokes never show.
 	float cm = map_size / cells;
-	vec2 warp = vec2(vnoise(lp / 9.0), vnoise(lp / 9.0 + 31.7)) - 0.5;
-	warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
+	// n10 (Q4): the warp only moves lookups of the wear and of the gravel and cobble strips, all of which lie on worn
+	// cells; more than 4 cells from any wear (the near mask 0) every one of them reads the same with or without it.
+	bool near_wear = texture(near_tex, uv).r > 0.0;
+	vec2 warp = vec2(0.0);
+	if (near_wear) {
+		warp = vec2(vnoise(lp / 9.0), vnoise(lp / 9.0 + 31.7)) - 0.5;
+		warp += (vec2(vnoise(lp / 3.1 + 7.3), vnoise(lp / 3.1 + 19.1)) - 0.5) * 0.45;
+	}
 	vec2 m = lp + warp * cm * 0.9;
 	// 2. Three readings of the same wear: the core (softened over under a cell), a wide spread (the trampled fringe
 	//    walkers leave beside a trail) and a broad average (only wide, busy trunks stay high in it). The ring samples
@@ -113,7 +119,7 @@ void fragment() {
 	// n10 (Q4): far from any wear (the near mask is 0) every read below is 0, so the block's results are known:
 	// no wear, and no stroke direction (stroke 0.5). Only pixels near a trail run it.
 	float core = 0.0, spread = 0.0, broad = 0.0, stroke = 0.5;
-	if (texture(near_tex, uv).r > 0.0) {
+	if (near_wear) {
 		core = wear_at(m) * 0.4;
 		vec2 grad = vec2(0.0);
 		for (int k = 0; k < 6; k++) {
@@ -133,21 +139,27 @@ void fragment() {
 		stroke = vnoise(vec2(dot(lp, along) / 1.7, dot(lp, across) / 0.21));
 		stroke = mix(0.5, stroke, smoothstep(0.004, 0.03, length(grad)));   // no direction on open ground
 	}
-	float n1 = vnoise(lp / 2.2), n2 = vnoise(lp / 0.8), n3 = vnoise(lp / 5.5 + 3.1);
+	// n10 (Q4): with no wear (core, spread and broad 0) the fringe, the bare earth, the ruts, the packed earth, the
+	// hollow way and the ramp all weigh exactly 0, so the colour is the meadow's: the blend below runs only near wear.
+	float n2 = vnoise(lp / 0.8);
+	vec3 grass = two(g0, lp);
+	vec3 c = grass;
+	float bare = 0.0;
+	if (near_wear) {
+	float n1 = vnoise(lp / 2.2), n3 = vnoise(lp / 5.5 + 3.1);
 	// Meadow, then bent grass: a wide, pale, yellower fringe of flattened blades with strokes along the walking
 	// direction, strongest by the trail and fading out raggedly.
 	float fringe = smoothstep(0.03, 0.22, max(spread * 1.25, core)) * (0.62 + 0.38 * n3);
-	vec3 grass = two(g0, lp);
 	vec3 flattened = mix(two(g1, lp), crop_dark.rgb, 0.30) * (1.0 + 0.05 * n2);
 	flattened *= 0.93 + 0.16 * stroke;
-	vec3 c = mix(grass, flattened, fringe);
+	c = mix(grass, flattened, fringe);
 	// Bare earth, blended by height: the grass has a height (noise), and wear wears it down to the soil from the lowest
 	// tufts up. A lightly used trail is a broken line of soil through grass; the busier it is, the wider and more
 	// solid the soil. The sim's thresholds stay the anchors: no soil below wear 25 (trail), solid soil only
 	// from about 70 (a track), so the grass breaks through all along its edges.
 	float height = 0.50 * n2 + 0.32 * n1 + 0.18 * stroke;
 	float worn = clamp((core - 0.25) / 0.50, 0.0, 1.0) * 1.3 - 0.15;
-	float bare = smoothstep(height - 0.10, height + 0.10, worn);
+	bare = smoothstep(height - 0.10, height + 0.10, worn);
 	// Round 6 (W5): a just-given trail is faint but plainly there: a narrow, mostly unbroken line of soil down its
 	// middle (broken only where tall tufts stand), so a new road reads at the normal view before it wears in.
 	// Night 3, round 3 (LF): not one blurred line but a faint footpath: two thin ruts where the core crosses a narrow
@@ -166,6 +178,7 @@ void fragment() {
 	c = mix(c, mix(two(g3, lp), earth, 0.25 * n1), packed * 0.8);
 	c = mix(c, two(g4, lp), w4);
 	c = mix(c, texture(ramp_tex, vec2(core, 0.5)).rgb, ramp_mix * bare * (1.0 - w4));
+	}
 	float w = core;
 	// Rain's mud: wet trail, the same worn ground pulled toward wet earth and darkened, a little more solid over the
 	// trail's grassy edges, with a few still puddle glints on the busiest cells. It dries cell by cell (the C# side).
@@ -186,10 +199,13 @@ void fragment() {
 	// field: rows of ripe crop running east-west, trampled to earth where trails cross, with an ink edge
 	vec2 mask = texture(mask_tex, uv).rg;
 	float cell_m = map_size / cells;
-	{
+	// n10 (Q4): the crop and its edge are both weighted by mask.g, so off the crop cells (mask.g 0) they are skipped.
+	// The crop texture's derivatives are taken here, outside the branch (the same values the implicit lookup uses).
+	vec2 cuv = lp / 9.0, cdx = dFdx(cuv), cdy = dFdy(cuv);
+	if (mask.g > 0.0) {
 		float row = sin(lp.y * 6.2831853 / 1.25 + sin(lp.x * 0.35) * 0.4);
 		vec3 crop = mix(crop_dark.rgb, crop_col.rgb, smoothstep(-0.35, 0.35, row));
-		crop *= 0.94 + 0.12 * texture(g1, lp / 9.0).g;
+		crop *= 0.94 + 0.12 * textureGrad(g1, cuv, cdx, cdy).g;
 		float keep = 1.0 - smoothstep(0.08, 0.35, w);
 		c = mix(c, crop, mask.g * keep);
 		// edge of the crop area: compare with the mask a few decimetres away in four directions (a thin edge line)
