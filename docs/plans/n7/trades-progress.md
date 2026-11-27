@@ -4,7 +4,7 @@ Branch `wt/n7-trades`. Brief: `docs/plans/n7/trades-build-sheet.md` part 1 (the 
 
 ## The names commit (the second builder starts here)
 
-**Commit: see the line below (written after the commit).** In that commit trades do nothing yet: the lean is 1, every bonus 0, the town does not fill trades yet (the rules come in the next commits), the Training row is listed but locked ("Comes with the first trade") while no villager has a trade. Every test passes and the pinned run is identical.
+**Commit `a2ce2a5`** ("Snapshot: trades, the names").  In that commit trades do nothing yet: the lean is 1, every bonus 0, the town does not fill trades yet (the rules come in the next commits), the Training row is listed but locked ("Comes with the first trade") while no villager has a trade. Every test passes and the pinned run is identical.
 
 ### The names as built
 
