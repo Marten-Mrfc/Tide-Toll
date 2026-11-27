@@ -13,6 +13,9 @@ namespace TideToll.Game;
 /// Round 2: the body is drawn in one of a few light clothes colours (villager.gdshader tints the model's palette
 /// shading), the head in the model's own colours, each villager on a soft round shadow; queueing and working villagers
 /// stand where the simulation puts them: on the road, at a queue spot, or on their own work spot (rules v2).
+/// n5 (work you can watch): those who wait are drawn in a line along their lane (TownVillagers.Line.cs), workers at the
+/// drawing's work spots in their job's pose and rhythm (TownVillagers.Work.cs), loads taken up and set down, carts
+/// parked, tools in the hand (TownVillagers.Props.cs); places answer through WorkSites.cs.
 /// </summary>
 public partial class TownVillagers : Node3D
 {
@@ -33,6 +36,7 @@ public partial class TownVillagers : Node3D
     public static int HeadOf(int i) => i % 3;
     public static Color TunicOf(int i) => Clothes[(i + i / 3) % Clothes.Length];
     private readonly float[] _lean = new float[Capacity];
+    private long _lastTick = -1;
     /// <summary>The model's height in metres (before <see cref="WalkerScale"/>), for tests.</summary>
     public float ModelHeight { get; private set; } = 2.6f;
     private readonly MultiMeshInstance3D[] _loads = new MultiMeshInstance3D[6];
@@ -107,6 +111,8 @@ public partial class TownVillagers : Node3D
         _carts = ModelLib.Multi(ModelLib.Pick("villager-handcart", "villager-cargo-timber"), "Handcarts", Capacity);
         AddChild(_frames);
         AddChild(_carts);
+        InitProps();
+        for (int w = 0; w < _lane.Length; w++) _lane[w] = -1;
         drv.Replaced += Reset;
     }
 
@@ -150,7 +156,11 @@ public partial class TownVillagers : Node3D
         return n;
     }
 
-    public void Reset() { Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); }
+    public void Reset()
+    {
+        Array.Clear(_seen); Array.Clear(_ox); Array.Clear(_oy); Array.Clear(_seenPose); Array.Clear(_inLine);
+        Array.Clear(_fly); Array.Clear(_take); Array.Clear(_tip); Array.Fill(_lane, -1); _lastTick = -1;
+    }
 
     /// <summary>Catch-up rate of a drawn villager, cells per second of frame time (delta, not frame count); beyond SnapCells it snaps.</summary>
     public static float ChaseCellsPerSecond(double speed) => (float)(TownRules.BaseSpeed * 4.0 * Math.Max(1, speed));
@@ -168,22 +178,35 @@ public partial class TownVillagers : Node3D
         float turn = 10f * dt * (float)Math.Max(1, Math.Min(_drv.Speed, 8));
         Array.Clear(_loadCount);
         Array.Clear(_headCount);
-        int frames = 0, carts = 0, lv = t.LoadLevel;
-        int bundles = BundlesAt(lv);
+        int frames = 0, carts = 0, sickles = 0, scythes = 0;
         var bodies = _bodies.Multimesh;
+        MaxPoseRate = 0;
+        // n5: a stretch played without frames (a bot, a test) is a fast-forward: everyone is drawn afresh where they
+        // are, with no taking up or setting down of loads the drawing never saw.
+        long tick = t.Tick;
+        if (_lastTick >= 0 && (tick < _lastTick || tick - _lastTick > 50 + (long)(TownRules.TickHz * Math.Max(1, _drv.Speed) * Math.Max(dt, 0.25f) * 3))) Array.Clear(_seen);
+        _lastTick = tick;
+        // n5: the lanes of the lines, the bell's heads up and the tempo.
+        Lanes(t);
+        WorkFrame(t, dt);
         for (int i = 0; i < n; i++)
         {
             var v = t.Villager(i);
             float tx = (float)(v.PrevX + (v.X - v.PrevX) * a), ty = (float)(v.PrevY + (v.Y - v.PrevY) * a);
-            // Rules v2: the simulation stands workers on their own work spots and queuers on queue spots; draw them there.
-            if (!_seen[i]) { _x[i] = tx; _y[i] = ty; _yaw[i] = HeadingYaw(v.Heading); _seen[i] = true; }
+            bool fresh = !_seen[i];
+            if (fresh) { _x[i] = tx; _y[i] = ty; _yaw[i] = HeadingYaw(v.Heading); _seen[i] = true; }
+            Transitions(t, i, v, fresh);
+            // n5: those who wait stand in a line along the lane, workers at their work spots (WorkSites); drawing only.
+            float face = HeadingYaw(v.Heading);
+            StandTarget(t, i, v, dt, ref tx, ref ty, ref face);
+            if (fresh) { _x[i] = tx; _y[i] = ty; _yaw[i] = face; }
             float dx = tx - _x[i], dy = ty - _y[i], d = MathF.Sqrt(dx * dx + dy * dy);
             if (d > SnapCells) { _x[i] = tx; _y[i] = ty; d = 0; }
             else if (d > limit) { _x[i] += dx / d * limit; _y[i] += dy / d * limit; d = limit; }
             else { _x[i] = tx; _y[i] = ty; }
             maxStep = Math.Max(maxStep, d);
             bool moving = d > 0.002f;
-            float want = moving ? HeadingYaw(Math.Atan2(dy, dx)) : HeadingYaw(v.Heading);
+            float want = moving ? HeadingYaw(Math.Atan2(dy, dx)) : face;
             _yaw[i] = TurnToward(_yaw[i], want, moving ? Math.Max(turn, 0.5f) : turn);
             if (moving && v.Phase == VillagerPhase.Walking) maxSide = Math.Max(maxSide, MathF.Abs(Wrap(want - _yaw[i])));
             if (moving) _phase[i] += dt * 9f;
@@ -197,32 +220,31 @@ public partial class TownVillagers : Node3D
         {
             var v = t.Villager(i);
             float bob = _px[i];
-            // Lean forward and a small sway from side to side with the step, about the feet.
+            Pose(t, i, v, dt, out float pitch, out float crouch, out float swing, out float fwd);
+            // Lean forward and a small sway from side to side with the step, about the feet; the job's pose on top.
             float sway = MathF.Sin(_phase[i]) * 0.07f * _lean[i];
-            var basis = new Basis(Vector3.Up, _yaw[i]) * new Basis(Vector3.Right, 0.13f * _lean[i]) * new Basis(Vector3.Back, sway);
+            var basis = new Basis(Vector3.Up, _yaw[i] + swing) * new Basis(Vector3.Right, 0.13f * _lean[i] + pitch) * new Basis(Vector3.Back, sway);
+            if (crouch < 0.999f) basis *= Basis.FromScale(new Vector3(1f, crouch, 1f));
             basis = basis.Scaled(Vector3.One * WalkerScale);
             var pos = new Vector3((_x[i] + _ox[i]) * Cell, bob, (_y[i] + _oy[i]) * Cell);
+            if (fwd != 0f) pos += new Vector3(MathF.Sin(_yaw[i]), 0, MathF.Cos(_yaw[i])) * fwd;
             var xf = new Transform3D(basis, pos);
             bodies.SetInstanceTransform(i, xf);
             int hk = HeadOf(i);
             if (_headKinds[hk] != null) _headKinds[hk]!.Multimesh.SetInstanceTransform(_headCount[hk]++, xf);
             _shadows.Multimesh.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * WalkerScale * (1f - bob * 0.6f)), new Vector3(pos.X, 0.04f, pos.Z)));
-            if (v.Carry != Good.None && (int)v.Carry < 6)
-            {
-                // Night 3: loads are modelled in the body's frame (held in the arms, on the shoulder, a yoke on the
-                // shoulders); each Load step shows: a second load on the back, a pack frame, a handcart.
-                int g = (int)v.Carry;
-                for (int k = 0; k < bundles; k++)
-                    if (!(lv >= 3 && v.Carry == Good.Water && k > 0))   // one set of pails fills the cart
-                        _loads[g].Multimesh.SetInstanceTransform(_loadCount[g]++, xf * LoadPlace(v.Carry, lv, k));
-                if (lv == 2) _frames.Multimesh.SetInstanceTransform(frames++, xf);
-                if (lv >= 3) _carts.Multimesh.SetInstanceTransform(carts++, xf);
-            }
+            // Night 3: loads are modelled in the body's frame (held in the arms, on the shoulder, a yoke on the
+            // shoulders); each Load step shows: a second load on the back, a pack frame, a handcart. n5: taken up,
+            // set down, parked at work, the tool in the hand (TownVillagers.Props.cs).
+            DrawProps(t, i, v, xf, new Vector3(pos.X, 0, pos.Z), dt, ref frames, ref carts, ref sickles, ref scythes);
         }
+        _frameOut = Math.Max(0f, _frameOut - dt * 3.5f);
         bodies.VisibleInstanceCount = n;
         for (int h = 0; h < 3; h++) if (_headKinds[h] != null) _headKinds[h]!.Multimesh.VisibleInstanceCount = _headCount[h];
         _frames.Multimesh.VisibleInstanceCount = frames;
         _carts.Multimesh.VisibleInstanceCount = carts;
+        _sickles.Multimesh.VisibleInstanceCount = sickles;
+        _scythes.Multimesh.VisibleInstanceCount = scythes;
         _shadows.Multimesh.VisibleInstanceCount = n;
         int loads = 0;
         for (int g = 1; g <= 5; g++) { _loads[g].Multimesh.VisibleInstanceCount = _loadCount[g]; loads += _loadCount[g]; }
@@ -259,81 +281,6 @@ public partial class TownVillagers : Node3D
         if (g == Good.Water) return new Transform3D(new Basis(Vector3.Up, MathF.PI / 2f).Scaled(Vector3.One * 0.7f), new Vector3(0, 0.55f, -0.2f));
         // The second load on the back, low and a little to the side so the hat brim does not hide it.
         return new Transform3D(Turned, new Vector3(0.12f, -0.03f, -0.05f));
-    }
-
-    /// <summary>
-    /// Round 6 (W3): people never drawn through each other. Pairs of villagers closer than the personal spacing are
-    /// pushed apart (drawing only; the simulation is untouched), and walkers keep a small lane of their own across the
-    /// road's width by id, so a crowd reads as a crowd. Offsets are clamped to 0.6 of a cell and eased.
-    /// </summary>
-    private void Spread(Town t, int n, float dt)
-    {
-        float r = Personal * WalkerScale / Cell, cap = 0.6f;
-        float minGap = float.MaxValue;
-        for (int i = 0; i < n; i++)
-        {
-            var v = t.Villager(i);
-            float wx = 0, wy = 0;
-            if (v.Phase == VillagerPhase.Walking)
-            {
-                // A lane across the road by id: -2..2 steps of 0.12 cell, across the way the villager faces.
-                float lane = ((i * 7) % 5 - 2) * 0.12f;
-                float fx = MathF.Sin(_yaw[i]), fz = MathF.Cos(_yaw[i]);
-                wx = fz * lane; wy = -fx * lane;
-            }
-            for (int j = 0; j < n; j++)
-            {
-                if (j == i) continue;
-                float dx = (_x[i] + _ox[i]) - (_x[j] + _ox[j]), dy = (_y[i] + _oy[i]) - (_y[j] + _oy[j]);
-                float d2 = dx * dx + dy * dy;
-                if (d2 >= r * r) continue;
-                float d = MathF.Sqrt(d2);
-                if (d < 1e-3f)
-                {
-                    // Exactly together: split them by id so the lower id stays and the higher steps aside.
-                    float ang = (i > j ? i : j) * 2.39996f;
-                    dx = MathF.Cos(ang) * (i > j ? 1 : -1); dy = MathF.Sin(ang) * (i > j ? 1 : -1); d = 1e-3f;
-                    wx += dx * r * 0.5f; wy += dy * r * 0.5f;
-                }
-                else { wx += dx / d * (r - d) * 0.55f; wy += dy / d * (r - d) * 0.55f; }
-            }
-            float wl = MathF.Sqrt(wx * wx + wy * wy);
-            if (wl > cap) { wx *= cap / wl; wy *= cap / wl; }
-            if (v.Phase == VillagerPhase.Queued) OutOfBuildings(t, _x[i] + wx, _y[i] + wy, ref wx, ref wy);
-            float k = Math.Min(1f, dt * 8f);
-            _ox[i] += (wx - _ox[i]) * k;
-            _oy[i] += (wy - _oy[i]) * k;
-            if (v.Phase is VillagerPhase.Queued or VillagerPhase.Working)
-                for (int j = 0; j < i; j++)
-                {
-                    var u = t.Villager(j);
-                    if (u.Phase is not (VillagerPhase.Queued or VillagerPhase.Working)) continue;
-                    float dx = (_x[i] + _ox[i]) - (_x[j] + _ox[j]), dy = (_y[i] + _oy[i]) - (_y[j] + _oy[j]);
-                    minGap = Math.Min(minGap, MathF.Sqrt(dx * dx + dy * dy) * Cell);
-                }
-        }
-        MinStandingGap = minGap;
-    }
-
-    /// <summary>
-    /// Round 6 (W3): a queued villager whose drawn spot falls inside a built plot's footprint (the mill, a cottage, the
-    /// landing's stall) is drawn just outside its nearest edge, beside the building along the lane. Fields are walked in.
-    /// </summary>
-    private static void OutOfBuildings(Town t, float x, float y, ref float wx, ref float wy)
-    {
-        var plots = t.Plan.Plots;
-        const float margin = 0.35f;
-        for (int k = 0; k < plots.Length; k++)
-        {
-            var p = plots[k];
-            if (p.Kind == PlotKind.Field || !t.PlotGiven(p.Id)) continue;
-            float x0 = p.X + 0.1f, y0 = p.Y + 0.1f, x1 = p.X + p.W - 0.1f, y1 = p.Y + p.H - 0.1f;
-            if (x <= x0 || x >= x1 || y <= y0 || y >= y1) continue;
-            float l = x - x0, r = x1 - x, u = y - y0, d = y1 - y, m = Math.Min(Math.Min(l, r), Math.Min(u, d));
-            if (m > 1.5f) continue; // deep inside: the simulation means it (a worker's spot); leave it
-            if (m == l) wx -= l + margin; else if (m == r) wx += r + margin; else if (m == u) wy -= u + margin; else wy += d + margin;
-            return;
-        }
     }
 
     /// <summary>A copy of the mesh whose material marks it for soft ink (as trees are), so small figures stay light.</summary>
