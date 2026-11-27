@@ -11,19 +11,26 @@ namespace TideToll.Game;
 /// row, right of the ledger and the timers, above a navigation button), inside the window, off its owner and off a
 /// showing message. This round: shop rows, group headings, the bell, the tide, navigation and the purse. Its text is
 /// made when the pointer comes to an owner (and twice a second while it stays), never per frame otherwise.
+/// Last look: the box grows with its text (up to <see cref="TipMaxLines"/> lines at its width, wider beyond that) and
+/// never cuts it; amounts carry the coin sign (the shop's coin icon, written as <see cref="CoinMark"/> in the text),
+/// never the word; a boon's tip lies under the choice card, never over the other boon.
 /// </summary>
 public partial class TownHud
 {
     public const float TipDelay = 0.25f, TipFadeIn = 0.12f, TipRefresh = 0.5f;
     private PanelContainer _tip = null!;
-    private Label _tipLabel = null!;
+    private RichTextLabel _tipLabel = null!;
+    private string _tipText = "";
+    /// <summary>Stands for the coin sign in a tooltip's text.</summary>
+    public const char CoinMark = '\u00A4';
+    public const int TipMaxLines = 5;
     private Control? _tipOwner;
     private float _tipAge, _tipRefresh;
     private readonly StringBuilder _tipSb = new();
 
     /// <summary>The tooltip's owner, text and rectangle while it shows (tests).</summary>
     public Control? TipOwner => _tip.Visible ? _tipOwner : null;
-    public string TipText => _tip.Visible ? _tipLabel.Text : "";
+    public string TipText => _tip.Visible ? _tipText : "";
     public Rect2 TipShownRect => _tip.Visible ? _tip.GetGlobalRect() : new Rect2();
 
     private void BuildTip()
@@ -32,11 +39,14 @@ public partial class TownHud
         _tip.AddThemeStyleboxOverride("panel", UiKit.CardBox(_s, UiKit.CardKind.Card, 0));
         var holder = new Control { Name = "Box", MouseFilter = Control.MouseFilterEnum.Ignore };
         _tip.AddChild(holder);
-        _tipLabel = UiKit.Fixed(_s, UiKit.Caption);
-        _tipLabel.Name = "Text";
-        _tipLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _tipLabel.VerticalAlignment = VerticalAlignment.Top;
-        _tipLabel.ClipText = false;
+        _tipLabel = new RichTextLabel
+        {
+            Name = "Text", MouseFilter = Control.MouseFilterEnum.Ignore, BbcodeEnabled = false, ScrollActive = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart, ClipContents = false, FitContent = false,
+        };
+        _tipLabel.AddThemeFontSizeOverride("normal_font_size", UiKit.Type(_s, UiKit.Caption));
+        _tipLabel.AddThemeFontOverride("normal_font", UiKit.UiFont);
+        _tipLabel.AddThemeColorOverride("default_color", UiKit.Ink);
         holder.AddChild(_tipLabel);
         _root.AddChild(_tip);
         _tipOwner = null;
@@ -98,21 +108,65 @@ public partial class TownHud
             _tipRefresh = TipRefresh;
             string text = TipTextFor(owner);
             if (text.Length == 0) { _tip.Visible = false; return; }
-            if (_tipLabel.Text != text) _tipLabel.Text = text;
+            bool changed = _tipText != text;
+            if (changed) { _tipText = text; WriteTip(text); }
             float w = UiKit.U(_s, HudZones.TipW), pad = UiKit.U(_s, 12);
-            var f = _tipLabel.GetThemeFont("font");
-            float h = f.GetMultilineStringSize(text, HorizontalAlignment.Left, w - 2 * pad, _tipLabel.GetThemeFontSize("font_size")).Y;
+            var f = UiKit.UiFont;
+            int fs = UiKit.Type(_s, UiKit.Caption);
+            // Measured with the coin sign as wide as two figures; past five lines the box widens instead (up to 1.6 x).
+            string measure = text.Replace(CoinMark.ToString(), "00");
+            float lineH = f.GetHeight(fs);
+            float h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
+            for (int k = 0; k < 6 && h > lineH * TipMaxLines + 1f && w < UiKit.U(_s, HudZones.TipW * 1.6f); k++)
+            {
+                w += UiKit.U(_s, HudZones.TipW * 0.1f);
+                h = f.GetMultilineStringSize(measure, HorizontalAlignment.Left, w - 2 * pad, fs).Y;
+            }
             _tipLabel.Position = new Vector2(pad, pad);
             _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
+            h = Math.Max(h, _tipLabel.GetContentHeight());
+            _tipLabel.Size = new Vector2(w - 2 * pad, h + 2);
             var size = new Vector2(w, MathF.Ceiling(h) + 2 * pad + 2);
-            var avoid = _choice.Visible ? _choice.GetGlobalRect() : _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
-            var r = Zones.TipRect(owner.GetGlobalRect(), size, side, avoid);
+            Rect2 r;
+            if (_choice.Visible && (owner == _boonBtn[0] || owner == _boonBtn[1]))
+            {
+                // Under the choice card, below its own half: never over the other boon or the card's text.
+                var card = _choice.GetGlobalRect();
+                var vis = GetViewport().GetVisibleRect().Size;
+                float x = owner == _boonBtn[0] ? card.Position.X : card.End.X - size.X;
+                x = Math.Max(UiKit.U(_s, 4), Math.Min(x, vis.X - size.X - UiKit.U(_s, 4)));
+                r = new Rect2(new Vector2(x, card.End.Y + UiKit.U(_s, HudZones.Gap)).Round(), size);
+            }
+            else
+            {
+                var avoid = _choice.Visible ? _choice.GetGlobalRect() : _banner.Visible ? _banner.GetGlobalRect() : new Rect2();
+                r = Zones.TipRect(owner.GetGlobalRect(), size, side, avoid);
+            }
             _tip.Position = r.Position;
             _tip.Size = r.Size;
             _tip.Visible = true;
         }
         _tip.Modulate = new Color(1, 1, 1, Math.Clamp((_tipAge - TipDelay) / TipFadeIn, 0, 1));
     }
+
+    /// <summary>The tooltip's text into its label, the coin marks as the coin icon (only when the text changes).</summary>
+    private void WriteTip(string text)
+    {
+        _tipLabel.Clear();
+        var coin = IconOr("ui-coin", "ui-coin");
+        int px = UiKit.Type(_s, UiKit.Caption);
+        int from = 0;
+        for (int i = 0; i <= text.Length; i++)
+        {
+            if (i < text.Length && text[i] != CoinMark) continue;
+            if (i > from) _tipLabel.AddText(text.Substring(from, i - from));
+            if (i < text.Length) _tipLabel.AddImage(coin, px, px, null, InlineAlignment.Center);
+            from = i + 1;
+        }
+    }
+
+    /// <summary>"+[coin]5.4 a minute": a worth with the coin sign (tenths below 10).</summary>
+    private static string TipWorth(int tenths) => tenths < 100 && tenths % 10 != 0 ? $"+\u2060{CoinMark}{tenths / 10}.{tenths % 10} a minute" : $"+\u2060{CoinMark}{Money(tenths / 10)} a minute";
 
     private string TipTextFor(Control owner)
     {
@@ -124,7 +178,7 @@ public partial class TownHud
         if (owner == _tide) return "The tide. Boats come at high water; the ford can be walked at low water. " + _tideText.Text.Replace("\n", ", ") + ".";
         if (owner == _purse)
         {
-            sb.Append(Money(t.Coin)).Append(" coin; +").Append(Money(t.CoinPerMinute)).Append(" coin a minute. ");
+            sb.Append(CoinMark).Append(Money(t.Coin)).Append("; +\u2060").Append(CoinMark).Append(Money(t.CoinPerMinute)).Append(" a minute. ");
             sb.Append(_level.Text).Append(t.Level < t.MaxLevel ? $": renown {Money(t.Renown)} of {Money(t.NextLevelRenown)}." : ".");
             if (t.NextGift.Length > 0) sb.Append(" Next: ").Append(t.NextGift);
             return sb.ToString();
@@ -161,18 +215,18 @@ public partial class TownHud
         int w = WorthTenths(it.Worth);
         if (w > 0)
         {
-            sb.Append(' ').Append(WorthText(w));
+            sb.Append(' ').Append(TipWorth(w));
             double perSec = it.Worth / 60.0;
             if (perSec > 0 && it.Price > 0) sb.Append("; pays for itself in ").Append(Math.Ceiling(it.Price / perSec).ToString(Inv)).Append(" s");
             sb.Append('.');
         }
-        if (it.Price > 0 && !double.IsInfinity(it.Price)) sb.Append(" Price: ").Append(Money(it.Price)).Append(" coin.");
+        if (it.Price > 0 && !double.IsInfinity(it.Price)) sb.Append(" Price: ").Append(CoinMark).Append(Money(it.Price)).Append('.');
         if (!it.Affordable)
         {
             if (it.Reason == "Not enough coin")
             {
                 double need = Math.Max(1, it.Price - t.Coin), rate = t.CoinPerMinute / 60.0;
-                sb.Append(' ').Append(Money(need)).Append(" coin short");
+                sb.Append(' ').Append(CoinMark).Append(Money(need)).Append(" short");
                 if (rate > 0) sb.Append(", about ").Append(Math.Ceiling(need / rate).ToString(Inv)).Append(" s");
                 sb.Append('.');
             }

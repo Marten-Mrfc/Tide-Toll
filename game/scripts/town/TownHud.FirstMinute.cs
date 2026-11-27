@@ -16,7 +16,7 @@ public partial class TownHud
         "Your villager fetches water and carries it home. Every trip earns coin.",
         "You can afford your first upgrade. Click it in the shop, or press its key.",
         "Each level gives the town something new. The purse shows what comes next.",
-        "Scroll out to see the whole page, and the book.",
+        "Scroll the wheel down to zoom out: the town is a page in a book.",
     };
     /// <summary>Each hint's longest stay, seconds (0: until done).</summary>
     public static readonly float[] FirstHintMax = { 12f, 0f, 6f, 8f };

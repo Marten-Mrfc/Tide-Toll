@@ -72,7 +72,7 @@ public partial class TownHud
         _notes.Shown = it => PlayFor(it.Sound);
     }
 
-    private static bool IsLargeSound(string id) => id is "level-reached" or "charter-granted" or "gift-arrives" or "request-met";
+    private static bool IsLargeSound(string id) => id is "level-reached" or "charter-granted" or "gift-arrives" or "request-met" or "seal-granted";
 
     private void PlayFor(string id)
     {

@@ -218,7 +218,7 @@ public partial class TownHud
             if (p.Kind != PlotKind.BellGreen) continue;
             var c = new Vector3((p.X + p.W / 2f) * TownGround.Cell, 0, (p.Y + p.H / 2f - 1.5f) * TownGround.Cell);
             _main.Rig.UserMoved = true;
-            _main.Rig.LookAt(c, Math.Max(_main.Rig.MinSize, Math.Min(_main.Rig.Camera.Size * 0.7f, _main.Rig.PlaySize * 0.6f)), instant: false);
+            _main.Rig.LookAt(c, Math.Max(_main.Rig.MinSize, Math.Min(_main.Rig.Camera.Size * 0.7f, _main.Rig.MapViewSize * 0.6f)), instant: false);
             return;
         }
     }

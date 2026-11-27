@@ -62,7 +62,9 @@ public partial class TownHud
         if (_labelCards.Length == 0) _labelCards = new Control?[] { _ledger, _shop, _bell, _banner, _achMark, _agePageMark, PauseMark, _choice, _tide, _slim, _lineCard, _home, _hoverTip, _suggest };
         foreach (var c in _labelCards)
             if (c != null && IsInstanceValid(c) && c.IsVisibleInTree() && c.Modulate.A > 0.05f) _cardRects.Add(c.GetGlobalRect().Grow(UiKit.Px(_s, 6)));
-        bool page = AchievementsOpen || AgePageOpen;
+        // Last look: a page coming in takes the tags out on its own eased curve (they never vanish in one step), and
+        // gives them back as it goes.
+        float under = 1f - Math.Max(_achFade.Panel != null && _achFade.Panel.Visible ? _achFade.A : 0f, _ageFade.Panel != null && _ageFade.Panel.Visible ? _ageFade.A : 0f);
         _keptRects.Clear();
         LabelsHidden = 0;
         var cam = _main.Rig.Camera;
@@ -74,7 +76,7 @@ public partial class TownHud
                 var l = g.Source;
                 bool live = IsInstanceValid(l) && l.IsInsideTree() && l.GetParent() is Node3D owner && owner.IsVisibleInTree()
                             && g.Text.Length > 0 && !cam.IsPositionBehind(l.GlobalPosition);
-                bool want = live && !page && _fullA > 0.01f;
+                bool want = live && under > 0.01f && _fullA > 0.01f;
                 Rect2 r = default;
                 if (want)
                 {
@@ -91,7 +93,7 @@ public partial class TownHud
                     want = !touch && g.Out <= 0;
                 }
                 g.A = want ? Math.Min(1f, g.A + dt / TagFade) : Math.Max(0f, g.A - dt / TagFade);
-                float a = BookMotion.Smoother(g.A) * _fullA; // eased in and out (message-system section 3: 0.15 s)
+                float a = BookMotion.Smoother(g.A) * _fullA * under; // eased in and out (message-system section 3: 0.15 s)
                 if (g.Pill.Modulate.A != a) g.Pill.Modulate = new Color(1, 1, 1, a);
                 bool vis = a > 0.01f;
                 if (g.Pill.Visible != vis) g.Pill.Visible = vis;

@@ -220,7 +220,7 @@ public partial class RiverLayer : Node3D
 
     private static Label3D StakeLabel(string text, Vector3 at) => new()
     {
-        Name = "What", Text = text, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
+        Name = "What", Visible = false, Text = text, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 38,
         PixelSize = 0.03f, Modulate = Palette.Ink, OutlineModulate = new Color(Palette.Paper, 0.9f), OutlineSize = 14,
         Font = UiKit.UiBold, Position = at, DoubleSided = true, VerticalAlignment = VerticalAlignment.Top,
     };

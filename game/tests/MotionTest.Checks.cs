@@ -28,6 +28,8 @@ public partial class MotionTest
     private long _prepAllocWorst, _saveFrameAlloc;
     private double _saveFrameCpu;
     private double _prepCpuWorst;
+    private bool _cpuInfo;
+    private int _cpuOver;
 
     private enum Kind { Close, Open, ToSettings, FromSettings, Ask, Turn, Impatient }
 
@@ -195,7 +197,10 @@ public partial class MotionTest
             if (s.Cpu > _cpuWorst) { _cpuWorst = s.Cpu; _cpuWorstAt = $"{name} frame {i}"; }
             _cpuSum += s.Cpu; _cpuCount++;
             Check(s.Alloc <= AllocGate, $"{name}: frame {i} allocated {s.Alloc} bytes (gate {AllocGate}), most of it in {_allocProbes[s.Allocator].After} ({s.AllocatorBytes} B)");
-            Check(s.Cpu <= CpuGate, $"{name}: frame {i} took {s.Cpu:0.00} ms of CPU (gate {CpuGate})");
+            // --cpu-info (a working switch, never used by ./check): a frame over the CPU gate is printed, not fatal, so the
+            // shape checks of every case can be read on a loaded machine. The gate itself is unchanged.
+            if (_cpuInfo && s.Cpu > CpuGate) { _cpuOver++; GD.Print($"MOTION CPU over the gate: {name}: frame {i} took {s.Cpu:0.00} ms (gate {CpuGate})"); }
+            else Check(s.Cpu <= CpuGate, $"{name}: frame {i} took {s.Cpu:0.00} ms of CPU (gate {CpuGate})");
             if (s.Running && s.Saves != _buf[i - 1].Saves) Check(false, $"{name}: the town was saved in frame {i}, a frame of the motion");
         }
     }

@@ -160,6 +160,7 @@ public partial class PauseMenu
     private void Start(Move move, State now)
     {
         bool turning = _motion.Running;   // taking over from another transition: its parts start at once
+        KeepOld(turning);
         _move = move;
         Now = now;
         var rig = _main.Rig;
@@ -192,7 +193,10 @@ public partial class PauseMenu
             case Move.Open:
                 _cov0 = turning ? 0f : 0.08f;
                 Board(0f, _cov0, _cov0 + up, land: false);
-                Camera(rig.TargetPivot, rig.TargetSize, turning ? 0f : 0.2f, turning ? 0.7f : 0.9f);
+                // Taken over with the camera still at rest (Esc pressed on frames running), it waits as from rest: a move
+                // started and turned round within a frame or two would start at a jolt against its tiny top speed.
+                bool camGoing = turning && CamGoing;
+                Camera(rig.TargetPivot, rig.TargetSize, camGoing ? 0f : 0.2f, camGoing ? 0.7f : 0.9f);
                 _hudTo = 1f; _hud0 = turning ? 0.5f : 0.7f; _hud1 = _hud0 + 0.25f;
                 len = Math.Max(_hud1, _cam1);
                 rig.SetDeep(true);
@@ -252,7 +256,11 @@ public partial class PauseMenu
             // over from another transition, the page was written when that one started and the motion goes straight on.)
             if (!turning) { _main.Summary.UpdateNow(); _prep = true; }
         }
+        PlanTails(move);
+        if (_letTail.On) len = Math.Max(len, _let1);
+        if (_askTail.On) len = Math.Max(len, _ask1);
         PlanCarry(turning, len);
+        DropTailCarry();
         _main.Cover.Driven = BoardMoves;
         _motion.Start(len);
         // Parts that fade in from their first moment are made visible now, at no opacity: the question takes the focus
@@ -315,8 +323,8 @@ public partial class PauseMenu
         }
         // Each part on its eased curve, plus the speed it carried from a transition taken over (PauseMenu.Carry.cs).
         _hudA = Clamp01(BookMotion.Mix(_hudFrom, _hudTo, m.Ease(_hud0, _hud1)) + CarryOf(PHud));
-        _letA = Clamp01(BookMotion.Mix(_letFrom, _letTo, m.Ease(_let0, _let1)) + CarryOf(PLet));
-        _askA = Clamp01(BookMotion.Mix(_askFrom, _askTo, m.Ease(_ask0, _ask1)) + CarryOf(PAsk));
+        _letA = _letTail.Covers(m.Time) ? _letTail.At(m) : Clamp01(BookMotion.Mix(_letFrom, _letTo, m.Ease(_let0, _let1)) + CarryOf(PLet));
+        _askA = _askTail.Covers(m.Time) ? _askTail.At(m) : Clamp01(BookMotion.Mix(_askFrom, _askTo, m.Ease(_ask0, _ask1)) + CarryOf(PAsk));
         _pagA = Clamp01(BookMotion.Mix(_pagFrom, _pagTo, m.Ease(_pag0, _pag1)) + CarryOf(PPag));
         _askSlide = 1f - _askA;
         var hud = _main.Hud;

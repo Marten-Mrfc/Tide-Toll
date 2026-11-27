@@ -55,7 +55,7 @@ public partial class Main : Node3D
     /// <summary>What the interface shows for the current zoom: everything, a slim strip, or the book (summary page).</summary>
     public enum ZoomStage { Town, Page, Book }
     /// <summary>View heights where the interface thins to the slim strip and where the book counts as in view.</summary>
-    public float SlimSize => Rig.PlaySize * 0.86f;
+    public float SlimSize => Rig.MapViewSize * 0.86f;
     public float BookStageSize => (Rig.PlaySize + Rig.MaxSize) / 2f;
     public ZoomStage Stage => Rig.Camera.Size >= BookStageSize ? ZoomStage.Book : Rig.Camera.Size >= SlimSize ? ZoomStage.Page : ZoomStage.Town;
 
@@ -70,6 +70,8 @@ public partial class Main : Node3D
         // Round L3: zoomed all the way out the book stands in ONE place, the place of the settings spread (which keeps
         // its margins to the window and the navigation row): the zoom's outer end is the spread view.
         Rig.OuterCentre = null;
+        // Last look: the page stage keeps the navigation row (64 at the interface's scale, and a little air) off the book.
+        Rig.NavRoomPx = 72f * UiKit.ScaleFor(vp.Y);
         if (Menu != null && Menu.SpreadPagesRect.Size.Y >= 1f)
         {
             _limitsPages = Menu.SpreadPagesRect;
@@ -124,7 +126,7 @@ public partial class Main : Node3D
         };
         AddChild(Rig);
         // One continuous zoom (round 2): from close on the town (tilted) out to the whole open book (straight down).
-        Rig.TiltFlatSize = Rig.PlaySize * 0.97f;
+        Rig.TiltFlatSize = Rig.MapViewSize * 0.97f;
         // Round 4: about 50 degrees at the closest view, and the tilt changes from the first wheel notch.
         Rig.TiltDegrees = 50f;
         Rig.TiltFullSize = Rig.MinSize;
@@ -134,7 +136,7 @@ public partial class Main : Node3D
         Ink.Attach(Rig.Camera);
 
         Audio = new TownAudio(); AddChild(Audio); Audio.Init(Driver);
-        Audio.SetView(() => (Rig.PivotLocal, Rig.Camera.Size, Rig.PlaySize));
+        Audio.SetView(() => (Rig.PivotLocal, Rig.Camera.Size, Rig.MapViewSize));
         Summary = new TownSummary(); Summary.Init(GetNode<Node3D>("Book/LeftPage"), Driver);
         Hud = new TownHud(); AddChild(Hud); Hud.Init(this);
         Rig.PressBlocked = Hud.OverInterface;
@@ -288,7 +290,7 @@ public partial class Main : Node3D
         if (vp != _limitsFor || Menu.SpreadPagesRect != _limitsPages) SetZoomLimits();
         Ink.Update(Rig.Camera, vp);
         // Round 7: not while the menu has the book (the town stands still; PauseMenu writes the page before each motion).
-        Summary.Watched = Rig.Camera.Size >= Rig.PlaySize * 0.8f && !Menu.IsPaused;
+        Summary.Watched = Rig.Camera.Size >= Rig.MapViewSize * 0.8f && !Menu.IsPaused;
         float pxPerM = vp.Y / Rig.Camera.Size * 1080f / vp.Y;
         // Villagers read as people: a little over life size close in, and kept about 15 px across as the view zooms
         // out (the people are the point of the game), up to three times life size.

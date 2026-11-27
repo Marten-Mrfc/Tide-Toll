@@ -35,21 +35,25 @@ public partial class TownBuildings
         return k;
     }
     /// <summary>
-    /// One scale for every cottage at every size, so sizes compare: the largest model (twice extended) fills 0.95 of
-    /// the plot, as the extended cottage did before; a plain one then stays inside the 0.74 the plain cottage had.
+    /// Last look (night 3): each size its own scale, so a plain cottage stands as large beside the villagers as it did
+    /// before tonight: the widest model of a size (over the three variants) fills <see cref="CottageFill"/> of the plot's
+    /// shorter side: plain 0.86, extended once 0.91, twice 0.95 (was one scale for all, the twice-extended one at 0.95,
+    /// which left the plain cottage at about 0.74). The sizes stay told apart by their shapes (wings, porch, chimneys).
     /// </summary>
-    private static float _cottageSpan;
-    public static float CottageSpan()
+    public static readonly float[] CottageFill = { 0.86f, 0.91f, 0.95f };
+    private static readonly float[] _cottageSpan = new float[3];
+    /// <summary>The widest cottage model of an extension count (metres, X or Z).</summary>
+    public static float CottageSpan(int ext)
     {
-        if (_cottageSpan > 0) return _cottageSpan;
-        float span = 10.2f;
+        ext = Math.Clamp(ext, 0, 2);
+        if (_cottageSpan[ext] > 0) return _cottageSpan[ext];
+        float span = 1f;
         for (int v = 0; v < 3; v++)
-            for (int e = 0; e < 3; e++)
-            {
-                var b = ModelLib.Mesh(CottageModel(v, e)).GetAabb();
-                span = Math.Max(span, Math.Max(b.Size.X, b.Size.Z));
-            }
-        return _cottageSpan = span;
+        {
+            var b = ModelLib.Mesh(CottageModel(v, ext)).GetAabb();
+            span = Math.Max(span, Math.Max(b.Size.X, b.Size.Z));
+        }
+        return _cottageSpan[ext] = span;
     }
     private static readonly System.Collections.Generic.Dictionary<string, bool> PartsKnown = new();
     private static bool HasPartCached(string model, string node)
@@ -71,7 +75,7 @@ public partial class TownBuildings
     {
         string model = CottageModel(k, ext);
         var aabb = ModelLib.Mesh(model).GetAabb();
-        var root = new Node3D { Name = "Cottage", Scale = Vector3.One * (Math.Min(fw, fh) * 0.95f / CottageSpan()) };
+        var root = new Node3D { Name = "Cottage", Scale = Vector3.One * (Math.Min(fw, fh) * CottageFill[Math.Clamp(ext, 0, 2)] / CottageSpan(ext)) };
         var shift = new Node3D { Name = "Shift", Position = new Vector3(-(aabb.Position.X + aabb.Size.X / 2f), 0, -(aabb.Position.Z + aabb.Size.Z / 2f)) };
         root.AddChild(shift);
         if (HasPartCached(model, "house") && HasPartCached(model, "accent"))
