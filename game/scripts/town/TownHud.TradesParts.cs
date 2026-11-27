@@ -122,7 +122,8 @@ public partial class TownHud
             Plus.Hit.Position = new Vector2(plusFace - hitPad, 0); Minus.Hit.Position = new Vector2(minusFace - hitPad, 0);
             Count = UiKit.Fixed(s, UiKit.Body, UiKit.TabRegular, UiKit.MutedNumber, HorizontalAlignment.Right);
             Count.Name = "Count"; Count.MouseFilter = Control.MouseFilterEnum.Ignore;
-            Count.Position = new Vector2(cellX, 0); Count.Size = new Vector2(cell, h); Count.VerticalAlignment = VerticalAlignment.Center;
+            // Right-aligned in the cell, 4 units clear of the plus pill (two bold figures stand off it).
+            Count.Position = new Vector2(cellX, 0); Count.Size = new Vector2(cell - UiKit.U(s, 4), h); Count.VerticalAlignment = VerticalAlignment.Center;
             Row.AddChild(Count);
             Caption = UiKit.Fixed(s, UiKit.Caption, UiKit.UiFont, UiKit.Muted, HorizontalAlignment.Right);
             Caption.Name = "Caption"; Caption.MouseFilter = Control.MouseFilterEnum.Ignore; Caption.VerticalAlignment = VerticalAlignment.Center;
@@ -171,8 +172,8 @@ public partial class TownHud
             }
             if (Trade != Trade.None)
             {
-                Minus.SetEnabled(tv.Members > 1);
-                Plus.SetEnabled(PlusCan(t, Trade, _hud.SelectedVillager));
+                Minus.SetEnabled(tv.Members > 1 && t.CanLowerTrade(Trade));
+                Plus.SetEnabled(t.CanRaiseTrade(Trade));
                 Minus.Frame(dt); Plus.Frame(dt);
             }
             _bandA = Math.Clamp(_bandA + (hovered ? dt : -dt) / 0.1f, 0f, 1f);
@@ -188,30 +189,6 @@ public partial class TownHud
             Count.AddThemeFontOverride("font", _byPlayer ? UiKit.TabBold : UiKit.TabRegular);
             Count.AddThemeColorOverride("font_color", _byPlayer ? UiKit.Ink : UiKit.MutedNumber);
         }
-    }
-
-    /// <summary>Whether one more can join trade <paramref name="t"/> (as the simulation picks): a Helper not set on its
-    /// card, or such a member of another trade the town decides that keeps one member; never the open card's villager.</summary>
-    private static bool PlusCan(Town t, Trade to, int openCard)
-    {
-        int n = t.VillagerCount;
-        for (int i = 0; i < n; i++)
-        {
-            var v = t.Villager(i);
-            if (v.Trade == Trade.None && !v.TradeByPlayer && i != openCard) return true;
-        }
-        for (int k = 1; k < Town.TradeCount; k++)
-        {
-            if (k == (int)to) continue;
-            var o = t.TradeInfo((Trade)k);
-            if (!o.Open || o.ByPlayer || o.Members <= 1) continue;
-            for (int i = 0; i < n; i++)
-            {
-                var v = t.Villager(i);
-                if ((int)v.Trade == k && !v.TradeByPlayer && i != openCard) return true;
-            }
-        }
-        return false;
     }
 
     private StyleBoxFlat[]? _pillLooks;

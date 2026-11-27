@@ -134,6 +134,12 @@ public partial class TownHud
                 // Addendum F: a row's card stands 8 away from the sheet, not from the row inside it.
                 var o = owner.GetGlobalRect();
                 if (row >= 0) { var sh = _shop.GetGlobalRect(); o = new Rect2(sh.Position.X, o.Position.Y, o.End.X - sh.Position.X, o.Size.Y); }
+                // n7 trades: a tip of a part of the Trades card or the villager's card stands 8 right of the card, not of the part.
+                if (_trades.IsAncestorOf(owner) || _person.IsAncestorOf(owner))
+                {
+                    var card = (_trades.IsAncestorOf(owner) ? _trades : _person).GetGlobalRect();
+                    o = new Rect2(card.Position.X, o.Position.Y, card.Size.X, o.Size.Y);
+                }
                 r = Zones.TipRect(o, size, side, avoid);
             }
             _tip.Position = r.Position;

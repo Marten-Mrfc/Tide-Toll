@@ -4,9 +4,9 @@ Branch `wt/n7-trades-game` (worktree `build/wt/n7-trades-game`), made from the n
 
 ## Names missed or wrong in the simulation (for the lead)
 
-- `ShopItem.Worth` of the Training row is 0 in the names commit (`TrainingWorth` returns 0), so line 2 shows the stand-in "Better at their trades" instead of "+312 a minute". The shop shows the worth by itself as soon as the simulation gives one. (Check again after the rules commit.)
-- No call to say "who would `SetTradeCount` take": the interface computes whether plus can take anyone itself (`TownHud.PlusCan`, the same rule as `PickIntoTrade`: a Helper not set on its card, else a member of a town-decided trade that keeps one; never the open card's villager). If the simulation's rule changes, this must follow. A `Town.CanRaiseTrade(Trade)` would be cleaner.
-- There is no call to hand one villager back to the town (`TradeByPlayer` can only be set). Not needed by the sheet; noted because a player who clicked a cap can never undo "yours".
+- In the names commit the Training row's `ShopItem.Worth` was 0, so line 2 showed the stand-in. The rules commit gives a worth; the row now reads "+241 a minute" by itself. The stand-in "Better at their trades" was too long for the 272 rail (S2-line2 at 1920x1080@150 and 1280x720@150); it is now "Better at trades" (shown only while there is no worth).
+- Whether plus or minus can move anyone: the interface first copied the simulation's rule; the other builder then added `CanRaiseTrade` / `CanLowerTrade` (commit `e885ad2`), which the stepper now uses (minus also stays disabled at the last member, as the sheet says).
+- `GiveVillagerBackToTown` exists now (`e885ad2`) but the sheet gives it no place on the card, so the interface does not offer it: a villager whose cap you clicked stays yours for good (switching "Town fills trades" off and on does not clear choices made one by one). A small "Leave it to the town" on the villager card would be the place; not built.
 
 ## Built, file by file
 
@@ -20,7 +20,7 @@ Branch `wt/n7-trades-game` (worktree `build/wt/n7-trades-game`), made from the n
 **Part 2, the interface**
 
 - `TownHud.Trades.cs` (new): the Trades card in `HudZones.Person` (156 high), shown from `TradesShown` on while no villager's card is open; crossfades with the villager's card over 0.2 s (`MessageFader`), and fades with the interface (`_fullA`). Heading "Trades" (title, serif), the switch "Town fills trades" (caption, muted, a small paper box with an ink check that fades 0.15 s). One line of 28 per open trade (Carriers, Reapers, Millers) and the Helpers last; a trade that opens fades in and the Helpers slide down over 0.2 s. Hovering a line: the band and its members ringed. `SetOpenCard` is told the open card every frame.
-- `TownHud.TradesParts.cs` (new): the line (icon 24, name body, the count right-aligned tabular in a 28 cell: muted regular when the town decides it, ink bold when you set it, its digits fade out and in over 0.2 s when it changes), the stepper's pills (drawn 32 x 24, hit areas 40 x 28 units; rest, hover, pressed with the bar 1 down, disabled; bars drawn, not glyphs), plus disabled when nobody can be taken, minus at 0 and at the last member; a click acts on what was shown 0.3 s ago. Tooltips in the shop tip's form, made when the pointer comes and frozen while it shows: a sentence, then Members / places, Waiting now / away now, Bonus (when above 0), "You set this count. The town leaves it alone."; disabled pills say why; the switch says what it does.
+- `TownHud.TradesParts.cs` (new): the line (icon 24, name body, the count right-aligned tabular in a 28 cell: muted regular when the town decides it, ink bold when you set it, its digits fade out and in over 0.2 s when it changes), the stepper's pills (drawn 32 x 24, hit areas 40 x 28 units; rest, hover, pressed with the bar 1 down, disabled; bars drawn, not glyphs), plus disabled when nobody can be taken (`CanRaiseTrade`), minus at the last member or when nobody can leave (`CanLowerTrade`); a click acts on what was shown 0.3 s ago. Tooltips in the shop tip's form, made when the pointer comes and frozen while it shows: a sentence, then Members / places, Waiting now / away now, Bonus (when above 0), "You set this count. The town leaves it alone."; disabled pills say why; the switch says what it does.
 - `TradeMark.cs` (new): the check and the corner fold, drawn in code.
 - `TownHud.PeopleTrade.cs` (new): the villager's card: title "Kit · Carrier" (name bold, trade muted), line 2 "Likes carrying water · by the well lane" (home dropped whole when it does not fit; "Lives by ..." while the like's trade is not open), the Trade line: caption "Trade" and caps 40 x 32 at x 60, y 112 (current: darker paper, ink border 2; liked: ink fold 8; hover: light paper, ink border 1), one-line tooltips ("Reaper: likes this work, +5%"); a click sets the trade. Map tags: "Kit, carrier" on hover; the first three villagers the town gives a trade (TradeChanged by the town) show their tag for 2 s (fades 0.12 s), again after a new town.
 - `TownHud.People.cs`: the card is 156 (`HudZones.PersonH`), the leaning line is hidden for good (the like is on line 2), lines at 8, 33, 56, 79, caps at 112; fade 0.2 s; the hover tag names the trade; the Trades card stops the pick.
@@ -44,14 +44,22 @@ Branch `wt/n7-trades-game` (worktree `build/wt/n7-trades-game`), made from the n
 | `LayoutFixture` | "Person/Leaning" "A good hand at the harvest"; "Person/Home" "Lives by the well lane" | no Leaning (label hidden for good); "Person/Home" "Likes carrying water" (the card drops the home when the pair does not fit), plus the title's trade and the Trades card's texts | the card's lines changed |
 | `LayoutTest` | the villager's card in every state | the Trades card in every other state, the villager's card in the rest; the fixture with each card | the two cards share the zone; both must meet every canvas |
 
-## Results
+## Results (18:10 UTC, after merging `wt/n7-trades` up to `6e52b5f`, under the heavy-run lock)
 
-(filled in below as runs finish)
+- game build: `Build succeeded. 0 Warning(s) 0 Error(s)` (`dotnet build game/TideToll.csproj -c Debug`)
+- game-trades: `TRADES PASS bytes=611 tags=3 fps=60 villagers=21 headstep=0.17 alphastep=0.17 frames=1451`; 30 fps `bytes=786 headstep=0.32 alphastep=0.33`; 120 fps `bytes=518 headstep=0.08 alphastep=0.08`; `TRADES RATES PASS`
+- game-people: `PEOPLE RATES PASS` (60: `picked=21/21 passpairs=15165 sidefails=0 flicker=0 bytes=686 villagerbytes=0`)
+- game-work: `WORK RATES PASS`
+- game-layout: `LAYOUT PASS ... states=36 canvases=8 checks=91817 failures=0 loud<=2 quiet<=3` (the first run failed S2-line2 twice on the Training stand-in line; fixed)
+- game-ink: `ASSET AUDIT PASS ... villagers-group=0.349` (mixed headwear, game heads), warm-up 0.349
+- game-motion: **fails**, three times in a row, at all three rates: `FAIL: banner: frame 112 allocated 29840 B (gate 8192; first hints shown 29, now 2)` (30 fps; 60: frame 221; 120: frame 439). The frame is the one after the test's banner leaves: the first hint 2 ("Each level gives the town something new...") starts there, and `GameSettings.SetHintSeen` writes the settings file (about 30 KB in one frame). With the trades hint switched off the same failure stays (`first hints shown 13, now 2`), so it is not the trades hint; on the main branch the motion test passed (people-progress), so something since (most likely the merged simulation's pacing changing which first hints have shown before the banner) puts hint 2 into the measured window. Not verified on `wt/n7-trades` alone. Earlier runs also failed CPU gates once each (6.8-15.8 ms against 6) while the machine's load was 6-8; those did not repeat. The motion test's failure message now also prints the first hints shown (a diagnostic only).
 
-## Pictures
+## Pictures (real frames, `build/n7/trades/`, not committed)
 
-`build/n7/trades/` (not committed: build output): see the report.
+`tools/trades-shots.sh` (xvfb, Mobile renderer): `trades-card`, `trades-hover` (a line hovered, its members ringed), `trades-tip`, `trades-plus-hover`, `trades-villager`, `trades-cap-tip`, `trades-crossfade`, `trades-count-strip`, `trades-street-before/after(-close)`, each `-1920x1080`, `-1280x720` and `-1280x720-150` (interface 150 percent, the 272 rail); `*-whole-*` the whole window; `board-beside-game-1920x1080.png` (the board's planned screen beside the game's); `game-columns.png` (the two cards at each size).
 
 ## Not done
 
-(filled in at the end)
+- The Helpers' caption "work where it pays best" does not fit on any canvas (154 px of caption against 134 on the 320 rail at 1080, less elsewhere): it is dropped whole (layout rule) and the Helpers' line tooltip says it.
+- The Training row is not separately tested in the late first age at 1280 x 720 with compact rows (review 21); game-layout's catalogue and line-2 checks cover its name and stand-in line on every canvas, and `ShopSamples` cover compact rows in general.
+- No place on the villager's card to give a villager back to the town (above).
