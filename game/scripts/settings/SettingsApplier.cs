@@ -37,6 +37,7 @@ public sealed class SettingsApplier
         Display.ApplyVsync(Store.Vsync);
         Display.ApplyFrameLimit(Store.FrameLimit);
         Display.ApplyContentScale(_window, Store.ContentScale);
+        Display.ApplyRenderScale(_window, Store.DrawingDetail / 100f);
         GameInput.Apply(Store.Bindings);
     }
 
@@ -52,6 +53,8 @@ public sealed class SettingsApplier
             case GameSettings.KFrameLimit: Display.ApplyFrameLimit(Store.FrameLimit); break;
             case GameSettings.KInterface: Display.ApplyContentScale(_window, Store.ContentScale); break;
             case GameSettings.KKeys: GameInput.Apply(Store.Bindings); break;
+            case GameSettings.KDetail: Display.ApplyRenderScale(_window, Store.DrawingDetail / 100f); break;
+            // KOutline: InkOutline reads Store.OutlineLight each frame (one bool) and sets its step on a change.
         }
     }
 

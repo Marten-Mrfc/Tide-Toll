@@ -111,7 +111,7 @@ public partial class ReadoutTest : TownTestBase
         Check(r.Draws > 10 && r.Objects > 10 && r.Triangles > 1000, $"draws {r.Draws} objects {r.Objects} triangles {r.Triangles}");
         Check(r.Villagers == T.VillagerCount && r.WindowSize == GetWindow().Size, "villagers and window");
         Check(r.Adapter.Length > 0 && r.Text.Contains(r.Adapter.Substring(0, Math.Min(10, r.Adapter.Length))), "the adapter's name");
-        foreach (var w in new[] { "fps", "frame", "95th", "worst", "sim", "interface", "scripts", "cpu", "gpu", "draws", "objects", "triangles", "villagers", "vsync", "cap" })
+        foreach (var w in new[] { "fps", "frame", "95th", "worst", "sim", "interface", "scripts", "cpu", "gpu", "draws", "objects", "triangles", "villagers", "vsync", "cap", "detail 100%" })
             Check(r.Text.Contains(w), "the box shows " + w);
         Notes.Add($"fps {r.Fps:0} frame {r.FrameMs:0.0} ms gpu {r.GpuMs:0.00} ms draws {r.Draws} on '{r.Adapter}';");
     }

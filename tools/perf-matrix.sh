@@ -5,7 +5,8 @@
 # draws objects primitives" go to build/perf-matrix/<label>.txt; the times are only good for ratios within a group.
 #   tools/perf-matrix.sh [--label NAME] [--frames N] [--display N] [--groups 1,2,3,4] [--no-lock]
 # Groups: 1 = age1 1920x1080 baseline, noink, nosoft, noshadow, notrees; 2 = age1 1920x1080 baseline, novillagers,
-# flatground, zoomout, closest, scale50; 3 = age1 baseline at 1280x720 and 2560x1440; 4 = river and age1 baselines.
+# flatground, zoomout, closest, scale50; 3 = age1 baseline at 1280x720 and 2560x1440; 4 = river: baseline, noink,
+# noshadow, flatground; 5 = age1 1920x1080: the Display page's drawing detail 85, 70, 50 and the light outline.
 set -uo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -54,6 +55,7 @@ for g in ${SETS//,/ }; do
     2) run age1 1920x1080 baseline,novillagers,flatground,zoomout,closest,scale50 || ok=1 ;;
     3) run age1 1280x720 baseline || ok=1; run age1 2560x1440 baseline || ok=1 ;;
     4) run river 1920x1080 baseline,noink,noshadow,flatground || ok=1 ;;
+    5) run age1 1920x1080 baseline,detail85,detail70,detail50,light || ok=1 ;;
   esac
 done
 echo "matrix lines in $TXT"

@@ -60,8 +60,7 @@ public partial class TownHud
         if (_labelScanT <= 0f || _labelScan > 0) { if (_labelScan > 0) _labelScan--; _labelScanT = TagScanSeconds; ScanTags(); }
         _cardRects.Clear();
         if (_labelCards.Length == 0) _labelCards = new Control?[] { _ledger, _shop, _bell, _banner, _achMark, _agePageMark, PauseMark, _choice, _tide, _slim, _lineCard, _home, _hoverTip, _suggest };
-        foreach (var c in _labelCards)
-            if (c != null && IsInstanceValid(c) && c.IsVisibleInTree() && c.Modulate.A > 0.05f) _cardRects.Add(c.GetGlobalRect().Grow(UiKit.Px(_s, 6)));
+        ReadCardRects();   // also read by the villagers' trade tags (TownHud.PeopleTrade.cs) in the next frame
         // Last look: a page coming in takes the tags out on its own eased curve (they never vanish in one step), and
         // gives them back as it goes.
         float under = 1f - Math.Max(_achFade.Panel != null && _achFade.Panel.Visible ? _achFade.A : 0f, _ageFade.Panel != null && _ageFade.Panel.Visible ? _ageFade.A : 0f);
@@ -102,6 +101,12 @@ public partial class TownHud
             }
     }
 
+    private void ReadCardRects()
+    {
+        foreach (var c in _labelCards)
+            if (c != null && IsInstanceValid(c) && c.IsVisibleInTree() && c.Modulate.A > 0.05f) _cardRects.Add(c.GetGlobalRect().Grow(UiKit.Px(_s, 6)));
+    }
+
     /// <summary>Finds the map's words (they come and go with plots and boats) and reads their text.</summary>
     private void ScanTags()
     {
@@ -110,11 +115,12 @@ public partial class TownHud
         foreach (Node? n in _labelOwners)
         {
             if (n == null || !IsInstanceValid(n)) continue;
-            // n10 (Q1): the buildings keep a list of their words (TownBuildings.Words, in the tree's order); the boats and
-            // the river are still searched (their files belong to other work this round).
-            if (n == _main.Buildings)
+            // n10 (Q1): the buildings and the river keep lists of their words (in the tree's order); the boats are still
+            // searched (their files belong to other work).
+            if (n == _main.Buildings || n == _main.River)
             {
-                foreach (var l in _main.Buildings.Words)
+                var words = n == _main.Buildings ? _main.Buildings.Words : _main.River.Words;
+                foreach (var l in words)
                     if (IsInstanceValid(l) && l.IsInsideTree()) AddTag(l, ref used);
                 continue;
             }

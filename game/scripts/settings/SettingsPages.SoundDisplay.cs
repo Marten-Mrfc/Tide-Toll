@@ -119,6 +119,22 @@ public partial class SettingsPages
         follow.Switched += Store.SetFollowTown;
         Target["display.follow"] = follow;
         Row(right, "The view follows the town", follow, s, "Until you move the view yourself.", 120);
+
+        // n10: two levers for a slower graphics card (docs/plans/n10/perf-measures.md: the cost follows the pixels).
+        Heading(right, "Drawing", s);
+        var detailNames = new string[GameSettings.DrawingDetails.Length];
+        for (int i = 0; i < detailNames.Length; i++) detailNames[i] = GameSettings.DrawingDetails[i] + " %";
+        var detail = new ChoiceButton(detailNames, Math.Max(0, Array.IndexOf(GameSettings.DrawingDetails, Store.DrawingDetail)), s)
+        { TooltipText = "Draws the map with fewer pixels and scales it up; the writing stays sharp" };
+        detail.Chosen += i => Store.SetDrawingDetail(GameSettings.DrawingDetails[i]);
+        Target["display.detail"] = detail;
+        Row(right, "Drawing detail", detail, s, "Lower it if the game runs slowly. The map gets softer.", 160);
+
+        var outline = new ChoiceButton(new[] { "Full", "Light" }, Store.OutlineLight ? 1 : 0, s)
+        { TooltipText = "Light: a thinner ink line on large screens, a little faster" };
+        outline.Chosen += i => Store.SetOutlineLight(i == 1);
+        Target["display.outline"] = outline;
+        Row(right, "Outline", outline, s, null, 160);
     }
 
     /// <summary>Applies a window mode and size on trial and asks "Keep this?"; it goes back by itself after KeepSeconds.</summary>

@@ -220,6 +220,13 @@ public partial class TownHud
     }
 
     private readonly List<ShopItem> _raw = new();
+    private Town? _sTown;
+    private long _sTick = -1, _sBuys = -1;
+    private double _sCoin = double.NaN;
+    private int _sLevel = -1, _sKeys = -1;
+    private bool _sChoice;
+    /// <summary>Frames in which the shop's list was built (n10: not every frame).</summary>
+    public long ShopBuilds { get; private set; }
 
     /// <summary>Round 4: the river's group shows only what can be bought now or soon (coin the one thing missing):
     /// locked and finished river steps are left out, so the bookmarks fit at the end of the second age.</summary>
@@ -228,9 +235,20 @@ public partial class TownHud
     private void ShopFrame(float dt)
     {
         var t = _drv.Town;
-        t.ShopItems(_raw);
-        _secondAge = t.RiverPlan != null;
-        Grouped(_raw, _items);
+        // n10 (research Q8): the town's list is built again only when the town can have changed what it says: a step (the
+        // tick), the coin, a purchase, the level, a choice opening or closing, any event this frame (every action the
+        // player takes raises one), a new town, or the keys; otherwise this frame's list is the last frame's.
+        bool choice = t.ChoiceOpen;
+        if (t != _sTown || t.Tick != _sTick || t.Coin != _sCoin || t.Purchases != _sBuys || t.Level != _sLevel || choice != _sChoice
+            || Settings.GameInput.Version != _sKeys || _drv.Events.Count > 0 || _items.Count == 0)
+        {
+            _sTown = t; _sTick = t.Tick; _sCoin = t.Coin; _sBuys = t.Purchases; _sLevel = t.Level; _sChoice = choice;
+            _sKeys = Settings.GameInput.Version;
+            t.ShopItems(_raw);
+            _secondAge = t.RiverPlan != null;
+            Grouped(_raw, _items);
+            ShopBuilds++;
+        }
         SyncRows(t, PointerOverShop());
         int offer = 0;
         for (int i = 0; i < _rowOrder.Count; i++)

@@ -51,6 +51,8 @@ public partial class PerfReadout : CanvasLayer
     public Vector2I WindowSize { get; private set; }
     public bool VsyncOn { get; private set; }
     public int Cap { get; private set; }
+    /// <summary>The 3D scale (the Display page's Drawing detail), 1 = full.</summary>
+    public float Scale3D { get; private set; } = 1f;
     public string Adapter { get; private set; } = "";
     public string Text => _label?.Text ?? "";
     public bool Shown => Visible;
@@ -224,6 +226,7 @@ public partial class PerfReadout : CanvasLayer
         WindowSize = win.Size;
         VsyncOn = DisplayServer.WindowGetVsyncMode() != DisplayServer.VSyncMode.Disabled;
         Cap = Engine.MaxFps;
+        Scale3D = GetViewport().Scaling3DScale;
         Updates++;
 
         var sb = _sb.Clear();
@@ -234,7 +237,8 @@ public partial class PerfReadout : CanvasLayer
         sb.Append(Inv, $"drawing cpu {DrawCpuMs:0.00}  gpu {GpuMs:0.00} ms\n");
         sb.Append(Inv, $"draws {Draws}   objects {Objects}\n");
         sb.Append(Inv, $"triangles {Triangles / 1000.0:0.0}k   villagers {Villagers}\n");
-        sb.Append(Inv, $"{WindowSize.X} x {WindowSize.Y}  vsync {(VsyncOn ? "on" : "off")}  cap ");
+        sb.Append(Inv, $"{WindowSize.X} x {WindowSize.Y}  detail {Scale3D * 100f:0}%\n");
+        sb.Append(Inv, $"vsync {(VsyncOn ? "on" : "off")}  cap ");
         if (Cap > 0) sb.Append(Cap); else sb.Append("none");
         sb.Append('\n').Append(Adapter);
         LogStatus(sb);

@@ -20,12 +20,15 @@ public sealed class GameSettings
     public static readonly string[] Buses = { "Master", "Music", "Ambience", "Effects", "Interface" };
     public static readonly int[] FrameLimits = { 30, 60, 120, 0 };          // 0 = no limit
     public static readonly int[] AutosaveChoices = { 0, 1, 2, 5 };          // minutes; 0 = off
+    /// <summary>n10: the 3D scale's choices in percent (the interface stays at full size).</summary>
+    public static readonly int[] DrawingDetails = { 100, 85, 70, 50 };
     public const int MinInterface = 80, MaxInterface = 150;
 
     // Keys raised by Changed. A volume raises "volume:<Bus>"; a binding raises "keys".
     public const string KVolume = "volume:", KMuteInactive = "mute_inactive", KWindowMode = "window_mode",
         KResolution = "resolution", KVsync = "vsync", KFrameLimit = "frame_limit", KInterface = "interface_size",
-        KCoinNumbers = "coin_numbers", KFollowTown = "follow_town", KAutosave = "autosave_minutes", KKeys = "keys";
+        KCoinNumbers = "coin_numbers", KFollowTown = "follow_town", KAutosave = "autosave_minutes", KKeys = "keys",
+        KDetail = "drawing_detail", KOutline = "outline";
 
     /// <summary>The store the game started with (set by SettingsRuntime); null until then.</summary>
     public static GameSettings? Current { get; set; }
@@ -48,6 +51,10 @@ public sealed class GameSettings
     public bool ShowCoinNumbers { get; private set; }
     public bool FollowTown { get; private set; }
     public int AutosaveMinutes { get; private set; }
+    /// <summary>n10: the 3D view drawn at this percent of the window's pixels (100, 85, 70, 50), scaled up bilinear.</summary>
+    public int DrawingDetail { get; private set; }
+    /// <summary>n10: the light outline (the ink pass at one step at every window size), for slower graphics cards.</summary>
+    public bool OutlineLight { get; private set; }
     /// <summary>Night 3: the first-minute hints already shown, one bit each (message-system section 4).</summary>
     public int HintsSeen { get; private set; }
     public bool HintSeen(int hint) => (HintsSeen & (1 << hint)) != 0;
@@ -122,6 +129,8 @@ public sealed class GameSettings
         ShowCoinNumbers = true;
         FollowTown = true;
         AutosaveMinutes = 2;
+        DrawingDetail = 100;
+        OutlineLight = false;
         _keys = GameInput.Defaults();
     }
 
@@ -170,6 +179,12 @@ public sealed class GameSettings
         percent = Math.Clamp((int)Math.Round(percent / 10.0) * 10, MinInterface, MaxInterface);
         if (InterfaceSize != percent) { InterfaceSize = percent; Commit(KInterface); }
     }
+    public void SetDrawingDetail(int percent)
+    {
+        if (Array.IndexOf(DrawingDetails, percent) < 0) percent = 100;
+        if (DrawingDetail != percent) { DrawingDetail = percent; Commit(KDetail); }
+    }
+    public void SetOutlineLight(bool on) { if (OutlineLight != on) { OutlineLight = on; Commit(KOutline); } }
     public void SetShowCoinNumbers(bool on) { if (ShowCoinNumbers != on) { ShowCoinNumbers = on; Commit(KCoinNumbers); } }
     public void SetFollowTown(bool on) { if (FollowTown != on) { FollowTown = on; Commit(KFollowTown); } }
     public void SetAutosaveMinutes(int m)
@@ -217,7 +232,9 @@ public sealed class GameSettings
         sb.Append("frame_limit=").Append(FrameLimit).Append('\n');
         sb.Append("interface_size=").Append(InterfaceSize).Append('\n');
         sb.Append("coin_numbers=").Append(B(ShowCoinNumbers)).Append('\n');
-        sb.Append("follow_town=").Append(B(FollowTown)).Append("\n\n[saving]\n");
+        sb.Append("follow_town=").Append(B(FollowTown)).Append('\n');
+        sb.Append("drawing_detail=").Append(DrawingDetail).Append('\n');
+        sb.Append("outline=\"").Append(OutlineLight ? "light" : "full").Append("\"\n\n[saving]\n");
         sb.Append("autosave_minutes=").Append(AutosaveMinutes).Append("\n\n[hints]\n");
         sb.Append("hints_seen=").Append(HintsSeen).Append("\n\n[debug]\n");
         sb.Append("readout=").Append(B(ShowReadout)).Append("\n\n[keys]\n");
@@ -287,6 +304,8 @@ public sealed class GameSettings
                     case "interface_size" when okInt && n >= MinInterface && n <= MaxInterface && n % 10 == 0: InterfaceSize = n; return true;
                     case "coin_numbers" when okBool: ShowCoinNumbers = b; return true;
                     case "follow_town" when okBool: FollowTown = b; return true;
+                    case "drawing_detail" when okInt && Array.IndexOf(DrawingDetails, n) >= 0: DrawingDetail = n; return true;
+                    case "outline" when val == "full" || val == "light": OutlineLight = val == "light"; return true;
                 }
                 return false;
             case "saving":

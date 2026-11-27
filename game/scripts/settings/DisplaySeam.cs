@@ -58,4 +58,12 @@ public class DisplaySeam
 
     /// <summary>Interface size: the window's content scale (1.0 = 100 percent).</summary>
     public virtual void ApplyContentScale(Window w, float scale) => w.ContentScaleFactor = scale;
+
+    /// <summary>n10, drawing detail: the 3D view at this fraction of the window's pixels, scaled up bilinear (the 2D
+    /// interface is drawn at full size).</summary>
+    public virtual void ApplyRenderScale(Window w, float scale)
+    {
+        w.Scaling3DMode = Viewport.Scaling3DModeEnum.Bilinear;
+        w.Scaling3DScale = scale;
+    }
 }

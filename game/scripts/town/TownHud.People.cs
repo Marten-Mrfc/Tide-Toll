@@ -114,7 +114,7 @@ public partial class TownHud
     {
         if (!PickingOn || OverInterface(screen) || OverPerson(screen) || OverTrades(screen)) return -1;
         if (!new Rect2(Vector2.Zero, _built).HasPoint(screen)) return -1;
-        return _main.Villagers.Pick(_main.Rig, screen, PickRadius, HoverVillager);
+        return _main.Villagers.PickCached(_main.Rig, screen, PickRadius, HoverVillager);   // n10: only when something moved
     }
 
     private bool OverPerson(Vector2 p) => Over(_person, p);

@@ -32,4 +32,6 @@ public sealed class RecordingDisplay : DisplaySeam
     public override void ApplyWindow(Window w, WindowMode mode, Vector2I size) { Mode = mode; Size = size; Calls.Add($"window {mode} {size.X}x{size.Y}"); }
     public override void ApplyVsync(bool on) { Vsync = on; Calls.Add($"vsync {on}"); }
     public override void ApplyFrameLimit(int fps) { Fps = fps; Calls.Add($"fps {fps}"); }
+    public float RenderScale = -1f;
+    public override void ApplyRenderScale(Window w, float scale) => RenderScale = scale;   // n10: not counted in Calls
 }

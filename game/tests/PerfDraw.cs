@@ -172,6 +172,13 @@ public partial class PerfDraw : TownTestBase
                 sun2.DirectionalShadowMaxDistance = 350f; return () => sun2.DirectionalShadowMaxDistance = was;
             case "scale50":
                 GetViewport().Scaling3DScale = 0.5f; return () => GetViewport().Scaling3DScale = 1f;
+            case "detail85": case "detail70": case "detail50":
+                // n10 round 2: the Display page's Drawing detail, through the settings store and the applier.
+                Settings.GameSettings.Current!.SetDrawingDetail(int.Parse(v[6..]));
+                return () => Settings.GameSettings.Current!.SetDrawingDetail(100);
+            case "light":
+                Settings.GameSettings.Current!.SetOutlineLight(true);
+                return () => Settings.GameSettings.Current!.SetOutlineLight(false);
         }
         throw new Exception("unknown variant " + v);
     }
