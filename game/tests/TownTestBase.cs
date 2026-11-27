@@ -25,6 +25,7 @@ public abstract partial class TownTestBase : Node
         // never reach a test, and no test continues another's town.
         Main.Profile = ProfileFor(Marker);
         Main.KeepWindow = true;
+        TownVillagers.MeasureGaps = true;   // n10: the villagers' gap measures run for tests only
         WipeProfile();
         Main = GD.Load<PackedScene>("res://main.tscn").Instantiate<Main>();
         AddChild(Main);

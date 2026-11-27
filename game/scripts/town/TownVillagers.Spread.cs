@@ -18,6 +18,8 @@ public partial class TownVillagers
     /// <summary>A follower keeps this many metres (per unit of WalkerScale) behind the one ahead; lags at most FollowMaxLag of it.</summary>
     public const float FollowGapM = 1.1f, FollowMaxLag = 1.5f;
     private const int GridBits = 6, GridSize = 1 << GridBits, GridMask = GridSize - 1;
+    /// <summary>n10: take the test-only gap measures (MinStandingGap, MinSpotGap, MinFollowGap) each frame; set by tests.</summary>
+    public static bool MeasureGaps;
     private readonly int[] _gridHead = new int[GridSize * GridSize], _gridNext = new int[Capacity];
     private readonly bool[] _walkRoad = new bool[Capacity], _stood = new bool[Capacity], _standAbout = new bool[Capacity];
     private readonly int[] _road = new int[Capacity], _roadDir = new int[Capacity], _leader = new int[Capacity], _order = new int[Capacity];
@@ -168,8 +170,9 @@ public partial class TownVillagers
             _ox[i] += (wx - _ox[i]) * k8;
             _oy[i] += (wy - _oy[i]) * k8;
         }
-        // 4. Measures for the tests (neighbours only): standing gaps, spot gaps, follow gaps.
-        for (int i = 0; i < n; i++)
+        // 4. Measures for the tests (neighbours only): standing gaps, spot gaps, follow gaps. n10 (research Q10): only
+        // when a test asks (TownTestBase sets MeasureGaps); the game itself never reads them.
+        for (int i = 0; MeasureGaps && i < n; i++)
         {
             var v = t.Villager(i);
             bool still = v.Phase is VillagerPhase.Queued or VillagerPhase.Working;
