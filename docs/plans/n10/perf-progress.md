@@ -126,12 +126,12 @@ ford, ice, tidal flat, bank lip, the bank's ink line: about 7 tile reads and 4 n
 the ink line's width from the bank, where all of its weights are exactly 0; the derivatives it uses (`fwidth(sw)`,
 `fwidth(lp.x)`) are taken before the branch. Unset, the mask reads white (`hint_default_white`): nothing skipped.
 Proof: the six views before and after, **identical, 0 pixels differ** (also after each of the three steps). Gain:
-**none measurable under llvmpipe**: the first-age follow view 638 ms against 644 and 618 before (two groups),
-the whole book 404 against 408. llvmpipe runs both sides of a branch whose lanes disagree and, it seems, does not
-skip even coherent ones; on a real card a branch taken the same way by a whole wave of pixels is skipped, which is
-where this saves (most of the page is far from any road and from the river). The owner's readout (GPU ms before and
-after this build at the same view) is the measurement; I could not make one here. It is kept because it is exact
-(identical pictures) and costs two passes over the 16,384 cells (no allocation) per wear upload, ten a second.
+under llvmpipe the ground's own cost (baseline minus flat ground) fell 11 percent in the first age's follow view and
+25 percent in the river town's (the whole frame 6 and 16 percent), with a little more drawn after the merge; at
+720p and 1440p the frame is 2 to 3 percent faster (the noise is about 5 percent). llvmpipe skips a branch only when
+all its pixels in a block agree; a card skips per wave, so the gain there should be larger where most of the screen
+is plain grass, but only the owner's readout (GPU ms at the same view before and after this build) can say how much.
+The CPU price: two passes over the 16,384 cells (no allocation) per wear upload, ten a second.
 
 **Q1, the labels registered by their owners** (`TownBuildings.Words`, `TownHud.Labels.cs` `ScanTags` and `AddTag`).
 The buildings add each staked plot's `Label3D` to a list when they make it (and clear it on a rebuild); the scan reads
@@ -214,3 +214,27 @@ Searched `game/scripts` for `FileAccess.Open`, `Save()`, `SetHintSeen`, `File.*`
   Needs: `RiverBoats.Build` and `RiverLayer.MakePlot` to add their words to a list as `TownBuildings.Words` does.
 - **Warm-up of pipelines** (Q14) and **one MultiMesh for the chimney smoke** (Q15): not started.
 - `./check` as a whole was not run (the lock); the checks run one by one are listed below.
+
+## The checks run (branch with the main branch merged, 20:27 to 20:45 UTC, each under the lock)
+
+Logs in `build/n10/final/`.
+
+- `game-perf` PASS: town 28 villagers 1x mean 0.741 ms worst 2.18 (gate 6), 505 bytes/frame (gate 1536); 8x mean
+  0.934 worst 2.13, 915 bytes; river 35 villagers 1x 0.848 / 3.07, 699 bytes; 8x 0.859 / 3.80, 1538 bytes (gate 6144).
+- `game-motion` (tools/motion-check.sh) PASS at 60, 30 and 120 fps (cpu max 1.41, 2.79, 2.96 ms). An earlier run at
+  19:52, right after my perf run and with others busy, failed on two single frames (6.01 ms at 60 fps against the 6 ms
+  gate, 8.33 ms at 120); run again under the lock with nothing else running it passed.
+- `game-trades` PASS at 60/30/120 (hintframe 2576 / 2696 / 2848 B: the hint's frame writes no file).
+- `game-people` PASS at 60/30/120 (follow 0.12 m, the gap measures still taken for the tests).
+- `game-readout` PASS: cost at 60 fps 24.0 us and 20 bytes a frame (gates 50 us, 300 bytes); csv 3 rows; boxes
+  1280x720 at 12,492 250x172 and 1920x1080 at 16,822 320x186.
+- `game-ink` PASS with its ceilings untouched: cottage-a0 0.168 ... mill 0.221, market-stall 0.274, well 0.240,
+  street 0.231, villagers-group 0.349 (the same as before within the chimney smoke's noise).
+- `game-smoke` PASS, `game-save` PASS (background save 9,946 bytes, identical), `game-settings` PASS.
+- `game-layout` PASS (states 36, canvases 8, checks 923; 309 s).
+- `game-town`: the first run (20:31, in the take with the others) failed once: "a hand is offered at a queued
+  workplace" (TownTest.V3: the bot played four game hours without a hand offered); run twice more under the lock it
+  passed both times. Its town comes from real input over frames, so the state at that point varies; nothing in this
+  branch touches the simulation. Worth a look by whoever owns that check if it recurs.
+- Not run: `./check` as a whole, `game-playthrough`, `game-river`, `game-book`, `game-menu`, `game-work`,
+  `game-work-places`, the screenshots (the lead's whole check of the main branch ran meanwhile; it holds Part A).

@@ -57,4 +57,34 @@ pixel-bound shape are what to carry over; the owner's readout (GPU ms at their w
 
 ## After the wins (Part C)
 
-TABLE_AFTER
+| town | variant | window | before: mean ms | p95 | vs baseline | after: mean ms | p95 | vs baseline | draws before / after | primitives before / after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| age1 | baseline | 1920x1080 | 644 | 683 | 1.00 | 638 | 704 | 1.00 | 360 / 360 | 228,514 / 228,514 |
+| age1 | noink | 1920x1080 | 650 | 912 | 1.01 | 567 | 603 | 0.89 | 354 / 354 | 228,082 / 228,082 |
+| age1 | nosoft | 1920x1080 | 667 | 877 | 1.04 | 606 | 653 | 0.95 | 356 / 354 | 228,144 / 227,916 |
+| age1 | noshadow | 1920x1080 | 533 | 572 | 0.83 | 488 | 524 | 0.77 | 255 / 255 | 119,188 / 119,188 |
+| age1 | baseline | 1920x1080 | 618 | 656 | 1.00 | 579 | 654 | 1.00 | 360 / 386 | 228,514 / 235,200 |
+| age1 | novillagers | 1920x1080 | 622 | 674 | 1.01 | 558 | 620 | 0.96 | 337 / 360 | 190,930 / 192,808 |
+| age1 | flatground | 1920x1080 | 190 | 201 | 0.31 | 196 | 220 | 0.34 | 355 / 381 | 227,918 / 234,946 |
+| age1 | zoomout | 1920x1080 | 408 | 431 | 0.66 | 380 | 400 | 0.66 | 389 / 389 | 229,090 / 233,826 |
+| age1 | closest | 1920x1080 | 600 | 658 | 0.97 | 592 | 636 | 1.02 | 327 / 350 | 224,262 / 230,920 |
+| age1 | scale50 | 1920x1080 | 227 | 251 | 0.37 | 218 | 244 | 0.38 | 350 / 373 | 227,876 / 234,534 |
+| age1 | baseline | 1280x720 | 324 | 346 | 1.00 | 313 | 338 | 1.00 | 360 / 386 | 228,514 / 235,200 |
+| age1 | baseline | 2560x1440 | 1033 | 1132 | 1.00 | 1008 | 1084 | 1.00 | 360 / 386 | 228,514 / 235,200 |
+| river | baseline | 1920x1080 | 673 | 709 | 1.00 | 566 | 611 | 1.00 | 538 / 580 | 289,238 / 297,323 |
+| river | noink | 1920x1080 | 617 | 659 | 0.92 | 540 | 571 | 0.95 | 536 / 580 | 289,418 / 297,515 |
+| river | noshadow | 1920x1080 | 545 | 598 | 0.81 | 478 | 505 | 0.84 | 359 / 405 | 158,301 / 164,189 |
+| river | flatground | 1920x1080 | 207 | 223 | 0.31 | 217 | 234 | 0.38 | 538 / 582 | 289,422 / 297,587 |
+| age1 | notrees | 1920x1080 | - | - | - | 593 | 625 | 0.93 | - / 345 | - / 120,336 |
+
+The after set: the first group (the five rows from the top) ran on the branch with Q4 and Q5 before the main branch
+was merged; the other groups after the merge, which brought the trades' heads and rings (draws 360 to 373-386 in the
+first age, 538 to 580 in the second). So the after rows draw a little more, and are still no slower.
+
+**What it says.** The ground's own cost (baseline minus flat ground, same group): first age 428 ms to 383 (-11
+percent, group 2), second age 466 to 349 (-25 percent: most of that view is away from the river and from wear);
+the whole frame -6 percent (group 2), -16 percent (river), -3 and -2 percent at 720p and 1440p, and within the noise
+(about 5 percent between two runs of the same thing) in the first group. llvmpipe keeps evaluating a branch for a
+block of pixels if any of them takes it, so it skips less than a card would, where a whole wave of pixels on plain
+grass or far from the river skips the work. Ink and shadows are as before (ink 0.89 to 0.95, shadows 0.77 to 0.84);
+trees cost 0.93 (their 108 k triangles drawn twice, colour and shadow).
