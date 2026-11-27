@@ -38,13 +38,29 @@ All new code is under `game/scripts/town/work/`; one node, `WorkPlaces`, is adde
 - **Replaced:** none. No game test asserted the old field model or the sails' old speed (`TownTest`'s `DrawnModel` check is for cottages only).
 - **Added:** `game-work-places` (`WorkPlacesTest.cs`, run by `tools/work-places-check.sh`): a first age played by the town bot in the running game at speed 16 (the bot acting once a frame), sampled every frame, then up to two minutes more at speed 1 after the charter (at speed 16 a lone miller lasts only a few frames). At 60 fps the whole age with every check; at 30 and 120 fps the first two minutes of frames. It checks: a field never under a third gold (what is meant and what is drawn); fronts move only in a frame where the test itself, from the simulation's views, sees work finished at that field, and never more steps than units; the sails' drawn rate (per game speed) with 0 < 1 < 2 at work; the mill's door wanted exactly while someone works or waits there, fully open or shut after its swing; every market delivery received and shown on the table, none missed; a cottage's door fully open whenever its people have been near it for its swing; no field piece, bucket, mill door or cottage door changing faster than a 0.15 s ease allows in one frame; the places allocating in few frames (only when a place's nodes are built); the hoist and second rope at their Tools steps; a town adopted again shows its fields lived in, at once.
 
-## Results of the check steps (exact commands of `tools/check.sh`)
+## Results of the check steps (exact commands of `tools/check.sh`, after the join, 11:00 to 11:30 UTC)
 
-See the table at the end (filled in when the last run is done).
+| Step | Result |
+| --- | --- |
+| game-build | PASS, 0 warnings, 0 errors |
+| game-smoke | PASS `renderer=mobile game_s=30.0 coin=4 trips=1 uploads=72 slow-frame=384steps` |
+| game-town | PASS `faint=0.40 maxstep=0.014 worn=0.95 ... level=6 bought=48` |
+| game-perf | PASS `1x: mean 0.911 ms (worst 8.68), 546 B/frame; 8x: mean 1.262 ms, 738 B/frame` (load average about 20 on 4 cores; on a quieter machine before the join: 0.543 / 0.738 ms, 544 / 724 B) |
+| game-playthrough | PASS `charter=33.9min buys=201` |
+| game-river | PASS |
+| game-layout | PASS (the first run after the join failed S1-keycap on shop rows in u13, interface code this branch does not touch; the rerun passed unchanged) |
+| game-motion | **FAIL on CPU time only**, a different transition each run (`pause: frame 2 took 7.21 ms`, `resume: frame 55 8.44 ms`, `esc-during-open: frame 5 8.74 ms`; gate 6 ms) with the load average at 18 to 26 on 4 cores. The same test run at the same moment in the villagers' checkout (no places) failed the same way (`tab-display-sound: frame 11 took 8.80 ms`). It passed before the merge on a quieter machine only once the load fell; not believed until rerun quiet. |
+| game-save | PASS `autosave-clock=0.65/0.65s level 2 paved 1 villagers 4` |
+| game-work | PASS `WORK RATES PASS pairs=535 gap=1.98-2.30m` |
+| game-work-places | PASS at 60, 30 and 120 fps (60: `field-gold-min=0.45 drawn=0.41 front-bad=0 door-bad=0/3122 sails=0.280/0.800/1.639 market=1607 table=1606 missed=0 late=0 cottage-bad=0 one-frame piece=0.071 bucket=0.048 door=0.028 cottage=0.037 bound=0.111 alloc-frames=23 hoist-at-tools=12 rope-at-tools=5`) |
+| ledger | PASS `506 rows, 480 asset files checked, 0 problems` |
 
 ## Pictures
 
-`build/n5-places/now/` (taken with `--now-work`, real game, not staged): `work-now-{well,field,field-1,field-2,field-3,mill,market,cottage}-{close,normal}.png`.
+Real game, not staged (`--now-work`): `build/n5-places/now3/` (after the join; `now/` and `now2/` are the places
+alone): `work-now-{well,field,field-1,field-2,field-3,mill,market,cottage}-{close,normal}.png`. Interaction strips after
+the places: `build/n5/strips-after-places/`, JPEG copies replacing the villagers-only ones in
+`docs/plans/n5/strips/after/` (`work-water`, `-reap`, `-mill`, `-market`, `-home`).
 
 ## Joined to the villagers (done in this branch)
 
@@ -95,4 +111,18 @@ Read-only states for the villagers' side if useful: `Main.Work.Mill.DoorOpen`, `
 
 ## What still does not look right
 
-(filled in from the last pictures)
+- **The mill's door faces away from the camera** in this town (the plan's door node is on the north side, and the line
+  comes in from there), so the doorway, the door swinging, the sacks on the step and the flour puffs are behind the
+  tower at the normal view; only the sails' speed and the hoist show. Moving the doorway to the south face would put
+  it where no villager can reach it without walking through the mill (the simulation's door and lane are north), so it
+  was not done: it needs the plan's door, which is the simulation's (not changed).
+- **The well**: the pails and bucket now sit on the rim toward the camera and read close up; at the normal view they
+  are small dark tubs, and the old second-bucket offer piece (a yoke beside the well) still stands there and confuses
+  the picture. The wet patch is translucent and hardly shows. The crank is a small code-made arm.
+- **A field**: reads as rows, with fronts, stubble, shoots, green and stooks moving between the three shots; the
+  worked rows show a bare-looking cut stretch at high work rates, where the front cuts into green crop again (the
+  three rows never worked stay gold). The whole field is dense gold tufts, heavier than the board's.
+- **The market**: goods on the table read at the normal view now (larger, settling with a small overshoot); the stall
+  model's own goods are still mixed in.
+- **A cottage**: the door leaf opens and the dark inside shows; the water butt is not drawn.
+- **Not done**: the hoist's running rope; the cottage's water butt; the mill's doorway on the camera's side (above).
