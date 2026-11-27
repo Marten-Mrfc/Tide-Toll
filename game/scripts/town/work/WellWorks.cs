@@ -71,7 +71,7 @@ public partial class WellWorks : Node3D
         for (int i = 0; i < 2; i++)
         {
             var d = _toView.Rotated(Vector3.Up, i == 0 ? -0.55f : 0.45f);
-            PailPos[i] = d * 0.86f + new Vector3(0, 1.72f / BoardScale, 0);
+            PailPos[i] = d * 1.0f + new Vector3(0, 1.72f / BoardScale, 0);   // on the stone of the rim, not over the water
         }
         var holder = new Node3D { Name = "Work" };
         body.AddChild(holder);

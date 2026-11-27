@@ -46,11 +46,38 @@ See the table at the end (filled in when the last run is done).
 
 `build/n5-places/now/` (taken with `--now-work`, real game, not staged): `work-now-{well,field,field-1,field-2,field-3,mill,market,cottage}-{close,normal}.png`.
 
-## Joining: what the villagers' side calls and reads
+## Joined to the villagers (done in this branch)
+
+The villagers' part (`claude/prototype-1`, merge `4711f01`) was merged into `wt/n5-places` (merge commit "Snapshot: merge
+the villagers' part"). One conflict, `tools/check.sh`, where both added a step: both steps kept (`game-work` after
+`game-motion`, `game-work-places` after `game-save`) and both names in the "godot not found" list.
+
+- `PlaceSite.cs` (new): one `IWorkSite` per well, field, mill, market and cottage plot, registered by `WorkPlaces`
+  on every new town (`WorkSites.Clear()` then `Register`). `WorkPlaces.DetectFromSim` is now **false**: the places
+  answer to the villagers' calls only; the old detection stays behind the switch for a build without them.
+  - `WorkStarted`: the well's two pails stand on the rim (they fill as the bucket comes up); the mill's flour sack of
+    that spot stands on the step while the grain is ground.
+  - `WorkFinished`: the well's bucket tips (splash) and the pails leave the rim over `WorkSites.TakeSeconds`; a field's
+    row front moves on, a stook is laid where it passed and the older one leaves over `TakeSeconds`; the mill puffs
+    flour and that spot's flour sack leaves over `TakeSeconds`.
+  - `Delivered`: the market puts the load on the table place the arc was aimed at (it drops the last bit and settles
+    with a small overshoot, 25 percent larger than the board's goods, so the arrival reads at the normal view); a
+    cottage's door opens and the chimney puffs.
+  - `Spot`: a field's worker stands just behind the front of their row, facing the standing crop (heading 0). Other
+    places keep the defaults.
+  - `GoodsAt`: the stook being taken up on that row; the middle of the well's two pails; the mill's flour sack of that
+    spot; the market's next free table place; a cottage's door.
+- `villager-sickle.glb` and `villager-scythe.glb` (generator `work-scenes.py`, ledger rows): in the hand frame the
+  villagers use (hand at the origin, handle up +Y, blade at the top curving forward +Z), pale (Concrete) blades, the
+  sickle 0.8 m and the scythe 1.36 m in the villager model's frame, so they read at the normal view.
+- The test `game-work-places` reads the joined path: the market check now allows the villager's 0.45 s arc (never more
+  loads on the table than delivered, never fewer than were delivered a second before; none missed).
+
+## Positions and calls (for reference)
 
 All positions are map metres in `MapOrigin`'s space (what `TownVillagers` draws in). Reach them through `Main.Work`.
 
-Calls (once joined, set `WorkPlaces.DetectFromSim = false`, or the places count each event twice):
+Direct calls on `Main.Work` (used only with `WorkPlaces.DetectFromSim = true`; joined, `PlaceSite` calls the places):
 
 - `UnitFinished(int workplace, int slot)`: a unit of work finished at a workplace (index into `Town.Workplace`) by the worker on the simulation's work spot `slot` (-1 if not known). `VillagerView` carries no `Slot`; `WorkPlaces.SlotOf(town, workplace, v.X, v.Y)` finds it from where the simulation put the worker (exactly on `Town.WorkSpot(plot, Slot)`), as this side does until joined. The well tips its bucket and fills the pails, a field's row front moves and lays a stook, the mill puffs and sets a flour sack on the step.
 - `GoodsTaken(int workplace, int slot)`: that worker has taken up the goods (stooped and lifted). The pails leave the rim, the older stook on the row goes, the oldest flour sack goes. Until joined these leave 0.9 to 1.1 s after the unit; joined, they leave when this is called.

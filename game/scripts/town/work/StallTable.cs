@@ -60,7 +60,8 @@ public partial class StallTable : Node3D
     {
         Good.Water => "work-pot", Good.Grain => "work-sack-grain", Good.Flour => "work-sack-flour", _ => "work-crate",
     };
-    private static float ScaleOf(Good g) => g is Good.Grain or Good.Flour ? 0.72f : g == Good.Water ? 1f : 0.85f;
+    // a little over the board's sizes: at the normal view the goods arriving on the table carry the delivery
+    private static float ScaleOf(Good g) => 1.25f * (g is Good.Grain or Good.Flour ? 0.72f : g == Good.Water ? 1f : 0.85f);
 
     /// <summary>A place on the table in the stall model's frame: two rows of four along the front.</summary>
     private Vector3 Local(int i)
