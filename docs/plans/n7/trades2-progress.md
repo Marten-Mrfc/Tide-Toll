@@ -1,10 +1,12 @@
 # Trades, step 3, part 1: the second age's trades in the simulation (progress)
 
+**Names commit for the second builder: `a5f0660`** ("Snapshot: trades 2, the names").
+
 Branch `wt/n7-trades2`. Brief: `docs/plans/n7/trades2-build-sheet.md`, "The three trades" and "The simulation" (items 1 to 6), and the `sim.tests`.
 
 ## The names commit (the second builder starts here)
 
-**Commit: NAMES_COMMIT** ("Snapshot: trades 2, the names"). In that commit the three new trades are named and open with their places, and the views and calls take them, but the town does not fill them and no job belongs to them yet (`TradeOfJob` and `TradeOfLeaning` as before), so nobody is in them unless a call puts someone there. Every test passes; the pin with trades off, the new pin of the first age with trades on, and a pin of both ages with trades on (recorded before any change) are identical.
+**Commit `a5f0660`** ("Snapshot: trades 2, the names"). In that commit the three new trades are named and open with their places, and the views and calls take them, but the town does not fill them and no job belongs to them yet (`TradeOfJob` and `TradeOfLeaning` as before), so nobody is in them unless a call puts someone there. Every test passes; the pin with trades off, the new pin of the first age with trades on, and a pin of both ages with trades on (recorded before any change) are identical.
 
 ### The names as built
 
