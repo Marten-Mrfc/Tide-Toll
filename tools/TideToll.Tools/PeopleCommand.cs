@@ -26,6 +26,10 @@ public static class PeopleCommand
         public double Earned2, Minutes2;
         public int Own1, Trips1, Own2, Trips2, Moves1, Moves2;
         public int[,] ByTrade2 = new int[Town.TradeCount, 11]; // second age: trips by the maker's trade and the job
+        // second age, per trade: member-samples (10 s), own trips, trips, coin, busy place-samples and place-samples
+        public double[] Mem2 = new double[Town.TradeCount], Own2T = new double[Town.TradeCount], Trips2T = new double[Town.TradeCount],
+            Coin2T = new double[Town.TradeCount], Busy2 = new double[Town.TradeCount], Places2 = new double[Town.TradeCount];
+        public double VillSamples2, Coin2All;
     }
 
     private static TradePlay _play = TradePlay.LeftAlone;
@@ -80,6 +84,17 @@ public static class PeopleCommand
             line += $" | own {Pct(s.Sum(x => x.Own1), s.Sum(x => x.Trips1))}" + (river ? $" / {Pct(s.Sum(x => x.Own2), s.Sum(x => x.Trips2))}" : "")
                   + $" | hats/min {PerMin(s.Sum(x => x.Moves1), s.Sum(x => Math.Max(0, x.Charter) / 60))}" + (river ? $" / {PerMin(s.Sum(x => x.Moves2), s.Sum(x => x.Minutes2))}" : "");
             Console.WriteLine(line);
+            if (o.ContainsKey("trades"))
+            {
+                double vs = s.Sum(x => x.VillSamples2), all = s.Sum(x => x.Coin2All);
+                double townHead = all / Math.Max(1, vs);
+                for (int q = 1; q < Town.TradeCount; q++)
+                {
+                    double ms = s.Sum(x => x.Mem2[q]), samples = s.Sum(x => x.Samples2);
+                    if (ms <= 0) continue;
+                    Console.WriteLine($"TRADE {k} {(Trade)q,-6} members {ms / samples,5:F1} ({100 * ms / vs,3:F0} %) | places {s.Sum(x => x.Places2[q]) / samples,4:F1} | own {100 * s.Sum(x => x.Own2T[q]) / Math.Max(1, s.Sum(x => x.Trips2T[q])),3:F0} % | busy {100 * s.Sum(x => x.Busy2[q]) / Math.Max(1, s.Sum(x => x.Places2[q])),3:F0} % | coin a head {s.Sum(x => x.Coin2T[q]) / ms / townHead,4:F2} of the town's");
+                }
+            }
             if (o.ContainsKey("away"))
                 for (int q = 1; q < Town.TradeCount; q++)
                 {
@@ -114,12 +129,17 @@ public static class PeopleCommand
                 if (Trace && e.Kind == TownEventKind.Purchase && e.Time < 660) Console.WriteLine($"BUY {e.Time / 60,5:F2} {e.Item} {e.Index} {e.Coin:F0} coin {t.Coin:F0} cpm {t.CoinPerMinute:F0} req {(t.RequestActive ? t.Request.Good.ToString() : "-")}");
                 if (e.Kind == TownEventKind.Purchase) { if (rungAt < 0) row.Buys1++; else if (row.Seal < 0) row.Buys2++; }
                 if (e.Kind == TownEventKind.TradeChanged && e.Level == 0) { if (rungAt < 0) row.Moves1++; else if (row.Seal < 0) row.Moves2++; }
+                if (e.Kind is TownEventKind.Delivery or TownEventKind.LandingDelivery && rungAt >= 0 && row.Seal < 0) row.Coin2All += e.Coin;
                 if (e.Kind is TownEventKind.Delivery or TownEventKind.LandingDelivery)
                 {
                     var tr = t.Villager(e.Villager).Trade;
                     if (tr == Trade.None) continue;
                     bool own = Town.AtOwnTrade(tr, JobOf(e)); // by the rule in force (step 3: grain and flour to the boats are the porters')
-                    if (rungAt >= 0 && row.Seal < 0) row.ByTrade2[(int)tr, (int)JobOf(e)]++;
+                    if (rungAt >= 0 && row.Seal < 0)
+                    {
+                        row.ByTrade2[(int)tr, (int)JobOf(e)]++;
+                        row.Trips2T[(int)tr]++; if (own) row.Own2T[(int)tr]++; row.Coin2T[(int)tr] += e.Coin;
+                    }
                     if (rungAt < 0) { row.Trips1++; if (own) row.Own1++; }
                     else if (row.Seal < 0) { row.Trips2++; if (own) row.Own2++; }
                 }
@@ -131,7 +151,13 @@ public static class PeopleCommand
                 bool herd = byJob.Max() * 4 > t.VillagerCount * 3;
                 if (Trace && herd) Console.WriteLine($"HERD {seed} {kind} {t.Time / 60,5:F1} n {t.VillagerCount} job {(JobKind)Array.IndexOf(byJob, byJob.Max())} req {(t.RequestActive ? (int)t.Request.Good : 0)}");
                 if (rungAt < 0) { row.Samples1++; if (herd) row.Herd1++; }
-                else { row.Samples2++; if (herd) row.Herd2++; }
+                else
+                {
+                    row.Samples2++; if (herd) row.Herd2++;
+                    row.VillSamples2 += t.VillagerCount;
+                    for (int i = 0; i < t.VillagerCount; i++) row.Mem2[(int)t.Villager(i).Trade]++;
+                    for (int q = 1; q < Town.TradeCount; q++) { row.Busy2[q] += t.TradeBusy((Trade)q, out int pl); row.Places2[q] += pl; }
+                }
             }
             bot.Act(t);
             tp.Act(t);

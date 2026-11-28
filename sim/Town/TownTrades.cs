@@ -99,6 +99,19 @@ public sealed partial class Town
     /// <summary>True from the first field on: the Trades card and the Training row show.</summary>
     public bool TradesShown => TradeOpen(Trade.Grain);
 
+    /// <summary>Places of a trade's open workplaces busy now (working), and all of them: the well, the fields, the mill,
+    /// the pasture, the weaver's cottage (0 and 0 for the porters and the Helpers). For the tools and tests.</summary>
+    public int TradeBusy(Trade t, out int places)
+    {
+        places = TradePlaces(t);
+        if (places == 0) return 0;
+        if (t == Trade.Wool) return R!.PastureBusy;
+        if (t == Trade.Cloth) return R!.WeaverBusy;
+        int busy = 0; var pk = TradePlot(t);
+        foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) busy += w.Busy;
+        return busy;
+    }
+
     /// <summary>Villagers with no trade.</summary>
     public int Helpers => TradeMembers(Trade.None);
 

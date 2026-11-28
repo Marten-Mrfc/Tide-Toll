@@ -25,7 +25,8 @@ public class TownTrades2Tests
         return t;
     }
 
-    private static bool AllThreeOpen(T t) => t.TradeOpen(Trade.Wool) && t.TradeOpen(Trade.Cloth) && t.TradeOpen(Trade.Boat);
+    /// <summary>The second age's trades as shipped are open: the shepherds and weavers (the porters stay closed: TownRules.TradePorters is off).</summary>
+    private static bool AllThreeOpen(T t) => t.TradeOpen(Trade.Wool) && t.TradeOpen(Trade.Cloth) && (!TownRules.TradePorters || t.TradeOpen(Trade.Boat));
 
     [Fact]
     public void TheSecondAgesJobsBelongToTheirTrades()
@@ -34,23 +35,25 @@ public class TownTrades2Tests
         Assert.Equal(Trade.Wool, T.TradeOfJob(JobKind.WoolMarket));
         Assert.Equal(Trade.Cloth, T.TradeOfJob(JobKind.ClothBoat));
         Assert.Equal(Trade.Cloth, T.TradeOfJob(JobKind.ClothMarket));
-        Assert.Equal(Trade.Boat, T.TradeOfJob(JobKind.GrainBoat));
-        Assert.Equal(Trade.Boat, T.TradeOfJob(JobKind.FlourBoat));
+        // No porters as shipped (TownRules.TradePorters off): grain and flour to the boats are the reapers' and millers'.
+        Assert.False(TownRules.TradePorters);
+        Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainBoat));
+        Assert.Equal(Trade.Flour, T.TradeOfJob(JobKind.FlourBoat));
         Assert.Equal(Trade.Wool, T.TradeOfLeaning(Leaning.Wool));
         Assert.Equal(Trade.Cloth, T.TradeOfLeaning(Leaning.Cloth));
         foreach (var l in Enum.GetValues<Leaning>()) Assert.NotEqual(Trade.Boat, T.TradeOfLeaning(l)); // nobody leans to the porters
         Assert.Equal(7, T.TradeCount);
     }
 
-    /// <summary>The porter's rule (V2, shipped): a grain or flour boat trip is at its own trade for the porter and for the
-    /// trade of its good; the lean and the reward follow it. (V1, TownRules.TradePorters false, is measured with the tools'
-    /// --set; no test flips a rule other tests run under.)</summary>
+    /// <summary>No porters (shipped, V1): the Boat trade never opens and a grain or flour boat trip is at its own trade for
+    /// the reaper or the miller; the lean and the reward follow it. (V2, TownRules.TradePorters on, is measured with the
+    /// tools' --set; no test flips a rule other tests run under.)</summary>
     [Fact]
     public void BoatTripsAreOwnedByThePorterAndByTheirGoodsTrade()
     {
-        Assert.True(TownRules.TradePorters && TownRules.BoatTripsOwnedTwice);
-        Assert.True(T.AtOwnTrade(Trade.Boat, JobKind.GrainBoat) && T.AtOwnTrade(Trade.Grain, JobKind.GrainBoat));
-        Assert.True(T.AtOwnTrade(Trade.Boat, JobKind.FlourBoat) && T.AtOwnTrade(Trade.Flour, JobKind.FlourBoat));
+        Assert.False(TownRules.TradePorters);
+        Assert.True(T.AtOwnTrade(Trade.Grain, JobKind.GrainBoat) && T.AtOwnTrade(Trade.Flour, JobKind.FlourBoat));
+        Assert.False(T.AtOwnTrade(Trade.Boat, JobKind.GrainBoat) || T.AtOwnTrade(Trade.Boat, JobKind.FlourBoat));
         Assert.False(T.AtOwnTrade(Trade.Grain, JobKind.FlourBoat) || T.AtOwnTrade(Trade.Flour, JobKind.GrainBoat));
         Assert.False(T.AtOwnTrade(Trade.Boat, JobKind.WoolBoat) || T.AtOwnTrade(Trade.None, JobKind.GrainBoat));
         Assert.True(T.AtOwnTrade(Trade.Wool, JobKind.WoolBoat) && T.AtOwnTrade(Trade.Cloth, JobKind.ClothMarket));
@@ -88,9 +91,9 @@ public class TownTrades2Tests
                 if (openedAt[k] < 0 && x.TradeOpen((Trade)k)) openedAt[k] = x.Time;
                 if (openedAt[k] >= 0 && memberAt[k] < 0 && x.TradeInfo((Trade)k).Members > 0) memberAt[k] = x.Time;
             }
-            return memberAt[4] >= 0 && memberAt[5] >= 0 && memberAt[6] >= 0;
+            return memberAt[4] >= 0 && memberAt[5] >= 0;
         });
-        for (int k = T.FirstAgeTrades; k < T.TradeCount; k++)
+        for (int k = T.FirstAgeTrades; k < (int)Trade.Boat; k++)
         {
             Assert.True(openedAt[k] >= 0, $"{(Trade)k} never opened");
             Assert.InRange(memberAt[k] - openedAt[k], 0, 1.0 + 1e-9);
@@ -98,7 +101,8 @@ public class TownTrades2Tests
         Assert.Equal(TownRulesRiver.PasturePlaces, t.TradeInfo(Trade.Wool).Places);
         Assert.Equal(TownRulesRiver.WeaverPlaces, t.TradeInfo(Trade.Cloth).Places);
         Assert.Equal(0, t.TradeInfo(Trade.Boat).Places);
-        Assert.True(t.TradeInfo(Trade.Boat).Open);
+        Assert.False(t.TradeInfo(Trade.Boat).Open);   // no porters
+        Assert.False(t.SetTradeCount(Trade.Boat, 2));
     }
 
     /// <summary>The filling in the second age: every Helper takes a trade, every open trade keeps a member, the porters'
@@ -111,16 +115,21 @@ public class TownTrades2Tests
         var t = RungUntil(2, x => false, ev); // 30 minutes after the ring, or the seal
         Assert.True(AllThreeOpen(t));
         Assert.Equal(0, t.Helpers);
-        for (int k = 1; k < T.TradeCount; k++) Assert.True(t.TradeInfo((Trade)k).Members >= 1, $"{(Trade)k} has nobody");
+        for (int k = 1; k < T.TradeCount; k++) Assert.True(t.TradeInfo((Trade)k).Members >= (t.TradeOpen((Trade)k) ? 1 : 0), $"{(Trade)k} has nobody");
+        Assert.Equal(0, t.TradeInfo(Trade.Boat).Members);
         int sum = 0;
         for (int k = 0; k < T.TradeCount; k++) sum += t.TradeInfo((Trade)k).Members;
         Assert.Equal(t.VillagerCount, sum);
-        // The porters stand among the others as their floor says: at least their scaled share of the floors less one.
-        int places = 0;
-        for (int k = 1; k < T.TradeCount; k++) places += k == (int)Trade.Boat ? 0 : (int)Math.Floor(t.TradeInfo((Trade)k).Places * TownRules.TradeFloorShare);
-        int porters = (int)Math.Floor(TownRules.TradePortersPerBerth * (t.InRiverAge && t.S.River!.BerthBought ? 2 : 1));
-        int floor = Math.Min(porters, porters * t.VillagerCount / (places + porters));
-        Assert.True(t.TradeInfo(Trade.Boat).Members >= floor - 1, $"porters {t.TradeInfo(Trade.Boat).Members}, floor {floor}");
+        // The second age's floors (TownRules.TradeFloorSecondAge, villagers a place) bind: every trade holds at least its
+        // floor scaled to the town, less one.
+        int all2 = 0; var fl = new int[T.TradeCount];
+        for (int k = 1; k < T.TradeCount; k++) { fl[k] = (int)Math.Floor(t.TradeInfo((Trade)k).Places * TownRules.TradeFloorSecondAge[k]); all2 += fl[k]; }
+        for (int k = 1; k < T.TradeCount; k++)
+        {
+            if (!t.TradeOpen((Trade)k)) continue;
+            int want = all2 > t.VillagerCount ? fl[k] * t.VillagerCount / all2 : fl[k];
+            Assert.True(t.TradeInfo((Trade)k).Members >= want - 1, $"{(Trade)k} {t.TradeInfo((Trade)k).Members} under its floor {want}");
+        }
         // Every trade's members at their own work by the rule in force (Town.AtOwnTrade), the maker's trade read when the
         // trip is delivered: more than half the trips (measured 63-70 % over seeds 1-10 and four bots).
         var u = new T(2);
@@ -164,9 +173,8 @@ public class TownTrades2Tests
         v.Job = JobKind.WoolMarket;
         Assert.Equal(1 + t.TradeWorkBonus + like, t.TradeWorkFactor(v), 12);
         Assert.Equal(1 + t.TradeWorthBonus + like, t.TradeWorthFactor(v), 12);
-        Assert.True(t.SetVillagerTrade(0, Trade.Boat));
+        Assert.False(t.SetVillagerTrade(0, Trade.Boat)); // no porters
         v.Job = JobKind.FlourBoat;
-        Assert.Equal(1 + t.TradeWorkBonus, t.TradeWorkFactor(v), 12); // nobody likes the porters
         Assert.True(t.SetVillagerTrade(0, Trade.Grain));
         Assert.Equal(1, t.TradeWorkFactor(v));
         Assert.Equal(1, t.TradeWorthFactor(v));
@@ -193,16 +201,16 @@ public class TownTrades2Tests
     public void YourCountAndOneVillagerForTheNewTrades()
     {
         var first = new T(5);
-        Assert.False(first.SetTradeCount(Trade.Boat, 2));       // not open in the first age
+        Assert.False(first.SetTradeCount(Trade.Cloth, 2));      // not open in the first age
         Assert.False(first.SetVillagerTrade(0, Trade.Wool));
         var t = RungUntil(5, x => AllThreeOpen(x) && x.Time > 0);
         for (int k = 0; k < 2 * TownRules.TickHz; k++) t.Step();
-        int porters = t.TradeInfo(Trade.Boat).Members;
-        Assert.True(t.SetTradeCount(Trade.Boat, porters + 3));
-        Assert.Equal(porters + 3, t.TradeInfo(Trade.Boat).Members);
-        Assert.True(t.TradeInfo(Trade.Boat).ByPlayer);
+        int shepherds = t.TradeInfo(Trade.Wool).Members;
+        Assert.True(t.SetTradeCount(Trade.Wool, shepherds + 3));
+        Assert.Equal(shepherds + 3, t.TradeInfo(Trade.Wool).Members);
+        Assert.True(t.TradeInfo(Trade.Wool).ByPlayer);
         for (int k = 0; k < 90 * TownRules.TickHz; k++) t.Step();
-        Assert.Equal(porters + 3, t.TradeInfo(Trade.Boat).Members);   // the town leaves your count alone
+        Assert.Equal(shepherds + 3, t.TradeInfo(Trade.Wool).Members);   // the town leaves your count alone
         Assert.True(t.SetTradeCount(Trade.Cloth, 1));
         Assert.Equal(1, t.TradeInfo(Trade.Cloth).Members);
         Assert.True(t.SetVillagerTrade(0, Trade.Wool));
@@ -212,7 +220,7 @@ public class TownTrades2Tests
         Assert.Equal(Trade.Wool, t.Villager(0).Trade);
         Assert.True(t.CanLowerTrade(Trade.Wool));
         Assert.True(t.SetTownFillsTrades(true));
-        Assert.False(t.TradeInfo(Trade.Boat).ByPlayer);
+        Assert.False(t.TradeInfo(Trade.Wool).ByPlayer);
     }
 
     /// <summary>Old saves: a second-age save from before trades (version 3) takes every trade within a second, the three new
@@ -227,7 +235,7 @@ public class TownTrades2Tests
         Assert.Equal(0, t.Helpers);
         for (int k = T.FirstAgeTrades; k < T.TradeCount; k++)
             if (t.TradeOpen((Trade)k)) Assert.True(t.TradeInfo((Trade)k).Members >= 1, $"{(Trade)k} empty after a second");
-        Assert.True(t.TradeOpen(Trade.Boat));
+        Assert.True(t.TradeOpen(Trade.Wool) || t.TradeOpen(Trade.Cloth) || !t.InRiverAge);
 
         // A step 2 town in the second age: its arrays by trade cut to four, every villager in a first-age trade.
         var s2 = RungUntil(3, x => AllThreeOpen(x));
@@ -242,7 +250,7 @@ public class TownTrades2Tests
         Assert.Equal(T.TradeCount, old.S.TradeEarn.Length);
         Assert.Equal(T.TradeCount, old.S.TradeCountByPlayer.Length);
         for (int k = 0; k < TownRules.TickHz; k++) old.Step();
-        for (int k = T.FirstAgeTrades; k < T.TradeCount; k++) Assert.True(old.TradeInfo((Trade)k).Members >= 1, $"{(Trade)k} empty after a second");
+        for (int k = T.FirstAgeTrades; k < T.TradeCount; k++) if (old.TradeOpen((Trade)k)) Assert.True(old.TradeInfo((Trade)k).Members >= 1, $"{(Trade)k} empty after a second");
         string again = TownSave.Save(old);
         var u = TownSave.Load(again);
         Assert.Equal(again, TownSave.Save(u));

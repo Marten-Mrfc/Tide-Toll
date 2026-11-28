@@ -37,10 +37,10 @@ public class TownTradesTests
         Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainHome));
         Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainMarket));
         Assert.Equal(Trade.Flour, T.TradeOfJob(JobKind.Flour));
-        // Step 3: grain and flour to the boats are the porters' work, wool and cloth the shepherds' and weavers'
-        // (TownTrades2Tests.TheSecondAgesJobsBelongToTheirTrades); no job is the Helpers'.
-        Assert.Equal(Trade.Boat, T.TradeOfJob(JobKind.GrainBoat));
-        Assert.Equal(Trade.Boat, T.TradeOfJob(JobKind.FlourBoat));
+        // Step 3 as shipped (no porters): grain and flour to the boats stay the reapers' and millers' (step 2's);
+        // wool and cloth are the shepherds' and weavers' (TownTrades2Tests.TheSecondAgesJobsBelongToTheirTrades).
+        Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainBoat));
+        Assert.Equal(Trade.Flour, T.TradeOfJob(JobKind.FlourBoat));
         Assert.Equal(Trade.None, T.TradeOfJob(JobKind.None));
     }
 

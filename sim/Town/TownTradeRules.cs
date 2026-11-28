@@ -125,12 +125,16 @@ public sealed partial class Town
         {
             if (!TownTrade(t)) continue;
             placed += members[t];
-            floor[t] = t == (int)Trade.Boat ? PortersFloor() : (int)Math.Floor(TradePlaces((Trade)t) * TownRules.TradeFloorShare);
+            floor[t] = t == (int)Trade.Boat ? PortersFloor() : (int)Math.Floor(TradePlaces((Trade)t) * FloorShare(t));
             all += floor[t];
         }
         if (all > placed && all > 0)
             for (int t = 1; t < TradeCount; t++) floor[t] = floor[t] * placed / all;
     }
+
+    /// <summary>Villagers a place a trade's floor asks for: TradeFloorShare in the first age (step 2's); in the second,
+    /// TownRules.TradeFloorSecondAge by trade (fitted to the work each trade's places keep: step 3).</summary>
+    private double FloorShare(int t) => S.River == null ? TownRules.TradeFloorShare : TownRules.TradeFloorSecondAge[t];
 
     /// <summary>The porters' floor (step 3): the landing has no work places, so TownRules.TradePortersPerBerth villagers a
     /// berth.</summary>
