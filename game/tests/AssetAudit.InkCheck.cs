@@ -39,7 +39,8 @@ public partial class AssetAudit
             return Wrap(TownBuildings.CottageNode(v, e, 6f, 6f));
         }
         if (name == "street") return Street(walker);
-        if (name == "villagers-trades-group") return TradesInkGroup(walker);   // n7 step 2 mock-up (AssetAudit.Trades.cs)
+        if (name == "villagers-trades-group") return TradesInkGroup(walker);
+        if (name == "villagers-trades2-group") return Trades2InkGroup(walker);   // n7 step 3 (AssetAudit.Trades2.cs)   // n7 step 2 mock-up (AssetAudit.Trades.cs)
         if (name == "villagers-group")
         {
             var n = new Node3D { Name = "Subject" };

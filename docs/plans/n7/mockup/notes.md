@@ -111,3 +111,31 @@ A finding on the check itself: measured as the **first** subject of a run (`--in
 - The miller's peak covers the upper face from the game's tilt. At the play view it is a dark line under the cap.
 - The Soot brick Helper hair reads reddish-brown on a Brick tunic; still no trade colour.
 - At the play view the carrier and a Helper differ by the head's colour alone (blue against dark hair, both small round heads); the hem is 1 to 2 px there.
+
+## Trades 2 (n7 step 3: shepherd, weaver, porter; 28 November)
+
+Picture: `hats-trades2.png`: (a) Helper, carrier, reaper, miller, shepherd, weaver, porter in a row at the 1080p play view, 3 x and true size, empty-handed and with their own good (shepherd wool, weaver cloth, porter flour), and the same for the dropped candidates; (b) both candidates of every new headwear on every tunic colour of `TownVillagers.Clothes`; (c) a second-age street of twenty (Helpers 3, carriers 2, reapers 4, millers 2, shepherds 3, weavers 3, porters 3; a third carrying, random turns) at true size and 2 x, beside the same street with the first three trades only; (d) the seven trade icons at 24 and 19 px on paper and at 3 x. All figures are real frames: `game/tests/AssetAudit.Trades2.cs`, run as `asset-audit.tscn -- --trades2 --no-town --out-dir=DIR` (xvfb, Mobile renderer, 1920 x 1080), board by `tools/mockup/hats_trades2.py SHOTS OUT "ink note"` (crops each frame where it differs from the empty ground frame).
+
+**What I made** (`assets/src/models/villager-trades2.py`, `assets/src/2d/icons-trades2.py`; ledger rows for all nine files, `check-ledger.py` passes):
+
+- **Shepherd: `villager-head-fleece.glb`** (244 triangles): a Limewash fleece hood and a lumpy fleece mantle 1.0 across on the shoulders, in the head's file (body frame). From above the whole top of the figure is wool-white, with no ring or band.
+- **Weaver: `villager-head-stocking.glb`** (184): a Meadow stocking cap, its tail lying back over the crown, a Limewash tassel. At the game's tilt the tail stands up behind the head: a green point. The only green head; it reads at once in the crowd.
+- **Porter: `villager-head-fantail.glb`** (144): a Slate roof fantail hood: crown, short peak, a broad flat fan behind (0.5 at the crown, 1.0 at the hem, Packed earth hem). From the front it stands over the head as a grey funnel; turned, it is a grey fan. The strongest new shape.
+- **Icons**: `trade-wool` (fleece hood and wide mantle, Limewash), `trade-cloth` (green stocking cap, tail and tassel to the side, Packed earth shoulders), `trade-boat` (Slate fantail hood with its peak, Packed earth shoulders).
+- Test only: the shots, and `villagers-trades2-group` for the ink check (`InkSubject`). The game does not load the new heads; `TownVillagers.Heads.cs` is unchanged.
+
+**Dropped candidates** (their files stay for the board, ledger rows say "dropped"):
+
+- Shepherd B, `villager-head-felthat` (Slate roof felt hat, brim 0.56, Limewash band): reads very clearly as a grey disc, but it is the straw hat's shape in another colour, and it takes Slate, which the porter needs; with both in grey the crowd had two grey hats.
+- Weaver B, `villager-head-turban` (Deep water roll): at the play view a dark blue round head, the kerchief's shape in a near colour. Dropped.
+- Porter B, `villager-head-headpad` (Slate ring with hair inside): from above a grey hat with a dark middle, too close to the felt hat and small. Porter A first had its flap falling steeply down the back, hidden behind the body at the play view (a grey round head, close to the kerchief and dark hair); round 2 laid it flat as a fan.
+
+**Ink** (`game-ink`'s measure, `--ink-check --ink-variants=villagers-group,villagers-trades-group,villagers-trades2-group`): a group of six in the six headwears (carrier, reaper, miller with apron, shepherd, weaver, porter; same places, turns and loads as `villagers-group`): **0.361**, ceiling 0.42. Today's group in the same run 0.349.
+
+**Tunics**: no change needed. No new headwear uses a tunic colour (Limewash, Meadow, Slate roof). Weakest pairing: the weaver's Meadow cap on a Cast-iron green tunic (both green, the cap much lighter; it still reads).
+
+**Still hard to tell apart:**
+
+- **Shepherd and miller**: both are white-headed at true size. The miller is a neat white dome with a red ring and a white apron down the front; the shepherd is wider, lumpier, with white over the shoulders and no red. In the crowd at true size the two are told apart only on a second look; carrying, the wool bale and the flour sack are both pale and make it worse. If the lead wants it sharper, the next step is a coloured band on the fleece (Thatch ties, as on the wool bale) or giving the shepherd the Slate felt hat and the porter another colour; neither tried.
+- The porter's fan is large (1.0 across behind the head): from the front it reads as a funnel over the head and may look odd close up. It may be trimmed to 0.8 if it crowds neighbours.
+- Icons: `trade-wool` is pale on paper and reads by its outline (a hooded head over wide shoulders) more than its colour; `trade-boat` (slate) and `trade-water` (river) are both blue-grey heads, told apart by the fantail's shape and the peak. At 19 px the seven are distinct but these two pairs need a look.

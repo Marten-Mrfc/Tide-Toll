@@ -45,7 +45,8 @@ public partial class AssetAudit : TownTestBase
             else if (a == "--ink-check") _inkCheck = true;   // game-ink (AssetAudit.InkCheck.cs)
             else if (a == "--ink-board") _inkBoard = true;   // n8 before/after pictures (AssetAudit.InkBoard.cs)
             else if (a.StartsWith("--ink-variants=")) _inkNames = new HashSet<string>(a[15..].Split(','));
-            else if (a == "--trades") _trades = true;   // n7 step 2: the trades' headwear (AssetAudit.Trades.cs)
+            else if (a == "--trades") _trades = true;
+            else if (a == "--trades2") _trades2 = true;   // n7 step 3: the second age's headwear (AssetAudit.Trades2.cs)   // n7 step 2: the trades' headwear (AssetAudit.Trades.cs)
             else if (a == "--landing") _landing = true;   // night 6: the landing now and planned (AssetAudit.Landing.cs)   // night 5: real frames at the workplaces (AssetAudit.NowWork.cs)
             else if (a.StartsWith("--only=")) _only = new HashSet<string>(a[7..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             else if (a.StartsWith("--spot="))
@@ -73,6 +74,7 @@ public partial class AssetAudit : TownTestBase
         Notes.Add($"play1080={play1080:0.0} play640={playSize:0.0} walker={walker:0.00}");
 
         if (_trades) { await TradesShots(play1080, walker); return; }
+        if (_trades2) { await Trades2Shots(play1080, walker); return; }
         if (_inkCheck || _inkBoard)
         {
             if (_inkCheck) await InkCheck(playSize, play1080, walker);
