@@ -35,19 +35,24 @@ public sealed partial class Town
     /// <summary>The first age's trades (Water, Grain, Flour) are 1 to FirstAgeTrades - 1; the second age's follow.</summary>
     public const int FirstAgeTrades = 4;
 
-    /// <summary>The trade a job belongs to (None for no job and for the river's wool and cloth, which have no trade yet).</summary>
+    /// <summary>The trade a job belongs to (None for no job). Grain and flour to the boats are the porters' (step 3): the
+    /// reapers and millers keep the home and market work.</summary>
     public static Trade TradeOfJob(JobKind j) => j switch
     {
         JobKind.Water => Trade.Water,
-        JobKind.GrainHome or JobKind.GrainMarket or JobKind.GrainBoat => Trade.Grain,
-        JobKind.Flour or JobKind.FlourBoat => Trade.Flour,
+        JobKind.GrainHome or JobKind.GrainMarket => Trade.Grain,
+        JobKind.Flour => Trade.Flour,
+        JobKind.WoolBoat or JobKind.WoolMarket => Trade.Wool,
+        JobKind.ClothBoat or JobKind.ClothMarket => Trade.Cloth,
+        JobKind.GrainBoat or JobKind.FlourBoat => Trade.Boat,
         _ => Trade.None,
     };
 
-    /// <summary>The trade that matches a leaning (None for wool and cloth until their trades exist).</summary>
+    /// <summary>The trade that matches a leaning (the porters match none: nobody leans to them).</summary>
     public static Trade TradeOfLeaning(Leaning l) => l switch
     {
-        Leaning.Water => Trade.Water, Leaning.Grain => Trade.Grain, Leaning.Flour => Trade.Flour, _ => Trade.None,
+        Leaning.Water => Trade.Water, Leaning.Grain => Trade.Grain, Leaning.Flour => Trade.Flour,
+        Leaning.Wool => Trade.Wool, Leaning.Cloth => Trade.Cloth, _ => Trade.None,
     };
 
     private static PlotKind TradePlot(Trade t) => t == Trade.Water ? PlotKind.Well : t == Trade.Grain ? PlotKind.Field : PlotKind.Mill;

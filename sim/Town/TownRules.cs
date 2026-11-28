@@ -206,6 +206,14 @@ public static class TownRules
     // last stretch grew longer than the gaps before it (3.22 against 3.02 min); at 1 five bands failed.
     public static double TradeMoveEvery = 20, TradeMoveGap = 0.2;
     public static double TradeFloorShare = 3;
+    // Step 3, the porters' floor: the landing has no work places, so TradePortersPerBerth villagers a berth (a boat trip is
+    // a field's work, the walk to the bank and the river, about twice a home trip, so twice the wells' and fields' three a
+    // place). Measured on seeds 1-10, four bots (docs/plans/n7/trades2-progress.md): 0 / 2 / 3 / 4 / 6 / 9 a berth gave the
+    // porters 5 / 9 / 11 / 14 / 18 / 23 % of the second age's town and the reapers 39 / 36 / 35 / 33 / 32 / 29 %; trips
+    // at the own trade 51-58 / 53-59 / 52-60 / 53-59 / 54-59 / 54-59 %; herding (more than three quarters on one job)
+    // 24-27 / 23-26 / 24-27 / 24-26 / 21-26 / 23-27 %. 6 is the lowest herding and the most even mix; no value moves the
+    // own-trade share far (the lean does: see the progress page).
+    public static double TradePortersPerBerth = 6;
     // Training: ten steps; price TrainingMinutes of the best coin a minute (at least TrainingRateMin), times TrainingGrowth ^
     // steps, so its payback sits among Regulars' and Tools' (at 1.5 minutes no bot bought it in 40 first-age runs).
     public const int TrainingMax = 10;

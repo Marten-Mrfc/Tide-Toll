@@ -73,20 +73,6 @@ public class TownTradesPinTests
         Assert.Equal(want, FirstAgeHash(seed, kind));
     }
 
-    /// <summary>Both ages with trades on, recorded before step 3 (the names commit must leave it as it was; the rules of
-    /// step 3 change the second age and replace this pin).</summary>
-    [Theory]
-    [InlineData(1, BotKind.Payback, "07976D7E5827649F")]
-    [InlineData(2, BotKind.Payback, "1F3B3FE5B8B26C14")]
-    [InlineData(3, BotKind.Payback, "360CA8796F3F1E17")]
-    [InlineData(1, BotKind.Cheapest, "23021384CC904571")]
-    [InlineData(2, BotKind.Cheapest, "9F37C84F3739EAB5")]
-    [InlineData(3, BotKind.Cheapest, "861171D1E0CFD078")]
-    public void WithTradesOnBothAgesAreAsBeforeStep3(int seed, BotKind kind, string want)
-    {
-        Assert.Equal(want, RunHash(seed, kind, false));
-    }
-
     [Theory]
     [InlineData(1, BotKind.Payback, "23405C6D2BFF08FF")]
     [InlineData(2, BotKind.Payback, "720BAB93E8574BC7")]

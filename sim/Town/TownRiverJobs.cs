@@ -280,7 +280,7 @@ public sealed partial class Town
             coin = (put * unit + (v.Amount - put) * store) * CoinBonus;
         }
         else coin = v.Amount * StorePrice(g) * CoinBonus;
-        coin *= TradeWorthFactor(v); // n7 trades: grain and flour carried by their own trade's members
+        coin *= TradeWorthFactor(v); // n7 trades: the porters' grain and flour, the shepherds' wool, the weavers' cloth
         RiverEarn(coin, g);
         TradeEarned(v, coin);
         v.Trips++; v.Earned += coin;
@@ -305,7 +305,7 @@ public sealed partial class Town
     {
         var r = R!;
         if (v.Amount <= 0) return;
-        double coin = v.Amount * StorePrice(v.Carry) * CoinBonus;
+        double coin = v.Amount * StorePrice(v.Carry) * CoinBonus * TradeWorthFactor(v); // n7 step 3: wool and cloth by their own trade
         r.EarnedMarket += coin;
         TradeEarned(v, coin);
         r.EarnedBy[(int)v.Carry] += coin;
@@ -326,7 +326,7 @@ public sealed partial class Town
         switch (v.Phase)
         {
             case VillagerPhase.Working:
-                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1) * ToolsFactor;
+                v.WorkLeft -= TownRules.Dt * (BellRinging ? TownRules.BellHurry : 1) * ToolsFactor * TradeWorkFactor(v); // n7 step 3: shepherds and weavers
                 if (v.WorkLeft <= 1e-9)
                 {
                     if (v.RSite == SitePasture) { R!.PastureBusy--; v.Carry = Good.Wool; }

@@ -33,7 +33,7 @@ public sealed partial class Town
 
     /// <summary>A delivery's coin counts to the trade whose work it was, whoever made it (the smoothed figure the town fills
     /// and rebalances by): when others do a trade's work, that trade has too few members; when its members go elsewhere,
-    /// it has too many. Wool and cloth (no trade yet) count to index 0.</summary>
+    /// it has too many.</summary>
     private void TradeEarned(VillagerState v, double coin) => S.TradeEarn[(int)TradeOfJob(v.Job)] += coin;
 
     /// <summary>Coin a minute a head trade <paramref name="t"/> made lately: the coin of the deliveries of its work, whoever
@@ -46,10 +46,7 @@ public sealed partial class Town
     /// <summary>Member-seconds (decayed) a trade needs behind it before its figure is believed.</summary>
     private const double TradeTryMinimum = 30;
 
-    /// <summary>Step 3's names commit: the second age's trades are named but the town does not fill them yet.</summary>
-    private const int TradesTheTownFills = FirstAgeTrades;
-
-    private bool TownTrade(int t) => t > 0 && t < TradesTheTownFills && !S.TradeCountByPlayer[t] && TradeOpen((Trade)t);
+    private bool TownTrade(int t) => t > 0 && !S.TradeCountByPlayer[t] && TradeOpen((Trade)t);
 
     /// <summary>Once a game second: the earnings decay; while the town fills trades, Helpers take a trade and at most one
     /// villager every TownRules.TradeMoveEvery seconds moves: first into a trade with fewer members than its workplaces have
@@ -128,12 +125,16 @@ public sealed partial class Town
         {
             if (!TownTrade(t)) continue;
             placed += members[t];
-            floor[t] = (int)Math.Floor(TradePlaces((Trade)t) * TownRules.TradeFloorShare);
+            floor[t] = t == (int)Trade.Boat ? PortersFloor() : (int)Math.Floor(TradePlaces((Trade)t) * TownRules.TradeFloorShare);
             all += floor[t];
         }
         if (all > placed && all > 0)
             for (int t = 1; t < TradeCount; t++) floor[t] = floor[t] * placed / all;
     }
+
+    /// <summary>The porters' floor (step 3): the landing has no work places, so TownRules.TradePortersPerBerth villagers a
+    /// berth.</summary>
+    private int PortersFloor() => (int)Math.Floor(Berths * TownRules.TradePortersPerBerth);
 
     /// <summary>The town trade (not <paramref name="not"/>) with most members above its floor and at least two; -1 if none.</summary>
     private int Donor(Span<int> members, Span<int> floor, int not)

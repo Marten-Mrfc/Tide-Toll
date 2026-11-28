@@ -25,6 +25,7 @@ public static class PeopleCommand
         public int Samples1, Herd1, Samples2, Herd2;
         public double Earned2, Minutes2;
         public int Own1, Trips1, Own2, Trips2, Moves1, Moves2;
+        public int[,] ByTrade2 = new int[Town.TradeCount, 11]; // second age: trips by the maker's trade and the job
     }
 
     private static TradePlay _play = TradePlay.LeftAlone;
@@ -79,6 +80,14 @@ public static class PeopleCommand
             line += $" | own {Pct(s.Sum(x => x.Own1), s.Sum(x => x.Trips1))}" + (river ? $" / {Pct(s.Sum(x => x.Own2), s.Sum(x => x.Trips2))}" : "")
                   + $" | hats/min {PerMin(s.Sum(x => x.Moves1), s.Sum(x => Math.Max(0, x.Charter) / 60))}" + (river ? $" / {PerMin(s.Sum(x => x.Moves2), s.Sum(x => x.Minutes2))}" : "");
             Console.WriteLine(line);
+            if (o.ContainsKey("away"))
+                for (int q = 1; q < Town.TradeCount; q++)
+                {
+                    int all = 0; for (int j = 0; j < 11; j++) all += s.Sum(x => x.ByTrade2[q, j]);
+                    var sb = new System.Text.StringBuilder($"AWAY {k} {(Trade)q,-6} trips {all,6}:");
+                    for (int j = 1; j < 11; j++) { int c = s.Sum(x => x.ByTrade2[q, j]); if (c > 0) sb.Append($" {(JobKind)j} {100.0 * c / Math.Max(1, all):F0}%"); }
+                    Console.WriteLine(sb.ToString());
+                }
         }
         return 0;
     }
@@ -109,7 +118,8 @@ public static class PeopleCommand
                 {
                     var tr = t.Villager(e.Villager).Trade;
                     if (tr == Trade.None) continue;
-                    bool own = (int)e.Good == (int)tr;
+                    bool own = Town.TradeOfJob(JobOf(e)) == tr; // by the rule in force (step 3: grain and flour to the boats are the porters')
+                    if (rungAt >= 0 && row.Seal < 0) row.ByTrade2[(int)tr, (int)JobOf(e)]++;
                     if (rungAt < 0) { row.Trips1++; if (own) row.Own1++; }
                     else if (row.Seal < 0) { row.Trips2++; if (own) row.Own2++; }
                 }
@@ -139,6 +149,11 @@ public static class PeopleCommand
         if (river && row.Seal < 0 && rungAt >= 0) { row.Earned2 = t.CoinEarned - earnedAtRing; row.Minutes2 = (t.Time - rungAt) / 60; }
         return row;
     }
+
+    /// <summary>The job a delivery event was made on (its kind and good say it: the landing, or home and the market).</summary>
+    private static JobKind JobOf(in TownEvent e) => e.Kind == TownEventKind.LandingDelivery
+        ? e.Good switch { Good.Grain => JobKind.GrainBoat, Good.Flour => JobKind.FlourBoat, Good.Wool => JobKind.WoolBoat, _ => JobKind.ClothBoat }
+        : e.Good switch { Good.Water => JobKind.Water, Good.Grain => JobKind.GrainHome, Good.Flour => JobKind.Flour, Good.Wool => JobKind.WoolMarket, _ => JobKind.ClothMarket };
 
     private static string PerMin(int n, double minutes) => minutes <= 0 ? "  -" : (n / minutes).ToString("F2", Inv).PadLeft(5);
     private static string Min(double s) => s < 0 ? "  -  " : (s / 60).ToString("F1", Inv).PadLeft(5);
