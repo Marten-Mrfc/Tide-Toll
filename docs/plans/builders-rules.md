@@ -8,7 +8,7 @@ Several builders work at once, each in its own git worktree under `build/wt/`, o
 3. **The heavy-run lock.** Tests that measure time fail when the machine is busy, and picture runs slow everyone down. Before any of these, take the lock; give it back the moment the run ends:
    - timing checks: `game-perf`, `game-motion`, `game-work`, `game-playthrough`, `game-river`, `game-layout`, and any check of your own that samples frames;
    - any Godot picture run longer than two minutes; `./check` as a whole.
-   - Take it: `mkdir /home/user/tide-toll/build/locks/heavy` (it succeeds only if nobody holds it). Give it back: `rmdir /home/user/tide-toll/build/locks/heavy`.
+   - **Take it only through the helper** (since 28 November, after scripts of three builders ran on when their `mkdir` failed and then removed someone else's lock): `/home/user/tide-toll/tools/with-heavy-lock.sh <command> [args...]` waits until the lock is free, runs the command and gives the lock back however the command ends; it never removes a lock it did not take. Several commands in one take: `... with-heavy-lock.sh bash -c 'a && b'`. Do not `mkdir` or `rmdir` the lock yourself.
    - If you cannot get it, do other work and try again; wait with `python3 -c "import time; time.sleep(30)"`. Never a busy loop; foreground `sleep` is blocked.
    - **Never hold the lock more than 15 minutes in one take:** split a long run (pictures, layout at several sizes) into takes and give the lock back between them.
    - If the folder is more than **45 minutes** old (`stat -c %Y`), its holder has probably died: say so in your report, `rmdir` it and take it. (It was 25 minutes until 27 November 18:25, when a live holder's lock was taken as stale at 18:01 and two heavy runs overlapped.)
