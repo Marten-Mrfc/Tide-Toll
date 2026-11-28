@@ -118,7 +118,7 @@ public static class PeopleCommand
                 {
                     var tr = t.Villager(e.Villager).Trade;
                     if (tr == Trade.None) continue;
-                    bool own = Town.TradeOfJob(JobOf(e)) == tr; // by the rule in force (step 3: grain and flour to the boats are the porters')
+                    bool own = Town.AtOwnTrade(tr, JobOf(e)); // by the rule in force (step 3: grain and flour to the boats are the porters')
                     if (rungAt >= 0 && row.Seal < 0) row.ByTrade2[(int)tr, (int)JobOf(e)]++;
                     if (rungAt < 0) { row.Trips1++; if (own) row.Own1++; }
                     else if (row.Seal < 0) { row.Trips2++; if (own) row.Own2++; }

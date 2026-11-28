@@ -42,6 +42,31 @@ public class TownTrades2Tests
         Assert.Equal(7, T.TradeCount);
     }
 
+    /// <summary>The porter's rule (V2, shipped): a grain or flour boat trip is at its own trade for the porter and for the
+    /// trade of its good; the lean and the reward follow it. (V1, TownRules.TradePorters false, is measured with the tools'
+    /// --set; no test flips a rule other tests run under.)</summary>
+    [Fact]
+    public void BoatTripsAreOwnedByThePorterAndByTheirGoodsTrade()
+    {
+        Assert.True(TownRules.TradePorters && TownRules.BoatTripsOwnedTwice);
+        Assert.True(T.AtOwnTrade(Trade.Boat, JobKind.GrainBoat) && T.AtOwnTrade(Trade.Grain, JobKind.GrainBoat));
+        Assert.True(T.AtOwnTrade(Trade.Boat, JobKind.FlourBoat) && T.AtOwnTrade(Trade.Flour, JobKind.FlourBoat));
+        Assert.False(T.AtOwnTrade(Trade.Grain, JobKind.FlourBoat) || T.AtOwnTrade(Trade.Flour, JobKind.GrainBoat));
+        Assert.False(T.AtOwnTrade(Trade.Boat, JobKind.WoolBoat) || T.AtOwnTrade(Trade.None, JobKind.GrainBoat));
+        Assert.True(T.AtOwnTrade(Trade.Wool, JobKind.WoolBoat) && T.AtOwnTrade(Trade.Cloth, JobKind.ClothMarket));
+        var t = RungUntil(3, AllThreeOpen);
+        t.SetTownFillsTrades(false);
+        var v = t.S.Villagers[0];
+        Assert.True(t.SetVillagerTrade(0, Trade.Grain));
+        Assert.Equal(10 * TownRules.TradeLean, t.LeanedFor(0, JobKind.GrainBoat, 10), 9);
+        Assert.Equal(10, t.LeanedFor(0, JobKind.FlourBoat, 10), 9);
+        var keep = v.Job; v.Job = JobKind.GrainBoat;
+        Assert.True(t.TradeWorkFactor(v) > 1 && t.TradeWorthFactor(v) > 1);
+        v.Job = JobKind.FlourBoat;
+        Assert.Equal(1, t.TradeWorkFactor(v));
+        v.Job = keep;
+    }
+
     /// <summary>The three open with the pasture, the weaver's cottage and the landing (never in the first age); their places:
     /// the pasture's, the weaver's, none for the porters; the moment one opens the town gives it a member (within a second).</summary>
     [Fact]
@@ -96,21 +121,30 @@ public class TownTrades2Tests
         int porters = (int)Math.Floor(TownRules.TradePortersPerBerth * (t.InRiverAge && t.S.River!.BerthBought ? 2 : 1));
         int floor = Math.Min(porters, porters * t.VillagerCount / (places + porters));
         Assert.True(t.TradeInfo(Trade.Boat).Members >= floor - 1, $"porters {t.TradeInfo(Trade.Boat).Members}, floor {floor}");
-        // The new trades' members at their own work: deliveries of wool by shepherds, cloth by weavers, grain and flour at
-        // the landing by porters.
+        // Every trade's members at their own work by the rule in force (Town.AtOwnTrade), the maker's trade read when the
+        // trip is delivered: more than half the trips (measured 63-70 % over seeds 1-10 and four bots).
+        var u = new T(2);
+        var bot = new TownBot(BotKind.Payback, 2) { PlayOn = true };
+        var e2 = new List<TownEvent>();
         int own = 0, all = 0;
-        foreach (var e in ev)
+        while (!u.HasSeal && u.Time < 90 * 60)
         {
-            if (e.Kind is not (TownEventKind.Delivery or TownEventKind.LandingDelivery)) continue;
-            var tr = t.S.Villagers[e.Villager].Trade;
-            if ((int)tr < T.FirstAgeTrades) continue;
-            all++;
-            bool ownJob = tr == Trade.Wool ? e.Good == Good.Wool : tr == Trade.Cloth ? e.Good == Good.Cloth
-                : e.Kind == TownEventKind.LandingDelivery && e.Good is Good.Grain or Good.Flour;
-            if (ownJob) own++;
+            u.Step(); bot.Act(u); u.DrainEvents(e2);
+            if (!u.InRiverAge) continue;
+            foreach (var e in e2)
+            {
+                if (e.Kind is not (TownEventKind.Delivery or TownEventKind.LandingDelivery)) continue;
+                var tr = u.S.Villagers[e.Villager].Trade;
+                if (tr == Trade.None) continue;
+                var job = e.Kind == TownEventKind.LandingDelivery
+                    ? e.Good switch { Good.Grain => JobKind.GrainBoat, Good.Flour => JobKind.FlourBoat, Good.Wool => JobKind.WoolBoat, _ => JobKind.ClothBoat }
+                    : e.Good switch { Good.Water => JobKind.Water, Good.Grain => JobKind.GrainHome, Good.Flour => JobKind.Flour, Good.Wool => JobKind.WoolMarket, _ => JobKind.ClothMarket };
+                all++;
+                if (T.AtOwnTrade(tr, job)) own++;
+            }
         }
-        Assert.True(all > 100, $"{all} trips by the new trades");
-        Assert.True(own * 3 > all, $"own {own} of {all}");
+        Assert.True(all > 1000, $"{all} trips in the second age");
+        Assert.True(own * 2 > all, $"own {own} of {all}");
     }
 
     /// <summary>The lean and the reward are step 2's for the new trades: a shepherd weighs wool TradeLean times, works at the

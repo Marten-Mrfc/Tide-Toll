@@ -44,9 +44,20 @@ public sealed partial class Town
         JobKind.Flour => Trade.Flour,
         JobKind.WoolBoat or JobKind.WoolMarket => Trade.Wool,
         JobKind.ClothBoat or JobKind.ClothMarket => Trade.Cloth,
-        JobKind.GrainBoat or JobKind.FlourBoat => Trade.Boat,
+        JobKind.GrainBoat => TownRules.TradePorters ? Trade.Boat : Trade.Grain,
+        JobKind.FlourBoat => TownRules.TradePorters ? Trade.Boat : Trade.Flour,
         _ => Trade.None,
     };
+
+    /// <summary>Whether job <paramref name="j"/> is at trade <paramref name="t"/>'s own work: the job's trade, and with
+    /// TownRules.BoatTripsOwnedTwice also the trade of the good a boat trip carries (a reaper's grain to a boat, a
+    /// miller's flour). The lean, the reward and the own-trade count all read this.</summary>
+    public static bool AtOwnTrade(Trade t, JobKind j)
+    {
+        if (t == Trade.None) return false;
+        if (TradeOfJob(j) == t) return true;
+        return TownRules.BoatTripsOwnedTwice && (j == JobKind.GrainBoat ? t == Trade.Grain : j == JobKind.FlourBoat && t == Trade.Flour);
+    }
 
     /// <summary>The trade that matches a leaning (the porters match none: nobody leans to them).</summary>
     public static Trade TradeOfLeaning(Leaning l) => l switch
@@ -65,6 +76,7 @@ public sealed partial class Town
     public bool TradeOpen(Trade t)
     {
         if (t == Trade.None || (int)t >= TradeCount) return false;
+        if (t == Trade.Boat && !TownRules.TradePorters) return false; // V1: no porters (the name stays, the trade never opens)
         if ((int)t >= FirstAgeTrades) return S.River != null && RiverPlotWorks(TradeRiverPlot(t));
         var pk = TradePlot(t);
         foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) return true;
@@ -122,7 +134,7 @@ public sealed partial class Town
             if (v.Trade != t) continue;
             tv.Members++;
             if (v.Job == JobKind.None || v.Phase == VillagerPhase.Queued) tv.Waiting++;
-            else if (t != Trade.None && TradeOfJob(v.Job) != t) tv.Away++;
+            else if (t != Trade.None && !AtOwnTrade(t, v.Job)) tv.Away++;
         }
         return tv;
     }

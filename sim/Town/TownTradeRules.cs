@@ -19,7 +19,7 @@ public sealed partial class Town
     /// it likes) when the job is its trade's, else 1.</summary>
     internal double TradeWorkFactor(VillagerState v)
     {
-        if (v.Trade == Trade.None || TradeOfJob(v.Job) != v.Trade) return 1;
+        if (!AtOwnTrade(v.Trade, v.Job)) return 1;
         return 1 + TradeWorkBonus + (LikesOwnTrade(v) ? TownRules.TradeLikes : 0);
     }
 
@@ -27,7 +27,7 @@ public sealed partial class Town
     /// TradeStep (+ TradeLikes) when the job is its trade's, else 1.</summary>
     internal double TradeWorthFactor(VillagerState v)
     {
-        if (v.Trade == Trade.None || TradeOfJob(v.Job) != v.Trade) return 1;
+        if (!AtOwnTrade(v.Trade, v.Job)) return 1;
         return 1 + TradeWorthBonus + (LikesOwnTrade(v) ? TownRules.TradeLikes : 0);
     }
 

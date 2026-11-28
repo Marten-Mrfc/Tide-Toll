@@ -116,7 +116,7 @@ public sealed partial class Town
     private double Leaned(JobKind j, double rate)
     {
         if (_choosing != Leaning.None && LeaningOfJob(j) == _choosing) rate *= 1 + TownRules.LeanBonus;
-        if (_choosingTrade != Trade.None && TradeOfJob(j) == _choosingTrade) rate *= TownRules.TradeLean; // n7 trades: its own trade
+        if (_choosingTrade != Trade.None && AtOwnTrade(_choosingTrade, j)) rate *= TownRules.TradeLean; // n7 trades: its own trade
         return rate;
     }
 }

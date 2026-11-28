@@ -206,14 +206,16 @@ public static class TownRules
     // last stretch grew longer than the gaps before it (3.22 against 3.02 min); at 1 five bands failed.
     public static double TradeMoveEvery = 20, TradeMoveGap = 0.2;
     public static double TradeFloorShare = 3;
-    // Step 3, the porters' floor: the landing has no work places, so TradePortersPerBerth villagers a berth (a boat trip is
-    // a field's work, the walk to the bank and the river, about twice a home trip, so twice the wells' and fields' three a
-    // place). Measured on seeds 1-10, four bots (docs/plans/n7/trades2-progress.md): 0 / 2 / 3 / 4 / 6 / 9 a berth gave the
-    // porters 5 / 9 / 11 / 14 / 18 / 23 % of the second age's town and the reapers 39 / 36 / 35 / 33 / 32 / 29 %; trips
-    // at the own trade 51-58 / 53-59 / 52-60 / 53-59 / 54-59 / 54-59 %; herding (more than three quarters on one job)
-    // 24-27 / 23-26 / 24-27 / 24-26 / 21-26 / 23-27 %. 6 is the lowest herding and the most even mix; no value moves the
-    // own-trade share far (the lean does: see the progress page).
-    public static double TradePortersPerBerth = 6;
+    // Step 3, the porters (docs/plans/n7/trades2-progress.md, "The porter"). Their own work comes only while a boat lies at
+    // the landing, so as a full trade (floor 6 a berth, boat trips the porters' alone) members made 54-59 % of their trips
+    // at their own trade. Two variants measured on seeds 1-10, four bots: V1 (TradePorters false: no porters, boat trips
+    // the reapers' and millers' as in step 2): own 63-71 %, herding 21/20/20/18 % (cheapest 1 over its 19), reapers up to
+    // 41 % of the town; V2 (BoatTripsOwnedTwice: a grain or flour boat trip is at its own trade for the porter and for
+    // the trade of its good) with a small crew: 1 a berth own 63-70 %, herding 23/18/22/19 % (all at or under today's
+    // 26/19/24/22), largest trade 34-39 %; 2 a berth own 63-71 %, herding 21/20/22/19 % (cheapest 1 over). V2 at 1 a
+    // berth meets three of the four targets with every band passing (V1 two), so it is shipped.
+    public static double TradePortersPerBerth = 1;
+    public static bool TradePorters = true, BoatTripsOwnedTwice = true;
     // Training: ten steps; price TrainingMinutes of the best coin a minute (at least TrainingRateMin), times TrainingGrowth ^
     // steps, so its payback sits among Regulars' and Tools' (at 1.5 minutes no bot bought it in 40 first-age runs).
     public const int TrainingMax = 10;
