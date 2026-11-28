@@ -3,16 +3,19 @@ using System.Collections.Generic;
 
 namespace TideToll.Sim.Town;
 
-/// <summary>A villager's trade (n7 step 2). Appended only: saves read these numbers; Wool, Cloth and Boat come with step 3.
-/// None is a Helper: no trade, it weighs every job alike.</summary>
-public enum Trade : byte { None = 0, Water = 1, Grain = 2, Flour = 3 }
+/// <summary>A villager's trade (n7 step 2; Wool, Cloth and Boat: step 3, the second age's). Appended only: saves read these
+/// numbers. None is a Helper: no trade, it weighs every job alike. Water: carriers, Grain: reapers, Flour: millers,
+/// Wool: shepherds, Cloth: weavers, Boat: porters (grain and flour to the landing).</summary>
+public enum Trade : byte { None = 0, Water = 1, Grain = 2, Flour = 3, Wool = 4, Cloth = 5, Boat = 6 }
 
 /// <summary>One trade as the Trades card shows it (<see cref="Town.TradeInfo"/>).</summary>
 public struct TradeView
 {
-    public bool Open;          // its workplace exists (Water from the start, Grain with the first field, Flour with the mill)
+    public bool Open;          // its workplace exists (Water from the start, Grain with the first field, Flour with the mill;
+                               // Wool with the pasture, Cloth with the weaver's cottage, Boat with the landing)
     public int Members;        // villagers in it (for Trade.None: the Helpers)
-    public int Places;         // work places of its workplaces (well, fields, mill); 0 for the Helpers
+    public int Places;         // work places of its workplaces (well, fields, mill, pasture, weaver); 0 for the Helpers and
+                               // the porters (the landing has no work places)
     public int Away;           // members on a job of another trade now
     public int Waiting;        // members queued for a place, or with nothing to do, now
     public bool ByPlayer;      // the player set this count: the town leaves it alone
@@ -27,7 +30,10 @@ public struct TradeView
 public sealed partial class Town
 {
     /// <summary>Number of trades including None (the Helpers' index 0).</summary>
-    public const int TradeCount = 4;
+    public const int TradeCount = 7;
+
+    /// <summary>The first age's trades (Water, Grain, Flour) are 1 to FirstAgeTrades - 1; the second age's follow.</summary>
+    public const int FirstAgeTrades = 4;
 
     /// <summary>The trade a job belongs to (None for no job and for the river's wool and cloth, which have no trade yet).</summary>
     public static Trade TradeOfJob(JobKind j) => j switch
@@ -44,15 +50,33 @@ public sealed partial class Town
         Leaning.Water => Trade.Water, Leaning.Grain => Trade.Grain, Leaning.Flour => Trade.Flour, _ => Trade.None,
     };
 
-    private PlotKind TradePlot(Trade t) => t == Trade.Water ? PlotKind.Well : t == Trade.Grain ? PlotKind.Field : PlotKind.Mill;
+    private static PlotKind TradePlot(Trade t) => t == Trade.Water ? PlotKind.Well : t == Trade.Grain ? PlotKind.Field : PlotKind.Mill;
 
-    /// <summary>Whether a trade's workplace exists: Water from the start, Grain with the first field, Flour with the mill.</summary>
+    /// <summary>The second age's place where a trade's work is done (the pasture, the weaver's cottage, the landing).</summary>
+    private static RiverPlotKind TradeRiverPlot(Trade t) => t == Trade.Wool ? RiverPlotKind.Pasture : t == Trade.Cloth ? RiverPlotKind.Weaver : RiverPlotKind.Landing;
+
+    /// <summary>Whether a trade's workplace exists: Water from the start, Grain with the first field, Flour with the mill;
+    /// in the second age Wool with the pasture, Cloth with the weaver's cottage, Boat with the landing (each given).</summary>
     public bool TradeOpen(Trade t)
     {
         if (t == Trade.None || (int)t >= TradeCount) return false;
+        if ((int)t >= FirstAgeTrades) return S.River != null && RiverPlotWorks(TradeRiverPlot(t));
         var pk = TradePlot(t);
         foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) return true;
         return false;
+    }
+
+    /// <summary>Work places of a trade's open workplaces: the well, the fields, the mill, the pasture, the weaver's cottage;
+    /// 0 for the porters (the landing has berths, not work places) and for a trade not open.</summary>
+    internal int TradePlaces(Trade t)
+    {
+        if (!TradeOpen(t)) return 0;
+        if (t == Trade.Wool) return TownRulesRiver.PasturePlaces;
+        if (t == Trade.Cloth) return TownRulesRiver.WeaverPlaces;
+        if (t == Trade.Boat) return 0;
+        int p = 0; var pk = TradePlot(t);
+        foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) p += w.Places;
+        return p;
     }
 
     /// <summary>True from the first field on: the Trades card and the Training row show.</summary>
@@ -87,11 +111,7 @@ public sealed partial class Town
     {
         var tv = new TradeView { Open = t == Trade.None || TradeOpen(t), ByPlayer = (int)t < TradeCount && S.TradeCountByPlayer[(int)t] };
         if (t != Trade.None) { tv.WorkBonus = TradeWorkBonus; tv.WorthBonus = TradeWorthBonus; }
-        if (t != Trade.None)
-        {
-            var pk = TradePlot(t);
-            foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) tv.Places += w.Places;
-        }
+        if (t != Trade.None && (int)t < TradeCount) tv.Places = TradePlaces(t);
         foreach (var v in S.Villagers)
         {
             if (v.Trade != t) continue;

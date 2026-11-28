@@ -32,6 +32,7 @@ public static class PeopleCommand
 
     public static int Run(Dictionary<string, string> o)
     {
+        if (o.ContainsKey("mix")) return MixCommand.Run(o); // n7 trades: the trades' mix (MixCommand.cs)
         string range = o.TryGetValue("seeds", out var r) ? r : "1-6";
         var p = range.Split('-');
         int a = int.Parse(p[0], Inv), z = p.Length > 1 ? int.Parse(p[1], Inv) : a;

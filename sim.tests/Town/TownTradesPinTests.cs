@@ -35,6 +35,58 @@ public class TownTradesPinTests
         return Convert.ToHexString(SHA256.HashData(ms.ToArray()))[..16];
     }
 
+    /// <summary>The first age with trades on as shipped (step 2), to the ring: every 10 ticks as RunHash, and every
+    /// villager's trade too. Recorded before step 3 (the second age's trades) was written: nothing of step 3 opens before
+    /// the ring, so the first age must come out tick for tick the same.</summary>
+    internal static string FirstAgeHash(int seed, BotKind kind)
+    {
+        var t = new T(seed);
+        var bot = new TownBot(kind, seed) { PlayOn = true };
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
+        long k = 0;
+        for (; k < 60L * 60 * TownRules.TickHz && !t.InRiverAge; k++)
+        {
+            t.Step(); bot.Act(t);
+            if (k % 10 != 0) continue;
+            w.Write(t.Tick); w.Write(t.Coin); w.Write(t.S.Renown); w.Write(t.Level); w.Write(t.S.Purchases); w.Write(t.S.TradeChanges);
+            for (int i = 0; i < t.VillagerCount; i++)
+            {
+                var v = t.S.Villagers[i];
+                w.Write((byte)v.Job); w.Write((byte)v.Phase); w.Write((byte)v.Trade); w.Write(v.X); w.Write(v.Y);
+            }
+        }
+        w.Write(k);
+        w.Flush();
+        return Convert.ToHexString(SHA256.HashData(ms.ToArray()))[..16];
+    }
+
+    [Theory]
+    [InlineData(1, BotKind.Payback, "CA5F988ECDE942EA")]
+    [InlineData(2, BotKind.Payback, "1F78017201464560")]
+    [InlineData(3, BotKind.Payback, "F318868FD88FDF69")]
+    [InlineData(1, BotKind.Cheapest, "7A0C48BFB26978A7")]
+    [InlineData(2, BotKind.Cheapest, "491DF8DF201505A6")]
+    [InlineData(3, BotKind.Cheapest, "9BAC0B48F2358BA9")]
+    public void WithTradesOnTheFirstAgeIsAsBeforeTheSecondAgesTrades(int seed, BotKind kind, string want)
+    {
+        Assert.Equal(want, FirstAgeHash(seed, kind));
+    }
+
+    /// <summary>Both ages with trades on, recorded before step 3 (the names commit must leave it as it was; the rules of
+    /// step 3 change the second age and replace this pin).</summary>
+    [Theory]
+    [InlineData(1, BotKind.Payback, "07976D7E5827649F")]
+    [InlineData(2, BotKind.Payback, "1F3B3FE5B8B26C14")]
+    [InlineData(3, BotKind.Payback, "360CA8796F3F1E17")]
+    [InlineData(1, BotKind.Cheapest, "23021384CC904571")]
+    [InlineData(2, BotKind.Cheapest, "9F37C84F3739EAB5")]
+    [InlineData(3, BotKind.Cheapest, "861171D1E0CFD078")]
+    public void WithTradesOnBothAgesAreAsBeforeStep3(int seed, BotKind kind, string want)
+    {
+        Assert.Equal(want, RunHash(seed, kind, false));
+    }
+
     [Theory]
     [InlineData(1, BotKind.Payback, "23405C6D2BFF08FF")]
     [InlineData(2, BotKind.Payback, "720BAB93E8574BC7")]

@@ -33,6 +33,20 @@ public static class TownSave
             Array.Copy(s.Achieved, a, Math.Min(a.Length, s.Achieved.Length));
             s.Achieved = a;
         }
+        // n7 step 3: saves from before the second age's trades hold four entries by trade; the new ones load at their
+        // defaults (nobody in them, their counts the town's, no earnings yet).
+        s.TradeCountByPlayer = Grown(s.TradeCountByPlayer);
+        s.TradeWant = Grown(s.TradeWant);
+        s.TradeEarn = Grown(s.TradeEarn);
+        s.TradeAt = Grown(s.TradeAt);
         return new Town(plan, s);
+    }
+
+    private static T[] Grown<T>(T[]? a)
+    {
+        if (a != null && a.Length == Town.TradeCount) return a;
+        var n = new T[Town.TradeCount];
+        if (a != null) Array.Copy(a, n, Math.Min(a.Length, n.Length));
+        return n;
     }
 }

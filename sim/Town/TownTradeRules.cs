@@ -46,7 +46,10 @@ public sealed partial class Town
     /// <summary>Member-seconds (decayed) a trade needs behind it before its figure is believed.</summary>
     private const double TradeTryMinimum = 30;
 
-    private bool TownTrade(int t) => t > 0 && !S.TradeCountByPlayer[t] && TradeOpen((Trade)t);
+    /// <summary>Step 3's names commit: the second age's trades are named but the town does not fill them yet.</summary>
+    private const int TradesTheTownFills = FirstAgeTrades;
+
+    private bool TownTrade(int t) => t > 0 && t < TradesTheTownFills && !S.TradeCountByPlayer[t] && TradeOpen((Trade)t);
 
     /// <summary>Once a game second: the earnings decay; while the town fills trades, Helpers take a trade and at most one
     /// villager every TownRules.TradeMoveEvery seconds moves: first into a trade with fewer members than its workplaces have
@@ -125,9 +128,7 @@ public sealed partial class Town
         {
             if (!TownTrade(t)) continue;
             placed += members[t];
-            int p = 0; var pk = TradePlot((Trade)t);
-            foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) p += w.Places;
-            floor[t] = (int)Math.Floor(p * TownRules.TradeFloorShare);
+            floor[t] = (int)Math.Floor(TradePlaces((Trade)t) * TownRules.TradeFloorShare);
             all += floor[t];
         }
         if (all > placed && all > 0)

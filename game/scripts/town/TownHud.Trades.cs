@@ -22,10 +22,12 @@ public partial class TownHud
     public const float TradesClickLag = 0.3f;
     /// <summary>The lines in display order: the open trades, the Helpers last.</summary>
     public static readonly Trade[] TradeOrder = { Trade.Water, Trade.Grain, Trade.Flour, Trade.None };
-    public static readonly string[] TradeNames = { "Helpers", "Carriers", "Reapers", "Millers" };
-    public static readonly string[] TradeFullNames = { "Helpers", "Water carriers", "Reapers", "Millers" };
-    public static readonly string[] TradeOne = { "helper", "carrier", "reaper", "miller" };
-    public static readonly string[] TradeIcons = { "trade-helper", "trade-water", "trade-grain", "trade-flour" };
+    // By (int)Trade. The second age's three (Shepherds, Weavers, Porters) are named here so nothing indexes past the end;
+    // their lines, icons and figures come with the second age's interface.
+    public static readonly string[] TradeNames = { "Helpers", "Carriers", "Reapers", "Millers", "Shepherds", "Weavers", "Porters" };
+    public static readonly string[] TradeFullNames = { "Helpers", "Water carriers", "Reapers", "Millers", "Shepherds", "Weavers", "Porters" };
+    public static readonly string[] TradeOne = { "helper", "carrier", "reaper", "miller", "shepherd", "weaver", "porter" };
+    public static readonly string[] TradeIcons = { "trade-helper", "trade-water", "trade-grain", "trade-flour", "trade-wool", "trade-cloth", "trade-boat" };
     public const string HelpersCaption = "work where it pays best";
 
     private Panel _trades = null!;

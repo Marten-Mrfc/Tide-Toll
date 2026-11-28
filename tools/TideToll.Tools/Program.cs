@@ -46,6 +46,7 @@ public static class Program
             case "river": return River(opt);
             case "town": return TownCommand.Run(opt);
             case "people": return PeopleCommand.Run(opt);
+            case "hands": return HandsCommand.Run(opt);
             case "bands": return BandsCommand.Run(opt);
             default:
                 Console.WriteLine("usage: TideToll.Tools run|bench|gate|checks [options]  (see Program.cs)");

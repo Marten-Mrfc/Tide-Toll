@@ -27,8 +27,9 @@ public partial class TownVillagers
     /// <summary>Height of the neck in model units (the point the head shrinks into).</summary>
     private const float NeckY = 1.95f, WaistY = 1.2f;
 
-    /// <summary>The head a villager of trade <paramref name="t"/> wears: a Helper's hair tone by its number, else its trade's.</summary>
-    public static int HeadOf(int i, Trade t) => t == Trade.None ? i % HelperHeads : HelperHeads - 1 + (int)t;
+    /// <summary>The head a villager of trade <paramref name="t"/> wears: a Helper's hair tone by its number, else its trade's
+    /// (the second age's trades: a Helper's hair until their headwear is made).</summary>
+    public static int HeadOf(int i, Trade t) => t == Trade.None || (int)t >= Town.FirstAgeTrades ? i % HelperHeads : HelperHeads - 1 + (int)t;
     public static bool IsHelperHead(int k) => k >= 0 && k < HelperHeads;
 
     private readonly MultiMeshInstance3D?[] _headKinds = new MultiMeshInstance3D?[HeadKinds];

@@ -18,7 +18,7 @@ public partial class TownHud
     public const float AutoTagSeconds = 2f;
     public const int AutoTags = 3;
     private static readonly string[] LikesWords = { "", "Likes carrying water", "Likes reaping", "Likes milling" };
-    private static readonly string[] TradeTitle = { "Helper", "Carrier", "Reaper", "Miller" };
+    private static readonly string[] TradeTitle = { "Helper", "Carrier", "Reaper", "Miller", "Shepherd", "Weaver", "Porter" };
 
     private Label _pTrade = null!, _pCapsLabel = null!;
     private readonly Button[] _caps = new Button[4];
