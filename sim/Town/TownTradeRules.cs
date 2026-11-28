@@ -19,7 +19,7 @@ public sealed partial class Town
     /// it likes) when the job is its trade's, else 1.</summary>
     internal double TradeWorkFactor(VillagerState v)
     {
-        if (v.Trade == Trade.None || TradeOfJob(v.Job) != v.Trade) return 1;
+        if (!AtOwnTrade(v.Trade, v.Job)) return 1;
         return 1 + TradeWorkBonus + (LikesOwnTrade(v) ? TownRules.TradeLikes : 0);
     }
 
@@ -27,13 +27,13 @@ public sealed partial class Town
     /// TradeStep (+ TradeLikes) when the job is its trade's, else 1.</summary>
     internal double TradeWorthFactor(VillagerState v)
     {
-        if (v.Trade == Trade.None || TradeOfJob(v.Job) != v.Trade) return 1;
+        if (!AtOwnTrade(v.Trade, v.Job)) return 1;
         return 1 + TradeWorthBonus + (LikesOwnTrade(v) ? TownRules.TradeLikes : 0);
     }
 
     /// <summary>A delivery's coin counts to the trade whose work it was, whoever made it (the smoothed figure the town fills
     /// and rebalances by): when others do a trade's work, that trade has too few members; when its members go elsewhere,
-    /// it has too many. Wool and cloth (no trade yet) count to index 0.</summary>
+    /// it has too many.</summary>
     private void TradeEarned(VillagerState v, double coin) => S.TradeEarn[(int)TradeOfJob(v.Job)] += coin;
 
     /// <summary>Coin a minute a head trade <paramref name="t"/> made lately: the coin of the deliveries of its work, whoever
@@ -125,14 +125,20 @@ public sealed partial class Town
         {
             if (!TownTrade(t)) continue;
             placed += members[t];
-            int p = 0; var pk = TradePlot((Trade)t);
-            foreach (var w in S.Workplaces) if (w.Open && Plan.Plots[w.Plot].Kind == pk) p += w.Places;
-            floor[t] = (int)Math.Floor(p * TownRules.TradeFloorShare);
+            floor[t] = t == (int)Trade.Boat ? PortersFloor() : (int)Math.Floor(TradePlaces((Trade)t) * FloorShare(t));
             all += floor[t];
         }
         if (all > placed && all > 0)
             for (int t = 1; t < TradeCount; t++) floor[t] = floor[t] * placed / all;
     }
+
+    /// <summary>Villagers a place a trade's floor asks for: TradeFloorShare in the first age (step 2's); in the second,
+    /// TownRules.TradeFloorSecondAge by trade (fitted to the work each trade's places keep: step 3).</summary>
+    private double FloorShare(int t) => S.River == null ? TownRules.TradeFloorShare : TownRules.TradeFloorSecondAge[t];
+
+    /// <summary>The porters' floor (step 3): the landing has no work places, so TownRules.TradePortersPerBerth villagers a
+    /// berth.</summary>
+    private int PortersFloor() => (int)Math.Floor(Berths * TownRules.TradePortersPerBerth);
 
     /// <summary>The town trade (not <paramref name="not"/>) with most members above its floor and at least two; -1 if none.</summary>
     private int Donor(Span<int> members, Span<int> floor, int not)

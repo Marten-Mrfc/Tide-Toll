@@ -36,11 +36,12 @@ public class TownTradesTests
         Assert.Equal(Trade.Water, T.TradeOfJob(JobKind.Water));
         Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainHome));
         Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainMarket));
-        Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainBoat));
         Assert.Equal(Trade.Flour, T.TradeOfJob(JobKind.Flour));
+        // Step 3 as shipped (no porters): grain and flour to the boats stay the reapers' and millers' (step 2's);
+        // wool and cloth are the shepherds' and weavers' (TownTrades2Tests.TheSecondAgesJobsBelongToTheirTrades).
+        Assert.Equal(Trade.Grain, T.TradeOfJob(JobKind.GrainBoat));
         Assert.Equal(Trade.Flour, T.TradeOfJob(JobKind.FlourBoat));
-        foreach (var j in new[] { JobKind.None, JobKind.WoolBoat, JobKind.WoolMarket, JobKind.ClothBoat, JobKind.ClothMarket })
-            Assert.Equal(Trade.None, T.TradeOfJob(j));
+        Assert.Equal(Trade.None, T.TradeOfJob(JobKind.None));
     }
 
     /// <summary>The lean: a job of the villager's own trade counts TradeLean times its rate; a Helper weighs every job at 1;

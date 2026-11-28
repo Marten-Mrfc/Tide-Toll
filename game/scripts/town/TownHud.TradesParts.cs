@@ -255,6 +255,9 @@ public partial class TownHud
         "Water carriers draw water at the well and carry it home.",
         "Reapers bring in the grain.",
         "Millers grind the grain into flour.",
+        "Shepherds bring in the wool.",
+        "Weavers make the cloth.",
+        "Porters carry grain and flour to the boats.",
     };
 
     private static string TradeLineTip(Town t, Trade tr)

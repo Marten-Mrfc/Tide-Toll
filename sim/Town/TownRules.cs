@@ -206,6 +206,29 @@ public static class TownRules
     // last stretch grew longer than the gaps before it (3.22 against 3.02 min); at 1 five bands failed.
     public static double TradeMoveEvery = 20, TradeMoveGap = 0.2;
     public static double TradeFloorShare = 3;
+    // Step 3, the porters (docs/plans/n7/trades2-progress.md, "The porter"). Their own work comes only while a boat lies at
+    // the landing, so as a full trade (floor 6 a berth, boat trips the porters' alone) members made 54-59 % of their trips
+    // at their own trade. Two variants measured on seeds 1-10, four bots: V1 (TradePorters false: no porters, boat trips
+    // the reapers' and millers' as in step 2): own 63-71 %, herding 21/20/20/18 % (cheapest 1 over its 19), reapers up to
+    // 41 % of the town; V2 (BoatTripsOwnedTwice: a grain or flour boat trip is at its own trade for the porter and for
+    // the trade of its good) with a small crew: 1 a berth own 63-70 %, herding 23/18/22/19 % (all at or under today's
+    // 26/19/24/22), largest trade 34-39 %; 2 a berth own 63-71 %, herding 21/20/22/19 % (cheapest 1 over). V2 at 1 a
+    // berth met three of the four targets with every band passing (V1 two). The lead's decision: V1. The two differ by
+    // one to three points (the noise of ten seeds), and V2 buys that with a trade of one or two villagers, a line on the
+    // card and a second blue head; so TradePorters is off. V2 stays reachable: TradePorters and BoatTripsOwnedTwice true.
+    public static double TradePortersPerBerth = 1;
+    public static bool TradePorters = false, BoatTripsOwnedTwice = true;
+    // The second age's floors, villagers a place by trade (index = Trade; the first age keeps TradeFloorShare, so it is
+    // tick for tick as before): fitted to the work each trade's places keep, as the best-pay rule splits the second age
+    // (carriers 1 %, reapers 15-23 %, millers 33-40 %, shepherds 9-15 %, weavers 29-33 % of the town) over the places
+    // (well 2, fields about 5.6, mill 2, pasture 3, weaver 2). In the second age the floors always bind (the town is
+    // smaller than all of them), so only their ratios matter. At three a place for all, the shepherds made 22-36 % of
+    // their trips at wool and the carriers 38-48 % at water (the town 63-71 %). At 0.5 / 2.5 / 5 / 0.5 / 5 the town
+    // makes 74-76 % at its own trade, the millers 82-95 %, the reapers 69-79 %, the weavers 52-62 %; the shepherds and
+    // carriers keep one member each (their work does not keep even one busy: 25-51 %). More millers (6 a place) or
+    // fewer weavers (4) took the richest towns' seal under the age's 20-minute floor (seed 5 random 19.3); 5 / 5
+    // leaves it 2.7 %. Porters (off): TradePortersPerBerth.
+    public static double[] TradeFloorSecondAge = { 0, 0.5, 2.5, 5, 0.5, 5, 0 };
     // Training: ten steps; price TrainingMinutes of the best coin a minute (at least TrainingRateMin), times TrainingGrowth ^
     // steps, so its payback sits among Regulars' and Tools' (at 1.5 minutes no bot bought it in 40 first-age runs).
     public const int TrainingMax = 10;
