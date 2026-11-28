@@ -1,6 +1,6 @@
 # Trades, step 3, part 1: the second age's trades in the simulation (progress)
 
-**Names commit for the second builder: `a5f0660`** ("Snapshot: trades 2, the names"). Rules: `c924c80`; **the porter as shipped (V2): `47e34db`** (see "The porter" at the end: it supersedes the porters' floor and the target figures below).
+**Names commit for the second builder: `a5f0660`** ("Snapshot: trades 2, the names"). Rules: `c924c80`; V2 `47e34db`; **as shipped: no porters and the second age's floors fitted to the work, `77f5224`** (see "Staffing each trade to its work" at the end: it supersedes the porter and the target figures above it).
 
 ## Where it stands (read this first)
 
@@ -284,3 +284,66 @@ Room the shipped V2 leaves for the boats' rebuild: the age's floor 0.95 minute (
 
 - Added `TownTrades2Tests.BoatTripsAreOwnedByThePorterAndByTheirGoodsTrade` (the rule, the lean and the reward under V2). V1 is measured with the tools' `--set TradePorters=0`; no test flips a rule other tests run under.
 - Changed (a test added in this step, not one from before): `TheTownFillsTheNewTrades`, its last assertion. Old: the new trades' members (shepherds, weavers, porters) make more than a third of their trips at their own work, the maker's trade read at the end of the run. New: every trade's members make more than half their second-age trips at their own trade by `Town.AtOwnTrade`, the maker's trade read when the trip is delivered. Why: with V2 the porters are one a berth and the boat trips are owned twice, so the own-trade figure of the step is the town's, not the three trades'; and the trade must be the one held at the delivery (the old form read it after 30 minutes of moves). At V2 it measured 316 of 1229 (26 %) by the old form, below its third: the shepherds' low share (above).
+
+## Staffing each trade to its work (the lead's third round, `77f5224`)
+
+**No porters** (the lead's decision): `TownRules.TradePorters = false`; V2 stays reachable (`TradePorters` and `BoatTripsOwnedTwice` true), with the reason at the switch. Grain and flour to the boats are the reapers' and millers'.
+
+**The fault:** the floors (three a place for every trade) gave a trade more members than its work keeps: the shepherds made 22-36 % of their trips at wool. In the second age the floors always bind (the town is smaller than all of them), so their ratios are the town's mix. **The fix:** a second-age floor per trade, villagers a place (`TownRules.TradeFloorSecondAge`, index = Trade; the first age keeps `TradeFloorShare` 3 and is tick for tick as before), fitted to the work each trade's places keep, read from the best-pay rule's split of the second age (filling off: carriers 1, reapers 15-23, millers 33-40, shepherds 9-15, weavers 29-33 % of the town) over the places (well 2, fields about 5.6, mill 2, pasture 3, weaver 2):
+
+| trade | floor, villagers a place (second age) | why |
+| --- | --- | --- |
+| carriers | 0.5 (one member) | water hardly pays in the second age: its well is busy 1-2 % of the time |
+| reapers | 2.5 | the fields' work and the grain to the boats |
+| millers | 5 | flour (market and boats) is the second age's main work; 6 took the richest seal under the age's floor (seed 5 random 19.3 min) |
+| shepherds | 0.5 (one member) | wool sells for less than flour and wool boats are a third of the boats at most: the pasture is busy 15-21 % of the time even with one or two shepherds |
+| weavers | 5 | 4 took the seal under the floor too (19.3); 6: weavers 52-57 % |
+
+An open trade keeps at least one member (the filling's rule 2 and the rebalance's floor of one, unchanged). Tried on the way (all at the first age's rules): one share for all (1 a place: town 70-75 %, hats 2.7-3.1 a minute, the floor band fails at 19.24); 0.5 / 1 / 5 / 1 / 5 (town 72-75 %, the floor and crossing-wait bands fail); 0.5 / 1.5 / 7.5 / 0.5 / 7.5 (73-77 %, floor fails); 0.5 / 2 / 6 / 0.5 / 4 (74-77 %, floor fails at 18.93; with `LevelMinutesScale` 1.10 every band passed, but that changes the trades-off run and so the pin: not shipped).
+
+### Per trade, second age: before (no porters, three a place for all) → after (`77f5224`)
+
+Members (mean, share of the town); places (mean while open); own = share of its members' trips at its own trade; busy = share of time its workplace's places are working; coin a head = its members' delivery coin a head against the town's (`people --seeds 1-10 --river --bot four --trades`).
+
+| bot | trade | members | places | own | busy | coin a head |
+| --- | --- | --- | --- | --- | --- | --- |
+| payback | carriers | 4.0 (13 %) → 1.1 (4 %) | 2.0 | 41 % → **48 %** | 3 % → 2 % | 0.95 → 0.85 |
+| payback | reapers | 11.9 (39 %) → 11.9 (38 %) | 5.6 | 71 % → **70 %** | 33 % → 33 % | 0.90 → 0.87 |
+| payback | millers | 5.4 (18 %) → 9.5 (31 %) | 2.2 | 90 % → **88 %** | 43 % → 50 % | 1.07 → 1.07 |
+| payback | shepherds | 5.4 (18 %) → 1.3 (4 %) | 2.8 | 32 % → **36 %** | 21 % → 21 % | 1.03 → 0.93 |
+| payback | weavers | 4.0 (13 %) → 7.1 (23 %) | 1.8 | 62 % → **62 %** | 27 % → 30 % | 1.21 → 1.17 |
+| cheapest | carriers | 3.2 (12 %) → 1.1 (4 %) | 2.0 | 48 % → **33 %** | 3 % → 1 % | 0.93 → 0.91 |
+| cheapest | reapers | 10.8 (41 %) → 10.9 (41 %) | 6.0 | 78 % → **77 %** | 30 % → 31 % | 0.87 → 0.84 |
+| cheapest | millers | 4.2 (16 %) → 7.3 (28 %) | 2.0 | 94 % → **91 %** | 42 % → 46 % | 1.13 → 1.14 |
+| cheapest | shepherds | 4.7 (18 %) → 1.2 (5 %) | 2.8 | 28 % → **35 %** | 17 % → 16 % | 1.07 → 1.11 |
+| cheapest | weavers | 3.4 (13 %) → 5.9 (22 %) | 1.8 | 49 % → **52 %** | 19 % → 20 % | 1.22 → 1.10 |
+| random | carriers | 3.7 (14 %) → 1.1 (4 %) | 2.0 | 38 % → **27 %** | 3 % → 1 % | 0.96 → 0.87 |
+| random | reapers | 9.6 (36 %) → 9.9 (36 %) | 5.0 | 68 % → **69 %** | 28 % → 28 % | 0.88 → 0.86 |
+| random | millers | 5.1 (19 %) → 8.4 (31 %) | 2.0 | 97 % → **95 %** | 47 % → 52 % | 1.12 → 1.12 |
+| random | shepherds | 4.9 (18 %) → 1.2 (4 %) | 2.8 | 22 % → **27 %** | 16 % → 15 % | 1.05 → 1.00 |
+| random | weavers | 3.5 (13 %) → 6.6 (24 %) | 1.8 | 50 % → **53 %** | 21 % → 22 % | 1.11 → 1.09 |
+| saver | carriers | 4.1 (13 %) → 1.1 (4 %) | 2.0 | 46 % → **50 %** | 4 % → 2 % | 0.92 → 0.85 |
+| saver | reapers | 12.5 (40 %) → 12.4 (40 %) | 5.8 | 81 % → **78 %** | 35 % → 36 % | 0.89 → 0.86 |
+| saver | millers | 5.3 (17 %) → 9.5 (30 %) | 2.2 | 87 % → **83 %** | 36 % → 43 % | 1.08 → 1.07 |
+| saver | shepherds | 5.5 (17 %) → 1.3 (4 %) | 2.7 | 36 % → **44 %** | 23 % → 20 % | 1.05 → 0.99 |
+| saver | weavers | 4.0 (13 %) → 7.1 (22 %) | 1.7 | 60 % → **56 %** | 27 % → 26 % | 1.24 → 1.18 |
+
+### The targets (second age, seeds 1-10)
+
+| target | payback | cheapest | random | saver | met |
+| --- | --- | --- | --- | --- | --- |
+| town's own share >= 75 % | 74 % | 76 % | 75 % | 75 % | **3 of 4; payback 1 point under** (before 66 / 69 / 63 / 71) |
+| every trade's own >= 60 % | millers 88, reapers 70, weavers 62; **carriers 48, shepherds 36** | millers 91, reapers 77; **weavers 52, carriers 33, shepherds 35** | millers 95, reapers 69; **weavers 53, carriers 27, shepherds 27** | millers 83, reapers 78; **weavers 56, carriers 50, shepherds 44** | **no**: the carriers and shepherds (one member each, 4-5 % of the town) and on three bots the weavers |
+| largest trade <= about 45 % | reapers 38-39 % | 41 % | 36 % | 40 % | yes |
+| hats <= about 3 a minute | 1.31 | 0.90 | 1.22 | 1.21 | yes |
+| herding no higher than today (26 / 19 / 24 / 22) | 20 % | 19 % | 19 % | 23 % | yes (saver 1 over, within the noise) |
+
+What stands in the way of the rest: the carriers' and shepherds' work does not keep even one villager busy (well busy 1-2 %, pasture 15-21 %), so the one member a trade keeps is away most of the time; the weavers' cloth trip is the longest (pasture, weaver, landing or market) and loses to flour 1.6 times over about half the time. The lean was not raised.
+
+### Bands (`bands --bell`, `77f5224`)
+
+No band fails; the first age's lines are identical. Second age: age floor seed 5 random 20.53 min (**2.7 %**, the thinnest), ceiling seed 9 cheapest 29.64 (15.3 %), crossing wait 141 s (41.1 %), drawbridge to seal 4.97 min (41.9 %), landing share seed 9 cheapest 0.446 (33.9 %), map gap 170 s (19.0 %), nothing affordable 40 s (32.5 %), toll payback all runs 9.4 %, single run 100.4 %, tolls before seal 3 (50 %); the ford bands 49-691 %. **Room for the boats' rebuild:** the age's floor has only 0.53 minute (anything that speeds the richest towns by more tips it), the toll payback 9.4 %.
+
+### Tests this round
+
+`TownTrades2Tests` follows the shipped rule: no porters (`TheSecondAgesJobsBelongToTheirTrades`, `BoatTripsAreOwnedByThePorterAndByTheirGoodsTrade` now assert V1: the Boat trade closed, boat trips the reapers' and millers'); `TheTownFillsTheNewTrades` checks each open trade holds its second-age floor scaled to the town (less one) instead of the porters' floor. `TownTradesTests.JobsBelongToTrades`: back to step 2's assertion for `GrainBoat` → Grain and `FlourBoat` → Flour (old, this step's first round: → Boat; why: no porters). All tests added in this step; nothing from before was loosened.
