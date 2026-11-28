@@ -31,6 +31,23 @@ The owner played the final build `e02da4e` and wrote: "Now fix the right ui. Thi
 | The navigation buttons show an icon only; the key is in the tooltip | The key cap box inside each button collided with the button's border |
 | The interface font becomes a derived font with a plain zero, made in code from Atkinson Hyperlegible (SIL Open Font License) | The owner's "Needs you" point 4 of the night; a slashed zero reads as a fault in a book of accounts |
 
+## Next request: the boats and the second age's trades (28 November, 09:05 UTC)
+
+The owner: "Fix the boats and the second ages trades."
+
+The container was restarted in the night (up since 09:03); everything is on disk; no builder from yesterday is running. The newest build is `c6d1201` (the whole check passed in one run). This is the section to resume from.
+
+| Work | Sheet | Builder's checkout | Due (UTC) | State |
+| --- | --- | --- | --- | --- |
+| The boats, proof first | `docs/plans/n6/boats-next.md` and the brief's stages | `build/wt/n6-boats-build` (`wt/n6-boats-build`, a fresh builder) | the proof 10:30, all 13:30 | started 09:10 |
+| The second age's trades: headwear and icons | `docs/plans/n7/trades2-build-sheet.md` | `build/wt/n7-trades2-art` (`wt/n7-trades2-art`) | 10:15 | started 09:10 |
+| The second age's trades: the simulation | the same sheet | `build/wt/n7-trades2` (`wt/n7-trades2`) | the names 09:50, all 11:30 | started 09:10 |
+| The second age's trades: the interface and figures | the same sheet | from the names commit | | after the names |
+
+- Decisions made for the owner: the third trade is the **porter** (grain and flour to the landing), the "boatman's hand" of the proposal under a name that does not collide with the extra hands; the Trades card gets a compact form (icons in two columns) where seven lines do not fit; no pips on workplaces in this step.
+- After both are merged: one pass of `bands` over both ages (the boats and the trades both move the second age), the whole check on a clean copy, a finished commit, the Windows build.
+- Lock rules as changed yesterday (`docs/plans/builders-rules.md`): 15 minutes a take, stale after 45.
+
 ## Next request: research on performance (27 November, 18:10 UTC)
 
 The owner: "Okay continue, also start a research agent into performance. I see the app slowing down a bit. I think we can improve performance probably!"
