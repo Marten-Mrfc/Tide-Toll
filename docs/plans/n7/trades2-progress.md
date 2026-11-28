@@ -1,6 +1,6 @@
 # Trades, step 3, part 1: the second age's trades in the simulation (progress)
 
-**Names commit for the second builder: `a5f0660`** ("Snapshot: trades 2, the names"). Rules: `c924c80` and after.
+**Names commit for the second builder: `a5f0660`** ("Snapshot: trades 2, the names"). Rules: `c924c80`; **the porter as shipped (V2): `47e34db`** (see "The porter" at the end: it supersedes the porters' floor and the target figures below).
 
 ## Where it stands (read this first)
 
@@ -228,3 +228,59 @@ Unchanged and passing: `WithTradesOffARunIsTheRunBeforeTrades` (hashes from `709
 ## Game code touched
 
 The names commit's four stand-ins (above); nothing in the rules commit.
+
+## The porter (the lead's second round)
+
+The porter's own work comes in bursts (only while a boat lies at the landing), so as a full trade its members are away most of the time, and by taking the boat trips from the reapers and millers it makes their boat trips count as away too. Two variants, each a switch in `TownRules` (both read live, so the other stays reachable with `--set`):
+
+- **V1, no porters** (`TradePorters = false`): the Boat trade never opens (the enum, the arrays and the names stay; the card shows open trades only); `GrainBoat` is the reapers' again and `FlourBoat` the millers', as in step 2. Five trades in the second age.
+- **V2, a small crew and boat trips owned twice** (`BoatTripsOwnedTwice = true`, `TradePortersPerBerth` 1 or 2): a grain or flour boat trip is at its own trade for the porter **and** for the trade of its good (`Town.AtOwnTrade`); the lean, the reward and the own-trade count all read it. Wool and cloth boat trips were the shepherds' and weavers' already. The figure the town fills by still counts a boat trip's coin to the porters (one trade, no double count).
+
+Seeds 1 to 10, four bots; own trade by the rule of each variant (`people --away` / `AtOwnTrade`); before = `c924c80` (porters 6 a berth, boat trips theirs alone).
+
+| | largest trade, mean share (P / C / R / S) | own trade | hats/min | herding (today 26 / 19 / 24 / 22) | targets met |
+| --- | --- | --- | --- | --- | --- |
+| `c924c80` (6 a berth) | reapers 31 / 34 / 30 / 33 % | 54 / 59 / 54 / 59 % | 1.76 / 1.81 / 1.64 / 1.69 | 24 / **26** / **25** / 21 % | 2 (share, hats) |
+| V1 (no porters) | reapers 39 / **41** / 36 / 40 % | 66 / 69 / 63 / 71 % | 1.40 / 1.16 / 1.18 / 1.08 | 21 / **20** / 20 / 18 % | 2, and the share at about 40 (cheapest 41 %, saver 40 %); herding 1 over on the cheapest bot |
+| **V2, 1 a berth (shipped)** | reapers 37 / 39 / 34 / 38 % | 65 / 68 / 63 / 70 % | 1.71 / 1.34 / 1.71 / 1.65 | 23 / 18 / 22 / 19 % | **3** (share, hats, herding) |
+| V2, 2 a berth | reapers 36 / 37 / 33 / 37 % | 65 / 69 / 63 / 71 % | 1.95 / 1.66 / 1.83 / 1.76 | 21 / **20** / 22 / 19 % | 2 (herding 1 over on the cheapest bot) |
+
+Seal minutes after the ring (P / C / R / S): `c924c80` 25.01 / 27.85 / 25.96 / 26.39; V1 25.20 / 27.76 / 25.63 / 26.52; V2 (1) 25.13 / 27.79 / 25.14 / 26.33; V2 (2) 25.60 / 27.86 / 24.97 / 26.19. Coin a minute in the second age: V1 42538 / 25094 / 32547 / 38466; V2 (1) 42989 / 25196 / 34444 / 39246.
+
+Mix, second age mean share (payback): V1 carriers 13, reapers 39, millers 18, shepherds 17, weavers 13 %; V2 (1) carriers 12, reapers 37, millers 15, shepherds 16, weavers 12, porters 7 %. (Other bots within 2 points; reapers 34-41 %.)
+
+Trips by trade and job, V2 (1), payback: carriers water 40 %; reapers grain home 42 % + grain to the boats 30 % (own 72 %); millers flour 72 % + flour to the boats 20 % (own 92 %); shepherds wool 29 % (flour 23 %, grain and flour boats 29 %); weavers cloth 59 %; porters boats 64 %. The shepherds are the weakest: wool sells at the market for less than flour and wool boats are a third of the boats at most.
+
+**Shipped: V2 at one porter a berth** (`TradePorters = true`, `BoatTripsOwnedTwice = true`, `TradePortersPerBerth = 1`): it meets three of the four targets with every band passing (V1 two). **The own-trade share is 63-70 %, not 80 %**: no variant reaches it, and the lean was not raised (the sheet keeps step 2's; above, the lean that would reach 80 % tips the landing share). The herding differences between the variants are 1 to 3 points, about the noise of ten seeds; V2's lead over V1 is the herding on the cheapest bot (18 against 20, today 19) and the largest share (39 against 41).
+
+### Every band, second age: nearest run and margin
+
+The first age's bands are identical in all four (`bands --bell`).
+
+| band | `c924c80` | V1 | V2 (1), shipped | V2 (2) |
+| --- | --- | --- | --- | --- |
+| age 20-35 min, buyers (ceiling) | seed 9 cheapest first 32.48 min, 7.2 % | seed 9 random affordable 31.02 min, 11.4 % | seed 9 cheapest first 32.02 min, 8.5 % | seed 9 cheapest first 31.31 min, 10.5 % |
+| age 20-35 min, buyers (floor) | seed 1 best payback first 20.88 min, 4.4 % | seed 5 best payback first 20.97 min, 4.8 % | seed 2 best payback first 20.95 min, 4.7 % | seed 5 random affordable 21.42 min, 7.1 % |
+| crossing wait <= 240 s | seed 4 cheapest first 211 s, 12.0 % | seed 4 cheapest first 221 s, 8.0 % | seed 4 cheapest first 139 s, 42.0 % | seed 4 cheapest first 174 s, 27.3 % |
+| drawbridge to seal >= 3.5 min | seed 2 cheapest first 4.75 min, 35.7 % | seed 9 cheapest first 4.77 min, 36.2 % | seed 2 cheapest first 4.38 min, 25.2 % | seed 6 random affordable 5.37 min, 53.3 % |
+| each crossing carries more | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % |
+| ford crossings, all runs >= 300 | 960, 220.0 % | 954, 218.0 % | 931, 210.3 % | 908, 202.7 % |
+| ford high-water wait, all runs >= 1000 | 12631, 1163.1 % | 8642, 764.2 % | 9038, 803.8 % | 9245, 824.5 % |
+| ford only >= 2 min | seed 10 saver 3.10 min, 55.1 % | seed 2 best payback first 3.01 min, 50.5 % | seed 10 saver 3.09 min, 54.7 % | seed 10 saver 3.08 min, 53.8 % |
+| ford used on seeds >= 4 | 10, 150.0 % | 9, 125.0 % | 9, 125.0 % | 9, 125.0 % |
+| landing share >= 1/3 | seed 8 cheapest first 0.423, 27.0 % | seed 9 saver 0.469, 40.8 % | seed 8 cheapest first 0.455, 36.6 % | seed 8 cheapest first 0.456, 36.7 % |
+| map gap <= 210 s | seed 7 cheapest first 159 s, 24.3 % | seed 6 cheapest first 170 s, 19.0 % | seed 6 cheapest first 170 s, 19.0 % | seed 6 cheapest first 170 s, 19.0 % |
+| nothing affordable <= 60 s | seed 6 cheapest first 46 s, 22.5 % | seed 6 cheapest first 46 s, 23.3 % | seed 6 cheapest first 46 s, 22.5 % | seed 6 cheapest first 46 s, 23.3 % |
+| purchases a minute >= 2 | seed 9 cheapest first 4.68, 134.0 % | seed 9 random affordable 5.06, 153.0 % | seed 9 cheapest first 4.78, 138.9 % | seed 9 cheapest first 4.98, 149.1 % |
+| saver buys every new kind (misses) | seed 1 saver 0, 0.0 %  thin | seed 1 saver 0, 0.0 %  thin | seed 1 saver 0, 0.0 %  thin | seed 1 saver 0, 0.0 %  thin |
+| seal (every run) | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % | seed 1 cheapest first, 100.0 % |
+| toll steps back, all runs >= 1.0 | spent 983975 earned 1143750, 16.2 % | spent 983975 earned 1127250, 14.6 % | spent 983975 earned 1109250, 12.7 % | spent 983975 earned 1114500, 13.3 % |
+| toll steps back, single run >= 0.35 | seed 4 cheapest first spent 24599 earned 15000, 74.2 % | seed 1 random affordable spent 24599 earned 16500, 91.6 % | seed 2 cheapest first spent 24599 earned 18000, 109.1 % | seed 3 best payback first spent 24599 earned 12750, 48.1 % |
+| tolls before seal >= 2 | seed 2 cheapest first 3, 50.0 % | seed 1 best payback first 3, 50.0 % | seed 2 cheapest first 3, 50.0 % | seed 1 best payback first 3, 50.0 % |
+
+Room the shipped V2 leaves for the boats' rebuild: the age's floor 0.95 minute (seed 2 payback 20.95, 4.7 %), the ceiling 3.0 minutes (seed 9 cheapest 32.02, 8.5 %), the toll payback over all runs 12.7 %, the landing share 36.6 %, the crossing wait 42 %; the rest 19 % or more.
+
+### Tests for the porter
+
+- Added `TownTrades2Tests.BoatTripsAreOwnedByThePorterAndByTheirGoodsTrade` (the rule, the lean and the reward under V2). V1 is measured with the tools' `--set TradePorters=0`; no test flips a rule other tests run under.
+- Changed (a test added in this step, not one from before): `TheTownFillsTheNewTrades`, its last assertion. Old: the new trades' members (shepherds, weavers, porters) make more than a third of their trips at their own work, the maker's trade read at the end of the run. New: every trade's members make more than half their second-age trips at their own trade by `Town.AtOwnTrade`, the maker's trade read when the trip is delivered. Why: with V2 the porters are one a berth and the boat trips are owned twice, so the own-trade figure of the step is the town's, not the three trades'; and the trade must be the one held at the delivery (the old form read it after 30 minutes of moves). At V2 it measured 316 of 1229 (26 %) by the old form, below its third: the shepherds' low share (above).
