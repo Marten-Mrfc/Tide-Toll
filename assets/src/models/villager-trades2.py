@@ -4,14 +4,15 @@
 # +Z, node "head", in the body's frame so a piece may lie on the shoulders). Shape from above and one flat colour carry
 # a trade; none uses a tunic colour (Brick, Packed earth, Cast-iron green, Mud, Soot brick) as its main colour, nor
 # the first three's (River, Reed and thatch, Paper/white with a Brick ring) nor a Helper's dark hair.
-#   shepherd A (chosen) "fleece": a Limewash fleece hood and a lumpy shoulder mantle (1.0 across): from above
+#   shepherd A (dropped in round 3: white is the miller's) "fleece": a Limewash fleece hood and a lumpy shoulder mantle (1.0 across): from above
 #     the whole top of the figure is wool-white, wider than any hat but the straw hat, with no ring
-#   shepherd B "felthat": a Slate roof felt hat, brim 0.56 (between the Hand's 0.48 and the reaper's 0.70), Limewash band
+#   shepherd B (chosen in round 3) "felthat": a Slate roof felt hat, brim 0.56 (the reaper's 0.70), no band; variants
+#     "felthat-band" (a Mud band) and "villager-cape" (the fleece cape alone as a body piece)
 #   weaver A (chosen) "stocking": a Meadow stocking cap whose long tail lies back over the crown, a Limewash tassel:
 #     from above a green teardrop pointing back
 #   weaver B "turban": a Deep water cloth roll round the head, its crown the same
-#   porter A (chosen) "fantail": a Slate roof leather fantail hood: crown, short peak, a broad flat fan behind (a
-#     coal-heaver's hat, for sacks on the back): from above a grey fan behind the head, whichever way the porter faces
+#   porter A (chosen; round 3 in Deep water, fan 0.8 across) "fantail": a leather fantail hood: crown, short peak, a broad flat fan behind (a
+#     coal-heaver's hat, for sacks on the back): from above a dark fan behind the head, whichever way the porter faces
 #   porter B "headpad": a Slate roof padded ring on the hair (for loads on the head), the dark hair showing inside it
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # assets/src
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -45,14 +46,27 @@ def head_fleece():
     return m
 
 
-def head_felthat():
+def head_felthat(band=None):
+    """Round 3 (the lead: the shepherd wears the felt hat): one flat Slate roof tone, brim 0.56 (the reaper's straw hat
+    0.70, so the two differ in size as well as colour); band None (all Slate) or a darker band (Mud, 8 cm)."""
     m = glb.Mesh()
     face(m)
     m.add_sphere((0, 2.24, -0.08), 0.37, HAIR, rings=2, segments=8, squash=0.7)
     m.add_frustum((0, 2.38, 0), 0.56, 0.45, 0.07, "Slate roof", segments=12)
     m.add_frustum((0, 2.365, 0), 0.55, 0.55, 0.015, "Packed earth", segments=12, cap_top=False)
     m.add_sphere((0, 2.47, 0), 0.31, "Slate roof", rings=2, segments=10, squash=0.75)                # round crown
-    m.add_frustum((0, 2.44, 0), 0.33, 0.32, 0.08, "Limewash", segments=10, cap_top=False)            # fleece band
+    if band:
+        m.add_frustum((0, 2.44, 0), 0.33, 0.32, 0.08, band, segments=10, cap_top=False)
+    return m
+
+
+def cape():
+    """Round 3: the fleece cape alone, as a body piece (node "cape", the body's frame), to go with the felt hat."""
+    m = glb.Mesh()
+    m.add_frustum((0, 1.55, -0.02), 0.5, 0.26, 0.22, "Limewash", segments=10)
+    for i in range(5):
+        a = math.pi * (0.1 + 0.8 * i / 4)
+        m.add_sphere((0.47 * math.cos(a), 1.6, -0.47 * math.sin(a) * 0.9 + 0.1 * (i % 2)), 0.14, "Limewash", rings=2, segments=4)
     return m
 
 
@@ -78,16 +92,25 @@ def head_turban():
     return m
 
 
-def head_fantail():
+def head_fantail(colour="Deep water", hem=0.4, back=0.7):
+    """The porter's fantail hood. Round 3 (the lead): Deep water, the fan trimmed to 0.8 across and 0.4 behind the
+    crown, sloping down, so it reads as a hood with a flap behind, not a funnel. Round 2's (Slate, 1.0 across, 0.6
+    behind, flat) is kept as villager-head-fantail-slate (dropped)."""
     m = glb.Mesh()
     face(m)
-    m.add_sphere((0, 2.3, -0.06), 0.4, "Slate roof", rings=3, segments=8, squash=0.74)              # crown
-    m.add_box((0, 2.33, 0.4), (0.44, 0.04, 0.16), "Slate roof", bottom="Packed earth")              # short peak
-    # The fantail (round 2: the first, steep flap hid behind the back at the play view's tilt): a broad flat fan from
-    # the back of the crown, sloping a little, 0.5 wide at the crown and 1.0 at its hem, 0.6 behind the head: from above
-    # a grey fan behind the head whichever way the porter faces.
-    m.add_extrude((0, 2.3, 0), [(-0.25, -0.3), (0.25, -0.3), (0.5, -0.9), (-0.5, -0.9)], 0.05, "Slate roof", cap_bottom=True)
-    beam(m, (-0.5, 2.3, -0.9), (0.5, 2.3, -0.9), 0.08, 0.1, "Packed earth")                          # the stitched hem
+    m.add_sphere((0, 2.3, -0.06), 0.4, colour, rings=3, segments=8, squash=0.74)                    # crown
+    m.add_box((0, 2.33, 0.4), (0.44, 0.04, 0.16), colour, bottom="Packed earth")                    # short peak
+    if back > 0.8:   # round 2: flat
+        m.add_extrude((0, 2.3, 0), [(-0.25, -0.3), (0.25, -0.3), (hem, -back), (-hem, -back)], 0.05, colour, cap_bottom=True)
+        beam(m, (-hem, 2.3, -back), (hem, 2.3, -back), 0.06, 0.08, "Packed earth")
+        return m
+    # Round 3: the fan slopes down behind (35 degrees), so from the front it shows as a flap behind the hood, not as a
+    # funnel standing over the head; from above and turned it is still a dark fan.
+    y0, y1 = 2.36, 2.36 - (back - 0.28) * 0.7
+    top = [(-0.26, y0, -0.28), (0.26, y0, -0.28), (hem, y1, -back), (-hem, y1, -back)]
+    m.add_poly(top, colour, facing=(0, 0.82, -0.57))
+    m.add_poly([(x, y - 0.05, z) for x, y, z in top], colour, facing=(0, -0.82, 0.57))
+    beam(m, (-hem, y1 - 0.02, -back), (hem, y1 - 0.02, -back), 0.06, 0.08, "Packed earth")            # the stitched hem
     return m
 
 
@@ -109,9 +132,12 @@ def write(name, mesh, budget, used, node="head"):
 
 
 U = "Villagers, trades of the second age (n7 step 3, board docs/plans/n7/mockup/hats-trades2.png): "
-write("villager-head-fleece", head_fleece(), 260, U + "the shepherd's Limewash fleece hood and shoulder mantle (chosen)")
-write("villager-head-felthat", head_felthat(), 260, U + "shepherd candidate B, a Slate roof felt hat (dropped; kept for the board)")
+write("villager-head-fleece", head_fleece(), 260, U + "shepherd candidate A, a Limewash fleece hood and mantle (dropped: white is the miller's)")
+write("villager-head-felthat", head_felthat(), 260, U + "the shepherd's Slate roof felt hat, no band (chosen, round 3)")
+write("villager-head-felthat-band", head_felthat("Mud"), 260, U + "shepherd variant, the felt hat with a Mud band (dropped; kept for the board)")
+write("villager-cape", cape(), 140, U + "shepherd variant, the fleece cape as a body piece (dropped; kept for the board)", node="cape")
 write("villager-head-stocking", head_stocking(), 240, U + "the weaver's Meadow stocking cap with a Limewash tassel (chosen)")
 write("villager-head-turban", head_turban(), 240, U + "weaver candidate B, a Deep water cloth roll (dropped; kept for the board)")
-write("villager-head-fantail", head_fantail(), 240, U + "the porter's Slate roof fantail hood (chosen)")
+write("villager-head-fantail", head_fantail(), 240, U + "the porter's Deep water fantail hood, fan 0.8 across (chosen, round 3)")
+write("villager-head-fantail-slate", head_fantail("Slate roof", 0.5, 0.9), 240, U + "porter round 2, the large Slate roof fantail (dropped: read as a funnel; Slate is the shepherd's)")
 write("villager-head-headpad", head_headpad(), 240, U + "porter candidate B, a Slate roof head pad ring (dropped; kept for the board)")

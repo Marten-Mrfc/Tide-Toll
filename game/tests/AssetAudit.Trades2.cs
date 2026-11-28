@@ -10,7 +10,8 @@ namespace TideToll.Game.Tests;
 /// three and a Helper, rendered in the game at the 1080p play view (yaw 0, the play zoom's tilt). Test-only: the game
 /// does not load the new heads; the head mesh of <see cref="TownVillagers.Figure"/> is swapped as in AssetAudit.Trades.cs.
 /// Pictures (1920 x 1080, cropped by tools/mockup/hats_trades2.py against t2-ground): t2-row-{bare,load} (Helper,
-/// carrier, reaper, miller, shepherd, weaver, porter), t2-alt-{bare,load} (the dropped candidates), t2-grid (every new
+/// carrier, reaper, miller, shepherd, weaver, porter), t2-alt-{bare,load} (the dropped candidates), t2-pair-{bare,load}
+/// (carriers and porters turned four ways), t2-grid (every new
 /// headwear, both candidates, on every tunic colour of TownVillagers.Clothes), t2-crowd-{new,old} (twenty villagers as a
 /// second-age street, and the same street with the first three trades only). With --ink-variants=villagers-trades2-group
 /// the ink check measures six villagers, one in each of the six headwears.
@@ -18,35 +19,69 @@ namespace TideToll.Game.Tests;
 public partial class AssetAudit
 {
     private bool _trades2;
-    private const string Fleece = "villager-head-fleece", Stocking = "villager-head-stocking", Fantail = "villager-head-fantail";
+    // Round 3 (the lead): the shepherd wears the felt hat; the porter the smaller Deep water fantail. "+cape" adds the
+    // fleece cape (villager-cape) as a body piece.
+    private const string Felt = "villager-head-felthat", Stocking = "villager-head-stocking", Fantail = "villager-head-fantail";
+    private const string Cape = "+cape";
     private static readonly string[] T2Heads =
-        { "villager-head-helper-mud", "villager-head-kerchief", "villager-head-strawhat", "villager-head-cap", Fleece, Stocking, Fantail };
+        { "villager-head-helper-mud", "villager-head-kerchief", "villager-head-strawhat", "villager-head-cap", Felt, Stocking, Fantail };
     private static readonly string[] T2Alt =
-        { "villager-head-helper-earth", "villager-head-felthat", "villager-head-turban", "villager-head-headpad" };
+        { "villager-head-helper-earth", "villager-head-fleece", "villager-head-felthat" + Cape, "villager-head-felthat-band",
+          "villager-head-turban", "villager-head-fantail-slate", "villager-head-headpad" };
     private static readonly Good[] T2Goods = { Good.Grain, Good.Water, Good.Grain, Good.Flour, Good.Wool, Good.Cloth, Good.Flour };
-    private static readonly Good[] T2AltGoods = { Good.None, Good.Wool, Good.Cloth, Good.Grain };
+    private static readonly Good[] T2AltGoods = { Good.None, Good.Wool, Good.Wool, Good.Wool, Good.Cloth, Good.Flour, Good.Flour };
+
+    /// <summary>TradeFigure with the "+cape" suffix understood: the head named before it, the fleece cape added.</summary>
+    private static Node3D T2Figure(int idx, float walker, Good load, string head, Color? tunic, float lean)
+    {
+        bool cape = head.EndsWith(Cape);
+        var f = TradeFigure(idx, walker, load, 0, cape ? head[..^Cape.Length] : head, tunic, lean);
+        if (cape)
+        {
+            Check(ModelLib.Has("villager-cape"), "missing model villager-cape");
+            f.AddChild(new MeshInstance3D { Name = "Cape", Mesh = ModelLib.Part("villager-cape", "cape"), Transform = f.GetNode<MeshInstance3D>("Head").Transform });
+        }
+        return f;
+    }
+
+    /// <summary>Round 3: carriers and porters side by side, turned four ways (the round blue head against the dark blue
+    /// hood with a flap).</summary>
+    private static Node3D T2Pair(float walker, bool load)
+    {
+        var n = new Node3D { Name = "Subject" };
+        for (int k = 0; k < 8; k++)
+        {
+            bool porter = k % 2 == 1;
+            var f = T2Figure(k, walker, load ? (porter ? Good.Flour : Good.Water) : Good.None, porter ? Fantail : "villager-head-kerchief", null, load ? 1f : 0f);
+            f.Position = new Vector3((k - 3.5f) * 1.9f * walker, 0, 0);
+            f.Rotation = new Vector3(0, (k / 2) * 1.5708f, 0);
+            n.AddChild(f);
+        }
+        return n;
+    }
 
     private static Node3D T2Row(float walker, string[] heads, Good[] goods, bool load)
     {
         var n = new Node3D { Name = "Subject" };
         for (int k = 0; k < heads.Length; k++)
         {
-            var f = TradeFigure(k, walker, load ? goods[k] : Good.None, 0, heads[k], null, load ? 1f : 0f);
+            var f = T2Figure(k, walker, load ? goods[k] : Good.None, heads[k], null, load ? 1f : 0f);
             f.Position = new Vector3((k - (heads.Length - 1) * 0.5f) * 1.9f * walker, 0, 0);
             n.AddChild(f);
         }
         return n;
     }
 
-    /// <summary>Rows: shepherd A, B, weaver A, B, porter A, B; columns: the game's five tunic colours.</summary>
+    /// <summary>Rows (round 3): shepherd's felt hat, with the cape, with a Mud band; weaver; porter; the carrier's kerchief
+    /// (to compare with the porter); columns: the game's five tunic colours.</summary>
     private static Node3D T2Grid(float walker)
     {
-        string[] rows = { Fleece, T2Alt[1], Stocking, T2Alt[2], Fantail, T2Alt[3] };
+        string[] rows = { Felt, Felt + Cape, "villager-head-felthat-band", Stocking, Fantail, "villager-head-kerchief" };
         var n = new Node3D { Name = "Subject" };
         for (int r = 0; r < rows.Length; r++)
             for (int c = 0; c < TownVillagers.Clothes.Length; c++)
             {
-                var f = TradeFigure(0, walker, Good.None, 0, rows[r], TownVillagers.Clothes[c]);
+                var f = T2Figure(0, walker, Good.None, rows[r], TownVillagers.Clothes[c], 0f);
                 f.Position = new Vector3((c - 2f) * 2.0f * walker, 0, (r - 2.5f) * 2.6f * walker);
                 n.AddChild(f);
             }
@@ -82,7 +117,7 @@ public partial class AssetAudit
     private static Node3D Trades2InkGroup(float walker)
     {
         var n = new Node3D { Name = "Subject" };
-        string[] heads = { "villager-head-kerchief", "villager-head-strawhat", "villager-head-cap", Fleece, Stocking, Fantail };
+        string[] heads = { "villager-head-kerchief", "villager-head-strawhat", "villager-head-cap", Felt, Stocking, Fantail };
         for (int i = 0; i < 6; i++)
         {
             var f = TradeFigure(i, walker, i % 2 == 0 ? Good.None : (Good)(1 + i % 5), 0, heads[i], null, i % 2);
@@ -103,7 +138,8 @@ public partial class AssetAudit
                      ("ground", () => new Node3D { Name = "Subject" }),
                      ("row-bare", () => T2Row(walker, T2Heads, T2Goods, false)), ("row-load", () => T2Row(walker, T2Heads, T2Goods, true)),
                      ("alt-bare", () => T2Row(walker, T2Alt, T2AltGoods, false)), ("alt-load", () => T2Row(walker, T2Alt, T2AltGoods, true)),
-                     ("grid", () => T2Grid(walker)), ("crowd-new", () => T2Crowd(walker, false)), ("crowd-old", () => T2Crowd(walker, true)),
+                     ("grid", () => T2Grid(walker)),
+                     ("pair-bare", () => T2Pair(walker, false)), ("pair-load", () => T2Pair(walker, true)), ("crowd-new", () => T2Crowd(walker, false)), ("crowd-old", () => T2Crowd(walker, true)),
                  })
         {
             var row = build();

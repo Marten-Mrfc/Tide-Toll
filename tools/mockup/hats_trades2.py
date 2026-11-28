@@ -15,8 +15,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 BG = (226, 216, 196, 255)
 ROW = ["Helper", "carrier", "reaper", "miller", "SHEPHERD", "WEAVER", "PORTER"]
 TUNICS = ["Brick", "Packed earth", "Cast-iron green", "Mud", "Soot brick"]
-GRID_ROWS = ["shepherd A: fleece hood and mantle", "shepherd B: felt hat", "weaver A: stocking cap", "weaver B: cloth roll",
-             "porter A: fantail hood", "porter B: head pad"]
+GRID_ROWS = ["shepherd: felt hat (chosen)", "felt hat with fleece cape", "felt hat with a Mud band", "weaver: stocking cap",
+             "porter: Deep water fantail", "carrier's kerchief (to compare)"]
 
 
 def icon(name, px):
@@ -39,7 +39,7 @@ def main():
             bb = b if bb is None else (min(bb[0], b[0]), min(bb[1], b[1]), max(bb[2], b[2]), max(bb[3], b[3]))
         return (bb[0] - m, bb[1] - m, bb[2] + m, bb[3] + m)
 
-    W, H = 2400, 4200
+    W, H = 2400, 4800
     B = Image.new("RGBA", (W, H), BG)
     text(B, k, (g, 14), "Trades of the second age: shepherd, weaver, porter (headwear and icons)", "serif", 30, INK)
     text(B, k, (g, 56), "Real frames from the game (game/tests/AssetAudit.Trades2.cs): its ground, sun, camera tilt and ink, at the "
@@ -47,9 +47,11 @@ def main():
     y = 96
     # (a) the row: chosen set, then the dropped candidates.
     for key, title, labels in (("row", "a. Helper, carrier, reaper, miller, shepherd, weaver, porter (chosen set)", ROW),
-                               ("alt", "a'. The dropped candidates: Helper (for scale), shepherd B, weaver B, porter B",
-                                ["Helper", "shep. B", "weaver B", "porter B"])):
-        text(B, k, (g, y), title + ": empty-handed, then each with its own good (porter: flour to the boat)", "serif", TITLE, INK)
+                               ("alt", "a'. Dropped: Helper (scale), fleece hood, felt hat + cape, felt hat + band, "
+                                "cloth roll, large slate fantail, head pad", ["Helper", "fleece", "+cape", "+band", "roll", "fan slate", "pad"]),
+                               ("pair", "a''. Carrier and porter in turn, turned four ways (kerchief, then fantail)",
+                                ["carrier", "porter"] * 4)):
+        text(B, k, (g, y), title + ": empty-handed, then each with its own good", "serif", TITLE, INK)
         y += 34
         bb = box(f"{key}-bare", f"{key}-load")
         bw, bh = bb[2] - bb[0], bb[3] - bb[1]
@@ -65,7 +67,7 @@ def main():
             x += bw * 3 + g
         y += bh * 3 + 30 + bh + 30
     # (b) grid.
-    text(B, k, (g, y), "b. Every new headwear (both candidates) on every tunic colour of the game (TownVillagers.Clothes); "
+    text(B, k, (g, y), "b. The chosen headwear, the shepherd's variants and the carrier's kerchief on every tunic colour of the game (TownVillagers.Clothes); "
          "3 x, then true size", "serif", TITLE, INK)
     y += 40
     bb = box("grid")
